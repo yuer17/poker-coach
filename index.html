@@ -2295,7 +2295,9 @@
 
         // 判断面对 3-Bet 的应对（查 FACING_3BET_RANGES，含筹码深度分层）
         function getFacing3BetAction(handStr, heroPos, tableSize, effStack) {
-            const ranges = FACING_3BET_RANGES[tableSize];
+            // 硬伤修复H1(2026-07-10)：FACING_3BET_RANGES 只有 9max 表，8max/6max 查表
+            // undefined 导致任何手牌（含AA）面对3-Bet一律返回fold。兜底用9max表近似。
+            const ranges = FACING_3BET_RANGES[tableSize] || FACING_3BET_RANGES['9max'];
             if (!ranges) return 'fold';
             if (ranges.fourbet_value.includes(handStr)) return 'fourbet';
             if (ranges.fourbet_bluff.includes(handStr)) {
@@ -6371,21 +6373,28 @@
                     : { action: 'FOLD',  sizing: '',     freq: { fold: 100 } };
 
                 // Fix-7: 底对/弱牌相对牌力极低 → 直接弃牌（防止单凭赔率错误跟注）
-                if (!isFacingAllin && equity < 40 && relStr < 30 && villainBet > 0 && outs < 6) {
+                // 硬伤修复H3(2026-07-10)：加尺度门槛 potOdds≥25（约半池以上）才强制弃牌。
+                // 原逻辑无视赔率——对手下25%底池只需17%胜率，35%胜率的底对也被弃掉，
+                // 面对小注系统性过弃会被剥削；小注局面放行给下方常规赔率分支决策。
+                if (!isFacingAllin && equity < 40 && relStr < 30 && villainBet > 0 && outs < 6 && potOdds >= 25) {
                     primaryAction = 'FOLD'; sizing = '';
                     frequencies = { fold: 100 };
                     reasoning = `胜率${equity.toFixed(0)}%且相对牌力仅${relStr.toFixed(0)}%（底对/弱牌高牌面），面对下注弃牌`;
                 }
                 // ── 面对全下：只能跟注或弃牌 ──
+                // 硬伤修复H2(2026-07-10)：跟全下的门槛加 ICM 风险溢价——原固定 potOdds+5
+                // 不分赛段，泡沫期筹码EV≠奖金EV，跟全下的风险溢价应显著高于常规期
+                // （溢价档位：常规+5 / 决赛桌+8 / 泡沫期+12，方向与 getICMPressure 一致）。
                 else if (isFacingAllin) {
-                    if (equity >= potOdds + 5) {
+                    const allinPremium = stage === 'bubble' ? 12 : stage === 'final' ? 8 : 5;
+                    if (equity >= potOdds + allinPremium) {
                         primaryAction = 'CALL'; sizing = '';
                         frequencies = { call: 100 };
-                        reasoning = `面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，跟注`;
+                        reasoning = `面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%+溢价${allinPremium}%${stage !== 'normal' ? '（ICM）' : ''}，跟注`;
                     } else {
                         primaryAction = 'FOLD'; sizing = '';
                         frequencies = { fold: 100 };
-                        reasoning = `面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%，弃牌`;
+                        reasoning = `面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%+溢价${allinPremium}%${stage !== 'normal' ? '（ICM）' : ''}，弃牌`;
                     }
                 }
                 // ── SPR 承诺区（纯 commit：spr ≤ 1.8）──
