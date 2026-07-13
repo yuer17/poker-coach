@@ -3776,7 +3776,17 @@
                     baseHands = COLD_CALL_HANDS.filter(h => !['65s','76s','KQo','AJo'].includes(h));
                     vActionLabel = `SB 跟注范围`;
                 } else {
-                    baseHands = [...COLD_CALL_HANDS];
+                    // Cold-Call修复二(2026-07-13，Codex二轮审计)：按跟注者位置分层——
+                    // 前中位跟注者（UTG1/MP/LJ）中短码下近乎 3-Bet-or-Fold，其平跟实为
+                    // "中对+AQs型"凝缩范围(~5.9%)；HJ/CO 居中(~8.9%)；BTN 最宽(11.5%)。
+                    // 原单一列表对所有位置返回同样 11.5%，前位跟注者范围被高估近一倍。
+                    const ccTier = ['UTG','UTG1','MP','LJ'].includes(villainPos) ? 'early'
+                                 : ['HJ','CO'].includes(villainPos)              ? 'mid' : 'late';
+                    baseHands = ccTier === 'early'
+                        ? ['JJ','TT','99','88','77','66','55','AQs','AJs','KQs','QJs','JTs','T9s','AQo']
+                        : ccTier === 'mid'
+                        ? ['JJ','TT','99','88','77','66','55','44','33','AQs','AJs','ATs','KQs','KJs','QJs','QTs','JTs','T9s','98s','AQo','AJo']
+                        : [...COLD_CALL_HANDS];
                     vActionLabel = `Cold-Call 范围 (${villainPos})`;
                     // 时间轴提示：非盲注位对手必须在 Hero 开池之后才可能冷跟注
                     if ((POS_ORDER[villainPos] || 0) < (POS_ORDER[heroPos] || 0)) {
@@ -4570,18 +4580,22 @@
                 return map[a.action] || a.action + amtStr;
             };
 
-            // 取每方最后一条动作（支持多轮加注）
-            const villainAct = [...streetActions].reverse().find(a => a.player === 'villain');
-            const heroAct    = [...streetActions].reverse().find(a => a.player === 'hero');
-
-            let parts = [];
-            if (villainAct) parts.push(`<span class="text-emerald-300">对手：${descAction(villainAct)}</span>`);
-            if (heroAct)    parts.push(`<span style="color:var(--accent-hover)">我方：${descAction(heroAct)}</span>`);
-            if (villainAct && !heroAct) parts.push(`<span class="text-yellow-500 text-[10px]">⬅ 等待 Hero 决策</span>`);
+            // 摘要顺序修复(2026-07-13)：按时间序完整展示本街行动线。
+            // 原实现"对手|我方"固定顺序各取最新一条——check-raise 线（对手过牌→
+            // 我方下注→对手加注）会显示成"对手：加注 | 我方：下注"，时间序颠倒误导用户。
+            let parts = streetActions.map(a =>
+                a.player === 'villain'
+                    ? `<span class="text-emerald-300">对手：${descAction(a)}</span>`
+                    : `<span style="color:var(--accent-hover)">我方：${descAction(a)}</span>`
+            );
+            const ss = typeof getStreetState === 'function' ? getStreetState(streetActions) : null;
+            if (ss && ss.nextToAct === 'hero' && !['street_over','showdown'].includes(ss.phase)) {
+                parts.push(`<span class="text-yellow-500 text-[10px]">⬅ 等待 Hero 决策</span>`);
+            }
 
             area.innerHTML = `<div class="mt-1 px-2 py-1 bg-black/20 rounded text-[10px] flex flex-wrap gap-2 items-center border border-white/5">
                 <span class="text-gray-500 text-[10px]">本街动作：</span>
-                ${parts.join('<span class="text-gray-700 mx-1">|</span>')}
+                ${parts.join('<span class="text-gray-600 mx-1">→</span>')}
             </div>`;
         }
 
@@ -5659,6 +5673,16 @@
                         };
                         postState.equityResult = merged;
                         renderEquityPanel(merged);
+                        // 管线一致性修复(2026-07-13)：outs/relStrength 补齐后重跑决策。
+                        // 原来决策只在占位数据（outs:0/relStrength:0，见上方 equityCompat）
+                        // 上计算且从不刷新——Fix-7、进张跟注、半诈唬等所有依赖 outs/relStr
+                        // 的分支在实时管线中形同虚设（实测 8♠7♠ 的 4 张卡顺在决策时刻
+                        // 是 0 outs 被 Fix-7 强制弃牌）。渐进式刷新：先出快速决策，
+                        // 补充数据到位后（约1秒）用完整数据重出，postCalcVersion 防串。
+                        const decision2 = postEngine();
+                        postState.decisionResult = decision2;
+                        renderPostEnginePanel(decision2);
+                        renderBettingPanel();
                     }
                 }).catch(() => {});
 
@@ -6531,11 +6555,12 @@
                 if (commitWeight > 0 && commitWeight < 1) {
                     const flexFreq = frequencies, flexAction = primaryAction, flexSizing = sizing;
                     frequencies = blendFreq(commitStrat.freq, flexFreq, commitWeight);
-                    const primary = Object.keys(frequencies).reduce((a, b) => frequencies[a] >= frequencies[b] ? a : b);
-                    primaryAction = primary.toUpperCase();
-                    const cC = (commitStrat.freq[primary] || 0) * commitWeight;
-                    const fC = (flexFreq[primary] || 0) * (1 - commitWeight);
-                    sizing = cC >= fC ? commitStrat.sizing : flexSizing;
+                    // Codex2修复(2026-07-13)：主动作在两侧策略的主动作间按权重二选一。
+                    // 原对混合频率取 argmax——当某侧频率是"防守混合"（如 CALL 分支
+                    // 输出 call40/fold60）时，argmax 会产生两侧主动作都不是的第三动作，
+                    // 且并列时对浮点误差敏感（实测 +1.4e-14 翻转动作）。
+                    primaryAction = commitWeight >= 0.5 ? commitStrat.action : flexAction;
+                    sizing = commitWeight >= 0.5 ? commitStrat.sizing : flexSizing;
                     reasoning = `SPR=${spr.toFixed(1)}（临界过渡区，承诺权重${(commitWeight * 100).toFixed(0)}%）：${reasoning}`;
                     if (commitStrat.action !== flexAction) {
                         warnings.push(`⚠️ SPR临界区(spr=${spr.toFixed(2)})：筹码略浅倾向${commitStrat.action}，略深倾向${flexAction}`);
@@ -6569,7 +6594,11 @@
                 // 硬伤修复H3(2026-07-10)：加尺度门槛 potOdds≥25（约半池以上）才强制弃牌。
                 // 原逻辑无视赔率——对手下25%底池只需17%胜率，35%胜率的底对也被弃掉，
                 // 面对小注系统性过弃会被剥削；小注局面放行给下方常规赔率分支决策。
-                if (!isFacingAllin && equity < 40 && relStr < 30 && villainBet > 0 && outs < 6 && potOdds >= 25) {
+                // Fix-7调整(2026-07-13)：outs 豁免线 6→4。本规则拦的是"MC 高估的脆弱
+                // 成手牌"（底对 set outs 2-3 张、纯空气 0 张），而卡顺(4张)及以上真听牌
+                // 的胜率是实打实的进张，交给下方赔率分支——原 outs<6 把 8♠7♠ 在 T♠6♥2♦
+                // 的卡顺(胜率32.8% > 赔率25%+容差4)也强制弃掉，与面板数学直接矛盾。
+                if (!isFacingAllin && equity < 40 && relStr < 30 && villainBet > 0 && outs < 4 && potOdds >= 25) {
                     primaryAction = 'FOLD'; sizing = '';
                     frequencies = { fold: 100 };
                     reasoning = `胜率${equity.toFixed(0)}%且相对牌力仅${relStr.toFixed(0)}%（底对/弱牌高牌面），面对下注弃牌`;
@@ -6642,11 +6671,12 @@
                 if (commitWeight > 0 && commitWeight < 1 && !isFacingAllin) {
                     const flexFreq = frequencies, flexAction = primaryAction, flexSizing = sizing;
                     frequencies = blendFreq(commitStratB.freq, flexFreq, commitWeight);
-                    const primary = Object.keys(frequencies).reduce((a, b) => frequencies[a] >= frequencies[b] ? a : b);
-                    primaryAction = primary.toUpperCase();
-                    const cC = (commitStratB.freq[primary] || 0) * commitWeight;
-                    const fC = (flexFreq[primary] || 0) * (1 - commitWeight);
-                    sizing = cC >= fC ? commitStratB.sizing : flexSizing;
+                    // Codex2修复(2026-07-13)：同主动线——主动作按权重在两侧主动作间
+                    // 二选一，不再对混合频率取 argmax。原实现在 flex=CALL(call40/fold60)、
+                    // commit=RAISE 时混出 FOLD 为众数：SPR 2.0→2.1 从 RAISE 跳两档到
+                    // FOLD（胜率60% vs 赔率38% 的局面被建议弃牌）。
+                    primaryAction = commitWeight >= 0.5 ? commitStratB.action : flexAction;
+                    sizing = commitWeight >= 0.5 ? commitStratB.sizing : flexSizing;
                     reasoning = `SPR=${spr.toFixed(1)}（临界过渡区，承诺权重${(commitWeight * 100).toFixed(0)}%）：${reasoning}`;
                     if (commitStratB.action !== flexAction) {
                         warnings.push(`⚠️ SPR临界区(spr=${spr.toFixed(2)})：筹码略浅倾向${commitStratB.action}，略深倾向${flexAction}`);
