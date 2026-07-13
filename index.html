@@ -2269,11 +2269,16 @@
         // 判断是否应该 3-Bet（查 THREBET_RANGES）
         function getThreeBetAction(handStr, heroPos, villainPos, tableSize) {
             const key = heroPos + '_vs_' + villainPos;
-            // 后位（BTN/CO/HJ）有自己的范围时用最紧档作 fallback，其他位置用 BTN_vs_UTG
+            // Codex交叉测试修复②(2026-07-13)：缺键时先查 9max 同名键（语义正确的近似，
+            // 修复 8max 盲注位 vs 前中位开池落到 BTN_vs_UTG 的 IP/OOP 范围错配）；
+            // 9max UTG1 无自有表，按更紧的邻位 MP 近似；原 BTN_vs_UTG 兜底保留为最后防线
+            const aliasKey = heroPos === 'UTG1' ? 'MP_vs_' + villainPos : null;
             const fallbackKey = ['BTN','CO','HJ'].includes(heroPos)
                 ? heroPos + '_vs_UTG'
                 : 'BTN_vs_UTG';
             const rangeObj = THREBET_RANGES[tableSize]?.[key] ||
+                THREBET_RANGES['9max']?.[key] ||
+                (aliasKey && (THREBET_RANGES[tableSize]?.[aliasKey] || THREBET_RANGES['9max']?.[aliasKey])) ||
                 THREBET_RANGES[tableSize]?.[fallbackKey];
             if (!rangeObj) return 'fold';
             const scale = getPlayStyleScale();
@@ -2306,7 +2311,9 @@
                 else if (effStack >= 20)  return 'fourbet_bluff_mid';
                 else                      return 'fourbet_bluff_short';
             }
-            const callRange = ranges.call[heroPos] || ranges.call['MP'];
+            // Codex交叉测试修复③(2026-07-13)：UTG1/LJ 显式映射邻位（原静默回落 MP，LJ 偏紧一档）
+            const callPosAlias = { UTG1: 'UTG', LJ: 'HJ' };
+            const callRange = ranges.call[heroPos] || ranges.call[callPosAlias[heroPos]] || ranges.call['MP'];
             if (callRange.includes(handStr)) {
                 return effStack <= 25 ? 'call_shallow' : 'call';
             }
@@ -3624,9 +3631,21 @@
 
             } else if (currentMode === 'face3b') {
                 // 对手 3-Bet：查 THREBET_RANGES[villainPos_vs_heroPos]
+                // Codex交叉测试修复②(2026-07-13)：兜底链与翻前 getThreeBetAction 统一——
+                // 缺键先查 9max 同名键（语义正确近似），再走 vs_MP / 固定极化范围；
+                // 非精确命中时标注"（近似范围）"，不再静默假装精确
                 const key      = `${villainPos}_vs_${heroPos}`;
                 const fallback = `${villainPos}_vs_MP`; // 常见兜底
-                const tbl = THREBET_RANGES[tableSize]?.[key] || THREBET_RANGES[tableSize]?.[fallback];
+                const aliasKey = villainPos === 'UTG1' ? `MP_vs_${heroPos}` : null;
+                let approx3b = false;
+                let tbl = THREBET_RANGES[tableSize]?.[key];
+                if (!tbl) {
+                    tbl = THREBET_RANGES['9max']?.[key] ||
+                          (aliasKey && (THREBET_RANGES[tableSize]?.[aliasKey] || THREBET_RANGES['9max']?.[aliasKey])) ||
+                          THREBET_RANGES[tableSize]?.[fallback] ||
+                          THREBET_RANGES['9max']?.[fallback];
+                    approx3b = true;
+                }
                 if (tbl) {
                     const bluffSlice = Math.round((tbl.bluff || []).length * bluffMult);
                     baseHands = [...(tbl.value || []), ...(tbl.bluff || []).slice(0, bluffSlice)];
@@ -3634,7 +3653,7 @@
                     // 极端兜底：价值 3-Bet 范围（AA/KK/QQ/AKs/AKo）
                     baseHands = ['AA','KK','QQ','AKs','AKo','A5s','A4s'];
                 }
-                vActionLabel = `3-Bet 极化 (${villainPos} vs ${heroPos})`;
+                vActionLabel = `3-Bet 极化 (${villainPos} vs ${heroPos})${approx3b ? '（近似范围）' : ''}`;
 
             } else if (currentMode === 'squeeze') {
                 // 英雄 Squeeze，对手是原开池者
@@ -4080,6 +4099,38 @@
                 showToast('下注额不合法（最低 0.5BB）', 'error');
                 if (inputEl) { inputEl.style.borderColor = '#ef4444'; setTimeout(() => { inputEl.style.borderColor = ''; }, 1500); }
                 return;
+            }
+            // Codex交叉测试修复①(2026-07-13)：面对未跟平的下注/加注时，校验最小合法
+            // 加注额（对手总额 + 上一次加注增量）。原缺失：对手 Bet 10 时输入 0.5 会被
+            // 当合法 raise 记账，污染底池/SPR/赔率并把行动权错交回对手。
+            // 全押不足最小加注仍放行（all-in for less 规则）；amount 语义=本街投入总额。
+            {
+                const _vc = postState.board.filter(c => c !== null);
+                const isAllinIntent = eff > 0 && amt >= eff * 0.95;
+                if (_vc.length >= 3 && !isAllinIntent) {
+                    const _street = _vc.length === 3 ? 'flop' : _vc.length === 4 ? 'turn' : 'river';
+                    const _sa = (postState.potTracker.actions || []).filter(a => a.street === _street);
+                    let _heroIn = 0, _villainIn = 0; const _aggTotals = [];
+                    _sa.forEach(a => {
+                        if (a.action === 'bet' || a.action === 'raise' || a.action === 'allin') {
+                            if (a.player === 'villain') _villainIn = a.amount; else _heroIn = a.amount;
+                            _aggTotals.push(a.amount);
+                        } else if (a.action === 'call') {
+                            if (a.player === 'villain') _villainIn = _heroIn; else _heroIn = _villainIn;
+                        }
+                    });
+                    const _oppIn  = player === 'hero' ? _villainIn : _heroIn;
+                    const _selfIn = player === 'hero' ? _heroIn : _villainIn;
+                    if (_oppIn > _selfIn) {
+                        const _prevAgg = _aggTotals.length >= 2 ? _aggTotals[_aggTotals.length - 2] : 0;
+                        const _minRaiseTo = _oppIn + (_oppIn - _prevAgg);
+                        if (amt < _minRaiseTo) {
+                            showToast(`加注不合法：面对 ${_oppIn}BB 最少加注到 ${_minRaiseTo.toFixed(1)}BB（全押除外）`, 'error');
+                            if (inputEl) { inputEl.style.borderColor = '#ef4444'; setTimeout(() => { inputEl.style.borderColor = ''; }, 1500); }
+                            return;
+                        }
+                    }
+                }
             }
             // 超出有效筹码：截断为全下 + 提示
             if (eff > 0 && amt > eff) {
