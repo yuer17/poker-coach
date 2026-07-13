@@ -1171,6 +1171,35 @@
         };
 
         // ============================================================
+        // Re-Jam 范围表（2026-07-13 新增）：≤25BB 面对单次开池的 3-Bet 全推
+        // 深度两档（<17BB shallow / 17-25BB deep）× 开池者位置四桶（EP/MID/LATE/SB）
+        // 数据按 HRC 常见输出手工校准（vs 2.2-2.5x 开池，含 ante 9max）
+        // 消费方 getRejamAction；faceBet 场景 effStack≤25 时 3-Bet 语义统一为全推
+        // ============================================================
+        const REJAM_RANGES = {
+        shallow: { // <17BB（含 12BB 以下：面对开池只有推/弃/极少量跟）
+            EP:   { value:['AA','KK','QQ','JJ','TT','99','AKs','AQs','AKo'],
+                    bluff:['A5s','A4s'] },
+            MID:  { value:['AA','KK','QQ','JJ','TT','99','88','77','AKs','AQs','AJs','ATs','AKo','AQo','KQs'],
+                    bluff:['A5s','A4s','A3s'] },
+            LATE: { value:['AA','KK','QQ','JJ','TT','99','88','77','66','55','AKs','AQs','AJs','ATs','A9s','AKo','AQo','AJo','ATo','KQs','KJs','KQo'],
+                    bluff:['A5s','A4s','A3s','A2s'] },
+            SB:   { value:['AA','KK','QQ','JJ','TT','99','88','77','66','55','44','AKs','AQs','AJs','ATs','A9s','A8s','AKo','AQo','AJo','ATo','KQs','KJs','KTs','QJs','KQo','KJo'],
+                    bluff:['A5s','A4s','A3s','A2s','K9s'] }
+        },
+        deep: { // 17-25BB（保留部分平跟空间，全推范围收紧）
+            EP:   { value:['AA','KK','QQ','JJ','AKs','AKo'],
+                    bluff:['A5s'] },
+            MID:  { value:['AA','KK','QQ','JJ','TT','99','AKs','AQs','AKo'],
+                    bluff:['A5s','A4s'] },
+            LATE: { value:['AA','KK','QQ','JJ','TT','99','88','AKs','AQs','AJs','AKo','AQo','KQs'],
+                    bluff:['A5s','A4s','A3s'] },
+            SB:   { value:['AA','KK','QQ','JJ','TT','99','88','77','66','AKs','AQs','AJs','ATs','AKo','AQo','AJo','KQs','KJs'],
+                    bluff:['A5s','A4s','A3s','A2s'] }
+        }
+        };
+
+        // ============================================================
         // vs Limp Iso-raise 范围表（比 Open 宽约 30%，剥削弱跛入范围）
         // ============================================================
         const ISO_RAISE_RANGES = {
@@ -2332,6 +2361,33 @@
             return 'fold';
         }
 
+        // Re-Jam（2026-07-13）：≤25BB 面对单次开池的 3-Bet 全推查表
+        // 返回 jam_value / jam_bluff / jam_bluff_reduced / none（none = 落入跟注/弃牌逻辑）
+        // 阶段修正复用 THREBET stageModifiers.bluffMult（bubble 0.5→降频 / final 0.7→降频）
+        function getRejamAction(handStr, heroPos, villainPos, effStack, stage) {
+            if (!(effStack > 0) || effStack > 25) return 'none';
+            const bucket = ['UTG','UTG1','MP'].includes(villainPos) ? 'EP'
+                         : ['LJ','HJ'].includes(villainPos)         ? 'MID'
+                         : villainPos === 'SB'                      ? 'SB' : 'LATE';
+            const tier = effStack < 17 ? 'shallow' : 'deep';
+            const tbl = REJAM_RANGES[tier]?.[bucket];
+            if (!tbl) return 'none';
+            const scale = getPlayStyleScale();
+            if (tbl.value.includes(handStr)) {
+                const p = tbl.value.indexOf(handStr) / tbl.value.length;
+                if (p <= scale) return 'jam_value';
+            }
+            if (tbl.bluff.includes(handStr)) {
+                const p = tbl.bluff.indexOf(handStr) / tbl.bluff.length;
+                if (p <= scale) {
+                    const stageMod = THREBET_RANGES[gameConfig.tableSize]?.stageModifiers?.[stage] || { bluffMult: 1.0 };
+                    if (stageMod.bluffMult >= 0.8) return 'jam_bluff';
+                    if (stageMod.bluffMult >= 0.5) return 'jam_bluff_reduced';
+                }
+            }
+            return 'none';
+        }
+
         // 查询 Squeeze 范围表（含阶段修正 + 筹码深度过滤 + 打法风格缩放）
         function getSqueezeAction(handStr, heroPos, tableSize, stage, effStack) {
             const tableRanges = SQUEEZE_RANGES[tableSize];
@@ -2749,11 +2805,28 @@
                 if (sH <= 0 || sV <= 0) { alert("筹码量须大于 0。"); return; }
                 const cat = getStrictCategory(v1, v2, isSuited);
                 let c = 0, b = 0, f = 0, logic = "", postSizing = "";
+                let rejamChosen = false; // Re-Jam(2026-07-13)：verdict/sizing 覆盖标志
 
                 if (currentMode === 'faceBet') {
                     // 加注尺度修正:大于 3x 收紧,小于 2.2x 放宽
                     const sizeMod = raiseSize >= 3.0 ? 1.2 : raiseSize <= 2.2 ? 0.85 : 1.0;
-                    
+
+                    // Re-Jam(2026-07-13)：≤25BB 面对开池，3-Bet 语义统一为全推——
+                    // 中短码小 3-Bet 会留下不可打的 SPR（如 15BB 3-Bet 至 10BB 留 0.3），
+                    // 命中 REJAM 表则直接全推；未命中则屏蔽小 3-Bet，落入跟注/弃牌逻辑
+                    const rejamAct = getRejamAction(handStr, posH, posV, effStack, gameConfig.stage);
+                    if (rejamAct === 'jam_value') {
+                        b = 100; c = 0; f = 0; rejamChosen = true;
+                        logic = `${effStack}BB 中短码面对开池：3-Bet 即全推（Re-Jam）。价值全推，榨取对手跟注范围。`;
+                    } else if (rejamAct === 'jam_bluff') {
+                        b = 70; f = 30; c = 0; rejamChosen = true;
+                        logic = `${effStack}BB Re-Jam 诈唬（Blocker 牌），对开池范围施加最大弃牌压力。`;
+                    } else if (rejamAct === 'jam_bluff_reduced') {
+                        b = 35; f = 65; c = 0; rejamChosen = true;
+                        logic = `ICM 阶段修正：Re-Jam 诈唬降频至 35%（泡沫/决赛圈慎用无摊牌价值全推）。`;
+                    }
+
+                    if (!rejamChosen) {
                     if (posH === 'BB') {
                         // BB GTO 防守范围查表
                         const shouldDefend = isHandInBBDefense(handStr, posV, gameConfig.tableSize);
@@ -2767,7 +2840,11 @@
                             f=100; logic='不在 BB 防守范围，弃牌。';
                         }
                     } else {
-                    const action3b = getThreeBetAction(handStr, posH, posV, gameConfig.tableSize);
+                    // Re-Jam(2026-07-13)：≤25BB 未命中 REJAM 表时屏蔽小 3-Bet
+                    // （'fold' 使流程落入下方 set-mining / IP 平跟 / 弃牌分支）
+                    const action3b = effStack <= 25
+                        ? 'fold'
+                        : getThreeBetAction(handStr, posH, posV, gameConfig.tableSize);
                     if (action3b === 'threebet_value') {
                         b = 100; c = 0; f = 0;
                         logic = '价值 3-Bet，强牌榨取。';
@@ -2817,9 +2894,10 @@
                         }
                     }
                     } // 结束非 BB 位置手牌分类
+                    } // 结束 !rejamChosen（Re-Jam 命中时跳过 BB/非 BB 常规分支）
 
-                    // 加注尺度修正
-                    if (sizeMod !== 1.0) {
+                    // 加注尺度修正（Re-Jam 已按深度定档，不受开池尺度缩放）
+                    if (sizeMod !== 1.0 && !rejamChosen) {
                         c = Math.round(c * (2 - sizeMod)); 
                         b = Math.round(b * (2 - sizeMod));
                         if (c + b > 100) { const r = 100/(c+b); c = Math.round(c*r); b = Math.round(b*r); }
@@ -2913,6 +2991,9 @@
                 let color = f >= 80 ? "red" : b >= 50 ? "green" : "yellow";
                 let btnName = currentMode === 'face3b' ? "4-Bet" : "3-Bet";
                 let verdict = f >= 80 ? "⚪ 弃牌 (Fold)" : b >= 50 ? `🔴 主动 ${btnName}` : "🟡 混合策略 / 平跟";
+                // Re-Jam(2026-07-13)：全推决策专用措辞（b=35 降频档仍属混合，但需标明是全推）
+                if (rejamChosen && b >= 50)      { verdict = '🔥 全下 (Re-Jam)'; color = 'green'; }
+                else if (rejamChosen && b >= 35) { verdict = '🟡 Re-Jam 混合（35% 全推）'; }
 
                 // 解算器语义色：green(3/4-Bet)=进攻红 / yellow(混合)=琥珀 / red(Fold)=灰蓝
                 box.style.borderColor = color==='green'?'#e5484d':color==='yellow'?'#e0a83a':'#5c667f';
@@ -2930,9 +3011,12 @@
                         const isIP = POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV];
                         const suggAmt = raiseSize * (isIP ? 3 : 4);
                         // P1-2：All-in 上限与显示用有效筹码 effStack=min(hero,villain)，非 Hero 总筹码 sH
-                        suggSize = (effStack > 0 && suggAmt >= effStack * 0.85)
-                            ? `${effStack.toFixed(1)}BB All-in`
-                            : suggAmt.toFixed(1) + "BB " + btnName;
+                        // Re-Jam(2026-07-13)：全推决策直接显示 All-in，不走 3x/4x 计算
+                        suggSize = rejamChosen
+                            ? `${effStack.toFixed(1)}BB All-in (Re-Jam)`
+                            : (effStack > 0 && suggAmt >= effStack * 0.85)
+                                ? `${effStack.toFixed(1)}BB All-in`
+                                : suggAmt.toFixed(1) + "BB " + btnName;
                     } else if (postSizing) {
                         // face3b：使用 switch 预设尺度字符串
                         suggSize = postSizing;
@@ -3674,21 +3758,30 @@
 
             } else if (currentMode === 'open') {
                 // 英雄开池，对手跟注进翻牌
+                // Cold-Call 修复(2026-07-13)：原"BB 防守表过滤裸胜率≥49"近似产出 38.9%
+                // 的荒谬宽度（含 A5o/K9o/K7s 等真实玩家不会冷跟的牌），系统性高估
+                // Hero 对下注范围的胜率（实测 AQ 高牌无听牌被建议跟注 57% 池下注）。
+                // 换为真实冷跟构成（≈11.5%）：中小对子买 set + 同花高张/连张 +
+                // AQ/AJ/KQ；QQ+/AK 默认 3-Bet 不平跟故不含，offsuit 杂牌一律不含。
+                const COLD_CALL_HANDS = ['JJ','TT','99','88','77','66','55','44','33','22',
+                    'AQs','AJs','ATs','KQs','KJs','KTs','QJs','QTs','JTs',
+                    'T9s','98s','87s','76s','65s','AQo','AJo','KQo'];
                 if (villainPos === 'BB') {
                     // BB 防守：精确查 BB_DEFENSE_RANGES[vs_heroPos]
                     baseHands = BB_DEFENSE_RANGES[tableSize]?.['vs_' + heroPos] || [];
                     vActionLabel = `BB 防守 (vs ${heroPos})`;
                 } else if (villainPos === 'SB') {
-                    // SB 跟注：从 GTO 开池中过滤掉超强牌（不会 3-Bet 才跟注）
-                    const sbOpen = GTO_RANGES[tableSize]?.['SB']?.open || [];
-                    baseHands = sbOpen.filter(h => getRawEquity(h) < 67.0);
+                    // SB 平跟：OOP 且无收位赔率，实战多为 3-Bet-or-Fold，平跟范围
+                    // 比 IP 冷跟更紧（原"SB开池表过滤"近似同样过宽，一并修复）
+                    baseHands = COLD_CALL_HANDS.filter(h => !['65s','76s','KQo','AJo'].includes(h));
                     vActionLabel = `SB 跟注范围`;
                 } else {
-                    // 其他位置 Cold-Call：用对应 BB 防守范围近似（跟注区间）
-                    const bbDef = BB_DEFENSE_RANGES[tableSize]?.['vs_' + heroPos] || [];
-                    // Cold-call 比 BB 防守更窄（无赔率加成），截掉最弱 25%
-                    baseHands = bbDef.filter(h => getRawEquity(h) >= 49.0);
+                    baseHands = [...COLD_CALL_HANDS];
                     vActionLabel = `Cold-Call 范围 (${villainPos})`;
+                    // 时间轴提示：非盲注位对手必须在 Hero 开池之后才可能冷跟注
+                    if ((POS_ORDER[villainPos] || 0) < (POS_ORDER[heroPos] || 0)) {
+                        vActionLabel += `（⚠️ ${villainPos} 在你之前行动，翻前时间轴不成立，请核对对手位置）`;
+                    }
                 }
 
             } else if (currentMode === 'vsLimp') {
@@ -3776,6 +3869,43 @@
                     return clamp(0.76); // 无记录兜底（≈原 55/72，无行动时向后兼容旧值）
                 };
 
+                // 尺度感知(2026-07-13)：对手 bet/raise 相对底池越大范围越强、收窄越狠。
+                // 重放行动流水，取该街对手最后一次主动进攻的 (本次净投入 / 当时底池)。
+                // amount 语义 = 本街投入总额（与 recalculatePot 一致），净投入 = amount − 此前已投。
+                const sizeRatioOf = (street) => {
+                    const acts = postState.potTracker?.actions || [];
+                    let potBase = postState.potTracker?.preflopPot || 0;
+                    let hIn = 0, vIn = 0, cur = null, ratio = null;
+                    for (const a of acts) {
+                        if (cur !== a.street) { potBase += hIn + vIn; hIn = 0; vIn = 0; cur = a.street; }
+                        const potNow = potBase + hIn + vIn;
+                        if (a.action === 'bet' || a.action === 'raise' || a.action === 'allin') {
+                            if (a.player === 'villain') {
+                                if (a.street === street && potNow > 0) ratio = (a.amount - vIn) / potNow;
+                                vIn = a.amount;
+                            } else { hIn = a.amount; }
+                        } else if (a.action === 'call') {
+                            if (a.player === 'villain') vIn = hIn; else hIn = vIn;
+                        }
+                    }
+                    return ratio;
+                };
+                let sizeNoted = false;
+                const sizeMul = (street) => {
+                    const r = sizeRatioOf(street);
+                    if (r === null) return 1.0;
+                    let m = 1.0;
+                    if (r <= 0.40)      m = 1.10;  // 小注(≤40%池)：范围偏宽，收窄放松
+                    else if (r <= 0.80) m = 1.0;   // 标准注：维持基准
+                    else if (r <= 1.30) m = 0.90;  // 大注：收窄加重
+                    else                m = 0.80;  // 超池：极化强端
+                    if (m !== 1.0) sizeNoted = true;
+                    return m;
+                };
+                // 仅进攻类行动（bet/raise）叠乘尺度因子，check/call 与尺度无关
+                const sized = (base, street, act) =>
+                    (act === 'aggro' || act === 'raise') ? clamp(base * sizeMul(street)) : base;
+
                 // 键值 = 截至当前街（含当前街）的累积行动：
                 //   仅当某街对手"确有行动记录"时，才把该街收窄因子乘入（绝不凭空收窄；
                 //   刚发牌、对手未行动的街保持完整范围，因子=1）。
@@ -3783,9 +3913,9 @@
                 const vActed = (street) => (postState.potTracker?.actions || [])
                     .some(a => a.street === street && a.player === 'villain');
                 let keep = 1.0;
-                if (vActed('flop'))                    keep *= turnKeep(vAction('flop'));
-                if (_boardLen >= 4 && vActed('turn'))  keep *= riverOverlay(vAction('turn'));
-                if (_boardLen >= 5 && vActed('river')) keep *= riverOverlay(vAction('river'));
+                if (vActed('flop'))                    keep *= sized(turnKeep(vAction('flop')), 'flop', vAction('flop'));
+                if (_boardLen >= 4 && vActed('turn'))  keep *= sized(riverOverlay(vAction('turn')), 'turn', vAction('turn'));
+                if (_boardLen >= 5 && vActed('river')) keep *= sized(riverOverlay(vAction('river')), 'river', vAction('river'));
 
                 // 仅在确有收窄（keep<1）时排序截断，保证"对手未行动"时范围与未收窄完全一致
                 if (keep < 1.0) {
@@ -3799,7 +3929,7 @@
                         for (const h of hands) { kept.push(h); if (comboOf(kept) >= 5) break; }
                     }
                     hands = kept;
-                    narrowNote = `，动态收窄保留 ${(keep * 100).toFixed(0)}%`;
+                    narrowNote = `，动态收窄保留 ${(keep * 100).toFixed(0)}%${sizeNoted ? '（含下注尺度修正）' : ''}`;
                 }
             }
 
