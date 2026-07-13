@@ -561,9 +561,9 @@
                             <label class="text-[10px] text-gray-400 shrink-0 w-24">Vision 模型</label>
                             <select id="visionModel" onchange="onVisionModelChange()"
                                 class="flex-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white px-1">
-                                <option value="qwen-vl-plus">Qwen-VL-Plus（快速，低成本）</option>
+                                <option value="qwen3-vl-flash">Qwen3-VL-Flash（快·默认，已实测）</option>
+                                <option value="qwen-vl-plus">Qwen-VL-Plus（旧代）</option>
                                 <option value="qwen-vl-max">Qwen-VL-Max（最强，较慢）</option>
-                                <option value="qwen3-vl-flash">Qwen3-VL-Flash（新代·快，待实测）</option>
                                 <option value="qwen3-vl-plus">Qwen3-VL-Plus（新代·强，待实测）</option>
                                 <option value="custom">自定义</option>
                             </select>
@@ -3771,10 +3771,17 @@
                     baseHands = BB_DEFENSE_RANGES[tableSize]?.['vs_' + heroPos] || [];
                     vActionLabel = `BB 防守 (vs ${heroPos})`;
                 } else if (villainPos === 'SB') {
-                    // SB 平跟：OOP 且无收位赔率，实战多为 3-Bet-or-Fold，平跟范围
-                    // 比 IP 冷跟更紧（原"SB开池表过滤"近似同样过宽，一并修复）
-                    baseHands = COLD_CALL_HANDS.filter(h => !['65s','76s','KQo','AJo'].includes(h));
-                    vActionLabel = `SB 跟注范围`;
+                    // SB补盲范围(2026-07-13)：小盲面对常规开池是"补盲"而非冷跟——
+                    // 只需再投 ~1.5-2BB 且含 ante 赔率极好，真实进池范围≈BB 防守表
+                    // 剔除会 3-Bet 的强牌（~30%），远宽于冷跟紧构成（原 9% 不含
+                    // A6s/64s 等补盲牌，paired board 上漏掉全部三条候选——实战
+                    // 99 vs SB 补盲者在 66,4,T,K 面被反超案例的直接根因之一）
+                    const sbBase = BB_DEFENSE_RANGES[tableSize]?.['vs_' + heroPos] || [];
+                    baseHands = sbBase.filter(h => getRawEquity(h) < 67.0);
+                    if (!baseHands.length) {
+                        baseHands = COLD_CALL_HANDS.filter(h => !['65s','76s','KQo','AJo'].includes(h));
+                    }
+                    vActionLabel = `SB 补盲/防守范围`;
                 } else {
                     // Cold-Call修复二(2026-07-13，Codex二轮审计)：按跟注者位置分层——
                     // 前中位跟注者（UTG1/MP/LJ）中短码下近乎 3-Bet-or-Fold，其平跟实为
@@ -3929,7 +3936,53 @@
 
                 // 仅在确有收窄（keep<1）时排序截断，保证"对手未行动"时范围与未收窄完全一致
                 if (keep < 1.0) {
-                    hands.sort((a, b) => getRawEquity(b) - getRawEquity(a));
+                    // 牌面感知收窄(2026-07-13)：对手有主动下注/加注时，按"该手牌类在
+                    // 当前牌面的实际成牌强度"排序保留强端（Hand.solve 牌型等级×100 +
+                    // 同花听 +150 加成，同档内用翻前胜率破平）。替代 M1 的翻前裸胜率
+                    // 排序——paired board 上 A6（三条）被当弱牌丢弃、JJ 被保留，实测
+                    // 66,4,T,K 面对手领打时范围里一张 6 都不剩、Hero 胜率虚高 30 点。
+                    // 对手只有过牌/跟注时维持原翻前胜率排序（无成牌信号，勿过度解读）。
+                    const anyAggro = ['flop', 'turn', 'river'].some(st =>
+                        vActed(st) && ['aggro', 'raise'].includes(vAction(st)));
+                    const bc = postState.board ? postState.board.filter(c => c !== null) : [];
+                    if (anyAggro && bc.length >= 3 && typeof Hand !== 'undefined') {
+                        const cache = rangeEstimator._bsCache || (rangeEstimator._bsCache = new Map());
+                        if (cache.size > 3000) cache.clear(); // 防跨局无限增长
+                        const bKey = bc.join('');
+                        const dead = new Set([...(postState.heroCards || []), ...bc]);
+                        const boardScore = (hand) => {
+                            const k = bKey + '|' + hand;
+                            if (cache.has(k)) return cache.get(k);
+                            const r1 = hand[0], r2 = hand[1];
+                            const pairH = hand.length === 2, suitedH = hand[2] === 's';
+                            const suits = ['s', 'h', 'd', 'c'];
+                            let total = 0, n = 0;
+                            outer:
+                            for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+                                if (pairH && i >= j) continue;
+                                if (!pairH && suitedH && i !== j) continue;
+                                if (!pairH && !suitedH && i === j) continue;
+                                const c1 = r1 + suits[i], c2 = r2 + suits[j];
+                                if (dead.has(c1) || dead.has(c2)) continue;
+                                try {
+                                    let sc = Hand.solve([c1, c2, ...bc]).rank * 100;
+                                    if (bc.length < 5) { // flop/turn：同花听加成
+                                        const cnt = { s: 0, h: 0, d: 0, c: 0 };
+                                        [...bc, c1, c2].forEach(x => cnt[x[1]]++);
+                                        if (Math.max(cnt.s, cnt.h, cnt.d, cnt.c) === 4) sc += 150;
+                                    }
+                                    total += sc; n++;
+                                } catch (e) {}
+                                if (n >= 4) break outer; // 每类采样上限 4 组合控开销
+                            }
+                            const score = (n ? total / n : 0) + getRawEquity(hand) / 100;
+                            cache.set(k, score);
+                            return score;
+                        };
+                        hands.sort((a, b) => boardScore(b) - boardScore(a));
+                    } else {
+                        hands.sort((a, b) => getRawEquity(b) - getRawEquity(a));
+                    }
                     let kept = hands.slice(0, Math.ceil(hands.length * keep));
                     // 安全锁：收窄后不得少于 5 combos，不足则从最强端补齐
                     const comboOf = (arr) => arr.reduce((c, h) =>
@@ -6578,13 +6631,26 @@
                 // Fix-6: 面对全下（villainBet ≥ 85% effStack）只能跟注或弃牌
                 const isFacingAllin = effStack > 0 && villainBet >= effStack * 0.85;
 
+                // 被动转主动警示(2026-07-13)：对手前街只有过牌/跟注、转牌或河牌突然
+                // 主动下注——该线在真实玩家池强烈偏成牌（过牌-过牌-河牌领打≈同花/
+                // 三条/强成牌，诈唬极少），加注门槛 +8、承诺区全押线 58→66 并提示；
+                // 跟注赔率线不动（抓诈唬的价格逻辑不变）。
+                const prevVillainActs = actions.filter(a => a.player === 'villain' && a.street !== street);
+                const passiveTurnedAggro = street !== 'flop' && villainBet > 0 &&
+                    prevVillainActs.length > 0 &&
+                    prevVillainActs.every(a => a.action === 'check' || a.action === 'call');
+                const raiseThreshEff = sc.raiseThresh + (passiveTurnedAggro ? 8 : 0);
+                if (passiveTurnedAggro) {
+                    warnings.push('⚠️ 对手被动转主动（前街过牌/跟注，本街突然进攻），范围强烈偏成牌，加注需更强牌力');
+                }
+
                 // commit 纯策略（面对下注）——供过渡带混合使用
                 // 引擎修复(2026-07)：由二元(>50%全押/否则弃牌)改三元——
                 // ① 全押价值线提高到 58%（被跟注时要真赢得多，51% 边缘牌推全押是烧钱）；
                 // ② 40-58% 区间且赔率足够 → 跟注实现权益（旧逻辑把 equity 45%、
                 //    只需 27% 赔率的中对+听牌直接弃掉，是明显的 EV 漏损）；
                 // ③ 赔率不足才弃牌。
-                const commitStratB = equity >= 58
+                const commitStratB = equity >= (passiveTurnedAggro ? 66 : 58)
                     ? { action: 'RAISE', sizing: '全押', freq: { raise: 100 } }
                     : (toCall > 0 && equity >= potOdds + 4)
                     ? { action: 'CALL',  sizing: '',     freq: { call: 100 } }
@@ -6629,8 +6695,8 @@
                         ? `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%，跟注实现权益（不足 58% 全押线）`
                         : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%，弃牌`;
                 }
-                // ── 加注：强价值（河牌门槛最高）──
-                else if (equity >= sc.raiseThresh) {
+                // ── 加注：强价值（河牌门槛最高；被动转主动线 +8）──
+                else if (equity >= raiseThreshEff) {
                     primaryAction = 'RAISE';
                     const raiseAmt = Math.max(villainBet * 2.5, villainBet + pot * 0.5);
                     sizing = raiseAmt.toFixed(1) + 'BB';
@@ -6905,7 +6971,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const inp = document.getElementById('qwenApiKey');
     if (inp && saved) inp.value = saved;
 
-    const savedModel = localStorage.getItem('vision_model') || 'qwen-vl-plus';
+    // 默认模型提速(2026-07-13)：qwen3-vl-flash 已于 2026-07-10 用户实测通过，
+    // 速度显著快于 qwen-vl-plus，切为默认。一次性迁移：旧默认 plus（非用户主动
+    // 选择）迁到 flash；迁移后用户再手选任何模型都不再被动。
+    let savedModel = localStorage.getItem('vision_model') || 'qwen3-vl-flash';
+    if (savedModel === 'qwen-vl-plus' && !localStorage.getItem('vision_model_migrated_flash')) {
+        savedModel = 'qwen3-vl-flash';
+        localStorage.setItem('vision_model', savedModel);
+        localStorage.setItem('vision_model_migrated_flash', '1');
+    }
     const sel = document.getElementById('visionModel');
     if (sel) sel.value = savedModel;
 
@@ -6923,9 +6997,9 @@ window.onVisionModelChange = function() {
 
 function getVisionModel() {
     const sel = document.getElementById('visionModel');
-    if (!sel) return 'qwen-vl-plus';
+    if (!sel) return 'qwen3-vl-flash';
     if (sel.value === 'custom') {
-        return document.getElementById('visionModelCustom')?.value?.trim() || 'qwen-vl-plus';
+        return document.getElementById('visionModelCustom')?.value?.trim() || 'qwen3-vl-flash';
     }
     return sel.value;
 }
@@ -7075,7 +7149,9 @@ seat number badge on avatar top-left (IGNORE THIS),
 bet amounts shown as "X BB" near chips on table surface.
 
 players[].bet: ONLY if chip stack physically on table surface in front of player. If none visible, bet=0. NEVER copy stack into bet.
+players[].has_cards: true if that player still holds cards this hand (card backs or face-up cards visible at their seat); false if folded (no cards at seat). Include ALL visible players.
 is_allin: If a player shows "全推" or "All-in" text near their name or chips, set is_allin=true for that player. The villain_bet for an all-in player should be set to their remaining stack amount shown.
+villain_position: position of the MAIN OPPONENT — the player who still has cards AND has the largest active bet (if no bets, the most relevant opponent facing hero). Same values as hero_position. null if unclear.
 villain_bet: Look for chip stacks with number labels physically placed on the table surface. In GG Poker, bet amounts appear as "X BB" text near chip piles between players. For the main villain (the player Hero is acting against), set villain_bet to their visible bet amount on the table. If multiple bet amounts are visible, use the largest active bet. If no chips are visible on the table surface, set villain_bet to 0.
 hero_position: one of UTG/UTG+1/MP/LJ/HJ/CO/BTN/SB/BB based on dealer D button. null if unclear.
 table_size: total seats (6, 8, or 9), NOT active players count.
@@ -7090,8 +7166,8 @@ Return:
 {"hero_cards":[{"rank":string,"suit":string,"color":string,"bbox":[number,number,number,number]},{"rank":string,"suit":string,"color":string,"bbox":[number,number,number,number]}],
 "board_cards":[{"rank":string,"suit":string,"color":string,"bbox":[number,number,number,number]}],
 "pot":number,"hero_stack":number,"villain_bet":number,
-"hero_position":string,"street":string,"community_cards_present":boolean,
-"players":[{"name":string,"stack":number,"bet":number,"is_allin":boolean}],
+"hero_position":string,"villain_position":string,"street":string,"community_cards_present":boolean,
+"players":[{"name":string,"stack":number,"bet":number,"is_allin":boolean,"has_cards":boolean}],
 "table_size":number}`;
 
     const controller = new AbortController();
@@ -7113,7 +7189,7 @@ Return:
             // 每次识别结果一致（原用默认采样温度，边缘判断会随机翻车）；
             // max_tokens 上限防碎嘴保延迟；qwen3 系列显式关 thinking（打开会慢数倍）。
             body: JSON.stringify({ model, stream: true, temperature: 0.01, top_p: 0.01,
-                max_tokens: 800,
+                max_tokens: 900, // 2026-07-13：players[].has_cards + villain_position 输出增量
                 ...(model.startsWith('qwen3') ? { enable_thinking: false } : {}),
                 messages: [{ role: 'user', content: [
                 { type: 'image_url', image_url: { url: imgUrl } },
@@ -7385,6 +7461,9 @@ async function verifyCardSuitsByColor(dataUrl, d) {
 }
 window.verifyCardSuitsByColor = verifyCardSuitsByColor;
 
+// 测试钩子(2026-07-13)：jsdom 回归用，与 classifySuitPixel 挂 window 同一约定
+window._visionTestHooks = () => ({ buildPayload, autoFill, renderVisionReviewCard, getVisionModel });
+
 // ─── Payload 构建 ──────────────────────────────────────
 function buildPayload(d) {
     return {
@@ -7397,12 +7476,26 @@ function buildPayload(d) {
         heroStack:    d.hero_stack ?? null,
         villainStack: (() => {
             if (!d.players?.length) return null;
-            const others = d.players.filter(p => p.stack != null && !p.is_allin);
-            return others.length ? Math.max(...others.map(p => p.stack)) : null;
+            // 对手选取(2026-07-13)：优先"仍持牌"玩家，其中优先当前下注最大者
+            // （进攻者），再退最大筹码。原直接取全场最大筹码——多人局把翻前已
+            // 弃牌的大筹码玩家当对手（实测：河牌对手实际 24.7BB 的小盲，被填成
+            // 已弃牌大盲的 125.6BB，范围与有效筹码全错）。
+            const withStack = d.players.filter(p => p.stack != null);
+            if (!withStack.length) return null;
+            const alive = withStack.filter(p => p.has_cards !== false);
+            const pool = alive.length ? alive : withStack;
+            const bettors = pool.filter(p => (p.bet || 0) > 0);
+            const pick = bettors.length
+                ? bettors.reduce((a, b) => ((a.bet || 0) >= (b.bet || 0) ? a : b))
+                : pool.reduce((a, b) => ((a.stack || 0) >= (b.stack || 0) ? a : b));
+            return pick.stack ?? null;
         })(),
+        // 在局玩家数（含 Hero；has_cards 缺失时不计入判定，向后兼容旧模型输出）
+        alivePlayers: (d.players || []).filter(p => p.has_cards === true).length,
         pot:          d.pot ?? null,
         villainBet:   d.villain_bet ?? 0,
         heroPosition: d.hero_position ?? null,
+        villainPosition: d.villain_position ?? null,
         tableSize:    d.table_size ?? null
     };
 }
@@ -7451,6 +7544,20 @@ function autoFill(payload, _id) {
         if (mapped && typeof setPos === 'function') {
             setPos('posHero', mapped);
             console.log('[Vision] 位置填入:', payload.heroPosition, '→', mapped);
+        }
+    }
+
+    // ④b 对手位置(2026-07-13)：villain_position 自动填入（手动点过则跳过）
+    if (!manualFields.has('posVillain') && payload.villainPosition) {
+        const posMapV = {
+            'UTG':'UTG','UTG+1':'UTG1','UTG1':'UTG1',
+            'MP':'MP','LJ':'LJ','HJ':'HJ',
+            'CO':'CO','BTN':'BTN','SB':'SB','BB':'BB'
+        };
+        const mappedV = posMapV[payload.villainPosition];
+        if (mappedV && typeof setPos === 'function') {
+            setPos('posVillain', mappedV);
+            console.log('[Vision] 对手位置填入:', payload.villainPosition, '→', mappedV);
         }
     }
 
@@ -7698,6 +7805,12 @@ function renderVisionReviewCard(payload) {
     }
 
     const streetTag = p.isPreflop ? '翻前' : (p.street || '翻后');
+    // 多人在局警示(2026-07-13)：≥3 人持牌时对手是按"下注最大者优先"自动选的，
+    // 多人底池引擎只建模单挑，提醒人工核对对手位置/筹码（实战抓错对手案例的防线）
+    const multiWarn = (p.alivePlayers >= 3)
+        ? `<div style="margin-bottom:6px;padding:4px 8px;border-radius:4px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.5);font-size:10px;color:#eab308;">
+             ⚠️ 识别到 ${p.alivePlayers} 人在局（多人底池）：对手自动取"下注最大者"${p.villainPosition ? `（${p.villainPosition}）` : ''}，引擎按单挑分析——请核对对手位置与筹码是否为实际交战对象</div>`
+        : '';
     box.innerHTML =
         `<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
@@ -7706,6 +7819,7 @@ function renderVisionReviewCard(payload) {
                 <span style="font-size:10px;color:#eab308;">琥珀=未识别</span>
                 <span style="font-size:10px;color:#6b7280;">· 点 ✎ 即改，自动生效</span>
             </div>
+            ${multiWarn}
             <div class="grid grid-cols-2 md:grid-cols-3" style="gap:6px;">${cells}</div>
             <div id="vrcEditor"></div>
         </div>`;
