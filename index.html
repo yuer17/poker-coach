@@ -949,8 +949,13 @@
         // ============================================================
         const GTO_RANGES = {
         '9max': {
-            'UTG':  { open: ['AA','KK','QQ','JJ','TT','99','88','AKs','AQs','AJs','ATs','KQs','KJs','QJs','AKo','AQo'] },
-            'UTG1': { open: ['AA','KK','QQ','JJ','TT','99','88','77','AKs','AQs','AJs','ATs','A9s','KQs','KJs','KTs','QJs','JTs','AKo','AQo','AJo'] },
+            // 数表重校准(2026-07-13，用户授权)：UTG/UTG1 由 7.1%/9.4% 放宽至
+            // 11.9%/12.5%（现代含 ante 9max GTO 基线约 12-15%）；ATo 有意保留在
+            // MP 起（9max UTG 开 ATo 属混合/弃牌边缘，不纳入）。这两行改为按真实
+            // 强度排序（原全表惯例是"对子/同花/非同花"分组序），使打法风格的
+            // percentile 截断裁掉的是真正的尾端弱牌（旧分组序下 tight 会误裁 AKo）。
+            'UTG':  { open: ['AA','KK','QQ','AKs','JJ','AQs','AKo','TT','AJs','KQs','99','ATs','AQo','KJs','88','QJs','KTs','A9s','AJo','77','QTs','JTs','KQo','66','A5s','T9s','A4s'] },
+            'UTG1': { open: ['AA','KK','QQ','AKs','JJ','AQs','AKo','TT','AJs','KQs','99','ATs','AQo','KJs','88','QJs','KTs','A9s','AJo','77','A8s','QTs','JTs','KQo','66','A5s','T9s','A4s','98s'] },
             'MP':   { open: ['AA','KK','QQ','JJ','TT','99','88','77','66','AKs','AQs','AJs','ATs','A9s','A8s','KQs','KJs','KTs','K9s','QJs','QTs','JTs','T9s','AKo','AQo','AJo','ATo'] },
             'LJ':   { open: ['AA','KK','QQ','JJ','TT','99','88','77','66','55','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A5s','A4s','KQs','KJs','KTs','K9s','K8s','QJs','QTs','Q9s','JTs','J9s','T9s','T8s','98s','AKo','AQo','AJo','ATo','KQo','KJo'] },
             'HJ':   { open: ['AA','KK','QQ','JJ','TT','99','88','77','66','55','44','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','KQs','KJs','KTs','K9s','K8s','K7s','QJs','QTs','Q9s','Q8s','JTs','J9s','J8s','T9s','T8s','98s','97s','87s','AKo','AQo','AJo','ATo','A9o','KQo','KJo','KTo','QJo'] },
@@ -1299,12 +1304,19 @@
         // Nash Push/Fold 数表(基于公开纳什均衡参考)
         // 格式:[stackBB][position] = push 范围% (从最强往下打 X%)
         // ============================================================
+        // 数表重校准(2026-07-13，用户授权)：本表数值是 getHandPercentile 的
+        // "胜率线性伪百分位"刻度（0=最强），不是真实组合百分比——两刻度换算非线性
+        // （组合 12% ≈ 伪 41、组合 43% ≈ 伪 58）。旧表疑似按组合百分比直填，导致
+        // 前位实际范围严重过紧（UTG 10BB 名义 23 ≈ 实际仅 3% combos，Nash 应 12%）、
+        // 5-7BB 后位偏宽。本版由 HRC/SnapShove 含 ante 9max 基准（组合百分比矩阵）
+        // 经 EQ_TABLE 全 169 手换算得出；校准脚本与基准矩阵见 CLAUDE.md 对应条目。
+        // 修改本表前先理解伪百分位刻度，勿直填组合百分比。
         const NASH_PUSH = {
-            3:  { UTG:100, UTG1:100, MP:100, LJ:100, HJ:100, CO:100, BTN:100, SB:100 },
-            5:  { UTG:55,  UTG1:62,  MP:67,  LJ:72,  HJ:76,  CO:80,  BTN:87,  SB:93  },
-            7:  { UTG:48,  UTG1:53,  MP:57,  LJ:62,  HJ:67,  CO:74,  BTN:82,  SB:89  },
-            10: { UTG:23,  UTG1:28,  MP:32,  LJ:37,  HJ:42,  CO:49,  BTN:62,  SB:72  },
-            15: { UTG:13,  UTG1:16,  MP:19,  LJ:23,  HJ:28,  CO:34,  BTN:45,  SB:55  }
+            3:  { UTG:60,  UTG1:63,  MP:65,  LJ:68,  HJ:72,  CO:79,  BTN:87,  SB:100 },
+            5:  { UTG:51,  UTG1:52,  MP:55,  LJ:57,  HJ:61,  CO:64,  BTN:70,  SB:79  },
+            7:  { UTG:45,  UTG1:46,  MP:49,  LJ:50,  HJ:54,  CO:57,  BTN:64,  SB:71  },
+            10: { UTG:41,  UTG1:42,  MP:43,  LJ:46,  HJ:49,  CO:52,  BTN:58,  SB:66  },
+            15: { UTG:36,  UTG1:38,  MP:39,  LJ:41,  HJ:43,  CO:46,  BTN:52,  SB:59  }
         };
 
         function getNashPushRange(stack, pos) {
@@ -2469,7 +2481,7 @@
             // 时间线校验
             if (currentMode === 'faceBet' || currentMode === 'vsLimp') {
                 if (POS_ORDER[posH] <= POS_ORDER[posV]) {
-                    showParadoxError(box, vText, logicText, `位置时间轴错误:你 [${POS_LABEL[posH]}] 必须在 [${POS_LABEL[posV]}] 之后行动。`); return;
+                    showParadoxError(box, vText, logicText, `位置时间轴错误:你 [${POS_LABEL[posH]}] 必须在 [${POS_LABEL[posV]}] 之后行动。若你想分析的是"翻后被过牌加注"的局面，请改用你翻前的真实场景（如开池）解析后进入翻后，在行动区录入过牌/下注/加注。`); return;
                 }
             }
             if (currentMode === 'face3b') {
