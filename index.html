@@ -85,7 +85,7 @@
             --radius-sm: 6px;
             /* 旧变量对齐 */
             --bg-card: var(--surface-2);
-            --border-primary: rgba(255,255,255,0.10);
+            --border-primary: rgba(255,255,255,0.08); /* 现代化(2026-07-14)：0.10→0.08 */
         }
 
         body {
@@ -124,7 +124,8 @@
             .app-container { max-width: 1240px; }
         }
         @media (min-width: 1440px) {
-            .app-container { max-width: 1400px; }
+            /* 宽度利用(2026-07-14)：1400→1560，MBP14/16 满幅使用 */
+            .app-container { max-width: 1560px; }
         }
         /* 2) 笔记本断点（768–1439）：收紧两栏间距 + 次要面板限高内部滚动 */
         @media (min-width: 768px) and (max-width: 1439.98px) {
@@ -147,8 +148,8 @@
            按卡 id 分配关键/次要列；id 选择器在每次 innerHTML 重建后仍命中，JS 插入目标不受影响。
            三栏 = #postLeft(操作) | #postRightContent 第1列(关键区) | 第2列(次要区)。 */
         @media (min-width: 1920px) {
-            /* 容器放宽，2K/4K 铺开（4K 上限 2000，留侧边白） */
-            .app-container { max-width: 2000px; }
+            /* 容器放宽，2K/4K 铺开（宽度利用 2026-07-14：2000→2200） */
+            .app-container { max-width: 2200px; }
             /* 外层三栏比例：操作栏收窄，右区放宽 */
             #postFlopPanel #postLeft  { flex: 0 0 28%; width: 28%; }
             #postFlopPanel #postRight { flex: 1 1 0%; width: auto; min-width: 0; }
@@ -177,6 +178,37 @@
         .suit-btn.active { background-color: #10b981; } 
         .suit-btn.disabled { opacity: 0.3; cursor: not-allowed; background-color: rgba(255,255,255,0.05); }
         
+        /* ══ 现代化视觉(2026-07-14)：圆角/描边/触控统一柔化（覆盖规则置于组件定义后）══ */
+        .card-btn { border-radius: 6px; }
+        .tab-btn, .suit-btn { border-radius: 8px; }
+        .pos-btn { border-radius: 7px; height: 30px; }
+        .panel-bg, .glass-card { border-radius: 12px; }
+        /* 对手位置选择器重设计(2026-07-14) */
+        .posv-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
+        .posv-btn { height: 34px; border-radius: 8px; font-size: var(--fs-caption); font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--border-primary); cursor: pointer; transition: .12s; }
+        .posv-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
+        .posv-btn.primary { background: #16a34a; border-color: #4ade80; color: #fff; }
+        .posv-btn.extra { background: rgba(224,168,58,0.22); border-color: #e0a83a; color: #e0a83a; }
+        .posv-label { font-size: var(--fs-micro); color: var(--text-muted); margin: 6px 0 3px; letter-spacing: .02em; }
+        /* 多人底池额外对手区：琥珀底色分层（2026-07-14 对齐修复同批） */
+        .posv-extra-box { margin-top: 6px; padding: 6px 7px 7px; border: 1px dashed rgba(224,168,58,0.35); background: rgba(224,168,58,0.05); border-radius: 10px; }
+        /* 分辨率精细化(2026-07-14)：多窗口并排档（窗口宽 768-1023，如 2560 屏开两窗）*/
+        @media (min-width: 768px) and (max-width: 1023.98px) {
+            .scroll-area { padding: 0.6rem; gap: 0.6rem; }
+            .col-left { padding-right: 0.25rem; }
+            .col-right { padding-left: 0.25rem; }
+            #decisionAction { font-size: 2rem; }
+            #postHandCard, #postTextureCard { padding: 0.4rem; }
+        }
+
+        /* 快捷尺度按钮(2026-07-14)：下注/加注一键提交 */
+        .qc-btn { flex: 1; padding: 3px 0; font-size: var(--fs-micro); font-weight: bold; color: var(--text-secondary); background: rgba(255,255,255,0.06); border: 1px solid var(--border-primary); border-radius: 4px; cursor: pointer; transition: 0.12s; text-align: center; font-family: var(--font-mono); }
+        .qc-btn:hover { background: rgba(255,255,255,0.14); color: var(--text-primary); }
+        .qc-btn.qc-allin { color: #ff7a7d; border-color: rgba(229,72,77,0.4); }
+        .qc-btn.qc-allin:hover { background: rgba(214,57,64,0.15); }
+        /* 折叠卡(2026-07-14)：仅保留头部 */
+        .card-collapsed > *:not(:first-child) { display: none !important; }
+
         .tab-btn { background-color: rgba(0,0,0,0.2); color: #9ca3af; font-weight: bold; font-size: var(--fs-caption); padding: 8px 0; border-radius: 4px; border: 1px solid var(--border-primary); cursor: pointer; transition: 0.2s; text-align: center; }
         .tab-btn.active { background-color: var(--accent); color: white; border-color: var(--accent-hover); box-shadow: 0 0 8px rgba(0,0,0,0.3); }
         
@@ -460,9 +492,13 @@
 <body>
 
     <div class="app-container">
-        <div class="flex justify-between items-center bg-black/40 px-3 py-2 border-b border-white/10 shrink-0" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-            <!-- 左组：标题 + 版本 + Refactor 标签 -->
+        <div id="headerBar" class="flex justify-between items-center bg-black/40 px-4 py-2.5 border-b border-white/10 shrink-0" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+            <!-- 左组：标题 + 版本 -->
             <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">9-Max GTO <span class="text-[10px] px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v1.1</span></h1>
+
+            <!-- 窗口身份色(2026-07-14)：多窗口多桌用 Banner 颜色区分（每标签页独立，
+                 sessionStorage 持久 + 浏览器标签 emoji 前缀，一眼分清哪个窗口对哪张桌） -->
+            <div id="windowColorChips" style="display:flex;gap:5px;margin-left:8px;align-items:center;"></div>
 
             <!-- 中组：阶段切换（主题圆点已随 Solver 换肤移除，单一专业主题） -->
             <div style="display:flex;align-items:center;gap:12px;">
@@ -2169,6 +2205,50 @@
          * 轻量清空 — 下一手：清底牌+翻后，保留筹码/位置/赛段/风格配置。
          * 对应每手之间的切换，不像 resetAll() 那样彻底归零。
          */
+        // ═══ 窗口身份色(2026-07-14)：多窗口多桌方案 ═══
+        // 用户决策：多桌 = 开多个浏览器窗口（页内多桌方案已撤除），每个窗口
+        // 通过 Banner 身份色区分：header 染色 + 容器顶色条 + 浏览器标签 emoji 前缀。
+        // sessionStorage 每标签页独立（localStorage 会跨标签共享，不可用）。
+        const WINDOW_COLORS = {
+            none:   { c: '',        e: '',   name: '无' },
+            red:    { c: '#e5484d', e: '🔴', name: '红' },
+            purple: { c: '#a78bfa', e: '🟣', name: '紫' },
+            yellow: { c: '#e0a83a', e: '🟡', name: '黄' },
+            blue:   { c: '#57a9ff', e: '🔵', name: '蓝' },
+            green:  { c: '#35c077', e: '🟢', name: '绿' }
+        };
+        window.applyWindowColor = function(key) {
+            const cfg = WINDOW_COLORS[key] || WINDOW_COLORS.none;
+            try { sessionStorage.setItem('window_color', key); } catch (e) {}
+            const app = document.querySelector('.app-container');
+            if (app) app.style.borderTop = cfg.c ? `4px solid ${cfg.c}` : '';
+            const hd = document.getElementById('headerBar');
+            if (hd) hd.style.background = cfg.c
+                ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
+                : '';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + '9-Max GTO 训练器';
+            renderWindowColorChips(key);
+        };
+        function renderWindowColorChips(activeKey) {
+            const host = document.getElementById('windowColorChips');
+            if (!host) return;
+            let html = `<span style="font-size:var(--fs-micro);color:var(--text-muted);margin-right:2px;">本窗口</span>`;
+            Object.entries(WINDOW_COLORS).forEach(([k, v]) => {
+                const on = k === activeKey;
+                html += `<button onclick="applyWindowColor('${k}')" title="窗口标记：${v.name}${v.e ? '（浏览器标签显示 ' + v.e + '）' : ''}"
+                    style="width:18px;height:18px;border-radius:50%;cursor:pointer;transition:0.12s;
+                    background:${v.c || 'transparent'};
+                    border:2px solid ${on ? '#fff' : (v.c ? v.c + '66' : 'var(--border-primary)')};
+                    ${!v.c ? 'position:relative;' : ''}">${!v.c ? '<span style="color:var(--text-muted);font-size:9px;line-height:1;">×</span>' : ''}</button>`;
+            });
+            host.innerHTML = html;
+        }
+        (function initWindowColor() {
+            let saved = 'none';
+            try { saved = sessionStorage.getItem('window_color') || 'none'; } catch (e) {}
+            applyWindowColor(saved);
+        })();
+
         function nextHand() {
             // 清底牌
             heroCard1 = null; heroCard2 = null;
@@ -2183,6 +2263,7 @@
             postState.postCalcVersion = (postState.postCalcVersion || 0) + 1;
             postState.potTracker._manualOverride = false; // 重置手动标记，让下一手重新初始化底池
             postState._pendingVillainBet = null; // O3：下一手清 Vision 预填
+            postState.extraVillains = []; // 多人底池(2026-07-14)：下一手清额外对手
 
             // 切回翻前界面（保留 currentMode，不 resetAll）
             const postFlop = document.getElementById('postFlopPanel');
@@ -3704,8 +3785,10 @@
             return hands;
         })();
 
-        function rangeEstimator() {
-            const villainPos  = globalPosVillain;
+        // 多人底池(2026-07-14)：overridePos = 为额外对手按其位置估算基础范围；
+        // opts.skipActions = 跳过行动收窄（行动记录属于主对手，不适用于其他人）
+        function rangeEstimator(overridePos, opts) {
+            const villainPos  = overridePos || globalPosVillain;
             const heroPos     = globalPosHero;
             const tableSize   = gameConfig.tableSize || '9max';
             const stage       = gameConfig.stage;
@@ -3852,7 +3935,7 @@
             //   中性估计；playStyle 现仅作用于 Hero 翻前主动范围，不再污染对手范围收窄。
             const _boardLen = postState.board ? postState.board.filter(c => c !== null).length : 3;
             let narrowNote = '';
-            if (_boardLen >= 3 && hands.length > 0) {
+            if (_boardLen >= 3 && hands.length > 0 && !(opts && opts.skipActions)) {
                 const clamp = (x) => Math.max(0.40, Math.min(0.95, x)); // 单次保留比例上下限
                 const styleMul = 1.0; // 对手范围估计已与Hero打法开关解耦，固定中性
                                        // (原绑定playStyle会让Hero打法污染对手范围估计)
@@ -4063,6 +4146,7 @@
 
             // 初始化右侧7张分析卡片（预建DOM，避免异步竞态）
             initPostRightCards();
+            if (typeof applyCardCollapsePrefs === 'function') applyCardCollapsePrefs(); // 折叠(2026-07-14)
             renderPostVillainPosSelector();
             renderBoard();
             renderBoardPicker();
@@ -4071,26 +4155,122 @@
         }
 
         // 翻后对手位置选择器（复用 globalPosVillain，允许补录）
+        // 多人底池(2026-07-14)：主对手行（绿色单选，原行为不变）+ 额外对手行
+        // （琥珀多选 chips，点击开关；主对手位置自动排除）。额外对手改变即重跑分析。
         function renderPostVillainPosSelector() {
+            // 选择器重设计(2026-07-14)：告别单行拥挤——分组标签 + 9 列网格 + 34px 触控档；
+            // 主对手（绿，行动线归属）与"多人底池额外对手"（琥珀多选）两个清晰分区
             const container = document.getElementById('postVillainPosButtons');
             if (!container) return;
             const positions = getPositions();
-            container.innerHTML = '';
+            if (!Array.isArray(postState.extraVillains)) postState.extraVillains = [];
+            const lbl = p => p === 'UTG1' ? 'U+1' : (POS_LABEL[p] || p);
+            // 对齐修复(2026-07-14)：容器强制纵向堆叠（原父级 flex 把标签与网格挤成一行）；
+            // 额外对手区独立琥珀底色卡，与主对手区视觉分层
+            let html = `<div style="display:flex;flex-direction:column;gap:3px;">
+                <div class="posv-label">主对手（行动线归属）</div>
+                <div class="posv-grid">`;
             positions.forEach(p => {
-                const btn = document.createElement('button');
-                btn.className = 'pos-btn' + (p === globalPosVillain ? ' active' : '');
-                btn.style.cssText = p === globalPosVillain ? 'background:#16a34a;border-color:#4ade80;color:#fff;' : '';
-                btn.textContent = p === 'UTG1' ? 'U+1' : (POS_LABEL[p] || p);
-                btn.onclick = () => {
-                    globalPosVillain = p;
-                    renderPostVillainPosSelector();
-                    // 重新触发范围估算
-                    if (postState.equityResult && typeof checkStreetAnalysis === 'function') {
-                        checkStreetAnalysis();
-                    }
-                };
-                container.appendChild(btn);
+                html += `<button class="posv-btn${p === globalPosVillain ? ' primary' : ''}" data-vpos="${p}">${lbl(p)}</button>`;
             });
+            html += `</div>
+                <div class="posv-extra-box">
+                    <div class="posv-label" style="color:#e0a83a;margin-top:0;">多人底池 · 额外对手（可多选，胜率按全部对手计算）</div>
+                    <div class="posv-grid">`;
+            positions.forEach(p => {
+                const blocked = p === globalPosVillain || p === globalPosHero;
+                const on = postState.extraVillains.includes(p);
+                html += `<button class="posv-btn${on ? ' extra' : ''}" data-xpos="${p}" ${blocked ? 'disabled style="opacity:0.25;cursor:not-allowed;"' : ''}>${lbl(p)}</button>`;
+            });
+            html += `</div></div></div>`;
+            container.innerHTML = html;
+            container.style.display = 'block';
+            container.querySelectorAll('[data-vpos]').forEach(btn => {
+                btn.onclick = () => {
+                    globalPosVillain = btn.dataset.vpos;
+                    postState.extraVillains = postState.extraVillains.filter(x => x !== globalPosVillain);
+                    renderPostVillainPosSelector();
+                    if (postState.equityResult && typeof checkStreetAnalysis === 'function') checkStreetAnalysis();
+                };
+            });
+            container.querySelectorAll('[data-xpos]:not([disabled])').forEach(btn => {
+                btn.onclick = () => {
+                    const p = btn.dataset.xpos;
+                    if (postState.extraVillains.includes(p)) postState.extraVillains = postState.extraVillains.filter(x => x !== p);
+                    else postState.extraVillains.push(p);
+                    renderPostVillainPosSelector();
+                    if (typeof checkStreetAnalysis === 'function' &&
+                        postState.board.filter(c => c !== null).length >= 3) checkStreetAnalysis();
+                };
+            });
+        }
+
+        // 多人底池胜率(2026-07-14)：Hero vs 主对手范围（含行动收窄）+ 各额外对手
+        // 基础范围（按其位置场景估算，不套用行动收窄——行动记录属于主对手）。
+        // MC 每次为每名对手抽一手，Hero 需击败全部（Hand.winners 判定）。
+        // 作为覆盖层在常规管线出结果后运行，postCalcVersion 防串，不碰 equityEngine 核心。
+        function runMultiwayOverride(version) {
+            try {
+                const extras = postState.extraVillains || [];
+                if (!extras.length || !postState.villainRange || !postState.heroCards) return;
+                const ranges = [postState.villainRange.hands];
+                extras.forEach(p => {
+                    const r = rangeEstimator(p, { skipActions: true });
+                    if (r && r.hands && r.hands.length) ranges.push(r.hands);
+                });
+                const board = postState.board.filter(c => c !== null);
+                const hero = postState.heroCards;
+                if (board.length < 3) return;
+                const RANKS = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+                const SUITS = ['s','h','d','c'];
+                const fullDeck = [];
+                RANKS.forEach(r => SUITS.forEach(s => fullDeck.push(r + s)));
+                let wins = 0, ties = 0, valid = 0;
+                const TRIALS = 400;
+                for (let i = 0; i < TRIALS; i++) {
+                    const used = new Set([...hero, ...board]);
+                    const vHands = [];
+                    let ok = true;
+                    for (const rh of ranges) {
+                        const h = sampleHandFromRange(rh, used);
+                        if (!h) { ok = false; break; }
+                        vHands.push(h);
+                        h.forEach(c => used.add(c));
+                    }
+                    if (!ok) continue;
+                    const avail = fullDeck.filter(c => !used.has(c));
+                    const fill = [];
+                    for (let k = 0; k < 5 - board.length; k++) {
+                        const idx = Math.floor(Math.random() * avail.length);
+                        fill.push(avail.splice(idx, 1)[0]);
+                    }
+                    try {
+                        const full = [...board, ...fill];
+                        const heroS = Hand.solve([...hero, ...full]);
+                        const solved = [heroS, ...vHands.map(vh => Hand.solve([...vh, ...full]))];
+                        const winners = Hand.winners(solved);
+                        valid++;
+                        if (winners.includes(heroS)) {
+                            if (winners.length === 1) wins++; else ties++;
+                        }
+                    } catch (e) { continue; }
+                }
+                if (!valid || version !== postState.postCalcVersion) return;
+                const merged = {
+                    ...postState.equityResult,
+                    equity:   Math.round((wins + ties * 0.5) / valid * 1000) / 10,
+                    winRate:  Math.round(wins / valid * 1000) / 10,
+                    tieRate:  Math.round(ties / valid * 1000) / 10,
+                    loseRate: Math.round((valid - wins - ties) / valid * 1000) / 10,
+                    method:   `多人MC×${valid}·${ranges.length}名对手`
+                };
+                postState.equityResult = merged;
+                renderEquityPanel(merged);
+                const d = postEngine();
+                postState.decisionResult = d;
+                renderPostEnginePanel(d);
+                renderBettingPanel();
+            } catch (e) { console.warn('[多人底池] 胜率覆盖失败:', e.message); }
         }
 
         // 公共牌渲染：花色深色背景，与翻前英雄牌槽位样式一致
@@ -4351,6 +4531,133 @@
             }
         }
 
+        // 快捷尺度提交(2026-07-14)：一键按底池比例/加注倍数提交行动，
+        // 复用 commitCustomAction 的全部校验（最小加注/全押截断/0.5BB 下限）
+        function quickCommit(player, action, spec) {
+            const inputId = player === 'hero' ? 'heroBetInput' : 'villainBetInput';
+            const pot = postState.potTracker.currentPot || 0;
+            const eff = postState.potTracker.effStack || 0;
+            let amt = 0;
+            if (spec === 'allin') {
+                amt = eff;
+            } else if (typeof spec === 'object' && spec.mult) {
+                // 加注：对本街最后一次下注/加注总额的倍数
+                const vc = postState.board.filter(c => c !== null);
+                const street = vc.length === 3 ? 'flop' : vc.length === 4 ? 'turn' : 'river';
+                const sa = (postState.potTracker.actions || []).filter(a => a.street === street);
+                const lastAgg = [...sa].reverse().find(a => ['bet', 'raise', 'allin'].includes(a.action));
+                amt = lastAgg ? lastAgg.amount * spec.mult : 0;
+            } else {
+                amt = pot * spec; // 下注：底池比例
+            }
+            amt = Math.max(0.5, Math.round(amt * 2) / 2);
+            if (eff > 0 && amt > eff) amt = eff;
+            const el = document.getElementById(inputId);
+            if (el) el.value = amt;
+            commitCustomAction(player, inputId, action);
+        }
+
+        // 实时尺度反推(2026-07-14)：输入下注额即时显示"= X% 底池"——用户从牌桌
+        // 读到的是具体数字，工具替他反推底池比例（替代原对手侧底池比例快捷按钮）
+        window.updateBetPct = function(el) {
+            const span = document.getElementById('betPctHint');
+            if (!span) return;
+            const v = parseFloat(el.value);
+            const pot = postState.potTracker.currentPot || 0;
+            span.textContent = (v > 0 && pot > 0) ? `= ${(v / pot * 100).toFixed(0)}% 底池` : '';
+        };
+
+        // 速记整街录入(2026-07-14)：瀑布式的高效替代——一行录完整条街行动。
+        // 语法：x/k=过牌 c=跟注 f=弃牌 a=全押 数字=下注/加注到该额（BB）。
+        // 按状态机 nextToAct 依序分派 hero/villain；bet/raise 走 commitCustomAction
+        // 完整校验（最小加注/全押截断），金额非法即中断，已录部分保留可撤回。
+        // 速记开关(2026-07-14)：默认折叠，localStorage 记忆
+        function _qlOpen() {
+            try { return localStorage.getItem('quickline_open') === '1'; } catch (e) { return false; }
+        }
+        window.toggleQuickLine = function() {
+            try { localStorage.setItem('quickline_open', _qlOpen() ? '0' : '1'); } catch (e) {}
+            renderBettingPanel();
+            const el = document.getElementById('quickLineInput');
+            if (el) el.focus();
+        };
+        window.parseQuickLine = function() {
+            const el = document.getElementById('quickLineInput');
+            if (!el) return;
+            const tokens = el.value.trim().toLowerCase().split(/[\s,，、/]+/).filter(Boolean);
+            if (!tokens.length) { showToast('请先输入速记内容（如 x 5 15），或点 ⌨ 速记 收起', 'warn'); return; }
+            for (const t of tokens) {
+                const vc = postState.board.filter(c => c !== null);
+                if (vc.length < 3) { showToast('公共牌不足，无法录入行动', 'error'); break; }
+                const street = vc.length === 3 ? 'flop' : vc.length === 4 ? 'turn' : 'river';
+                const sa = postState.potTracker.actions.filter(a => a.street === street);
+                const ss = getStreetState(sa);
+                if (['street_over', 'showdown'].includes(ss.phase)) { showToast('本街行动已结束，剩余速记忽略', 'warn'); break; }
+                const actor = ss.nextToAct;
+                const facing = ['waiting_second_response', 'waiting_first_response'].includes(ss.phase);
+                if (t === 'x' || t === 'k') {
+                    if (facing) { showToast('面对下注不能过牌（用 c/f/数字）', 'error'); break; }
+                    setActionRecord(actor, 'check', 0);
+                } else if (t === 'c') {
+                    if (!facing) { showToast('无人下注不能跟注（用 x 或数字）', 'error'); break; }
+                    setActionRecord(actor, 'call', 0);
+                } else if (t === 'f') {
+                    if (!facing) { showToast('无人下注无需弃牌', 'error'); break; }
+                    setActionRecord(actor, 'fold', 0);
+                } else if (t === 'a') {
+                    setActionRecord(actor, 'allin', postState.potTracker.effStack || 0);
+                } else if (!isNaN(parseFloat(t))) {
+                    const inputId = actor === 'hero' ? 'heroBetInput' : 'villainBetInput';
+                    let ie = document.getElementById(inputId);
+                    if (!ie) { renderBettingPanel(); ie = document.getElementById(inputId); }
+                    if (!ie) { showToast('当前轮次无法下注', 'error'); break; }
+                    const before = postState.potTracker.actions.length;
+                    ie.value = t;
+                    commitCustomAction(actor, inputId, facing ? 'raise' : 'bet');
+                    if (postState.potTracker.actions.length === before) break; // 校验拒绝，中断
+                } else {
+                    showToast(`无法识别速记 "${t}"`, 'error');
+                    break;
+                }
+            }
+        };
+
+        // 折叠(2026-07-14)：次要卡片头点击收起/展开，localStorage 记忆；
+        // 事件委托绑定（卡片可能被重渲，委托不失效），状态在每次面板重渲后复用
+        const COLLAPSIBLE_CARDS = ['postHandCard', 'postTextureCard'];
+        window.toggleCardCollapse = function(id) {
+            const card = document.getElementById(id);
+            if (!card) return;
+            const collapsed = card.classList.toggle('card-collapsed');
+            try { localStorage.setItem('collapse_' + id, collapsed ? '1' : '0'); } catch (e) {}
+            applyCardCollapsePrefs();
+        };
+        function applyCardCollapsePrefs() {
+            COLLAPSIBLE_CARDS.forEach(id => {
+                const card = document.getElementById(id);
+                if (!card) return;
+                const header = card.firstElementChild;
+                if (!header) return;
+                header.style.cursor = 'pointer';
+                const saved = (() => { try { return localStorage.getItem('collapse_' + id) === '1'; } catch (e) { return false; } })();
+                card.classList.toggle('card-collapsed', saved);
+                let chev = header.querySelector('.collapse-chev');
+                if (!chev) {
+                    header.insertAdjacentHTML('beforeend',
+                        `<span class="collapse-chev" style="float:right;color:var(--text-muted);font-size:var(--fs-micro);"></span>`);
+                    chev = header.querySelector('.collapse-chev');
+                }
+                chev.textContent = saved ? '▸ 展开' : '▾ 折叠';
+            });
+        }
+        document.addEventListener('click', (e) => {
+            if (!e.target || !e.target.closest) return;
+            const card = e.target.closest('#postHandCard, #postTextureCard');
+            if (!card) return;
+            const header = card.firstElementChild;
+            if (header && header.contains(e.target)) toggleCardCollapse(card.id);
+        });
+
         /**
          * 下注面板渲染 —— 状态机驱动的行动轮次 UI
          *
@@ -4427,10 +4734,13 @@
             // ── 容器开始 ──
             let html = `<div class="bg-black/30 p-2 rounded border border-white/5">`;
 
-            // 顶部信息行
-            html += `<div class="text-[10px] text-gray-400 mb-2 flex justify-between items-center">
-                <span style="color:var(--accent)" class="font-bold">${streetLabel}</span>
-                <span class="text-gray-600">底池 ${pot.toFixed(1)} · 有效 ${effStack.toFixed(1)}</span>
+            // 顶部信息行（按钮整合 2026-07-14：撤回收敛为此处唯一入口，历史行不再逐行放按钮；
+            // 信息去重 2026-07-14：底池/有效筹码上方常驻输入框已有，此处不再重复显示）
+            html += `<div class="text-[10px] text-gray-400 mb-2 flex justify-between items-center gap-2">
+                <span style="color:var(--accent)" class="font-bold flex-1">${streetLabel}</span>
+                <button onclick="toggleQuickLine()" title="速记补录：一行文本录入整条街行动（进阶功能）"
+                    class="text-[10px] px-2 py-0.5 rounded border font-bold shrink-0 ${_qlOpen() ? 'border-sky-500/50 text-sky-300 bg-sky-900/20' : 'border-white/10 text-gray-500 bg-white/5 hover:bg-white/10'}">⌨ 速记</button>
+                ${streetActions.length > 0 ? `<button onclick="undoLastAction()" class="text-[10px] bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-0.5 rounded border border-gray-500 font-bold shrink-0">↩ 撤回</button>` : ''}
             </div>`;
 
             // IP/OOP 切换
@@ -4445,6 +4755,22 @@
                         : 'border-white/10 bg-white/5 text-gray-500 hover:bg-white/10'}">对手先行动 (IP)</button>
             </div>`;
 
+            // 速记补录(2026-07-14)：进阶功能，默认折叠（用户反馈：常驻展示令人困惑）。
+            // 用途 = 快速补录整条街行动（典型：从截图进翻后时把前面几步行动线两秒补完），
+            // 点顶行「⌨ 速记」展开，localStorage 记忆开关。
+            if (_qlOpen() && !['showdown', 'street_over'].includes(ss.phase)) {
+                html += `<div class="mb-2">
+                    <div class="flex gap-1 items-center">
+                        <input id="quickLineInput" type="text"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();parseQuickLine();}"
+                            class="flex-1 min-w-0 bg-black/30 border border-sky-800/40 rounded px-2 py-1.5 text-xs text-gray-300 outline-none"
+                            placeholder="按顺序输入本街行动，空格分隔，回车录入" />
+                        <button onclick="parseQuickLine()" class="qc-btn" style="flex:0 0 48px;">录入</button>
+                    </div>
+                    <div class="text-[10px] text-gray-600 mt-0.5 px-1">x=过牌 · c=跟注 · f=弃牌 · a=全押 · 数字=下注/加注到该额（BB）。例：<span style="font-family:var(--font-mono);color:#8b95ab;">x 5 15</span> = 先手过牌→后手下注5→先手加注到15</div>
+                </div>`;
+            }
+
             // 历史动作（时序日志）
             if (streetActions.length > 0) {
                 html += `<div class="mb-2 space-y-0.5">`;
@@ -4454,7 +4780,6 @@
                     html += `<div class="flex items-center gap-1.5 px-2 py-0.5 rounded border ${bgc} opacity-70 text-[10px]">
                         <span class="w-8 shrink-0 font-bold">${isH ? '我' : '对手'}</span>
                         <span class="flex-1">${actDesc(a)}</span>
-                        <button onclick="undoLastAction()" class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded border border-gray-500 font-bold shrink-0">↩ 撤回</button>
                     </div>`;
                 });
                 html += `</div>`;
@@ -4478,129 +4803,110 @@
                 // 检测对手是否全下（最后一条激进动作为 allin）
                 const lastAggAct = [...streetActions].reverse().find(a => ['bet','raise','allin'].includes(a.action));
                 const isFacingAllin = isFacing && lastAggAct && lastAggAct.action === 'allin' && lastAggAct.player !== 'hero';
+                // 输入减负(2026-07-14)：重放本街投入 → 跟注按钮直接显示"补多少"
+                const _si = (() => { let h = 0, v = 0; streetActions.forEach(a => {
+                    if (['bet','raise','allin'].includes(a.action)) { if (a.player === 'villain') v = a.amount; else h = a.amount; }
+                    else if (a.action === 'call') { if (a.player === 'villain') v = h; else h = v; }
+                }); return { h, v }; })();
+                const toCallHero    = Math.max(0, _si.v - _si.h);
+                const toCallVillain = Math.max(0, _si.h - _si.v);
 
-                if (isHeroAct) {
-                    // ════ 我方行动区 ════
-                    const titleTxt = isFacing
-                        ? `我的行动 (Hero) · 面对下注 ${lastBet.toFixed(1)}BB`
-                        : '我的行动 (Hero)';
-                    html += `<div class="border border-blue-800/30 rounded p-1.5 bg-blue-900/5">
-                        <div class="text-[10px] font-bold text-blue-300 mb-1.5">${titleTxt}</div>`;
+                // ════ 统一行动条(2026-07-14)：扑克客户端三键位 ════
+                // 抛弃"我方/对手两套布局"——固定槽位 [弃牌][过牌/跟注][金额+下注/加注][全押]，
+                // 无论轮到谁、是否面对下注，按钮永远在同一位置（与真实扑克客户端一致，
+                // 肌肉记忆零成本）；不可用槽位置灰禁用而非隐藏，布局永不跳动。
+                {
+                const isHero   = isHeroAct;
+                const posLbl   = isHero ? (POS_LABEL[globalPosHero] || globalPosHero || '')
+                                        : (POS_LABEL[globalPosVillain] || globalPosVillain || '');
+                const who      = isHero ? '我方' : '对手';
+                const frameCls = isHero ? 'border-blue-800/40 bg-blue-900/5' : 'border-emerald-800/40 bg-emerald-900/5';
+                const titleCls = isHero ? 'text-blue-300' : 'text-emerald-300';
+                const toCall   = isHero ? toCallHero : toCallVillain;
+                const inputId  = isHero ? 'heroBetInput' : 'villainBetInput';
+                const aggrWord = isFacing ? '加注' : '下注';
+                const aggrType = isFacing ? 'raise' : 'bet';
+                const playerKey = isHero ? 'hero' : 'villain';
 
-                    if (odds !== null) {
-                        html += `<div class="text-[10px] text-yellow-500/80 mb-1.5 px-1">底池赔率 ${odds}%，需胜率 ≥ ${odds}%</div>`;
-                    }
+                const titleTxt = isFacing
+                    ? `轮到${who} · ${posLbl} · 面对下注 ${lastBet.toFixed(1)}BB`
+                    : `轮到${who} · ${posLbl}`;
 
-                    if (isFacing) {
-                        // 面对激进行动：Fold + Call + Raise，建议按钮加 ★ + 紫色边框
-                        const foldCls = suggAction === 'FOLD'
-                            ? 'border-sky-500/80 bg-sky-900/30 text-sky-200 font-bold'
-                            : 'border-red-700/40 bg-red-900/10 text-red-300 hover:bg-red-900/30';
-                        const callCls = suggAction === 'CALL'
-                            ? 'border-sky-500/80 bg-sky-900/30 text-sky-200 font-bold'
-                            : 'border-green-700/40 bg-green-900/10 text-green-300 hover:bg-green-900/30';
-                        const foldLbl = suggAction === 'FOLD' ? '★ 弃牌 Fold' : '弃牌 Fold';
-                        const callLbl = suggAction === 'CALL' ? '★ 跟注 Call' : '跟注 Call';
-                        if (isFacingAllin) {
-                            // 对手全下：只保留 Fold / Call，完全隐藏 Raise 输入
-                            const allinAmt = lastAggAct ? lastAggAct.amount : effStack;
-                            html += `<div class="text-[10px] text-orange-400/80 mb-1.5 px-1 font-bold">⚠ 对手全下 ${allinAmt.toFixed(1)}BB，仅可跟注或弃牌</div>`;
-                            html += `<div class="flex gap-1 items-center">
-                                <button onclick="recordHeroFold()"
-                                    class="flex-1 py-1.5 text-[10px] rounded border ${foldCls} active:scale-95 transition-all">${foldLbl}</button>
-                                <button onclick="recordHeroCall()"
-                                    class="flex-1 py-1.5 text-[10px] rounded border ${callCls} active:scale-95 transition-all">${callLbl}</button>
-                            </div>`;
-                        } else {
-                            const raisePrefill = (suggAction === 'RAISE' && suggAmt > 0) ? suggAmt.toFixed(1) : '';
-                            const raiseCls = suggAction === 'RAISE'
-                                ? 'bg-sky-900/40 border border-sky-500/60 text-sky-200 font-bold'
-                                : 'bg-blue-900/30 border border-blue-700/30 text-blue-300 hover:bg-blue-900/50';
-                            const raiseLbl = suggAction === 'RAISE' ? '★ 确认▶' : '确认▶';
-                            html += `<div class="flex gap-1 items-center">
-                                <button onclick="recordHeroFold()"
-                                    class="py-1.5 text-[10px] rounded border ${foldCls} active:scale-95 transition-all shrink-0" style="min-width:72px">${foldLbl}</button>
-                                <button onclick="recordHeroCall()"
-                                    class="py-1.5 text-[10px] rounded border ${callCls} active:scale-95 transition-all shrink-0" style="min-width:72px">${callLbl}</button>
-                                <input id="heroBetInput" type="number" min="0.5" step="0.5" value="${raisePrefill}"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();commitCustomAction('hero','heroBetInput','raise');}"
-                                    class="flex-1 min-w-0 bg-black/30 border border-white/10 rounded px-2 py-1 text-[10px] text-gray-300 outline-none"
-                                    placeholder="加注 BB" />
-                                <button onclick="commitCustomAction('hero','heroBetInput','raise')"
-                                    class="py-1.5 px-2 text-[10px] rounded ${raiseCls} active:scale-95 transition-all shrink-0" style="min-width:52px">${raiseLbl}</button>
-                            </div>`;
-                        }
-                    } else {
-                        // 开放行动：Check + Bet，建议按钮加 ★ + 紫色边框
-                        const checkCls = suggAction === 'CHECK'
-                            ? 'border-sky-500/80 bg-sky-900/30 text-sky-200 font-bold'
-                            : 'border-white/20 bg-white/5 text-gray-200 hover:bg-white/10';
-                        const checkLbl = suggAction === 'CHECK' ? '★ 过牌 Check' : '过牌 Check';
-                        const betPrefill = (suggAction === 'BET' && suggAmt > 0) ? suggAmt.toFixed(1) : '';
-                        const betCls = suggAction === 'BET'
-                            ? 'bg-sky-900/40 border border-sky-500/60 text-sky-200 font-bold'
-                            : 'bg-blue-900/30 border border-blue-700/30 text-blue-300 hover:bg-blue-900/50';
-                        const betLbl = suggAction === 'BET' ? '★ 确认▶' : '确认▶';
-                        html += `<div class="flex gap-1 items-center">
-                            <button onclick="recordHeroCheck()"
-                                class="py-1.5 text-[10px] rounded border ${checkCls} active:scale-95 transition-all shrink-0" style="min-width:72px">${checkLbl}</button>
-                            <input id="heroBetInput" type="number" min="0.5" step="0.5" value="${betPrefill}"
-                                onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();commitCustomAction('hero','heroBetInput','bet');}"
-                                class="flex-1 min-w-0 bg-black/30 border border-white/10 rounded px-2 py-1 text-[10px] text-gray-300 outline-none"
-                                placeholder="下注 BB" />
-                            <button onclick="commitCustomAction('hero','heroBetInput','bet')"
-                                class="py-1.5 px-2 text-[10px] rounded ${betCls} active:scale-95 transition-all shrink-0" style="min-width:52px">${betLbl}</button>
-                        </div>`;
-                    }
+                html += `<div class="border ${frameCls} rounded-lg p-2">
+                    <div class="text-xs font-bold ${titleCls} mb-1.5 flex justify-between items-center gap-2">
+                        <span>${titleTxt}</span>
+                        ${isHero ? '<span class="text-[10px] text-gray-600 font-normal shrink-0">快捷键 X过 C跟 F弃 B注</span>' : ''}
+                    </div>`;
+                if (isHero && odds !== null) {
+                    html += `<div class="text-[10px] text-yellow-500/80 mb-1.5 px-1">底池赔率 ${odds}%，需胜率 ≥ ${odds}%</div>`;
+                }
 
-                    html += `</div>`;
+                const foldOn = isFacing;
+                const passiveLbl = isFacing
+                    ? `跟注 ${toCall > 0 ? toCall.toFixed(1) : ''}`.trim()
+                    : '过牌';
+                const passiveStar = (isHero && ((isFacing && suggAction === 'CALL') || (!isFacing && suggAction === 'CHECK')));
+                const foldStar = isHero && isFacing && suggAction === 'FOLD';
+                const aggrStar = isHero && ((isFacing && suggAction === 'RAISE') || (!isFacing && suggAction === 'BET'));
+                const prefill = (isHero && aggrStar && suggAmt > 0) ? suggAmt.toFixed(1)
+                              : (!isHero && postState._pendingVillainBet) ? postState._pendingVillainBet : '';
 
+                const foldCls = !foldOn
+                    ? 'border-white/5 bg-white/[0.02] text-gray-700 cursor-not-allowed'
+                    : foldStar ? 'border-sky-500/80 bg-sky-900/30 text-sky-200 font-bold'
+                    : 'border-red-700/40 bg-red-900/10 text-red-300 hover:bg-red-900/30';
+                const passCls = passiveStar
+                    ? 'border-sky-500/80 bg-sky-900/30 text-sky-200 font-bold'
+                    : 'border-green-700/40 bg-green-900/10 text-green-300 hover:bg-green-900/30';
+                const aggrCls = aggrStar
+                    ? 'bg-sky-900/40 border border-sky-500/60 text-sky-200 font-bold'
+                    : (isHero ? 'bg-blue-900/30 border border-blue-700/30 text-blue-300 hover:bg-blue-900/50'
+                              : 'bg-emerald-900/30 border border-emerald-700/30 text-emerald-300 hover:bg-emerald-900/50');
+
+                const foldClick = foldOn ? (isHero ? 'recordHeroFold()' : "setActionRecord('villain','fold',0)") : '';
+                const passClick = isFacing ? (isHero ? 'recordHeroCall()' : "setActionRecord('villain','call',0)")
+                                           : (isHero ? 'recordHeroCheck()' : 'recordVillainCheck()');
+
+                if (isFacingAllin) {
+                    const allinAmt = lastAggAct ? lastAggAct.amount : effStack;
+                    html += `<div class="text-[10px] text-orange-400/80 mb-1.5 px-1 font-bold">⚠ 对手全下 ${allinAmt.toFixed(1)}BB，仅可跟注或弃牌</div>`;
+                    html += `<div class="flex gap-1.5 items-center">
+                        <button onclick="${foldClick}" class="py-2 text-xs rounded-md border ${foldCls} active:scale-95 transition-all" style="flex:1">${foldStar ? '★ ' : ''}弃牌</button>
+                        <button onclick="${passClick}" class="py-2 text-xs rounded-md border ${passCls} active:scale-95 transition-all" style="flex:1.4">${passiveStar ? '★ ' : ''}${passiveLbl}</button>
+                    </div>`;
                 } else {
-                    // ════ 对手行动区 ════
-                    const titleTxt = isFacing
-                        ? `对手行动 (Villain) · 面对下注 ${lastBet.toFixed(1)}BB`
-                        : '对手行动 (Villain)';
-                    html += `<div class="border border-emerald-800/30 rounded p-1.5 bg-emerald-900/5">
-                        <div class="text-[10px] font-bold text-emerald-300 mb-1.5">${titleTxt}</div>`;
-
-                    if (odds !== null) {
-                        html += `<div class="text-[10px] text-yellow-500/80 mb-1.5 px-1">底池赔率 ${odds}%</div>`;
-                    }
-
-                    if (isFacing) {
-                        // 对手面对 hero 下注：Fold / Call / Raise
-                        html += `<div class="flex gap-1 items-center">
-                            <button onclick="setActionRecord('villain','fold',0)"
-                                class="py-1.5 text-[10px] rounded border border-red-700/40 bg-red-900/10 text-red-300 hover:bg-red-900/30 active:scale-95 transition-all shrink-0" style="min-width:72px">弃牌 Fold</button>
-                            <button onclick="setActionRecord('villain','call',0)"
-                                class="py-1.5 text-[10px] rounded border border-green-700/40 bg-green-900/10 text-green-300 hover:bg-green-900/30 active:scale-95 transition-all shrink-0" style="min-width:72px">跟注 Call</button>
-                            <input id="villainBetInput" type="number" min="0.5" step="0.5" value="${postState._pendingVillainBet || ''}"
-                                onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();commitCustomAction('villain','villainBetInput','raise');}"
-                                class="flex-1 min-w-0 bg-black/30 border border-white/10 rounded px-2 py-1 text-[10px] text-gray-300 outline-none"
-                                placeholder="加注 BB" />
-                            <button onclick="commitCustomAction('villain','villainBetInput','raise')"
-                                class="py-1.5 px-2 text-[10px] rounded bg-emerald-900/30 hover:bg-emerald-900/50 border border-emerald-700/30 text-emerald-300 active:scale-95 transition-all shrink-0" style="min-width:52px">确认▶</button>
-                        </div>`;
-                    } else {
-                        // 开放行动：Check / Bet（无 Fold）
-                        html += `<div class="flex gap-1 items-center">
-                            <button onclick="recordVillainCheck()"
-                                class="py-1.5 text-[10px] rounded border border-white/20 bg-white/5 text-gray-200 hover:bg-white/10 active:scale-95 transition-all shrink-0" style="min-width:72px">过牌 Check</button>
-                            <input id="villainBetInput" type="number" min="0.5" step="0.5" value="${postState._pendingVillainBet || ''}"
-                                onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();commitCustomAction('villain','villainBetInput','bet');}"
-                                class="flex-1 min-w-0 bg-black/30 border border-white/10 rounded px-2 py-1 text-[10px] text-gray-300 outline-none"
-                                placeholder="下注 BB" />
-                            <button onclick="commitCustomAction('villain','villainBetInput','bet')"
-                                class="py-1.5 px-2 text-[10px] rounded bg-emerald-900/30 hover:bg-emerald-900/50 border border-emerald-700/30 text-emerald-300 active:scale-95 transition-all shrink-0" style="min-width:52px">确认▶</button>
-                        </div>`;
-                    }
-
-                    html += `</div>`;
+                    html += `<div class="flex gap-1.5 items-center">
+                        <button ${foldOn ? `onclick="${foldClick}"` : 'disabled'} class="py-2 text-xs rounded-md border ${foldCls} active:scale-95 transition-all shrink-0" style="min-width:72px">${foldStar ? '★ ' : ''}弃牌</button>
+                        <button onclick="${passClick}" class="py-2 text-xs rounded-md border ${passCls} active:scale-95 transition-all shrink-0" style="min-width:88px">${passiveStar ? '★ ' : ''}${passiveLbl}</button>
+                        <input id="${inputId}" type="number" min="0.5" step="0.5" value="${prefill}"
+                            oninput="updateBetPct(this)"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();commitCustomAction('${playerKey}','${inputId}','${aggrType}');}"
+                            class="flex-1 min-w-0 bg-black/30 border border-white/10 rounded-md px-2 py-1.5 text-xs text-gray-300 outline-none"
+                            placeholder="${aggrWord} BB" />
+                        <button onclick="commitCustomAction('${playerKey}','${inputId}','${aggrType}')"
+                            class="py-2 px-2 text-xs rounded-md ${aggrCls} active:scale-95 transition-all shrink-0" style="min-width:56px">${aggrStar ? '★ ' : ''}${aggrWord}▶</button>
+                        <button onclick="quickCommit('${playerKey}','${aggrType}','allin')" class="qc-btn qc-allin shrink-0" style="flex:0 0 52px;padding:8px 0;">全押</button>
+                    </div>`;
+                    // 底部辅助行：实时尺度反推 + Hero 专属底池比例/加注倍数快捷
+                    html += `<div class="flex gap-1 mt-1.5 items-center">
+                        <span id="betPctHint" class="text-[10px] text-gray-500 shrink-0" style="font-family:var(--font-mono);min-width:70px;"></span>
+                        ${isHero && !isFacing ? `
+                        <button onclick="quickCommit('hero','bet',0.33)" class="qc-btn">33%池</button>
+                        <button onclick="quickCommit('hero','bet',0.5)" class="qc-btn">半池</button>
+                        <button onclick="quickCommit('hero','bet',0.75)" class="qc-btn">75%池</button>
+                        <button onclick="quickCommit('hero','bet',1.0)" class="qc-btn">满池</button>` : isHero && isFacing ? `
+                        <button onclick="quickCommit('hero','raise',{mult:2.5})" class="qc-btn">2.5x</button>
+                        <button onclick="quickCommit('hero','raise',{mult:3})" class="qc-btn">3x</button>` : `<span class="flex-1"></span>`}
+                    </div>`;
+                }
+                html += `</div>`;
                 }
             }
 
             html += `</div>`;
             area.innerHTML = html;
+            // 折叠(2026-07-14)：面板每次重渲后恢复次要卡折叠状态
+            if (typeof applyCardCollapsePrefs === 'function') applyCardCollapsePrefs();
         }
 
         /**
@@ -5060,7 +5366,7 @@
                         <!-- 翻后对手位置补录（复用翻前数据，可手动修正） -->
                         <div id="postVillainPosRow" class="mb-2">
                             <div class="text-[10px] text-green-400 mb-1">对手位置（影响范围估算）</div>
-                            <div id="postVillainPosButtons" class="flex gap-1 flex-wrap"></div>
+                            <div id="postVillainPosButtons" class="block"></div>
                         </div>
                         <div id="rangeDesc" class="text-xs text-yellow-300 mb-1">等待计算...</div>
                         <div class="flex justify-between text-[10px] text-gray-400 mb-1">
@@ -5711,13 +6017,20 @@
                 hideAnalysisLoading(); // 计算完成，隐藏 loading
                 console.log('[决策引擎]', decision);
 
+                // 多人底池(2026-07-14)：有额外对手 → 多人 MC 覆盖胜率并重出决策
+                if ((postState.extraVillains || []).length > 0) {
+                    runMultiwayOverride(currentVersion);
+                }
+
                 // 后台补充旧版手型/进张信息（不阻塞显示）
                 equityEngine().then(oldResult => {
                     if (currentVersion !== postState.postCalcVersion) return;
                     if (oldResult) {
                         // 只补充附加信息，不覆盖胜率数字
+                        // 多人底池(2026-07-14)：基底改用当前 equityResult（可能已被
+                        // runMultiwayOverride 覆盖为多人胜率），勿回退到单挑 equityCompat
                         const merged = {
-                            ...equityCompat,
+                            ...(postState.equityResult || equityCompat),
                             handStrength: oldResult.handStrength || '',
                             relStrength: oldResult.relStrength || 0,
                             outs: oldResult.outs || 0,
@@ -6409,9 +6722,23 @@
                     }
                 }
             };
-            const sc = SC[street];
+            // 多人底池(2026-07-14)：每 +1 名额外对手，价值下注/加注门槛 +4、
+            // 强牌线 +3、跟注容差 +2（胜率已按多人 MC 口径覆盖，诈唬成功率
+            // 随人数下降、被反超概率上升，阈值同步收紧）
+            const _mwN = (postState.extraVillains || []).length;
+            const _scBase = SC[street];
+            const sc = _mwN > 0 ? {
+                ..._scBase,
+                betThresh:    _scBase.betThresh + 4 * _mwN,
+                strongThresh: _scBase.strongThresh + 3 * _mwN,
+                raiseThresh:  _scBase.raiseThresh + 4 * _mwN,
+                callMargin:   _scBase.callMargin + 2 * _mwN
+            } : _scBase;
 
             const warnings = [];
+            if (_mwN > 0) {
+                warnings.push(`⚠ 多人底池：${_mwN + 1} 名对手在局，胜率按多人计算，价值/诈唬门槛已收紧`);
+            }
             if (stage === 'bubble' || stage === 'final') {
                 warnings.push('⚠ ' + (stage === 'bubble' ? '泡沫期' : '决赛桌') + '：避免边缘 bluff 和 bluff catch');
             }
@@ -7466,6 +7793,22 @@ window._visionTestHooks = () => ({ buildPayload, autoFill, renderVisionReviewCar
 
 // ─── Payload 构建 ──────────────────────────────────────
 function buildPayload(d) {
+    // 对手选取(2026-07-13)：优先"仍持牌"玩家，其中优先当前下注最大者
+    // （进攻者），再退最大筹码。原直接取全场最大筹码——多人局把翻前已
+    // 弃牌的大筹码玩家当对手（实测：河牌对手实际 24.7BB 的小盲，被填成
+    // 已弃牌大盲的 125.6BB，范围与有效筹码全错）。
+    // 2026-07-14：pick 提取到函数级，同时供 villainStack / villainAllin 使用
+    const _vp = (() => {
+        if (!d.players?.length) return null;
+        const withStack = d.players.filter(p => p.stack != null);
+        if (!withStack.length) return null;
+        const alive = withStack.filter(p => p.has_cards !== false);
+        const pool = alive.length ? alive : withStack;
+        const bettors = pool.filter(p => (p.bet || 0) > 0);
+        return bettors.length
+            ? bettors.reduce((a, b) => ((a.bet || 0) >= (b.bet || 0) ? a : b))
+            : pool.reduce((a, b) => ((a.stack || 0) >= (b.stack || 0) ? a : b));
+    })();
     return {
         card1: d.hero_cards?.[0] ?? null,
         card2: d.hero_cards?.[1] ?? null,
@@ -7474,22 +7817,8 @@ function buildPayload(d) {
         isPreflop:  d.street === 'preflop',
         isPostflop: d.street && d.street !== 'preflop',
         heroStack:    d.hero_stack ?? null,
-        villainStack: (() => {
-            if (!d.players?.length) return null;
-            // 对手选取(2026-07-13)：优先"仍持牌"玩家，其中优先当前下注最大者
-            // （进攻者），再退最大筹码。原直接取全场最大筹码——多人局把翻前已
-            // 弃牌的大筹码玩家当对手（实测：河牌对手实际 24.7BB 的小盲，被填成
-            // 已弃牌大盲的 125.6BB，范围与有效筹码全错）。
-            const withStack = d.players.filter(p => p.stack != null);
-            if (!withStack.length) return null;
-            const alive = withStack.filter(p => p.has_cards !== false);
-            const pool = alive.length ? alive : withStack;
-            const bettors = pool.filter(p => (p.bet || 0) > 0);
-            const pick = bettors.length
-                ? bettors.reduce((a, b) => ((a.bet || 0) >= (b.bet || 0) ? a : b))
-                : pool.reduce((a, b) => ((a.stack || 0) >= (b.stack || 0) ? a : b));
-            return pick.stack ?? null;
-        })(),
+        villainStack: _vp ? (_vp.stack ?? null) : null,
+        villainAllin: _vp ? !!_vp.is_allin : false,
         // 在局玩家数（含 Hero；has_cards 缺失时不计入判定，向后兼容旧模型输出）
         alivePlayers: (d.players || []).filter(p => p.has_cards === true).length,
         pot:          d.pot ?? null,
@@ -7612,16 +7941,31 @@ function autoFill(payload, _id) {
             }
         }
 
-        // ⑦ villain_bet：翻后有对手下注时填入 villainBetInput
-        // O3(2026-07)：villainBetInput 会被分析完成后的 renderBettingPanel 重建而丢值，
-        //   同时存入 postState._pendingVillainBet，重渲对手输入框时自动预填
-        //  （记录任一对手动作后由 setActionRecord 消费清除）
+        // ⑦ villain_bet：翻后有对手下注时——交互优化(2026-07-14)：直接自动录入
+        // 对手行动（原 O3 只预填输入框还需人工点确认▶）。守卫：当前街尚无对手
+        // 行动记录才录入（防同街重复粘贴重复记账）；对手全推截图录 allin。
+        // 录入触发 E2 完整管线（范围收窄+胜率+决策）→ 粘贴截图即出决策，零点击。
         postState._pendingVillainBet = (payload.villainBet && payload.villainBet > 0) ? payload.villainBet : null;
         if (payload.villainBet && payload.villainBet > 0) {
-            const vbi = document.getElementById('villainBetInput');
-            if (vbi) {
-                vbi.value = payload.villainBet;
-                console.log('[Vision] villainBetInput 填入:', payload.villainBet);
+            const _vc7 = postState.board.filter(c => c !== null);
+            const _st7 = _vc7.length === 3 ? 'flop' : _vc7.length === 4 ? 'turn' : _vc7.length === 5 ? 'river' : null;
+            const villainActed = _st7 && (postState.potTracker.actions || [])
+                .some(a => a.street === _st7 && a.player === 'villain');
+            if (_st7 && !villainActed && typeof setActionRecord === 'function') {
+                const act7 = payload.villainAllin ? 'allin' : 'bet';
+                setActionRecord('villain', act7, payload.villainBet);
+                postState._pendingVillainBet = null;
+                if (typeof showToast === 'function') {
+                    showToast(`已自动录入对手${act7 === 'allin' ? '全下' : '下注'} ${payload.villainBet}BB（↩ 撤回可改）`, 'info');
+                }
+                console.log('[Vision] 对手行动自动录入:', act7, payload.villainBet);
+            } else {
+                // 本街已有对手记录（或街道无效）→ 退回预填，不重复记账
+                const vbi = document.getElementById('villainBetInput');
+                if (vbi) {
+                    vbi.value = payload.villainBet;
+                    console.log('[Vision] villainBetInput 预填（本街已有对手记录，未自动录入）:', payload.villainBet);
+                }
             }
         }
 
