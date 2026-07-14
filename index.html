@@ -80,9 +80,12 @@
             --fs-heading: 1.5rem;
             --fs-display: 2.5rem;
             /* 圆角三档 */
+            /* v1.2.0 收敛为四档：xs 微元素 / sm 控件 / md 卡片 / lg 外框。
+               同心规则：卡片 md12 + 内边距 ≥8px → 内部控件 sm8 自然同心 */
             --radius-lg: 16px;
-            --radius-md: 10px;
-            --radius-sm: 6px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --radius-xs: 4px;
             /* 旧变量对齐 */
             --bg-card: var(--surface-2);
             --border-primary: rgba(255,255,255,0.08); /* 现代化(2026-07-14)：0.10→0.08 */
@@ -129,8 +132,8 @@
         }
         /* 2) 笔记本断点（768–1439）：收紧两栏间距 + 次要面板限高内部滚动 */
         @media (min-width: 768px) and (max-width: 1439.98px) {
-            #postFlopPanel .col-left,
-            #postFlopPanel .col-right { gap: 0.4rem; }
+            /* 融合单页(2026-07-14)：两列统一收紧（原仅翻后页收紧） */
+            .col-left, .col-right { gap: 0.5rem; }
             /* 次要面板内边距收紧（不动关键面板 decisionPanel/equityPanel） */
             #postHandCard, #postTextureCard { padding: 0.4rem; }
             /* 对手范围/牌面结构的内部滚动已移除（zone2-B）：内容完全展开，靠整页滚动看全 */
@@ -146,13 +149,13 @@
            关键：initPostRightCards() 用 innerHTML 重建 #postRightContent 的 7 卡为扁平直接子节点，
            任何插入其内的包裹 div 都会被清除 → 改用纯 CSS 把 #postRightContent 变 2 列网格，
            按卡 id 分配关键/次要列；id 选择器在每次 innerHTML 重建后仍命中，JS 插入目标不受影响。
-           三栏 = #postLeft(操作) | #postRightContent 第1列(关键区) | 第2列(次要区)。 */
+           融合单页后：输入列(.col-left 34%) | 输出列内 #postRightContent 双列均衡。 */
         @media (min-width: 1920px) {
             /* 容器放宽，2K/4K 铺开（宽度利用 2026-07-14：2000→2200） */
             .app-container { max-width: 2200px; }
-            /* 外层三栏比例：操作栏收窄，右区放宽 */
-            #postFlopPanel #postLeft  { flex: 0 0 28%; width: 28%; }
-            #postFlopPanel #postRight { flex: 1 1 0%; width: auto; min-width: 0; }
+            /* 融合单页(2026-07-14)：输入列收窄，输出列放宽（原 postLeft/postRight 比例迁移到主两列） */
+            .col-left  { flex: 0 0 34%; width: 34%; }
+            .col-right { flex: 1 1 0%; width: auto; min-width: 0; }
             /* 右区内部：column-count 高度均衡双列（替代刚性 grid）
                —— 修复旧 grid 的两病：① fit-content 在内容稀疏时把次要列收成窄条；
                ② 关键区 2 卡 vs 次要区 4 卡的列高失衡导致中栏下方大片空白。
@@ -170,28 +173,26 @@
         }
 
         .card-grid-13 { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 2px; margin-bottom: 4px; }
-        .card-btn { background-color: rgba(255,255,255,0.1); color: white; font-weight: bold; font-size: var(--fs-caption); padding: 5px 0; border-radius: 3px; cursor: pointer; border: 1px solid transparent; transition: 0.1s; text-align: center; }
+        .card-btn { background-color: rgba(255,255,255,0.1); color: white; font-weight: bold; font-size: var(--fs-caption); padding: 5px 0; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; transition: 0.1s; text-align: center; }
         .card-btn:hover { background-color: rgba(255,255,255,0.2); }
         .card-btn.active { background-color: var(--accent); border-color: var(--accent-hover); box-shadow: 0 0 6px var(--accent); }
         
-        .suit-btn { background-color: rgba(255,255,255,0.1); color: white; font-weight: bold; font-size: var(--fs-caption); padding: 6px 0; border-radius: 4px; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; }
+        .suit-btn { background-color: rgba(255,255,255,0.1); color: white; font-weight: bold; font-size: var(--fs-caption); padding: 6px 0; border-radius: var(--radius-sm); cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; }
         .suit-btn.active { background-color: #10b981; } 
         .suit-btn.disabled { opacity: 0.3; cursor: not-allowed; background-color: rgba(255,255,255,0.05); }
         
-        /* ══ 现代化视觉(2026-07-14)：圆角/描边/触控统一柔化（覆盖规则置于组件定义后）══ */
-        .card-btn { border-radius: 6px; }
-        .tab-btn, .suit-btn { border-radius: 8px; }
-        .pos-btn { border-radius: 7px; height: 30px; }
-        .panel-bg, .glass-card { border-radius: 12px; }
+        /* ══ 现代化视觉(2026-07-14)：触控档保留；圆角散值已并入 v1.2.0 四档令牌 ══ */
+        .pos-btn { height: 30px; }
+        .panel-bg, .glass-card { border-radius: var(--radius-md); }
         /* 对手位置选择器重设计(2026-07-14) */
         .posv-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
-        .posv-btn { height: 34px; border-radius: 8px; font-size: var(--fs-caption); font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--border-primary); cursor: pointer; transition: .12s; }
+        .posv-btn { height: 34px; border-radius: var(--radius-sm); font-size: var(--fs-caption); font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--border-primary); cursor: pointer; transition: .12s; }
         .posv-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
         .posv-btn.primary { background: #16a34a; border-color: #4ade80; color: #fff; }
         .posv-btn.extra { background: rgba(224,168,58,0.22); border-color: #e0a83a; color: #e0a83a; }
         .posv-label { font-size: var(--fs-micro); color: var(--text-muted); margin: 6px 0 3px; letter-spacing: .02em; }
         /* 多人底池额外对手区：琥珀底色分层（2026-07-14 对齐修复同批） */
-        .posv-extra-box { margin-top: 6px; padding: 6px 7px 7px; border: 1px dashed rgba(224,168,58,0.35); background: rgba(224,168,58,0.05); border-radius: 10px; }
+        .posv-extra-box { margin-top: 8px; padding: 8px; border: 1px dashed rgba(224,168,58,0.35); background: rgba(224,168,58,0.05); border-radius: var(--radius-md); }
         /* 分辨率精细化(2026-07-14)：多窗口并排档（窗口宽 768-1023，如 2560 屏开两窗）*/
         @media (min-width: 768px) and (max-width: 1023.98px) {
             .scroll-area { padding: 0.6rem; gap: 0.6rem; }
@@ -201,44 +202,52 @@
             #postHandCard, #postTextureCard { padding: 0.4rem; }
         }
 
+        /* ══ 融合单页(2026-07-14)：分区标题 + 选牌目标框 ══ */
+        .zone-head { font-size: var(--fs-micro); font-weight: 700; letter-spacing: .08em; color: var(--text-muted); display: flex; align-items: center; gap: 8px; margin: 2px 2px 0; text-transform: uppercase; }
+        .zone-head::after { content: ''; flex: 1; height: 1px; background: var(--border-primary); }
+        .pick-target-box { border: 1px solid var(--border-primary); border-radius: var(--radius-sm); padding: 4px 6px 6px; cursor: pointer; transition: border-color .15s, box-shadow .15s; background: var(--bg-deep); }
+        .pick-target-box.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-dim); }
+        .pick-target-label { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 700; margin-bottom: 3px; letter-spacing: .04em; }
+        .pick-target-box.active .pick-target-label { color: var(--accent); }
+
         /* 快捷尺度按钮(2026-07-14)：下注/加注一键提交 */
-        .qc-btn { flex: 1; padding: 3px 0; font-size: var(--fs-micro); font-weight: bold; color: var(--text-secondary); background: rgba(255,255,255,0.06); border: 1px solid var(--border-primary); border-radius: 4px; cursor: pointer; transition: 0.12s; text-align: center; font-family: var(--font-mono); }
+        .qc-btn { flex: 1; padding: 3px 0; font-size: var(--fs-micro); font-weight: bold; color: var(--text-secondary); background: rgba(255,255,255,0.06); border: 1px solid var(--border-primary); border-radius: var(--radius-sm); cursor: pointer; transition: 0.12s; text-align: center; font-family: var(--font-mono); }
         .qc-btn:hover { background: rgba(255,255,255,0.14); color: var(--text-primary); }
         .qc-btn.qc-allin { color: #ff7a7d; border-color: rgba(229,72,77,0.4); }
         .qc-btn.qc-allin:hover { background: rgba(214,57,64,0.15); }
         /* 折叠卡(2026-07-14)：仅保留头部 */
         .card-collapsed > *:not(:first-child) { display: none !important; }
 
-        .tab-btn { background-color: rgba(0,0,0,0.2); color: #9ca3af; font-weight: bold; font-size: var(--fs-caption); padding: 8px 0; border-radius: 4px; border: 1px solid var(--border-primary); cursor: pointer; transition: 0.2s; text-align: center; }
+        .tab-btn { background-color: rgba(0,0,0,0.2); color: #9ca3af; font-weight: bold; font-size: var(--fs-caption); padding: 8px 0; border-radius: var(--radius-sm); border: 1px solid var(--border-primary); cursor: pointer; transition: 0.2s; text-align: center; }
         .tab-btn.active { background-color: var(--accent); color: white; border-color: var(--accent-hover); box-shadow: 0 0 8px rgba(0,0,0,0.3); }
         
-        .pos-btn { background-color: rgba(0,0,0,0.3); color: #9ca3af; font-weight: bold; font-size: var(--fs-micro); height: 28px; padding: 0 2px; border-radius: 3px; cursor: pointer; transition: 0.15s; text-align: center; border: 1px solid transparent; display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; flex: 1; }
+        .pos-btn { background-color: rgba(0,0,0,0.3); color: #9ca3af; font-weight: bold; font-size: var(--fs-micro); height: 28px; padding: 0 2px; border-radius: var(--radius-sm); cursor: pointer; transition: 0.15s; text-align: center; border: 1px solid transparent; display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; flex: 1; }
         .pos-btn:hover { background-color: rgba(255,255,255,0.1); }
         .pos-btn.active { background-color: var(--accent); color: white; border-color: var(--accent-hover); }
-        .pos-btn-hero { background-color: rgba(0,0,0,0.3); color: #9ca3af; font-weight: bold; font-size: var(--fs-micro); height: 28px; padding: 0 2px; border-radius: 3px; cursor: pointer; transition: 0.15s; text-align: center; border: 1px solid transparent; display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; flex: 1; }
+        .pos-btn-hero { background-color: rgba(0,0,0,0.3); color: #9ca3af; font-weight: bold; font-size: var(--fs-micro); height: 28px; padding: 0 2px; border-radius: var(--radius-sm); cursor: pointer; transition: 0.15s; text-align: center; border: 1px solid transparent; display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; flex: 1; }
         .pos-btn-hero:hover { background-color: rgba(255,255,255,0.1); }
         .pos-btn-hero.active { background-color: #991b1b; color: white; border-color: #dc2626; }
 
-        .nav-phase-btn { background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); color: #9ca3af; font-size: var(--fs-caption); font-weight: bold; padding: 6px 12px; border-radius: 4px; cursor: pointer; transition: 0.15s; }
+        .nav-phase-btn { background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); color: #9ca3af; font-size: var(--fs-caption); font-weight: bold; padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: 0.15s; }
         .nav-phase-btn:hover { background: rgba(255,255,255,0.08); color: #e5e7eb; }
         .nav-phase-btn.active { background: var(--accent); border-color: var(--accent-hover); color: #fff; box-shadow: 0 0 6px rgba(0,0,0,0.4); }
 
-        .cfg-btn { background-color: rgba(0,0,0,0.3); color: #9ca3af; font-weight: bold; font-size: var(--fs-caption); padding: 5px 0; border-radius: 3px; cursor: pointer; transition: 0.15s; text-align: center; border: 1px solid transparent; }
+        .cfg-btn { background-color: rgba(0,0,0,0.3); color: #9ca3af; font-weight: bold; font-size: var(--fs-caption); padding: 5px 0; border-radius: var(--radius-sm); cursor: pointer; transition: 0.15s; text-align: center; border: 1px solid transparent; }
         .cfg-btn:hover { background-color: rgba(255,255,255,0.1); }
         .cfg-btn.active { background-color: var(--accent); color: white; border-color: var(--accent-hover); }
         
-        input[type="number"], select { outline: none; background-color: rgba(0,0,0,0.3); border: 1px solid var(--border-primary); width: 100%; color: white; border-radius: 4px; }
+        input[type="number"], select { outline: none; background-color: rgba(0,0,0,0.3); border: 1px solid var(--border-primary); width: 100%; color: white; border-radius: var(--radius-sm); }
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         
         /* 频率条：解算器语义色（进攻红 / 被动绿 / 弃牌灰蓝），条内 mono 数字 */
-        .freq-bar { height: 16px; border-radius: 4px; overflow: hidden; display: flex; margin-top: 4px; width: 100%; border: 1px solid var(--glass-border); background: var(--bg-deep); }
+        .freq-bar { height: 16px; border-radius: var(--radius-xs); overflow: hidden; display: flex; margin-top: 4px; width: 100%; border: 1px solid var(--glass-border); background: var(--bg-deep); }
         .freq-fill { display: flex; align-items: center; justify-content: center; font-size: var(--fs-micro); font-weight: 700; font-family: var(--font-mono); }
         .bg-call { background-color: var(--act-passive); color: #06281a; }   /* call = 被动绿 */
         .bg-raise { background-color: var(--act-aggr); color: #fff; }        /* raise/bet = 进攻红 */
         .bg-fold { background-color: var(--act-fold); color: #fff; }
         .bg-open { background-color: var(--act-aggr); color: #fff; }         /* open = 加注 = 红（解算器约定） */
         
-        .data-bar { height: 8px; border-radius: 4px; background-color: rgba(0,0,0,0.5); overflow: hidden; margin-top: 2px; position: relative; }
+        .data-bar { height: 8px; border-radius: var(--radius-xs); background-color: rgba(0,0,0,0.5); overflow: hidden; margin-top: 2px; position: relative; }
         .data-fill { height: 100%; }
         
         /* 实色面板（毛玻璃废除：性能与专业感双赢） */
@@ -251,7 +260,7 @@
         .collapse-content.collapsed { max-height: 0 !important; opacity: 0; }
 
         /* 翻后下注按钮样式 */
-        .bet-action-btn { font-size: var(--fs-micro); font-weight: bold; padding: 5px 8px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; text-align: center; }
+        .bet-action-btn { font-size: var(--fs-micro); font-weight: bold; padding: 5px 8px; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; transition: all 0.15s; text-align: center; }
         .bet-action-btn:hover { filter: brightness(1.2); }
         .bet-action-btn.active-bet { box-shadow: 0 0 0 2px var(--accent); filter: brightness(1.25); }
         /* 槽位激活态（正在选牌） */
@@ -261,7 +270,7 @@
         /* 52张牌通用选牌网格 */
         .cpg-wrap { width: 100%; }
         .cpg-row { display: flex; gap: 3px; margin-bottom: 3px; }
-        .cpg-btn { flex: 1; min-width: 0; height: 42px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: var(--fs-caption); font-weight: bold; line-height: 1; user-select: none; cursor: pointer; white-space: nowrap; transition: opacity 0.12s, filter 0.12s; position: relative; overflow: visible; }
+        .cpg-btn { flex: 1; min-width: 0; height: 42px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: var(--fs-caption); font-weight: bold; line-height: 1; user-select: none; cursor: pointer; white-space: nowrap; transition: opacity 0.12s, filter 0.12s; position: relative; overflow: visible; }
         .cpg-btn:not([data-sel]):not([data-dis]):hover { filter: brightness(1.1); }
         
         ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -269,7 +278,7 @@
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
 
         /* Toast 提示 */
-        .toast-msg { position: fixed; top: 1rem; right: 1rem; z-index: 9999; padding: 0.45rem 0.85rem; border-radius: 0.375rem; font-size: var(--fs-caption); font-weight: bold; pointer-events: none; animation: toast-in 0.18s ease, toast-out 0.3s ease 1.72s forwards; }
+        .toast-msg { position: fixed; top: 1rem; right: 1rem; z-index: 9999; padding: 0.45rem 0.85rem; border-radius: var(--radius-sm); font-size: var(--fs-caption); font-weight: bold; pointer-events: none; animation: toast-in 0.18s ease, toast-out 0.3s ease 1.72s forwards; }
         .toast-error { background: #ef4444; color: white; }
         .toast-warn  { background: #f97316; color: white; }
         .toast-info  { background: #4b5563; color: white; }
@@ -317,7 +326,7 @@
         /* lg：最外大框 */
         .app-container { border-radius: var(--radius-lg); }
         /* md：卡片/面板/翻前建议框（含 zone1 的决策/胜率卡） */
-        .col-left .panel-bg, .col-right .panel-bg, #postFlopPanel .panel-bg,
+        .col-left .panel-bg, .col-right .panel-bg,
         #decisionPanel, #equityPanel, #actionBox, #mathProofPanel, .glass-card,
         #cfgContent, #postHandCard, #postRangeCard, #postTextureCard, #postDebugCard { border-radius: var(--radius-md); }
         /* sm：所有按钮/输入/子选项/牌 chip（统一小圆角，告别 3/4px 杂值） */
@@ -325,8 +334,7 @@
         .card-btn, .suit-btn, .cpg-btn, .bet-action-btn,
         input[type="number"], select,
         #potDirectInput, #effDirectInput,
-        button[onclick="executeEngine()"], #btnGoToPostFlop,
-        #postFlopPanel button[onclick="backToPreFlop()"] { border-radius: var(--radius-sm); }
+        button[onclick="executeEngine()"] { border-radius: var(--radius-sm); }
 
         /* ══════════ 按钮标准（仪器规范）══════════
            默认 = 幽灵（透明+发丝边）；hover = surface-3；
@@ -373,9 +381,9 @@
         /* ══════════ 微交互（design-spells：克制、有目的；纯 CSS）══════════ */
         /* 按钮触感：按下轻微下沉 */
         .tab-btn, .cfg-btn, .pos-btn, .pos-btn-hero, .nav-phase-btn, .bet-action-btn,
-        button[onclick="executeEngine()"], #btnGoToPostFlop { transition: background .15s, border-color .15s, color .15s, box-shadow .15s, transform .08s; }
+        button[onclick="executeEngine()"] { transition: background .15s, border-color .15s, color .15s, box-shadow .15s, transform .08s; }
         .tab-btn:active, .cfg-btn:active, .pos-btn:active, .pos-btn-hero:active, .nav-phase-btn:active,
-        .bet-action-btn:active, button[onclick="executeEngine()"]:active, #btnGoToPostFlop:active { transform: translateY(1px); }
+        .bet-action-btn:active, button[onclick="executeEngine()"]:active { transform: translateY(1px); }
         /* 选牌 chip 选中：轻微弹入（确认反馈） */
         .cpg-btn[data-sel] { animation: chipPop .18s ease; }
         @keyframes chipPop { 0%{ transform: scale(.86); } 60%{ transform: scale(1.04); } 100%{ transform: scale(1); } }
@@ -393,7 +401,7 @@
         .app-container .rounded-md { border-radius: var(--radius-sm); }
         .app-container .rounded-lg, .app-container .rounded-xl, .app-container .rounded-2xl { border-radius: var(--radius-md); }
         /* 卡片/面板维持 md（放在 catch-all 之后，同级 source-order 胜出；#id 更高自然胜） */
-        .col-left .panel-bg, .col-right .panel-bg, #postFlopPanel .panel-bg,
+        .col-left .panel-bg, .col-right .panel-bg,
         #decisionPanel, #equityPanel, #actionBox, #mathProofPanel, .glass-card,
         #cfgContent, #postHandCard, #postRangeCard, #postTextureCard, #postDebugCard { border-radius: var(--radius-md); }
 
@@ -405,9 +413,11 @@
         }
         #decisionPanel { box-shadow: var(--shadow-pop) !important; }
         #decisionMain { background: transparent !important; }
-        /* 翻后次要文字提亮（把过暗的 Tailwind 灰整体提一档） */
-        #postFlopPanel .text-gray-600, #postFlopPanel .text-gray-500 { color: var(--text-muted) !important; }
-        #postFlopPanel .text-gray-400, #postFlopPanel .text-gray-300 { color: var(--text-secondary) !important; }
+        /* 翻后次要文字提亮（把过暗的 Tailwind 灰整体提一档）——融合单页后 rescope 到翻后分析/行动线区 */
+        #postRight .text-gray-600, #postRight .text-gray-500,
+        #postActionZone .text-gray-600, #postActionZone .text-gray-500 { color: var(--text-muted) !important; }
+        #postRight .text-gray-400, #postRight .text-gray-300,
+        #postActionZone .text-gray-400, #postActionZone .text-gray-300 { color: var(--text-secondary) !important; }
 
         /* ══════════ 主行动按钮（类名沿用 .cta-gold，样式已改 accent 蓝实色）══════════ */
         .cta-gold {
@@ -420,19 +430,8 @@
         .cta-gold:hover { background: var(--accent-hover) !important; filter: none; }
         .cta-gold:active { transform: translateY(1px); }
 
-        /* ══════════ UI 配色 第二区 C：Board 区琥珀主题 → 紫色玻璃（纯 CSS，:has 精确命中，不动 JS/HTML）══════════
-           注：四色牌面颜色由 JS 内联设色（renderCardHTML / createCardPickerGrid / renderHeroSlots 的 suitBg/Bdr/Col），
-           无 CSS 钩子且网格与牌面共用同一套值，软化四色需改 JS，已作为待批项报告，本处不动。 */
-        /* Board 面板：去琥珀描边 → 玻璃边（panel-bg 已是毛玻璃底） */
-        #postLeft .panel-bg:has(#boardPicker) { border-color: var(--glass-border) !important; }
-        /* "公共牌 (Board)" 标题标签：琥珀 → 次要文字色 */
-        #postLeft .panel-bg:has(#boardPicker) > div:first-child > span:first-child { color: var(--text-secondary) !important; }
-        /* 内层占位区：琥珀底/边（内联）→ 玻璃 */
-        #postLeft .panel-bg:has(#boardPicker) > div.border { background: var(--glass-bg) !important; border-color: var(--glass-border) !important; }
-        /* F1/F2/F3/T/R 槽位标签：琥珀 → 次要文字色 */
-        #postLeft .panel-bg:has(#boardPicker) span.text-yellow-600 { color: var(--text-secondary) !important; }
-        /* "清空"按钮：亮红 → 柔和红描边 */
-        #postLeft button[onclick="clearBoard()"] { background: transparent !important; border-color: var(--semantic-raise) !important; color: var(--semantic-raise) !important; }
+        /* ══════════ 融合单页(2026-07-14)：清公共牌按钮沿用柔和红描边（原 Board 区 :has 覆盖块已随面板融合删除）══════════ */
+        button[onclick="clearBoard()"] { background: transparent !important; border-color: var(--semantic-raise) !important; color: var(--semantic-raise) !important; }
         /* 选牌网格：选中态 → 靛紫描边（data-sel 由 JS 设，纯 CSS 命中） */
         .cpg-btn[data-sel] { border-color: var(--accent) !important; box-shadow: 0 0 0 1px var(--accent); }
 
@@ -466,7 +465,7 @@
            不动任何 JS/HTML/id/onclick。 */
         @media (max-width: 767.98px) {
             body { padding: 0.25rem; }
-            .app-container { border-radius: 12px; }
+            .app-container { border-radius: var(--radius-md); }
             /* 触控目标放大：位置/场景/配置按钮、选牌 chip、输入框 */
             .pos-btn, .pos-btn-hero { height: 38px; font-size: var(--fs-caption); }
             .tab-btn { padding: 11px 0; font-size: var(--fs-caption); }
@@ -494,25 +493,77 @@
     <div class="app-container">
         <div id="headerBar" class="flex justify-between items-center bg-black/40 px-4 py-2.5 border-b border-white/10 shrink-0" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 -->
-            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">9-Max GTO <span class="text-[10px] px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v1.1</span></h1>
+            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">9-Max GTO <span class="text-[10px] px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v1.2</span></h1>
 
             <!-- 窗口身份色(2026-07-14)：多窗口多桌用 Banner 颜色区分（每标签页独立，
                  sessionStorage 持久 + 浏览器标签 emoji 前缀，一眼分清哪个窗口对哪张桌） -->
             <div id="windowColorChips" style="display:flex;gap:5px;margin-left:8px;align-items:center;"></div>
 
-            <!-- 中组：阶段切换（主题圆点已随 Solver 换肤移除，单一专业主题） -->
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div style="display:flex;gap:8px;">
-                    <button id="navBtnPreflop" class="nav-phase-btn active" onclick="backToPreFlop()">翻前</button>
-                    <button id="navBtnPostflop" class="nav-phase-btn" onclick="goToPostFlop()">翻后</button>
-                </div>
-            </div>
+            <!-- 融合单页(2026-07-14)：翻前/翻后页签移除——两阶段同页展示，无需切换 -->
 
-            <!-- 右组：操作按钮，推到最右 -->
+            <!-- 右组：操作按钮，推到最右（交互梳理R2：主行动「下一手」放最右收尾位） -->
             <div class="flex items-center" style="gap:8px;margin-left:auto;">
-                <button onclick="toggleHelp()" title="使用帮助" class="nav-phase-btn" style="padding:6px 10px;">? 帮助</button>
-                <button onclick="nextHand()" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded shadow">下一手</button>
-                <button onclick="resetAll()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-1 px-3 rounded shadow">↻ 重置</button>
+                <!-- 配置上移(2026-07-14b)：比赛阶段是唯一高频调整项，单独拎出常驻下拉；
+                     其余赛事配置（低频）收进 ⚙ 配置 下拉面板，不再占主界面左列 -->
+                <select id="stageQuickSelect" onchange="onStageQuickChange(this.value)"
+                    title="比赛阶段（高频调整项；其余赛制配置在 ⚙ 配置 里）"
+                    class="text-xs font-bold rounded border border-white/10 bg-black/30 text-white px-1"
+                    style="height:28px;min-height:28px;width:auto;flex:0 0 auto;"></select>
+                <!-- ↑ width:auto/flex:none 覆盖全局 select{width:100%}（否则吃满右组宽度挤扁相邻按钮） -->
+                <div style="position:relative;">
+                    <button onclick="toggleConfig()" id="cfgToggleBtn" title="赛事配置（赛制/桌型/风格/Ante/Vision）" class="nav-phase-btn" style="padding:6px 10px;">⚙ 配置</button>
+                    <div id="cfgDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;z-index:9000;width:min(340px, calc(100vw - 24px));background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:0 12px 32px rgba(0,0,0,0.55);text-align:left;">
+                        <div id="cfgContent" class="p-2 space-y-2">
+                            <div class="flex justify-between items-center border-b border-white/10 pb-1">
+                                <span class="text-xs font-bold" style="color: var(--accent-hover);">⚙ 赛事配置</span>
+                                <span id="cfgSummary" class="text-[10px] text-gray-400 truncate ml-2"></span>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-gray-400 mb-1">赛事类型</div>
+                                <div class="grid grid-cols-3 gap-1" id="grpGameType"></div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-gray-400 mb-1">桌型人数</div>
+                                <div class="grid grid-cols-3 gap-1" id="grpTableSize"></div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-gray-400 mb-1">比赛阶段</div>
+                                <div class="grid grid-cols-4 gap-1" id="grpStage"></div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-gray-400 mb-1">打法风格</div>
+                                <div class="grid grid-cols-3 gap-1" id="grpPlayStyle"></div>
+                            </div>
+                            <div class="flex justify-between items-center pt-1 border-t border-white/10">
+                                <span class="text-[10px] text-yellow-500 font-bold">BB Ante (MTT)</span>
+                                <button id="anteToggle" onclick="toggleAnte()" class="bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded">开启</button>
+                            </div>
+                            <div class="panel-bg p-1.5 rounded flex items-center gap-2 mt-1">
+                                <label class="text-[10px] text-gray-400 shrink-0 w-24">Vision API Key</label>
+                                <input type="password" id="qwenApiKey" placeholder="填入 Qwen API Key"
+                                    class="flex-1 p-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white"
+                                    oninput="localStorage.setItem('vision_api_key', this.value)">
+                            </div>
+                            <div class="panel-bg p-1.5 rounded flex items-center gap-2 mt-1">
+                                <label class="text-[10px] text-gray-400 shrink-0 w-24">Vision 模型</label>
+                                <select id="visionModel" onchange="onVisionModelChange()"
+                                    class="flex-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white px-1">
+                                    <option value="qwen3-vl-flash">Qwen3-VL-Flash（快·默认，已实测）</option>
+                                    <option value="qwen-vl-plus">Qwen-VL-Plus（旧代）</option>
+                                    <option value="qwen-vl-max">Qwen-VL-Max（最强，较慢）</option>
+                                    <option value="qwen3-vl-plus">Qwen3-VL-Plus（新代·强，待实测）</option>
+                                    <option value="custom">自定义</option>
+                                </select>
+                                <input type="text" id="visionModelCustom" placeholder="自定义模型 ID"
+                                    style="display:none;"
+                                    class="flex-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white px-1">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="toggleHelp()" title="使用帮助（Esc 关闭）" class="nav-phase-btn" style="padding:6px 10px;">帮助</button>
+                <button onclick="resetAll()" title="彻底重置全部配置与状态" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-1 px-3 rounded shadow">↻ 重置</button>
+                <button onclick="nextHand()" title="清牌开新一手，保留筹码/位置/赛制（快捷键 N）" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded shadow">下一手</button>
             </div>
         </div>
 
@@ -526,9 +577,9 @@
                 <ol style="margin:0;padding-left:1.2em;color:var(--text-secondary);font-size:14px;line-height:1.85;">
                     <li><b style="color:var(--text-primary);">选底牌</b>：点 52 张牌网格选两张（红/蓝/绿/灰即花色）。</li>
                     <li><b style="color:var(--text-primary);">设位置/筹码/场景</b>：选我的位置、对手位置、Open/vs Raise 等场景。</li>
-                    <li><b style="color:var(--text-primary);">出建议</b>：点 <span style="color:var(--gold);">解析 GTO 指令</span>（或按回车）。</li>
+                    <li><b style="color:var(--text-primary);">出建议</b>：点 <span style="color:var(--gold);">解析 GTO</span>（或按回车）。</li>
                     <li><b style="color:var(--text-primary);">截图识别</b>：<b>Ctrl+V</b> 粘贴牌桌截图自动填入，对照"识别结果核对"卡，点 ✎ 可改。</li>
-                    <li><b style="color:var(--text-primary);">翻后</b>：点 <span style="color:var(--gold);">进入翻后分析</span> 或截图自动进入；点选公共牌自动算胜率；记录对手动作看跟/弃/加建议。</li>
+                    <li><b style="color:var(--text-primary);">翻后</b>：底牌选满后直接在同一网格点选公共牌即自动进入翻后并算胜率（截图也自动进入）；在行动线区记录双方动作看跟/弃/加建议。</li>
                     <li><b style="color:var(--text-primary);">换手/重来</b>：<b>下一手</b>清本手保留配置；<b>重置</b>全部归零。</li>
                     <li><b style="color:var(--text-primary);">快捷键</b>：翻前数字 <b>1-7</b> 切场景；翻后 <b>X</b> 过牌 · <b>C</b> 跟注 · <b>F</b> 弃牌 · <b>B</b> 跳到下注框 · <b>U</b> 撤回；<b>N</b> 下一手；<b>回车</b> 解析/重析（下注框内回车＝直接提交下注）。</li>
                 </ol>
@@ -542,8 +593,8 @@
                 <span style="font-size:12px;color:#6b7280;font-weight:bold;">📷 截图识别</span>
                 <div style="display:flex;gap:10px;align-items:center;">
                     <span id="visionStatus" style="font-size:12px;color:#6b7280;">Ctrl+V 粘贴截图自动识别</span>
-                    <button onclick="pickVisionImage()" style="font-size:10px;color:var(--text-secondary);background:transparent;border:1px solid var(--glass-border);border-radius:6px;cursor:pointer;padding:4px 10px;">📷 选择图片</button>
-                    <button onclick="clearVisionHistory()" style="font-size:10px;color:#ff8589;background:none;border:none;cursor:pointer;padding:0;">清空本局</button>
+                    <button onclick="pickVisionImage()" style="font-size:10px;color:var(--text-secondary);background:transparent;border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">📷 选择图片</button>
+                    <button onclick="clearVisionHistory()" title="清空截图历史与识别结果" style="font-size:10px;color:#ff8589;background:none;border:none;cursor:pointer;padding:0;">清截图</button>
                 </div>
                 <input type="file" id="visionFileInput" accept="image/*" style="display:none">
             </div>
@@ -558,103 +609,90 @@
         <div class="scroll-area">
             
             <div class="col-left flex flex-col gap-1.5 w-full md:w-1/2 shrink-0">
-                
-                <!-- 区域 A: 全局赛事配置 -->
-                <div class="panel-bg rounded shrink-0">
-                    <div class="collapse-btn flex justify-between items-center px-2 py-1.5 bg-black/30" onclick="toggleConfig()">
-                        <span class="text-xs font-bold" style="color: var(--accent-hover);">⚙ 赛事配置</span>
-                        <span id="cfgSummary" class="text-[10px] text-gray-400 hidden flex-1 text-center mx-1 truncate"></span>
-                        <span id="cfgArrow" class="text-xs text-gray-400">▼</span>
-                    </div>
-                    <div id="cfgContent" class="collapse-content p-2 space-y-2" style="max-height: 400px;">
-                        <div>
-                            <div class="text-[10px] text-gray-400 mb-1">赛事类型</div>
-                            <div class="grid grid-cols-3 gap-1" id="grpGameType"></div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] text-gray-400 mb-1">桌型人数</div>
-                            <div class="grid grid-cols-3 gap-1" id="grpTableSize"></div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] text-gray-400 mb-1">比赛阶段</div>
-                            <div class="grid grid-cols-4 gap-1" id="grpStage"></div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] text-gray-400 mb-1">打法风格</div>
-                            <div class="grid grid-cols-3 gap-1" id="grpPlayStyle"></div>
-                        </div>
-                        <div class="flex justify-between items-center pt-1 border-t border-white/10">
-                            <span class="text-[10px] text-yellow-500 font-bold">BB Ante (MTT)</span>
-                            <button id="anteToggle" onclick="toggleAnte()" class="bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded">开启</button>
-                        </div>
-                        <div class="panel-bg p-1.5 rounded flex items-center gap-2 mt-1">
-                            <label class="text-[10px] text-gray-400 shrink-0 w-24">Vision API Key</label>
-                            <input type="password" id="qwenApiKey" placeholder="填入 Qwen API Key"
-                                class="flex-1 p-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white"
-                                oninput="localStorage.setItem('vision_api_key', this.value)">
-                        </div>
-                        <div class="panel-bg p-1.5 rounded flex items-center gap-2 mt-1">
-                            <label class="text-[10px] text-gray-400 shrink-0 w-24">Vision 模型</label>
-                            <select id="visionModel" onchange="onVisionModelChange()"
-                                class="flex-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white px-1">
-                                <option value="qwen3-vl-flash">Qwen3-VL-Flash（快·默认，已实测）</option>
-                                <option value="qwen-vl-plus">Qwen-VL-Plus（旧代）</option>
-                                <option value="qwen-vl-max">Qwen-VL-Max（最强，较慢）</option>
-                                <option value="qwen3-vl-plus">Qwen3-VL-Plus（新代·强，待实测）</option>
-                                <option value="custom">自定义</option>
-                            </select>
-                            <input type="text" id="visionModelCustom" placeholder="自定义模型 ID"
-                                style="display:none;"
-                                class="flex-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white px-1">
-                        </div>
-                    </div>
-                </div>
 
-                <!-- 底牌选择（52张牌直接点选） -->
-                <div class="panel-bg p-2 rounded shrink-0">
+                <!-- 配置上移(2026-07-14b)：赛事配置面板已迁往 header ⚙ 配置 下拉
+                     （低频调整项不占主界面；比赛阶段单独常驻 header 下拉 stageQuickSelect） -->
+
+                <!-- 融合单页(2026-07-14)：牌面输入区——底牌槽 + 公共牌槽 + 共享 52 张网格。
+                     网格常驻，按选牌目标（pickTarget）切换作用：翻前选底牌，翻后选公共牌；
+                     选满两张底牌自动转向公共牌，点击槽位分组可手动切换目标。 -->
+                <div class="panel-bg p-2 rounded shrink-0" id="cardZone">
                     <div class="flex justify-between items-center mb-1.5">
-                        <span class="text-xs font-bold text-gray-400">底牌锁定</span>
+                        <span class="text-xs font-bold text-gray-400">牌面输入</span>
                         <div class="flex items-center gap-2">
-                            <button onclick="clearHeroCards()" class="text-xs font-bold px-2 py-0.5 rounded bg-red-900/40 border border-red-600/50 text-red-400 hover:bg-red-700/50 hover:text-red-200 active:scale-95 transition-all">✕ 清空</button>
+                            <button onclick="clearHeroCards()" class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-900/40 border border-red-600/50 text-red-400 hover:bg-red-700/50 hover:text-red-200 active:scale-95 transition-all">✕ 清底牌</button>
+                            <button onclick="clearBoard()" class="text-[10px] font-bold px-2 py-0.5 rounded border active:scale-95 transition-all">✕ 清公共牌</button>
                             <span id="currentHandStr" class="text-base font-black text-yellow-400 tracking-wider">A♠ Q♥</span>
                         </div>
                     </div>
-                    <!-- 英雄牌大槽位 -->
-                    <div id="heroSlots" class="flex gap-1.5 mb-1.5"></div>
+                    <!-- 槽位行：底牌两槽（左）+ 公共牌五槽（右），点击分组切换选牌目标 -->
+                    <div class="flex gap-1.5 mb-1.5" style="align-items:stretch;">
+                        <div id="heroSlotsBox" class="pick-target-box active" onclick="setPickTarget('hero')">
+                            <div class="pick-target-label">底牌</div>
+                            <div id="heroSlots" class="flex gap-1"></div>
+                        </div>
+                        <div id="boardSlotsBox" class="pick-target-box" onclick="setPickTarget('board')" style="flex:1;">
+                            <div class="pick-target-label">公共牌 · 翻牌｜转牌｜河牌</div>
+                            <div class="flex items-center gap-1">
+                                <div id="boardSlot0" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-[10px] text-gray-500">F1</span></div>
+                                <div id="boardSlot1" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-[10px] text-gray-500">F2</span></div>
+                                <div id="boardSlot2" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-[10px] text-gray-500">F3</span></div>
+                                <div class="w-px self-stretch mx-0.5" style="background:var(--border-primary);"></div>
+                                <div id="boardSlot3" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-[10px] text-gray-500">T</span></div>
+                                <div class="w-px self-stretch mx-0.5" style="background:var(--border-primary);"></div>
+                                <div id="boardSlot4" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-[10px] text-gray-500">R</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 共享 52 张选牌网格（heroPicker 容器沿用，翻前/翻后共用） -->
                     <div id="heroPicker" class="cpg-wrap"></div>
-                    <div id="heroPickerHint" class="text-[10px] text-gray-500 mt-1 text-center h-3"></div>
+                    <div class="flex justify-between items-center mt-1" style="min-height:14px;">
+                        <span id="heroPickerHint" class="text-[10px] text-gray-500"></span>
+                        <span id="boardPickerProgress" class="text-[10px] text-gray-500"></span>
+                    </div>
+                    <div id="streetStatusBar" class="mt-1 px-1 rounded text-[10px] text-gray-400 flex items-center justify-between">
+                        <span id="streetStatusText"></span>
+                        <span id="streetCalcStatus" class="text-[10px] text-gray-500"></span>
+                    </div>
                 </div>
 
-                <!-- 翻前节点 Tabs (7 个) -->
-                <div class="grid grid-cols-7 gap-1 shrink-0 mt-0.5">
-                    <button onclick="switchMode('open')" id="tabOpen" class="tab-btn active">Open</button>
-                    <button onclick="switchMode('vsLimp')" id="tabVsLimp" class="tab-btn">vs Limp</button>
-                    <button onclick="switchMode('faceBet')" id="tabFaceBet" class="tab-btn">vs Raise</button>
-                    <button onclick="switchMode('squeeze')" id="tabSqueeze" class="tab-btn">Squeeze</button>
-                    <button onclick="switchMode('face3b')" id="tabFace3b" class="tab-btn">vs 3B</button>
-                    <button onclick="switchMode('coldCall')" id="tabColdCall" class="tab-btn">Cold Call</button>
-                    <button onclick="switchMode('defend')" id="tabDefend" class="tab-btn">All-in</button>
+                <!-- 融合单页(2026-07-14)：场景与位置区（翻前场景 Tabs + 位置/筹码动态输入 + 解析入口） -->
+                <div class="panel-bg p-2 rounded shrink-0" id="scenarioZone">
+                    <div class="text-xs font-bold text-gray-400 mb-1.5">场景与位置（翻前）</div>
+                    <!-- 翻前节点 Tabs (7 个) -->
+                    <div class="grid grid-cols-7 gap-1 shrink-0">
+                        <button onclick="switchMode('open')" id="tabOpen" class="tab-btn active">Open</button>
+                        <button onclick="switchMode('vsLimp')" id="tabVsLimp" class="tab-btn">vs Limp</button>
+                        <button onclick="switchMode('faceBet')" id="tabFaceBet" class="tab-btn">vs Raise</button>
+                        <button onclick="switchMode('squeeze')" id="tabSqueeze" class="tab-btn">Squeeze</button>
+                        <button onclick="switchMode('face3b')" id="tabFace3b" class="tab-btn">vs 3B</button>
+                        <button onclick="switchMode('coldCall')" id="tabColdCall" class="tab-btn">Cold Call</button>
+                        <button onclick="switchMode('defend')" id="tabDefend" class="tab-btn">All-in</button>
+                    </div>
+
+                    <!-- 动态输入区 -->
+                    <div id="dynamicInputs" class="grid grid-cols-2 gap-1.5 shrink-0 mt-1.5 min-h-[148px]"></div>
+
+                    <button onclick="executeEngine()" title="回车 ↵ 同样触发" class="cta-gold w-full font-black text-base py-2.5 mt-1.5 rounded shadow shrink-0 active:scale-95 transition-transform tracking-wider">
+                        解析 GTO <span style="font-weight:600;opacity:0.65;font-size:var(--fs-caption);">↵</span>
+                    </button>
                 </div>
 
-                <!-- 动态输入区 -->
-                <div id="dynamicInputs" class="grid grid-cols-2 gap-1.5 shrink-0 mt-0.5 min-h-[148px]"></div>
+                <!-- 布局R3(2026-07-14b)：翻前决策移入左列（场景与位置正下方）——
+                     翻前流「牌面 → 场景 → 解析 → 决策」在左列一条竖线完成；
+                     行动线（翻后）移至右列顶部与翻后分析同列。resultPanel id/内部结构零改动 -->
+                <div class="zone-head">决策 · 翻前</div>
+                <div id="resultPanel" class="flex flex-col gap-1.5 w-full invisible shrink-0">
 
-                <button onclick="executeEngine()" class="cta-gold w-full font-black text-base py-2.5 mt-1 rounded shadow shrink-0 active:scale-95 transition-transform tracking-wider">
-                    解析 GTO 指令
-                </button>
-            </div>
-
-            <div id="resultPanel" class="col-right flex flex-col gap-1.5 w-full md:w-1/2 invisible shrink-0 md:h-full">
-                
-                <div id="actionBox" class="flex flex-col items-center justify-center p-2 rounded border-2 text-center shadow-lg flex-1 min-h-0 overflow-hidden">
+                <div id="actionBox" class="flex flex-col items-center justify-center p-2 rounded border-2 text-center shadow-lg flex-1 min-h-[160px] overflow-hidden">
                     <h2 id="actionVerdict" class="text-2xl md:text-3xl font-black mb-1"></h2>
                     <p id="actionLogic" class="text-xs font-medium px-1 text-gray-200 overflow-y-auto"></p>
-                    
+
                     <div id="sizingBox" class="w-full mt-2 hidden shrink-0">
                         <div class="text-[10px] text-gray-400 mb-1">建议尺度</div>
                         <div id="sizingContent" class="text-sm font-bold text-yellow-300"></div>
                     </div>
-                    
+
                     <div id="freqBox" class="w-full max-w-sm mt-2 hidden shrink-0">
                         <div class="flex justify-between text-[10px] font-bold text-gray-300 mb-0.5" id="freqLabels"></div>
                         <div class="freq-bar" id="freqBar"></div>
@@ -688,138 +726,67 @@
                         </div>
                     </div>
                 </div>
-                
-                <button id="btnGoToPostFlop" onclick="goToPostFlop()" class="cta-gold w-full font-black text-sm py-2 mt-1.5 rounded shadow shrink-0 active:scale-95 transition-transform tracking-wider">
-                    进入翻后分析→
-                </button>
+
+                </div>
             </div>
 
-            <!-- ==================== POSTFLOP PANEL ==================== -->
-            <div id="postFlopPanel" class="hidden flex-1 flex flex-col min-h-0 w-full">
-                <!-- 顶部返回条 -->
-                <div class="flex items-center justify-between mb-2 shrink-0 w-full">
-                    <button onclick="backToPreFlop()" class="bg-black/30 hover:bg-black/50 text-gray-300 hover:text-white text-xs font-bold py-1.5 px-3.5 rounded border border-white/10 flex items-center gap-1 active:scale-95 transition-all">
-                        ← 返回翻前
-                    </button>
-                </div>
-                
-                <!-- 两栏布局 -->
-                <div class="flex-1 flex flex-col md:flex-row gap-2 md:gap-4 min-h-0 w-full">
-                    <!-- 左栏 -->
-                    <div id="postLeft" class="col-left flex flex-col gap-1.5 w-full md:w-1/2 shrink-0">
+            <!-- 布局R3(2026-07-14b)：输出列改为纯翻后流——行动线（录入）在上、分析（结果）在下，
+                 视线自上而下：录完行动即在正下方看决策。postActionZone/postRight 的 id/内部结构全部保留 -->
+            <div class="col-right flex flex-col gap-1.5 w-full md:w-1/2 shrink-0">
 
-                        <!-- 底牌显示行（进入翻后后显示英雄底牌） -->
-                        <div class="panel-bg px-2 py-1.5 rounded shrink-0 flex items-center gap-2">
-                            <span class="text-[10px] text-gray-400 shrink-0">我的底牌：</span>
-                            <div id="postHeroCard1Display" class="w-8 h-11 rounded overflow-hidden"></div>
-                            <div id="postHeroCard2Display" class="w-8 h-11 rounded overflow-hidden"></div>
+                <div class="zone-head">行动线 · 翻后</div>
+                <div class="panel-bg p-2 rounded shrink-0 flex flex-col gap-1.5" id="postActionZone" style="opacity:0.55;transition:opacity .2s;">
+                    <div class="flex justify-between items-center gap-2">
+                        <div id="actionZoneHint" class="text-[10px] text-gray-500 flex-1">选满 3 张公共牌后，在此录入双方行动并出翻后决策</div>
+                        <button onclick="clearStreetActions()" title="只清除当前街道的行动记录" class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-400 hover:bg-orange-700/50 active:scale-95 transition-all shrink-0 ml-auto">↺ 清本街</button>
+                    </div>
+
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1">
+                            <label class="text-[10px] text-yellow-500 block mb-1">底池 (BB)</label>
+                            <input type="number" id="potDirectInput" min="0.5" step="0.5" value="0"
+                                class="p-1 text-center font-bold text-sm h-[28px] w-full text-yellow-400"
+                                oninput="onPotDirectChange(this.value)">
                         </div>
-
-                        <!-- 公共牌 Panel（第二阶段：槽位标签 + 阶段提示 + 快捷按钮） -->
-                        <div class="panel-bg p-2 rounded shrink-0">
-                            <div class="flex justify-between items-center mb-1.5">
-                                <span class="text-xs font-bold text-yellow-400">公共牌 (Board)</span>
-                                <button onclick="clearBoard()" class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-900/40 border border-red-600/50 text-red-400 hover:bg-red-700/50 hover:text-red-200 active:scale-95 transition-all">✕ 清空</button>
-                            </div>
-
-                            <!-- 公共牌槽位（每张牌下方显示位置标签） -->
-                            <div class="flex items-center gap-1.5 justify-center p-2 rounded border" style="background:var(--bg-deep);border-color:var(--glass-border);">
-                                <div class="flex gap-1">
-                                    <div class="flex flex-col items-center gap-0.5">
-                                        <div id="boardSlot0" class="w-10 h-14 rounded border border-dashed border-yellow-700/50 flex items-center justify-center cursor-pointer hover:border-yellow-500/70 hover:bg-yellow-900/10 transition-colors shrink-0"></div>
-                                        <span class="text-[10px] text-yellow-600 font-medium">F1</span>
-                                    </div>
-                                    <div class="flex flex-col items-center gap-0.5">
-                                        <div id="boardSlot1" class="w-10 h-14 rounded border border-dashed border-yellow-700/50 flex items-center justify-center cursor-pointer hover:border-yellow-500/70 hover:bg-yellow-900/10 transition-colors shrink-0"></div>
-                                        <span class="text-[10px] text-yellow-600 font-medium">F2</span>
-                                    </div>
-                                    <div class="flex flex-col items-center gap-0.5">
-                                        <div id="boardSlot2" class="w-10 h-14 rounded border border-dashed border-yellow-700/50 flex items-center justify-center cursor-pointer hover:border-yellow-500/70 hover:bg-yellow-900/10 transition-colors shrink-0"></div>
-                                        <span class="text-[10px] text-yellow-600 font-medium">F3</span>
-                                    </div>
-                                </div>
-                                <div class="w-px self-stretch bg-yellow-700/30 mx-0.5"></div>
-                                <div class="flex flex-col items-center gap-0.5">
-                                    <div id="boardSlot3" class="w-10 h-14 rounded border border-dashed border-yellow-700/50 flex items-center justify-center cursor-pointer hover:border-yellow-500/70 hover:bg-yellow-900/10 transition-colors shrink-0"></div>
-                                    <span class="text-[10px] text-yellow-600 font-medium">T</span>
-                                </div>
-                                <div class="w-px self-stretch bg-yellow-700/30 mx-0.5"></div>
-                                <div class="flex flex-col items-center gap-0.5">
-                                    <div id="boardSlot4" class="w-10 h-14 rounded border border-dashed border-yellow-700/50 flex items-center justify-center cursor-pointer hover:border-yellow-500/70 hover:bg-yellow-900/10 transition-colors shrink-0"></div>
-                                    <span class="text-[10px] text-yellow-600 font-medium">R</span>
-                                </div>
-                            </div>
-
-                            <!-- 52张牌选牌网格（直接嵌入，无弹窗） -->
-                            <div id="boardPickerProgress" class="text-[10px] text-gray-500 mt-1.5 mb-0.5 text-center h-3"></div>
-                            <div id="boardPicker" class="cpg-wrap"></div>
-
-                            <!-- 阶段状态提示 + 计算中状态 -->
-                            <div id="streetStatusBar" class="mt-1.5 px-1 py-1 rounded text-[10px] text-gray-400 flex items-center justify-between">
-                                <span id="streetStatusText"></span>
-                                <span id="streetCalcStatus" class="text-[10px] text-gray-500"></span>
-                            </div>
-                        </div>
-
-                        <!-- 底池与有效筹码（常驻输入） -->
-                        <div class="panel-bg p-2 rounded shrink-0">
-                            <div class="flex gap-2 items-end">
-                                <div class="flex-1">
-                                    <label class="text-[10px] text-yellow-500 block mb-1">底池 (BB)</label>
-                                    <input type="number" id="potDirectInput" min="0.5" step="0.5" value="0"
-                                        class="p-1 text-center font-bold text-sm h-[28px] w-full text-yellow-400"
-                                        oninput="onPotDirectChange(this.value)">
-                                </div>
-                                <div class="flex-1">
-                                    <label class="text-[10px] text-gray-400 block mb-1">有效筹码 (BB)</label>
-                                    <input type="number" id="effDirectInput" min="0.5" step="0.5" value="0"
-                                        class="p-1 text-center text-sm h-[28px] w-full"
-                                        oninput="onEffDirectChange(this.value)">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 下注信息 Panel（第二阶段：动态渲染，保留旧 sub-panel id 供兼容） -->
-                        <div class="panel-bg p-2 rounded shrink-0 flex flex-col gap-1.5">
-                            <div class="flex justify-between items-center">
-                                <div class="text-xs font-bold text-gray-400">下注与应对 (Betting)</div>
-                                <button onclick="clearStreetActions()" class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-400 hover:bg-orange-700/50 active:scale-95 transition-all">↺ 清空动作</button>
-                            </div>
-
-                            <!-- 隐藏的旧兼容元素（potInfoFlop/Turn/River 供 updatePotUI 使用） -->
-                            <span id="potInfoFlop" class="hidden"></span>
-                            <span id="potInfoTurn" class="hidden"></span>
-                            <span id="potInfoRiver" class="hidden"></span>
-                            <!-- 旧 betPanel 元素保留但隐藏，防止 checkStreetAnalysis 中的 classList 操作报错 -->
-                            <div id="betPanelFlop" class="hidden"></div>
-                            <div id="betPanelTurn" class="hidden"></div>
-                            <div id="betPanelRiver" class="hidden"></div>
-
-                            <!-- 动态下注区（由 renderBettingPanel 填充） -->
-                            <div id="postBettingArea"></div>
-
-                            <!-- 动作摘要（由 renderActionSummary 填充） -->
-                            <div id="actionSummaryArea"></div>
+                        <div class="flex-1">
+                            <label class="text-[10px] text-gray-400 block mb-1">有效筹码 (BB)</label>
+                            <input type="number" id="effDirectInput" min="0.5" step="0.5" value="0"
+                                class="p-1 text-center text-sm h-[28px] w-full"
+                                oninput="onEffDirectChange(this.value)">
                         </div>
                     </div>
-                    
-                    <!-- 右栏 -->
-                    <div id="postRight" class="col-right flex flex-col gap-1.5 w-full md:w-1/2 shrink-0 md:h-full">
-                        <!-- SPR仅在决策面板中显示，此处隐藏 -->
-                        <div id="postRightSummary" class="hidden">
-                            <span id="sumSpr">0.0</span>
-                        </div>
-                        <!-- 分析结果区域（牌面分析，由 JS 动态填充） -->
-                        <div id="postRightContent" class="flex flex-col gap-1.5 w-full min-h-0">
-                            <!-- 计算中 loading 条 -->
-                            <div id="analysisLoading" class="hidden text-center text-gray-400 text-sm py-3 panel-bg rounded">
-                                ⏳ 正在计算胜率...
-                            </div>
+
+                    <!-- 隐藏的旧兼容元素（potInfoFlop/Turn/River 供 updatePotUI 使用） -->
+                    <span id="potInfoFlop" class="hidden"></span>
+                    <span id="potInfoTurn" class="hidden"></span>
+                    <span id="potInfoRiver" class="hidden"></span>
+                    <div id="betPanelFlop" class="hidden"></div>
+                    <div id="betPanelTurn" class="hidden"></div>
+                    <div id="betPanelRiver" class="hidden"></div>
+
+                    <!-- 动态下注区（由 renderBettingPanel 填充） -->
+                    <div id="postBettingArea"></div>
+
+                    <!-- 动作摘要（由 renderActionSummary 填充） -->
+                    <div id="actionSummaryArea"></div>
+                </div>
+
+                <div class="zone-head">分析 · 翻后</div>
+                <!-- 翻后分析区（原翻后页右栏迁移，id/结构保留；initPostRightCards 仍重建 postRightContent） -->
+                <div id="postRight" class="flex flex-col gap-1.5 w-full shrink-0">
+                    <!-- SPR仅在决策面板中显示，此处隐藏 -->
+                    <div id="postRightSummary" class="hidden">
+                        <span id="sumSpr">0.0</span>
+                    </div>
+                    <!-- 分析结果区域（牌面分析，由 JS 动态填充） -->
+                    <div id="postRightContent" class="flex flex-col gap-1.5 w-full min-h-0">
+                        <!-- 计算中 loading 条 -->
+                        <div id="analysisLoading" class="hidden text-center text-gray-400 text-sm py-3 panel-bg rounded">
+                            ⏳ 正在计算胜率...
                         </div>
                     </div>
                 </div>
             </div>
-
 
         </div>
     </div>
@@ -913,17 +880,32 @@
             updateCfgSummary();
         }
 
+        // 配置上移(2026-07-14b)：赛事配置从左列面板改为 header ⚙ 配置 下拉，
+        // toggleConfig 语义变为开/关下拉（旧 collapse/cfg_collapsed 记忆机制随之废弃）
         function toggleConfig() {
-            const c = document.getElementById('cfgContent');
-            const a = document.getElementById('cfgArrow');
-            const s = document.getElementById('cfgSummary');
-            c.classList.toggle('collapsed');
-            const isCollapsed = c.classList.contains('collapsed');
-            a.innerText = isCollapsed ? '▶' : '▼';
-            if (s) {
-                if (isCollapsed) { updateCfgSummary(); s.classList.remove('hidden'); }
-                else { s.classList.add('hidden'); }
-            }
+            const d = document.getElementById('cfgDropdown');
+            if (!d) return;
+            const opening = d.style.display === 'none';
+            d.style.display = opening ? 'block' : 'none';
+            if (opening) updateCfgSummary();
+        }
+        // 点击下拉外部区域自动关闭
+        document.addEventListener('click', (e) => {
+            const d = document.getElementById('cfgDropdown');
+            if (!d || d.style.display === 'none') return;
+            if (!e.target.closest('#cfgDropdown') && !e.target.closest('#cfgToggleBtn')) d.style.display = 'none';
+        });
+        // 配置上移(2026-07-14b)：header 常驻比赛阶段下拉（高频调整项），与配置面板内 grpStage 双向同步
+        function onStageQuickChange(v) {
+            gameConfig.stage = v;
+            renderCfgGroup('grpStage', stageOpts, 'stage');
+            onConfigChange();
+        }
+        function initStageQuickSelect() {
+            const sel = document.getElementById('stageQuickSelect');
+            if (!sel) return;
+            sel.innerHTML = stageOpts.map(o => `<option value="${o.val}">${o.label}</option>`).join('');
+            sel.value = gameConfig.stage;
         }
 
         function toggleAnte() {
@@ -950,6 +932,9 @@
             const psLabel = gameConfig.playStyle === 'tight' ? ' · 紧' : gameConfig.playStyle === 'loose' ? ' · 松' : '';
             const el = document.getElementById('cfgSummary');
             if (el) el.innerText = `${gt} · ${ts} · ${st}${ante}${psLabel}`;
+            // 配置上移(2026-07-14b)：同步 header 阶段快捷下拉（配置面板内改 stage 时保持一致）
+            const sq = document.getElementById('stageQuickSelect');
+            if (sq && sq.value !== gameConfig.stage) sq.value = gameConfig.stage;
         }
 
         // ============================================================
@@ -1639,37 +1624,115 @@
             return wrap;
         }
 
-        /** 渲染翻前底牌选择网格（heroPicker 容器） */
-        function renderHeroPicker() {
+        // ═══ 融合单页(2026-07-14)：共享 52 张选牌网格 ═══
+        // 一个网格服务两阶段：pickTarget='hero' 选底牌 / 'board' 选公共牌。
+        // 选满两张底牌自动转向公共牌；点击槽位分组（heroSlotsBox/boardSlotsBox）手动切换；
+        // 点击已选牌 = 取消（自动路由回其归属目标）。首次选公共牌自动 goToPostFlop()。
+        let pickTarget = 'hero';
+        function setPickTarget(t) {
+            if (t !== 'hero' && t !== 'board') return;
+            if (pickTarget === t) return;
+            pickTarget = t;
+            renderSharedPicker();
+        }
+        function updatePickTargetBoxes() {
+            const hb = document.getElementById('heroSlotsBox');
+            const bb = document.getElementById('boardSlotsBox');
+            if (hb) hb.classList.toggle('active', pickTarget === 'hero');
+            if (bb) bb.classList.toggle('active', pickTarget === 'board');
+        }
+        // postState 声明在本函数首个调用点之后（TDZ），初始渲染时兜底空数组
+        function getBoardSafe() {
+            try { return postState.board.filter(c => c !== null); } catch (e) { return []; }
+        }
+        function renderSharedPicker() {
             const container = document.getElementById('heroPicker');
             if (!container) return;
             container.innerHTML = '';
-            // 过滤掉 null，支持 0/1/2 张的中间状态
-            const selCards = [heroCard1, heroCard2].filter(Boolean);
+            const heroSel = [heroCard1, heroCard2].filter(Boolean);
+            const boardSel = getBoardSafe();
+            const allSel = [...heroSel, ...boardSel];
             const grid = createCardPickerGrid({
-                selectedCards: selCards,
+                selectedCards: allSel,
                 disabledCards: [],
-                maxSelect: 2,
-                autoReplace: true,
+                maxSelect: 52,           // 容量由路由逻辑控制（底牌2 + 公共牌5）
+                autoReplace: false,
                 onSelect: (cards) => {
-                    if (cards.length === 2) {
-                        cards.sort((a, b) => RANK_ORDER[b[0]] - RANK_ORDER[a[0]]);
-                        heroCard1 = cards[0];
-                        heroCard2 = cards[1];
-                        syncHeroCardCompat();
-                    } else if (cards.length === 1) {
-                        heroCard1 = cards[0];
-                        heroCard2 = null;
+                    // diff 出本次点击的牌：多了=新选（按 pickTarget 路由），少了=取消（按归属路由）
+                    if (cards.length > allSel.length) {
+                        const added = cards.find(c => !allSel.includes(c));
+                        handleSharedPick(added, boardSel);
                     } else {
-                        heroCard1 = null;
-                        heroCard2 = null;
+                        const removed = allSel.find(c => !cards.includes(c));
+                        handleSharedUnpick(removed);
                     }
-                    renderHeroSlots();
-                    updateHeroPickerHint();
-                    if (heroCard1) updateHandStr();
                 }
             });
             container.appendChild(grid);
+            updatePickTargetBoxes();
+            updateHeroPickerHint();
+            try { updateBoardPickerProgress(); } catch (e) {}
+        }
+        function handleSharedPick(card, boardSel) {
+            if (!card) return;
+            if (pickTarget === 'hero') {
+                const wasFull = !!(heroCard1 && heroCard2);
+                const cards = [heroCard1, heroCard2].filter(Boolean);
+                if (wasFull) cards.shift(); // 与旧 autoReplace 语义一致：满两张时弹出最旧一张
+                cards.push(card);
+                if (cards.length === 2) {
+                    cards.sort((a, b) => RANK_ORDER[b[0]] - RANK_ORDER[a[0]]);
+                    heroCard1 = cards[0]; heroCard2 = cards[1];
+                    syncHeroCardCompat();
+                } else {
+                    heroCard1 = cards[0] || null; heroCard2 = null;
+                }
+                renderHeroSlots();
+                if (heroCard1) updateHandStr();
+                // 已进翻后时同步底牌并重算（旧流程需重进翻后，融合后即时生效）
+                try {
+                    if (postState._entered && heroCard1 && heroCard2) {
+                        postState.heroCards = [heroCard1, heroCard2];
+                        autoTriggerAnalysis();
+                    }
+                } catch (e) {}
+                // 首次选满两张自动转向公共牌；替换单张时停留在底牌目标
+                if (!wasFull && heroCard1 && heroCard2) pickTarget = 'board';
+                renderSharedPicker();
+            } else {
+                if (!heroCard1 || !heroCard2) {
+                    showToast('请先选满两张底牌', 'warn');
+                    renderSharedPicker();
+                    return;
+                }
+                if (boardSel.length >= 5) {
+                    showToast('公共牌已满 5 张，点击已选牌可移除', 'warn');
+                    renderSharedPicker();
+                    return;
+                }
+                postState.board[boardSel.length] = card; // board 前缀压缩，追加第一个空位
+                if (!postState._entered) goToPostFlop(); // 首次选公共牌自动进翻后（初始化底池/IP-OOP/分析卡）
+                renderBoard();
+                renderSharedPicker();
+                autoTriggerAnalysis();
+            }
+        }
+        function handleSharedUnpick(card) {
+            if (!card) return;
+            if (card === heroCard1 || card === heroCard2) {
+                pickTarget = 'hero';
+                deselectHeroCard(card); // 内部重渲共享网格
+                return;
+            }
+            const idx = getBoardSafe().length ? postState.board.indexOf(card) : -1;
+            if (idx >= 0) {
+                pickTarget = 'board';
+                removeBoardCard(idx);   // 内部 renderBoardPicker(→共享网格) + renderBoard + autoTrigger
+            }
+        }
+        /** 渲染翻前底牌选择网格（融合后为共享网格的兼容入口，旧调用点全部沿用） */
+        function renderHeroPicker() {
+            renderSharedPicker();
             renderHeroSlots();
             updateHandStr();
         }
@@ -1684,10 +1747,11 @@
             const suitBg  = { s: '#2d2c3a', h: '#4a2832', d: '#21384f', c: '#244a37' };
             const suitBdr = { s: '#4d4b62', h: '#7a4453', d: '#3d5a78', c: '#3c6b51' };
 
+            // 融合单页(2026-07-14)：底牌槽与公共牌槽统一 40×56（同一行等高排布）
             const makeSlot = (card, label, deselFn) => {
                 const div = document.createElement('div');
-                div.style.flex = '1';
-                div.style.height = '80px';
+                div.style.width = '40px';
+                div.style.height = '56px';
                 div.style.borderRadius = 'var(--radius-sm)';
                 div.style.display = 'flex';
                 div.style.alignItems = 'center';
@@ -1696,6 +1760,7 @@
                 div.style.userSelect = 'none';
                 div.style.transition = 'opacity 0.15s, filter 0.15s';
                 div.style.position = 'relative';
+                div.style.flexShrink = '0';
 
                 if (card) {
                     const suit = card[1];
@@ -1704,9 +1769,9 @@
                     div.style.border = `2px solid ${suitBdr[suit] || '#4a4a6a'}`;
                     div.style.cursor = 'pointer';
                     div.innerHTML = `
-                        <span style="font-size:28px;font-weight:900;color:white;line-height:1">${rank}</span>
-                        <span style="font-size:20px;color:white;line-height:1;margin-top:2px">${SUIT_SYMBOLS[suit]}</span>
-                        <span style="position:absolute;top:3px;right:5px;font-size:10px;color:rgba(255,255,255,0.5);line-height:1">×</span>`;
+                        <span style="font-size:16px;font-weight:900;color:white;line-height:1">${rank}</span>
+                        <span style="font-size:12px;color:white;line-height:1;margin-top:2px">${SUIT_SYMBOLS[suit]}</span>
+                        <span style="position:absolute;top:2px;right:3px;font-size:10px;color:rgba(255,255,255,0.5);line-height:1">×</span>`;
                     div.title = `${rank}${SUIT_SYMBOLS[suit]}（点击取消选中）`;
                     div.addEventListener('mouseenter', () => { div.style.filter = 'brightness(1.15)'; });
                     div.addEventListener('mouseleave', () => { div.style.filter = ''; });
@@ -1715,14 +1780,14 @@
                     div.style.backgroundColor = 'transparent';
                     div.style.border = '2px dashed rgba(255,255,255,0.15)';
                     div.style.cursor = 'default';
-                    div.innerHTML = `<span style="font-size:10px;color:rgba(255,255,255,0.3);text-align:center;line-height:1.4">${label}</span>`;
+                    div.innerHTML = `<span style="font-size:10px;color:rgba(255,255,255,0.35);text-align:center;line-height:1.3">${label}</span>`;
                 }
                 return div;
             };
 
             wrap.innerHTML = '';
-            wrap.appendChild(makeSlot(heroCard1, '手牌 1\n点击网格选牌', () => deselectHeroCard(heroCard1)));
-            wrap.appendChild(makeSlot(heroCard2, '手牌 2\n点击网格选牌', () => deselectHeroCard(heroCard2)));
+            wrap.appendChild(makeSlot(heroCard1, 'H1', () => deselectHeroCard(heroCard1)));
+            wrap.appendChild(makeSlot(heroCard2, 'H2', () => deselectHeroCard(heroCard2)));
         }
 
         /**
@@ -1737,6 +1802,7 @@
             } else if (heroCard2 === cardStr) {
                 heroCard2 = null;
             }
+            pickTarget = 'hero'; // 融合单页：取消底牌后网格回到选底牌
             renderHeroPicker();   // 重建网格（同步 currentSelected）
             renderHeroSlots();
             updateHeroPickerHint();
@@ -1748,23 +1814,28 @@
             heroCard2 = null;
             val1 = ''; val2 = '';
             isSuited = false;
+            pickTarget = 'hero'; // 融合单页
             renderHeroPicker();
             renderHeroSlots();
             updateHandStr();
         }
 
-        // 翻前选牌完成后的提示信息
+        // 选牌提示（融合单页：提示当前选牌目标与进度）
         function updateHeroPickerHint() {
             const el = document.getElementById('heroPickerHint');
             if (!el) return;
-            if (heroCard1 && heroCard2) {
-                const h1 = `${heroCard1[0]}${SUIT_SYMBOLS[heroCard1[1]]}`;
-                const h2 = `${heroCard2[0]}${SUIT_SYMBOLS[heroCard2[1]]}`;
-                el.textContent = `已选 ${h1} ${h2}，点击"进入翻后分析"继续`;
-                el.className = 'text-[10px] text-yellow-400 mt-1 text-center h-3';
+            if (!heroCard1) {
+                el.textContent = '点击网格选两张底牌';
+                el.className = 'text-[10px] text-gray-500';
+            } else if (!heroCard2) {
+                el.textContent = '再选一张底牌';
+                el.className = 'text-[10px] text-yellow-400';
+            } else if (pickTarget === 'board') {
+                el.textContent = '底牌已锁定 · 网格现在选公共牌（点「底牌」分组可改）';
+                el.className = 'text-[10px] text-gray-500';
             } else {
-                el.textContent = '';
-                el.className = 'text-[10px] text-gray-500 mt-1 text-center h-3';
+                el.textContent = '底牌目标：点新牌替换 · 点「公共牌」分组选翻牌';
+                el.className = 'text-[10px] text-gray-500';
             }
         }
 
@@ -1783,7 +1854,7 @@
             ];
             const m = msgs[count] || msgs[0];
             el.textContent = m.text;
-            el.className = `text-[10px] font-medium mt-1.5 mb-0.5 text-center h-3 ${m.cls}`;
+            el.className = `text-[10px] font-medium ${m.cls}`; // 融合单页：改为状态行右侧 span，去居中/边距
         }
 
         // 空壳：analysisBtn 已删除，保留函数避免旧调用报错
@@ -1887,8 +1958,8 @@
             const btnBase = isHero ? 'pos-btn-hero' : 'pos-btn';
             // 容器背景色区分英雄/对手
             const wrapStyle = isHero
-                ? 'background:rgba(127,29,29,0.3);border:1px solid #991b1b;border-radius:6px;padding:5px;'
-                : 'background:rgba(20,83,45,0.3);border:1px solid #16a34a;border-radius:6px;padding:5px;';
+                ? 'background:rgba(127,29,29,0.3);border:1px solid #991b1b;border-radius:var(--radius-sm);padding:5px;'
+                : 'background:rgba(20,83,45,0.3);border:1px solid #16a34a;border-radius:var(--radius-sm);padding:5px;';
             let html = `<div style="${wrapStyle}"><div class="flex gap-1" id="${containerId}_grp">`;
             positions.forEach(p => {
                 const active = p === currentVal;
@@ -1915,6 +1986,16 @@
                     const base = btn.classList.contains('pos-btn-hero') ? 'pos-btn-hero' : 'pos-btn';
                     btn.className = btn.dataset.val === val ? `${base} active` : base;
                 });
+            }
+            // 翻前↔翻后同步(2026-07-14b)：已进翻后时，翻前改对手位置即时刷新
+            // 翻后主对手选择器；已有胜率结果则重跑分析（对手范围随位置变化）
+            if (id === 'posVillain') {
+                try {
+                    if (postState && postState._entered) {
+                        renderPostVillainPosSelector();
+                        if (postState.equityResult && typeof checkStreetAnalysis === 'function') checkStreetAnalysis();
+                    }
+                } catch (e) { /* postState 未初始化（TDZ）时静默跳过 */ }
             }
         }
 
@@ -2163,11 +2244,10 @@
             postState.decisionResult   = null;
             postState.potTracker       = { preflopPot: 0, currentPot: 0, effStack: 0, spr: 0, actions: [] };
 
-            // ── 面板切回翻前 ──
-            const postFlop = document.getElementById('postFlopPanel');
-            if (postFlop) postFlop.classList.add('hidden');
-            const preFlopLeft = document.querySelector('.scroll-area > .col-left');
-            if (preFlopLeft) preFlopLeft.classList.remove('hidden');
+            // ── 融合单页(2026-07-14)：无页面切换，重置阶段标记 + 刷新共享网格 ──
+            postState._entered = false;
+            pickTarget = 'hero';
+            renderBoardPicker(); // 共享网格去掉旧公共牌选中态（renderHeroPicker 在 board 重置前已跑过一次）
 
             // ── 清空翻后 UI（槽位 + 选牌网格 + 行动区 + 结果区）──
             for (let i = 0; i < 5; i++) {
@@ -2232,14 +2312,16 @@
         function renderWindowColorChips(activeKey) {
             const host = document.getElementById('windowColorChips');
             if (!host) return;
-            let html = `<span style="font-size:var(--fs-micro);color:var(--text-muted);margin-right:2px;">本窗口</span>`;
+            // 布局R3(2026-07-14b)：「本窗口」文字标签删除（色点自明）；
+            // 「无」从透明×改为深灰实心圆点，与彩色点同一视觉语言（仅色点外观，不染 banner）
+            let html = '';
             Object.entries(WINDOW_COLORS).forEach(([k, v]) => {
                 const on = k === activeKey;
-                html += `<button onclick="applyWindowColor('${k}')" title="窗口标记：${v.name}${v.e ? '（浏览器标签显示 ' + v.e + '）' : ''}"
+                const dotColor = v.c || '#3a4150';
+                html += `<button onclick="applyWindowColor('${k}')" title="窗口标记：${v.name}${v.e ? '（浏览器标签显示 ' + v.e + '）' : '（清除窗口颜色标记）'}"
                     style="width:18px;height:18px;border-radius:50%;cursor:pointer;transition:0.12s;
-                    background:${v.c || 'transparent'};
-                    border:2px solid ${on ? '#fff' : (v.c ? v.c + '66' : 'var(--border-primary)')};
-                    ${!v.c ? 'position:relative;' : ''}">${!v.c ? '<span style="color:var(--text-muted);font-size:9px;line-height:1;">×</span>' : ''}</button>`;
+                    background:${dotColor};
+                    border:2px solid ${on ? '#fff' : dotColor + '66'};"></button>`;
             });
             host.innerHTML = html;
         }
@@ -2265,11 +2347,11 @@
             postState._pendingVillainBet = null; // O3：下一手清 Vision 预填
             postState.extraVillains = []; // 多人底池(2026-07-14)：下一手清额外对手
 
-            // 切回翻前界面（保留 currentMode，不 resetAll）
-            const postFlop = document.getElementById('postFlopPanel');
-            if (postFlop) postFlop.classList.add('hidden');
-            const preFlopLeft = document.querySelector('.scroll-area > .col-left');
-            if (preFlopLeft) preFlopLeft.classList.remove('hidden');
+            // 融合单页(2026-07-14)：无页面切换，重置阶段标记 + 刷新公共牌槽/共享网格
+            postState._entered = false;
+            pickTarget = 'hero';
+            renderBoard();        // 清空公共牌槽位显示（含行动线区占位提示恢复）
+            renderBoardPicker();  // 共享网格去掉旧公共牌选中态
             // B6(2026-07)：goToPostFlop 给 resultPanel 加过 'hidden'（display:none），
             // 此前这里只加 'invisible' 不摘 'hidden' → 右栏彻底消失：
             // ① .col-left 在 md 断点 flex:1 独占整行（"页面占满全屏"）；
@@ -2566,6 +2648,13 @@
             // B6 防御(2026-07)：无论从哪条路径回到翻前，解析时兜底摘掉 resultPanel 的 'hidden'，
             // 确保右栏容器可显示（可见性仍由各分支的 invisible 控制）
             document.getElementById('resultPanel').classList.remove('hidden');
+
+            // 融合单页(2026-07-14)：翻前解析通过校验后，共享网格自动转向公共牌目标
+            //（30秒流程：解析完的下一步就是点公共牌进翻后；点「底牌」分组可随时切回）
+            if (heroCard1 && heroCard2 && pickTarget !== 'board') {
+                pickTarget = 'board';
+                renderSharedPicker();
+            }
 
             if (val1 === val2 && isSuited) { alert("对子不能同花。"); return; }
             const rO = {'A':14,'K':13,'Q':12,'J':11,'T':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2};
@@ -3427,7 +3516,11 @@
         renderHeroPicker();
         syncHeroCardCompat();
         switchMode('open');
+        initStageQuickSelect(); // 配置上移(2026-07-14b)：header 阶段下拉填充
         updateCfgSummary();
+
+        // 配置上移(2026-07-14b)：旧「左列配置面板默认折叠」逻辑已废弃——
+        // 配置现为 header 下拉（cfgDropdown 默认 display:none，即默认收起）
 
         // ── 回车键快捷触发解析 ──────────────────────────────
         // 翻前页面（col-left 可见）→ executeEngine；翻后页面 → reAnalyze
@@ -3439,8 +3532,9 @@
             // B4(2026-07)：下注框内回车=提交下注（由输入框内联 onkeydown 处理），不触发 reAnalyze
             //（否则重渲下注面板会清掉刚输入的金额）
             if (e.target.id === 'heroBetInput' || e.target.id === 'villainBetInput') return;
-            const isPostflop = document.getElementById('postFlopPanel') &&
-                !document.getElementById('postFlopPanel').classList.contains('hidden');
+            // 融合单页(2026-07-14)：阶段判定数据驱动——公共牌满 3 张即翻后
+            let isPostflop = false;
+            try { isPostflop = postState.board.filter(c => c !== null).length >= 3; } catch (err) {}
             if (isPostflop) {
                 if (typeof reAnalyze === 'function') reAnalyze();
             } else {
@@ -3489,8 +3583,9 @@
             }
             const k = e.key.toLowerCase();
             if (k === 'n') { e.preventDefault(); nextHand(); return; }
-            const isPostflop = document.getElementById('postFlopPanel') &&
-                !document.getElementById('postFlopPanel').classList.contains('hidden');
+            // 融合单页(2026-07-14)：阶段判定数据驱动——公共牌满 3 张即翻后
+            let isPostflop = false;
+            try { isPostflop = postState.board.filter(c => c !== null).length >= 3; } catch (err) {}
             if (!isPostflop) {
                 const modes = ['open', 'vsLimp', 'faceBet', 'squeeze', 'face3b', 'coldCall', 'defend'];
                 const n = parseInt(e.key, 10);
@@ -3505,6 +3600,7 @@
         // ============================================================
         
         let postState = {
+            _entered: false,  // 融合单页(2026-07-14)：翻后状态是否已初始化（goToPostFlop 置位）
             heroCards: [],
             board: [null, null, null, null, null],
             activeSlot: -1,
@@ -4119,6 +4215,7 @@
             // 直接使用用户在选牌网格中选定的具体底牌
             postState.heroCards = [heroCard1, heroCard2];
             postState.isAnalyzing = false;
+            const _firstEntry = !postState._entered; // 翻前↔翻后同步(2026-07-14b)：仅首次进翻后做场景预填
             // 进入翻后时一次性判定 IP/OOP，之后可手动切换
             const firstActor = determineFirstToAct();
             postState.firstToAct  = firstActor;
@@ -4130,19 +4227,26 @@
                 updatePotUI();  // 只刷新显示，不重置数值
             }
 
-            const preFlopLeft = document.querySelector('.scroll-area > .col-left');
-            const preFlopRight = document.getElementById('resultPanel');
-            const postFlop = document.getElementById('postFlopPanel');
+            // 融合单页(2026-07-14)：无页面切换——翻前/翻后同页展示，此函数只做翻后状态初始化。
+            // 由首次选公共牌自动触发（handleSharedPick），Vision autoFill 仍显式调用。
+            postState._entered = true;
+            pickTarget = 'board';
 
-            if (preFlopLeft) preFlopLeft.classList.add('hidden');
-            if (preFlopRight) preFlopRight.classList.add('hidden');
-            if (postFlop) postFlop.classList.remove('hidden');
-
-            // 渲染英雄底牌显示
-            const ph1 = document.getElementById('postHeroCard1Display');
-            const ph2 = document.getElementById('postHeroCard2Display');
-            if (ph1) ph1.innerHTML = renderCardHTML(heroCard1) || '<div class="w-full h-full bg-gray-700 rounded flex items-center justify-center text-gray-500 text-xs">?</div>';
-            if (ph2) ph2.innerHTML = renderCardHTML(heroCard2) || '<div class="w-full h-full bg-gray-700 rounded flex items-center justify-center text-gray-500 text-xs">?</div>';
+            // 翻前↔翻后同步(2026-07-14b)：翻前多人场景的其余对手位置自动进入
+            // 多人底池额外对手（首次进翻后时预填；选择器中点一下即可取消）。
+            // 覆盖：squeeze 跟注者 / coldCall 3-Bet者 / vsLimp 其余跛入者
+            // （主对手已由 globalPosVillain 带入：faceBet加注者/squeeze原加注者/
+            //   coldCall开池者/vsLimp最早跛入者/face3b 3-Bet者）
+            if (_firstEntry && typeof currentMode !== 'undefined') {
+                if (!Array.isArray(postState.extraVillains)) postState.extraVillains = [];
+                const _addExtra = p => {
+                    if (p && p !== globalPosHero && p !== globalPosVillain &&
+                        !postState.extraVillains.includes(p)) postState.extraVillains.push(p);
+                };
+                if (currentMode === 'squeeze' || currentMode === 'coldCall') _addExtra(globalPosCaller);
+                else if (currentMode === 'vsLimp' && Array.isArray(selectedLimperPositions))
+                    selectedLimperPositions.forEach(_addExtra); // 最早跛入者=主对手，自动被 _addExtra 排除
+            }
 
             // 初始化右侧7张分析卡片（预建DOM，避免异步竞态）
             initPostRightCards();
@@ -4167,8 +4271,10 @@
             const lbl = p => p === 'UTG1' ? 'U+1' : (POS_LABEL[p] || p);
             // 对齐修复(2026-07-14)：容器强制纵向堆叠（原父级 flex 把标签与网格挤成一行）；
             // 额外对手区独立琥珀底色卡，与主对手区视觉分层
+            // 翻前↔翻后同步(2026-07-14b)：标签直接显示当前主对手位置（翻前场景选定的
+            // 加注者/开池者位置经 globalPosVillain 自动带入，无需重复选择）
             let html = `<div style="display:flex;flex-direction:column;gap:3px;">
-                <div class="posv-label">主对手（行动线归属）</div>
+                <div class="posv-label">主对手（行动线归属）· 当前：<span style="color:#2ea86a;font-weight:800;">${lbl(globalPosVillain)}</span></div>
                 <div class="posv-grid">`;
             positions.forEach(p => {
                 html += `<button class="posv-btn${p === globalPosVillain ? ' primary' : ''}" data-vpos="${p}">${lbl(p)}</button>`;
@@ -4321,6 +4427,7 @@
         // 清空公共牌（联动清空所有下注动作）
         function clearBoard() {
             postState.board = [null, null, null, null, null];
+            pickTarget = (heroCard1 && heroCard2) ? 'board' : 'hero'; // 融合单页：清公共牌后网格继续选公共牌
             postState.potTracker.actions = [];
             postState.equityResult = null;
             postState.decisionResult = null;
@@ -4394,40 +4501,22 @@
             const { text, color } = getPostStreetStatusText();
             statusEl.textContent = text;
             statusEl.className = `font-medium ${color}`;
+            // 融合单页(2026-07-14)：行动线区占位提示——公共牌满 3 张后隐藏；
+            // 交互梳理R2：整区翻前置灰、进翻后点亮（阶段区分）
+            try {
+                const cnt = postState.board.filter(c => c !== null).length;
+                const az = document.getElementById('actionZoneHint');
+                if (az) az.style.display = cnt >= 3 ? 'none' : '';
+                const zone = document.getElementById('postActionZone');
+                if (zone) zone.style.opacity = cnt >= 3 ? '1' : '0.55';
+            } catch (e) {}
         }
 
-        // 渲染公共牌选牌网格（嵌入式，无弹窗）
+        // 渲染公共牌选牌网格——融合单页(2026-07-14)：复用共享网格（heroPicker 容器），
+        // 旧调用点（goToPostFlop/clearBoard/removeBoardCard/Vision autoFill）全部沿用此入口。
+        // 顺序校验（先翻牌后转/河）由共享网格"追加第一个空位"语义天然保证。
         function renderBoardPicker() {
-            const container = document.getElementById('boardPicker');
-            if (!container) return;
-            container.innerHTML = '';
-            const boardCards = postState.board.filter(c => c !== null);
-            const grid = createCardPickerGrid({
-                selectedCards: boardCards,
-                disabledCards: [...postState.heroCards],
-                maxSelect: 5,
-                onSelect: (cards) => {
-                    // P2-2：选第4/5张前检查翻牌是否已满3张
-                    const prev = postState.board.filter(c => c !== null).length;
-                    if (cards.length === 4 && prev < 3) {
-                        showToast('请先选满翻牌3张，再选转牌', 'warn');
-                        renderBoardPicker(); // B3(2026-07)：重渲网格回滚未被接受的选择，防视觉与状态不同步
-                        return;
-                    }
-                    if (cards.length === 5 && prev < 4) {
-                        showToast('请先选满翻牌+转牌，再选河牌', 'warn');
-                        renderBoardPicker(); // B3：同上
-                        return;
-                    }
-                    postState.board = [null, null, null, null, null];
-                    cards.forEach((c, i) => { postState.board[i] = c; });
-                    renderBoard();
-                    updateBoardPickerProgress();
-                    autoTriggerAnalysis(); // 选满3张自动触发，换牌也触发
-                }
-            });
-            container.appendChild(grid);
-            updateBoardPickerProgress();
+            renderSharedPicker();
             updateAnalysisBtn();
         }
 
@@ -4739,7 +4828,7 @@
             html += `<div class="text-[10px] text-gray-400 mb-2 flex justify-between items-center gap-2">
                 <span style="color:var(--accent)" class="font-bold flex-1">${streetLabel}</span>
                 <button onclick="toggleQuickLine()" title="速记补录：一行文本录入整条街行动（进阶功能）"
-                    class="text-[10px] px-2 py-0.5 rounded border font-bold shrink-0 ${_qlOpen() ? 'border-sky-500/50 text-sky-300 bg-sky-900/20' : 'border-white/10 text-gray-500 bg-white/5 hover:bg-white/10'}">⌨ 速记</button>
+                    class="text-[10px] px-2 py-0.5 rounded border font-bold shrink-0 ${_qlOpen() ? 'border-sky-500/50 text-sky-300 bg-sky-900/20' : 'border-white/10 text-gray-400 bg-white/5 hover:bg-white/10'}">⌨ 速记</button>
                 ${streetActions.length > 0 ? `<button onclick="undoLastAction()" class="text-[10px] bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-0.5 rounded border border-gray-500 font-bold shrink-0">↩ 撤回</button>` : ''}
             </div>`;
 
@@ -7240,29 +7329,9 @@
             });
         }
 
-        function updateNavButtons(phase) {
-            const preBtn = document.getElementById('navBtnPreflop');
-            const postBtn = document.getElementById('navBtnPostflop');
-            if (!preBtn || !postBtn) return;
-            if (phase === 'post') {
-                preBtn.classList.remove('active');
-                postBtn.classList.add('active');
-            } else {
-                preBtn.classList.add('active');
-                postBtn.classList.remove('active');
-            }
-        }
-
-        function backToPreFlop() {
-            const preFlopLeft = document.querySelector('.scroll-area > .col-left');
-            const preFlopRight = document.getElementById('resultPanel');
-            const postFlop = document.getElementById('postFlopPanel');
-
-            if (postFlop) postFlop.classList.add('hidden');
-            if (preFlopLeft) preFlopLeft.classList.remove('hidden');
-            if (preFlopRight) preFlopRight.classList.remove('hidden');
-            updateNavButtons('pre');
-        }
+        // 融合单页(2026-07-14)：翻前/翻后页面切换已撤除，两函数保留为空壳防旧调用报错
+        function updateNavButtons(phase) {}
+        function backToPreFlop() {}
 
     </script>
 
@@ -8036,10 +8105,10 @@ function appendThumbnail(id, base64url) {
     div.className = 'vision-thumb';
     div.id = 'thumb-' + id;
     div.onclick = () => selectVisionRecord(id);
-    div.style.cssText = 'position:relative;width:120px;height:72px;border-radius:6px;overflow:hidden;cursor:pointer;border:2px solid transparent;flex-shrink:0;background:#1f2937;';
+    div.style.cssText = 'position:relative;width:120px;height:72px;border-radius:var(--radius-sm);overflow:hidden;cursor:pointer;border:2px solid transparent;flex-shrink:0;background:#1f2937;';
     div.innerHTML = `
         <img src="${base64url}" style="width:100%;height:100%;object-fit:cover;">
-        <div style="position:absolute;top:3px;left:3px;background:rgba(0,0,0,0.7);color:white;font-size:10px;font-weight:bold;padding:1px 5px;border-radius:3px;">#${id}</div>
+        <div style="position:absolute;top:3px;left:3px;background:rgba(0,0,0,0.7);color:white;font-size:10px;font-weight:bold;padding:1px 5px;border-radius:var(--radius-xs);">#${id}</div>
         <div id="thumb-status-${id}" style="position:absolute;top:20px;right:3px;font-size:12px;">🟡</div>
         <div onclick="deleteVisionRecord(${id},event)" style="position:absolute;top:2px;right:2px;width:16px;height:16px;background:rgba(0,0,0,0.75);color:white;font-size:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;line-height:1;">×</div>
         <div id="thumb-summary-${id}" style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.75);color:white;font-size:10px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">识别中...</div>`;
@@ -8105,7 +8174,7 @@ function renderVisionReviewCard(payload) {
     const NULL_TXT  = `<span style="color:#eab308;font-weight:900;">未识别</span>`;
     // editKey 不为空 → 整格可点编辑（用于数字/位置）；牌格的编辑入口在 chip 上
     const cellWrap = (label, innerHTML, isNull, sub, editKey) =>
-        `<div ${editKey ? `data-edit="${editKey}"` : ''} style="${isNull ? NULL_BG : NORMAL_BG}padding:6px 8px;border-radius:4px;overflow:hidden;${editKey ? 'cursor:pointer;' : ''}">
+        `<div ${editKey ? `data-edit="${editKey}"` : ''} style="${isNull ? NULL_BG : NORMAL_BG}padding:6px 8px;border-radius:var(--radius-sm);overflow:hidden;${editKey ? 'cursor:pointer;' : ''}">
             <div style="font-size:10px;color:#9ca3af;margin-bottom:3px;">${label}${editKey ? ' <span style="color:var(--accent-hover);">✎</span>' : ''}</div>
             <div style="font-size:1rem;font-weight:900;color:#fff;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${innerHTML}</div>
             ${sub ? `<div style="font-size:10px;color:#6b7280;margin-top:2px;">${sub}</div>` : ''}
@@ -8114,7 +8183,7 @@ function renderVisionReviewCard(payload) {
     // 牌 chip（可点编辑：data-edit；大尺寸 36×40 好点）
     const chip = (c, editKey) => {
         const r = c && c.rank, s = c && c.suit;
-        const base = 'display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:40px;border-radius:4px;font-weight:900;font-size:1rem;margin-right:4px;position:relative;cursor:pointer;';
+        const base = 'display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:40px;border-radius:var(--radius-sm);font-weight:900;font-size:1rem;margin-right:4px;position:relative;cursor:pointer;';
         const active = (_vrcEdit === editKey) ? 'outline:2px solid var(--accent-hover);' : '';
         if (!r || !s) return `<span data-edit="${editKey}" style="${base}${active}background:rgba(234,179,8,0.15);border:1px solid #eab308;color:#eab308;">?<span style="position:absolute;bottom:-2px;right:0;font-size:10px;color:var(--accent-hover);">✎</span></span>`;
         return `<span data-edit="${editKey}" style="${base}${active}background:${suitBg[s]||'#2d2c3a'};color:#fff;padding:0 4px;">${r}${SYM[s]||''}<span style="position:absolute;bottom:-2px;right:0;font-size:10px;color:#fff;opacity:0.65;">✎</span></span>`;
@@ -8152,7 +8221,7 @@ function renderVisionReviewCard(payload) {
     // 多人在局警示(2026-07-13)：≥3 人持牌时对手是按"下注最大者优先"自动选的，
     // 多人底池引擎只建模单挑，提醒人工核对对手位置/筹码（实战抓错对手案例的防线）
     const multiWarn = (p.alivePlayers >= 3)
-        ? `<div style="margin-bottom:6px;padding:4px 8px;border-radius:4px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.5);font-size:10px;color:#eab308;">
+        ? `<div style="margin-bottom:6px;padding:4px 8px;border-radius:var(--radius-sm);background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.5);font-size:10px;color:#eab308;">
              ⚠️ 识别到 ${p.alivePlayers} 人在局（多人底池）：对手自动取"下注最大者"${p.villainPosition ? `（${p.villainPosition}）` : ''}，引擎按单挑分析——请核对对手位置与筹码是否为实际交战对象</div>`
         : '';
     box.innerHTML =
