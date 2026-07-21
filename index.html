@@ -534,6 +534,10 @@
                                 <div class="text-[10px] text-gray-400 mb-1">打法风格</div>
                                 <div class="grid grid-cols-3 gap-1" id="grpPlayStyle"></div>
                             </div>
+                            <div>
+                                <div class="text-[10px] text-gray-400 mb-1">对手模型（翻后范围估计）</div>
+                                <div class="grid grid-cols-2 gap-1" id="grpVillainModel"></div>
+                            </div>
                             <div class="flex justify-between items-center pt-1 border-t border-white/10">
                                 <span class="text-[10px] text-yellow-500 font-bold">BB Ante (MTT)</span>
                                 <button id="anteToggle" onclick="toggleAnte()" class="bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded">开启</button>
@@ -836,7 +840,11 @@
             tableSize: '9max',   // 6max / 8max / 9max
             stage: 'normal',     // normal / bubble / final / headsup
             ante: true,          // BB ante on/off
-            playStyle: 'normal'  // tight / normal / loose
+            playStyle: 'normal', // tight / normal / loose
+            // M5 诈唬极化(2026-07-20)：对手模型开关——exploit=纯价值收窄（对
+            // under-bluff 实战池的剥削方向，历史默认行为）；gto=假设对手 GTO
+            // 均衡下注（含诈唬），收窄后从弱端按极化比补回诈唬牌
+            villainModel: 'exploit' // exploit / gto
         };
 
         const gameTypeOpts = [
@@ -860,6 +868,33 @@
             { val: 'normal', label: '标准' },
             { val: 'loose',  label: '松' }
         ];
+        // M5 诈唬极化(2026-07-20)：对手模型两档——剥削(默认，纯价值收窄)/GTO均衡(补回诈唬)
+        const villainModelOpts = [
+            { val: 'exploit', label: '剥削（少诈唬池）' },
+            { val: 'gto',     label: 'GTO 均衡' }
+        ];
+        function renderVillainModelGroup() {
+            const c = document.getElementById('grpVillainModel');
+            if (!c) return;
+            c.innerHTML = '';
+            villainModelOpts.forEach(o => {
+                const btn = document.createElement('button');
+                btn.className = 'cfg-btn' + (gameConfig.villainModel === o.val ? ' active' : '');
+                btn.innerText = o.label;
+                btn.onclick = () => {
+                    gameConfig.villainModel = o.val;
+                    renderVillainModelGroup();
+                    updateCfgSummary();
+                    // 已进翻后且有分析结果：对手范围构成改变，即时重跑完整管线
+                    try {
+                        if (postState._entered &&
+                            postState.board.filter(x => x !== null).length >= 3 &&
+                            postState.equityResult) checkStreetAnalysis();
+                    } catch (e) {}
+                };
+                c.appendChild(btn);
+            });
+        }
 
         function renderCfgGroup(containerId, opts, key) {
             const c = document.getElementById(containerId);
@@ -930,8 +965,9 @@
             const st = stageOpts.find(o => o.val === gameConfig.stage).label;
             const ante = gameConfig.ante ? ' · Ante' : '';
             const psLabel = gameConfig.playStyle === 'tight' ? ' · 紧' : gameConfig.playStyle === 'loose' ? ' · 松' : '';
+            const vmLabel = gameConfig.villainModel === 'gto' ? ' · GTO对手' : ''; // M5
             const el = document.getElementById('cfgSummary');
-            if (el) el.innerText = `${gt} · ${ts} · ${st}${ante}${psLabel}`;
+            if (el) el.innerText = `${gt} · ${ts} · ${st}${ante}${psLabel}${vmLabel}`;
             // 配置上移(2026-07-14b)：同步 header 阶段快捷下拉（配置面板内改 stage 时保持一致）
             const sq = document.getElementById('stageQuickSelect');
             if (sq && sq.value !== gameConfig.stage) sq.value = gameConfig.stage;
@@ -977,7 +1013,12 @@
             // percentile 截断裁掉的是真正的尾端弱牌（旧分组序下 tight 会误裁 AKo）。
             'UTG':  { open: ['AA','KK','QQ','AKs','JJ','AQs','AKo','TT','AJs','KQs','99','ATs','AQo','KJs','88','QJs','KTs','A9s','AJo','77','QTs','JTs','KQo','66','A5s','T9s','A4s'] },
             'UTG1': { open: ['AA','KK','QQ','AKs','JJ','AQs','AKo','TT','AJs','KQs','99','ATs','AQo','KJs','88','QJs','KTs','A9s','AJo','77','A8s','QTs','JTs','KQo','66','A5s','T9s','A4s','98s'] },
-            'MP':   { open: ['AA','KK','QQ','JJ','TT','99','88','77','66','AKs','AQs','AJs','ATs','A9s','A8s','KQs','KJs','KTs','K9s','QJs','QTs','JTs','T9s','AKo','AQo','AJo','ATo'] },
+            // 数表重校准(2026-07-20，用户授权)：MP 由 11.9% 放宽至 ~15.9%（补 55/44/A5s/A4s/KQo/KJo）——
+            // 偏差报告(range_compare.mjs)显示 MP 对公开 GTO 共识对称偏差 23%（唯一可信的真实收紧），
+            // full-ring MP 标准开到 44+、含 A5s/A4s 同花 blocker 与 KQo/KJo。KQo 一并补入是为范围单调
+            // （原表连 KQo 都无，只补更弱的 KJo 会不自洽）；98s 属 MP 混合边缘，未纳入。改为真实强度排序
+            // （同 UTG/UTG1 重校准），使 tight 风格 percentile 截断裁掉的是真尾牌（44/A4s）而非 KJo/ATo。
+            'MP':   { open: ['AA','KK','QQ','AKs','JJ','AQs','AKo','TT','AJs','KQs','99','ATs','AQo','KJs','88','QJs','KTs','A9s','AJo','77','KQo','A8s','QTs','JTs','K9s','ATo','66','A5s','T9s','KJo','55','A4s','44'] },
             'LJ':   { open: ['AA','KK','QQ','JJ','TT','99','88','77','66','55','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A5s','A4s','KQs','KJs','KTs','K9s','K8s','QJs','QTs','Q9s','JTs','J9s','T9s','T8s','98s','AKo','AQo','AJo','ATo','KQo','KJo'] },
             'HJ':   { open: ['AA','KK','QQ','JJ','TT','99','88','77','66','55','44','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','KQs','KJs','KTs','K9s','K8s','K7s','QJs','QTs','Q9s','Q8s','JTs','J9s','J8s','T9s','T8s','98s','97s','87s','AKo','AQo','AJo','ATo','A9o','KQo','KJo','KTo','QJo'] },
             'CO':   { open: ['AA','KK','QQ','JJ','TT','99','88','77','66','55','44','33','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','A2s','KQs','KJs','KTs','K9s','K8s','K7s','K6s','K5s','QJs','QTs','Q9s','Q8s','JTs','J9s','J8s','J7s','T9s','T8s','T7s','98s','97s','96s','87s','86s','76s','75s','65s','AKo','AQo','AJo','ATo','A9o','A8o','KQo','KJo','KTo','K9o','QJo','QTo','JTo'] },
@@ -2213,6 +2254,7 @@
             val1 = 'A'; val2 = 'Q'; isSuited = false;
             gameConfig.gameType = 'normal'; gameConfig.tableSize = '9max'; gameConfig.stage = 'normal'; gameConfig.ante = true;
             gameConfig.playStyle = 'normal'; // B1：彻底重置应包含打法风格
+            gameConfig.villainModel = 'exploit'; // M5：对手模型复位为默认剥削
             globalHeroStack = 40; globalVillainStack = 40;
             globalAvgStack = 40; avgStackTouched = false; // O4：平均码持久化一并复位
             globalPosHero = 'BTN'; globalPosVillain = 'UTG'; globalPosCaller = 'CO';
@@ -2222,6 +2264,7 @@
             renderCfgGroup('grpTableSize', tableSizeOpts, 'tableSize');
             renderCfgGroup('grpStage', stageOpts, 'stage');
             renderCfgGroup('grpPlayStyle', playStyleOpts, 'playStyle');
+            renderVillainModelGroup(); // M5：对手模型组同步复位渲染
             const b = document.getElementById('anteToggle');
             b.innerText = '开启';
             b.className = 'bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded';
@@ -3513,6 +3556,7 @@
         renderCfgGroup('grpTableSize', tableSizeOpts, 'tableSize');
         renderCfgGroup('grpStage', stageOpts, 'stage');
         renderCfgGroup('grpPlayStyle', playStyleOpts, 'playStyle');
+        renderVillainModelGroup(); // M5：对手模型组初始化渲染
         renderHeroPicker();
         syncHeroCardCompat();
         switchMode('open');
@@ -4170,8 +4214,63 @@
                         kept = [];
                         for (const h of hands) { kept.push(h); if (comboOf(kept) >= 5) break; }
                     }
+                    // M5 诈唬极化(2026-07-20)：对手模型=GTO均衡时，从被裁弱端按极化比
+                    // 补回诈唬牌类——真实 GTO 下注范围是"强牌+听牌/空气"的极化结构，
+                    // 纯价值收窄会系统性高估对手强度、压低 Hero 胜率、偏弃牌。
+                    // 默认'剥削'模型维持纯价值收窄（对 under-bluff 实战池的正确剥削
+                    // 方向，历史行为零改动）。极化比：flop/turn 诈唬占最终下注范围
+                    // ~25%（半诈唬听牌优先），river ~20%（无听牌，补回弱端空气）。
+                    // 补回只来自本次被裁的弱端，绝不凭空造牌；确定性排序无随机。
+                    // 已知简化：暂未与下注尺度联动（超池→更纯极化属后续优化）。
+                    let bluffNote = '';
+                    if (gameConfig.villainModel === 'gto' && anyAggro && kept.length < hands.length) {
+                        const cut = hands.slice(kept.length); // 被裁弱端（已按强度降序）
+                        const isRiver = _boardLen >= 5;
+                        const bShare = isRiver ? 0.20 : 0.25;
+                        const targetBluff = Math.round(comboOf(kept) * bShare / (1 - bShare));
+                        if (targetBluff > 0 && cut.length) {
+                            const RANK_V = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
+                            const suitCnt = { s: 0, h: 0, d: 0, c: 0 };
+                            bc.forEach(c => suitCnt[c[1]]++);
+                            const maxSuit = Math.max(suitCnt.s, suitCnt.h, suitCnt.d, suitCnt.c);
+                            const boardRanks = bc.map(c => RANK_V[c[0]]);
+                            // 轻量听牌评分（牌类级近似，无逐 combo 采样）：同花听 2 + 顺子听 1
+                            const drawScore = (hand) => {
+                                if (isRiver) return 0;
+                                let s = 0;
+                                const suitedH = hand.length === 3 && hand[2] === 's';
+                                if ((suitedH && maxSuit >= 2) || maxSuit >= 3) s += 2;
+                                const present = new Set(boardRanks);
+                                present.add(RANK_V[hand[0]]); present.add(RANK_V[hand[1]]);
+                                if (present.has(14)) present.add(1); // wheel A=1
+                                for (let lo = 1; lo <= 10; lo++) {
+                                    let cnt = 0, usesHole = false;
+                                    for (let r = lo; r < lo + 5; r++) if (present.has(r)) {
+                                        cnt++;
+                                        if (r === RANK_V[hand[0]] || r === RANK_V[hand[1]]) usesHole = true;
+                                    }
+                                    if (cnt === 4 && usesHole) { s += 1; break; }
+                                }
+                                return s;
+                            };
+                            // flop/turn：听牌优先（半诈唬为主），同分高牌优先；river：弱端空气优先
+                            const candidates = isRiver
+                                ? [...cut].reverse()
+                                : [...cut].sort((a, b) =>
+                                    (drawScore(b) - drawScore(a)) || (getRawEquity(b) - getRawEquity(a)));
+                            const bluffs = [];
+                            for (const h of candidates) {
+                                bluffs.push(h);
+                                if (comboOf(bluffs) >= targetBluff) break;
+                            }
+                            if (bluffs.length) {
+                                kept = kept.concat(bluffs);
+                                bluffNote = `，GTO均衡：补回诈唬 ${bluffs.length} 类（极化 ${(bShare * 100).toFixed(0)}%）`;
+                            }
+                        }
+                    }
                     hands = kept;
-                    narrowNote = `，动态收窄保留 ${(keep * 100).toFixed(0)}%${sizeNoted ? '（含下注尺度修正）' : ''}`;
+                    narrowNote = `，动态收窄保留 ${(keep * 100).toFixed(0)}%${sizeNoted ? '（含下注尺度修正）' : ''}${bluffNote}`;
                 }
             }
 
