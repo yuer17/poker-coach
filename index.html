@@ -685,10 +685,14 @@
                                 <label class="text-[10px] text-gray-400 shrink-0 w-24">Vision 模型</label>
                                 <select id="visionModel" onchange="onVisionModelChange()"
                                     class="flex-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white px-1">
-                                    <option value="qwen3-vl-flash">Qwen3-VL-Flash（快·默认，已实测）</option>
+                                    <!-- 模型升级(2026-07-21)：Qwen3.8 系列 2026-08 发布，原生多模态且更快；
+                                         调用失败会自动降级到 qwen3-vl-flash 并提示，故可安全置顶为默认 -->
+                                    <option value="qwen3.8-flash">Qwen3.8-Flash（最新·2026-08，推荐）</option>
+                                    <option value="qwen3.7-flash">Qwen3.7-Flash（2026-07）</option>
+                                    <option value="qwen3-vl-flash">Qwen3-VL-Flash（2025-10·稳定回退）</option>
+                                    <option value="qwen3-vl-plus">Qwen3-VL-Plus（2025-09·更强较慢）</option>
+                                    <option value="qwen-vl-max">Qwen-VL-Max（旧代最强）</option>
                                     <option value="qwen-vl-plus">Qwen-VL-Plus（旧代）</option>
-                                    <option value="qwen-vl-max">Qwen-VL-Max（最强，较慢）</option>
-                                    <option value="qwen3-vl-plus">Qwen3-VL-Plus（新代·强，待实测）</option>
                                     <option value="custom">自定义</option>
                                 </select>
                                 <input type="text" id="visionModelCustom" placeholder="自定义模型 ID"
@@ -8686,6 +8690,13 @@ let visionCounter    = 0;
 let visionHistory    = [];
 let currentVisionId  = null;
 let isVisionProcessing = false;
+
+// 模型升级 + 降级链(2026-07-21)：Qwen3.8 系列 2026-08 发布（原生多模态、更快）；
+// 新模型若在该账号未开通/已下线，analyzeVisionFile 会自动退到下一档并记住，
+// 用户无需感知——有了这条保险才敢把默认切到最新模型。
+// 注意：必须声明在 initVisionModel/getVisionModel 之前，否则 const 的 TDZ 会在初始化时抛错。
+const VISION_MODEL_DEFAULT = 'qwen3.8-flash';
+const VISION_FALLBACK = { 'qwen3.8-flash': 'qwen3.7-flash', 'qwen3.7-flash': 'qwen3-vl-flash' };
 let visionTimer      = null;
 const manualFields   = new Set();
 
@@ -8707,11 +8718,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // 默认模型提速(2026-07-13)：qwen3-vl-flash 已于 2026-07-10 用户实测通过，
     // 速度显著快于 qwen-vl-plus，切为默认。一次性迁移：旧默认 plus（非用户主动
     // 选择）迁到 flash；迁移后用户再手选任何模型都不再被动。
-    let savedModel = localStorage.getItem('vision_model') || 'qwen3-vl-flash';
+    let savedModel = localStorage.getItem('vision_model') || VISION_MODEL_DEFAULT;
     if (savedModel === 'qwen-vl-plus' && !localStorage.getItem('vision_model_migrated_flash')) {
         savedModel = 'qwen3-vl-flash';
         localStorage.setItem('vision_model', savedModel);
         localStorage.setItem('vision_model_migrated_flash', '1');
+    }
+    // 一次性迁移到 Qwen3.8（2026-08 发布，原生多模态更快更准）；用过自定义或已降级过则不动。
+    // 若该模型在账号下不可用，analyzeVisionFile 的降级链会自动切回并记住，不会卡住识别。
+    if (savedModel === 'qwen3-vl-flash' && !localStorage.getItem('vision_model_migrated_38')
+        && !localStorage.getItem('vision_model_downgraded')) {
+        savedModel = VISION_MODEL_DEFAULT;
+        localStorage.setItem('vision_model', savedModel);
+        localStorage.setItem('vision_model_migrated_38', '1');
     }
     const sel = document.getElementById('visionModel');
     if (sel) sel.value = savedModel;
@@ -8730,11 +8749,26 @@ window.onVisionModelChange = function() {
 
 function getVisionModel() {
     const sel = document.getElementById('visionModel');
-    if (!sel) return 'qwen3-vl-flash';
+    if (!sel) return VISION_MODEL_DEFAULT;
     if (sel.value === 'custom') {
-        return document.getElementById('visionModelCustom')?.value?.trim() || 'qwen3-vl-flash';
+        return document.getElementById('visionModelCustom')?.value?.trim() || VISION_MODEL_DEFAULT;
     }
     return sel.value;
+}
+function visionModelUnavailable(msg) {
+    return /not.*(exist|found|support)|无效|不存在|未开通|无权限|invalid.*model|model.*invalid|unsupported.*model/i.test(String(msg || ''));
+}
+function downgradeVisionModel(from, reason) {
+    const to = VISION_FALLBACK[from];
+    if (!to) return null;
+    try {
+        localStorage.setItem('vision_model', to);
+        localStorage.setItem('vision_model_downgraded', '1');
+        const sel = document.getElementById('visionModel');
+        if (sel) sel.value = to;
+    } catch (e) {}
+    console.warn('[Vision] 模型降级:', from, '→', to, reason);
+    return to;
 }
 
 // ─── rank 规范化 ─────────────────────────────────────────
@@ -8800,7 +8834,17 @@ async function analyzeVisionFile(file) {
             }, 100);
 
             try {
-                const rawText = await callQwenStream(compressed, apiKey, currentModel, heroCrop);
+                let rawText;
+                try {
+                    rawText = await callQwenStream(compressed, apiKey, currentModel, heroCrop);
+                } catch (e1) {
+                    // 模型不可用 → 自动降级重试一次（新模型未开通时不至于识别全挂）
+                    const next = visionModelUnavailable(e1.message) ? downgradeVisionModel(currentModel, e1.message) : null;
+                    if (!next) throw e1;
+                    updateVisionStatus(`模型 ${currentModel} 不可用，已切换 ${next} 重试…`);
+                    if (typeof showToast === 'function') showToast(`${currentModel} 在你的账号不可用，已自动切换为 ${next}`, 'warn');
+                    rawText = await callQwenStream(compressed, apiKey, next, heroCrop);
+                }
                 const data = parseVisionJSON(rawText);
                 // OCR升级C(2026-07)：模型花色 → 本地像素判色兜底（置信时覆盖）
                 await verifyCardSuitsByColor(compressed.url, data);
@@ -8882,8 +8926,9 @@ Rules:
 - table_size: total seats (6/8/9), not active players.
 - street: preflop(0)/flop(3)/turn(4)/river(5).
 - community_cards_present: true ONLY if face-up cards are dealt in the table center; false if center has only chips/pot.
-- blinds: current level in CHIPS (not BB), shown as "500/1,000" or "500/1,000/1,000" (sb/bb/ante), usually top-left or in the info bar; ante=0 if absent; null if not visible.
-- level_time_remaining: countdown to next blind level as "MM:SS"; null if not visible.
+- blinds: current level in CHIPS (not BB). MOST OFTEN it is in the WINDOW TITLE BAR at the very top, written as "盲注 400 | 800" (pipe separator, sb then bb) or "Blinds 400 | 800"; it may also appear as "500/1,000/1,000". COPY THOSE EXACT DIGITS — do not compute, scale, or guess. Stacks/pot shown as "X BB" are NOT blinds. If you cannot literally read the blind digits, return null for the whole blinds object.
+- blind_level: the level number, shown top-left as "级别 14" / "Level 14"; null if not visible.
+- level_time_remaining: countdown next to the level badge, "MM:SS" (e.g. "00:06"); null if not visible.
 - image_kind: "table" for a live table screenshot; "structure" if this image is instead a tournament INFO / BLIND STRUCTURE page listing many levels in a table (columns like Level / Blinds / Ante / Duration).
 - blind_schedule: ONLY when image_kind="structure" — every row of that table, in order, blinds in CHIPS: [{"level":n,"sb":n,"bb":n,"ante":n,"minutes":n}]. Use null (not []) for a table screenshot.
 
@@ -8891,7 +8936,7 @@ Rules:
 "board_cards":[{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]}],
 "pot":n,"hero_stack":n,"villain_bet":n,"hero_position":s,"villain_position":s,"street":s,"community_cards_present":b,
 "players":[{"stack":n,"bet":n,"is_allin":b,"has_cards":b}],
-"table_size":n,"blinds":{"sb":n,"bb":n,"ante":n},"level_time_remaining":s,
+"table_size":n,"blinds":{"sb":n,"bb":n,"ante":n},"blind_level":n,"level_time_remaining":s,
 "image_kind":s,"blind_schedule":[{"level":n,"sb":n,"bb":n,"ante":n,"minutes":n}]}`;
 
     const controller = new AbortController();
@@ -9161,7 +9206,12 @@ async function verifyCardSuitsByColor(dataUrl, d) {
                 // 注：不取顶部窄条窗——GG 底牌有倾角，bbox 顶缘常含牌上方桌面
                 windows = [[0.25, 0.70, 0.10, 0.50], [0.40, 0.90, 0.15, 0.55]];
             } else {
-                windows = [[0.18, 0.82, 0.18, 0.82]];
+                // 单窗 bug 修复(2026-07-21，用户实测 J♦ 被误标"已校正"为 J♥)：
+                // 公共牌原本只有 1 个采样窗 → "多窗一致才覆盖"的保护对它完全失效：
+                // bbox 左偏采到隔壁 K♥ 的红色时无从产生分歧，于是"高置信"地改错花色。
+                // 改为左/中/右三窗横向铺开：bbox 只要偏移约半张牌，左右窗必落在不同牌上 →
+                // 判色不一致 → 拒绝覆盖并标"未校验"，把错误变成"提醒人工看一眼"。
+                windows = [[0.32, 0.68, 0.25, 0.75], [0.08, 0.42, 0.30, 0.70], [0.58, 0.92, 0.30, 0.70]];
             }
             const verdicts = [];
             for (const [fx1, fx2, fy1, fy2] of windows) {
@@ -9173,7 +9223,9 @@ async function verifyCardSuitsByColor(dataUrl, d) {
             // 校验状态外露(2026-07-21)：把三种结果写进 c._sv 供核对卡显示——
             //   'corrected' 像素判色纠正了模型 · 'ok' 判色与模型一致 · 未表态则保持 undefined，
             //   核对卡标"未校验"提醒人工看一眼（花色错误正是藏在这一档里）
+            // 公共牌要求至少 2 个窗口表态才可信（单窗表态 = 无从交叉验证，等同旧 bug 的处境）
             if (!verdicts.length) continue;
+            if (mode === 'board' && verdicts.length < 2) continue;
             const win = verdicts[0].suit;
             if (verdicts.some(v => v.suit !== win)) continue;
             if (c.suit !== win) {
@@ -9192,7 +9244,9 @@ async function verifyCardSuitsByColor(dataUrl, d) {
 window.verifyCardSuitsByColor = verifyCardSuitsByColor;
 
 // 测试钩子(2026-07-13)：jsdom 回归用，与 classifySuitPixel 挂 window 同一约定
-window._visionTestHooks = () => ({ buildPayload, autoFill, renderVisionReviewCard, getVisionModel, callQwenStream, parseVisionJSON });
+window._visionTestHooks = () => ({ buildPayload, autoFill, renderVisionReviewCard, getVisionModel, callQwenStream, parseVisionJSON,
+    // 顶层 const 不挂 window（词法作用域），测试经此访问模型默认值与降级链
+    VISION_MODEL_DEFAULT, VISION_FALLBACK, visionModelUnavailable, downgradeVisionModel });
 
 // ─── Payload 构建 ──────────────────────────────────────
 function buildPayload(d) {
@@ -9231,6 +9285,7 @@ function buildPayload(d) {
         tableSize:    d.table_size ?? null,
         // 盲注识别(2026-07-21)：牌桌上的 "500/1,000/1,000" 与升盲倒计时
         blinds:       (d.blinds && d.blinds.bb > 0) ? d.blinds : null,
+        blindLevel:   d.blind_level ?? null,
         levelRemain:  d.level_time_remaining ?? null,
         // 方案B(2026-07-21)：赛前"比赛信息/盲注结构"页截图 → 完整等级表
         imageKind:    d.image_kind ?? null,
@@ -9296,10 +9351,28 @@ function autoFill(payload, _id) {
         const bl = gameConfig.blinds, nb = payload.blinds;
         const dirty = ['blBb', 'blAnte', 'blLevelMin', 'blRemain']
             .some(id => document.getElementById(id)?.dataset.dirty === '1');
-        if (!dirty) {
+        applyBlinds: if (!dirty) {
             const prevBB = bl.bb;
-            bl.bb = nb.bb; bl.sb = nb.sb > 0 ? nb.sb : Math.round(nb.bb / 2);
-            bl.ante = nb.ante >= 0 ? nb.ante : bl.ante;
+            let rb = nb.bb, rs = nb.sb > 0 ? nb.sb : Math.round(nb.bb / 2), ra = nb.ante >= 0 ? nb.ante : bl.ante;
+            // 盲注纠偏(2026-07-21，用户实测把 400/800 读成 1,800/3,600)：
+            // ① 已载入结构表时，把识别值吸附到表中最接近的一级（优先按 level 号精确命中）——
+            //    结构表是赛前人工确认过的真值，比单张截图的 OCR 可靠得多；
+            // ② 偏差超过一个数量级则拒绝采纳，避免幻觉值污染筹码换算。
+            const sc = bl.schedule;
+            if (Array.isArray(sc) && sc.length) {
+                const byLevel = payload.blindLevel ? sc.find(l => l.level === payload.blindLevel) : null;
+                const nearest = byLevel || sc.reduce((a, b) =>
+                    Math.abs(Math.log(b.bb / rb)) < Math.abs(Math.log(a.bb / rb)) ? b : a);
+                if (nearest && nearest.bb !== rb) {
+                    console.warn('[Vision] 盲注吸附到结构表:', rb, '→', nearest.bb, byLevel ? '(按级别号)' : '(按最接近)');
+                }
+                if (nearest) { rb = nearest.bb; rs = nearest.sb || Math.round(rb / 2); ra = nearest.ante || 0; }
+            } else if (prevBB > 0 && (rb / prevBB > 4 || rb / prevBB < 0.25)) {
+                console.warn('[Vision] 盲注识别值与当前级差距过大，已忽略:', rb, 'vs', prevBB);
+                if (typeof showToast === 'function') showToast(`截图读到盲注 ${rb}，与当前 ${prevBB} 差距过大已忽略——如确实升了多级请手动填`, 'warn');
+                break applyBlinds; // 只跳过盲注块，其余字段照常填充
+            }
+            bl.bb = rb; bl.sb = rs; bl.ante = ra;
             const remSec = typeof blParseSec === 'function' ? blParseSec(payload.levelRemain) : NaN;
             if (remSec > 0) {
                 bl.levelStartTs = Date.now() - (bl.levelMin * 60 - remSec) * 1000;
@@ -9580,16 +9653,20 @@ function renderVisionReviewCard(payload) {
         const base = 'display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:44px;height:52px;border-radius:var(--radius-sm);font-weight:900;font-size:1.15rem;margin-right:5px;position:relative;cursor:pointer;';
         const active = (_vrcEdit === editKey) ? 'outline:2px solid var(--accent-hover);' : '';
         if (!r || !s) return `<span data-edit="${editKey}" title="未识别，点击手动选牌" style="${base}${active}background:rgba(234,179,8,0.15);border:1px solid #eab308;color:#eab308;">?<span style="font-size:9px;font-weight:400;">点击选牌</span></span>`;
+        // 标记语义色修订(2026-07-21，用户反馈"已校正的勾颜色不对"+"别写字")：
+        //   ok        → 绿 ✓：像素判色与模型一致，最可信
+        //   corrected → 琥珀 ✎：像素判色改写了模型（不等于一定对——J♦ 误改为 J♥ 的教训），值得瞄一眼
+        //   未表态    → 红 ？：完全没被校验，花色错误只会藏在这里，必须人工确认
+        // 只用符号不写字；文字说明进 title，鼠标悬停/长按可见。
         const sv = c._sv;
         const mark = sv === 'corrected'
-            ? { t: '✓ 已校正', col: '#45d68a', tip: '本地像素判色纠正了模型的花色，可信' }
+            ? { t: '✎', col: '#e0a83a', bd: 'rgba(224,168,58,0.85)', tip: '像素判色改写了模型识别的花色——多数是纠错，但仍建议瞄一眼' }
             : sv === 'ok'
-            ? { t: '✓ 已校验', col: '#45d68a', tip: '本地像素判色与模型一致，可信' }
-            : { t: '? 未校验', col: '#eab308', tip: '本地判色未能表态（截图区域不清晰），花色请人工确认' };
-        const border = sv ? 'border:1px solid rgba(69,214,138,0.45);' : 'border:1px solid #eab308;';
-        return `<span data-edit="${editKey}" title="${mark.tip}｜点击可改" style="${base}${active}${border}background:${suitBg[s]||'#2d2c3a'};color:#fff;padding:2px 4px;">
+            ? { t: '✓', col: '#45d68a', bd: 'rgba(69,214,138,0.6)', tip: '像素判色与模型一致，可信' }
+            : { t: '？', col: '#ff7a7d', bd: '#e5484d', tip: '花色未经像素校验（该区域不够清晰）——请人工确认' };
+        return `<span data-edit="${editKey}" title="${mark.tip}｜点击可改" style="${base}${active}border:1.5px solid ${mark.bd};background:${suitBg[s]||'#2d2c3a'};color:#fff;padding:2px 4px;">
             <span>${r}${SYM[s]||''}</span>
-            <span style="font-size:9px;font-weight:700;color:${mark.col};margin-top:1px;">${mark.t}</span></span>`;
+            <span style="font-size:13px;font-weight:900;color:${mark.col};line-height:1;margin-top:2px;">${mark.t}</span></span>`;
     };
     // 花色校验汇总：有未校验的牌就把它顶到最前面提醒
     const allCards = [p.card1, p.card2, ...board].filter(Boolean);
@@ -9639,15 +9716,22 @@ function renderVisionReviewCard(payload) {
 
     const streetTag = p.isPreflop ? '翻前' : (p.street || '翻后');
     // 花色校验横幅(2026-07-21)：未校验的牌是花色错误的唯一藏身处，直接顶到最前
+    // 对比度修订(2026-07-21)：原琥珀底 12% 透明度在黑底上几乎看不出——改为不透明深琥珀底 +
+    // 左侧 3px 实心色条 + 提亮文字，与牌面深色背景明确区分
+    const bannerBox = (col, bg, html) =>
+        `<div style="margin-bottom:6px;padding:6px 10px;border-radius:var(--radius-sm);background:${bg};border:1px solid ${col};border-left:3px solid ${col};font-size:11px;color:#fff;line-height:1.55;">${html}</div>`;
     const suitBanner = unverified.length
-        ? `<div style="margin-bottom:6px;padding:5px 8px;border-radius:var(--radius-sm);background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.5);font-size:10px;color:#eab308;line-height:1.5;">
-             ⚠️ <b>${unverified.map(c => c.rank + (SYM[c.suit] || '')).join('、')}</b> 的花色未经像素校验（截图该区域不够清晰）——花色识别错误只会出现在这里，<b>请重点确认这几张</b>，点牌即可改。${corrected.length ? `　其余已由像素判色校正 ${corrected.length} 张。` : ''}</div>`
-        : '';
+        ? bannerBox('#e5484d', '#3a1518',
+            `⚠️ <b style="color:#ff9b9e;">${unverified.map(c => c.rank + (SYM[c.suit] || '')).join('、')}</b> 的花色<b style="color:#ff9b9e;">未经像素校验</b>——花色识别错误只会出现在这里，<b>请点这几张牌确认</b>。${corrected.length ? `　另有 <b style="color:#ffd08a;">${corrected.length}</b> 张被像素判色改写（✎），建议一并瞄一眼。` : ''}`)
+        : (corrected.length
+            ? bannerBox('#e0a83a', '#3a2f14',
+                `✎ 有 <b style="color:#ffd08a;">${corrected.length}</b> 张牌的花色被像素判色改写（模型与像素不一致，已采用像素结果）——通常是纠错，建议瞄一眼确认。`)
+            : '');
     // 多人在局警示(2026-07-13)：≥3 人持牌时对手是按"下注最大者优先"自动选的，
     // 多人底池引擎只建模单挑，提醒人工核对对手位置/筹码（实战抓错对手案例的防线）
     const multiWarn = (p.alivePlayers >= 3)
-        ? `<div style="margin-bottom:6px;padding:4px 8px;border-radius:var(--radius-sm);background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.5);font-size:10px;color:#eab308;">
-             ⚠️ 识别到 ${p.alivePlayers} 人在局（多人底池）：对手自动取"下注最大者"${p.villainPosition ? `（${p.villainPosition}）` : ''}，引擎按单挑分析——请核对对手位置与筹码是否为实际交战对象</div>`
+        ? bannerBox('#e0a83a', '#3a2f14',
+            `⚠️ 识别到 <b style="color:#ffd08a;">${p.alivePlayers}</b> 人在局（多人底池）：对手自动取"下注最大者"${p.villainPosition ? `（${p.villainPosition}）` : ''}，引擎按单挑分析——请核对对手位置与筹码是否为实际交战对象`)
         : '';
     box.innerHTML =
         `<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);">
@@ -9655,7 +9739,7 @@ function renderVisionReviewCard(payload) {
                 <span style="font-size:10px;font-weight:bold;color:var(--accent-hover);">📋 识别结果核对</span>
                 <span style="font-size:10px;color:#6b7280;">${streetTag}</span>
                 ${suitBanner ? '' : '<span style="font-size:10px;color:#45d68a;">✓ 花色全部经像素校验</span>'}
-                <span style="font-size:10px;color:#6b7280;">· 点牌/数字即改，自动生效</span>
+                <span style="font-size:10px;color:#6b7280;">· ✓已验 ✎已改 ？未验 · 点牌/数字即改</span>
             </div>
             ${suitBanner}${multiWarn}
             <div class="grid grid-cols-2 md:grid-cols-3" style="gap:6px;">${cells}</div>
