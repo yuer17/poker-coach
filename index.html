@@ -547,6 +547,11 @@
         .tl-pop .macro-btn { padding: 7px 10px; font-size: var(--fs-caption); display: inline-flex; align-items: center; gap: 4px; }
         .tl-pop .tl-amt { width: 62px; height: 24px; padding: 0 4px; text-align: center; font-family: var(--font-mono); font-size: var(--fs-caption); }
         #tlHeroRow .pos-btn-hero { min-height: 30px; }
+        .tl-amt-inline { width: 44px; height: 18px; padding: 0 2px; text-align: center; font-family: var(--font-mono); font-size: var(--fs-micro);
+                         background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.18); border-radius: 4px; color: inherit; -moz-appearance: textfield; }
+        .tl-amt-inline::-webkit-outer-spin-button, .tl-amt-inline::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        #blindWidget.urgent { border-color: #e5484d; color: #ff7a7d; animation: blPulse 1s ease-in-out infinite; }
+        @keyframes blPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.0); } 50% { box-shadow: 0 0 0 3px rgba(229,72,77,.35); } }
         .act-btn { min-height: 42px; font-size: var(--fs-body) !important; font-weight: 700; }
         .act-btn kbd, .qc-btn kbd { font-family: var(--font-mono); font-size: 10px; opacity: .55; margin-left: 5px; font-weight: 600; }
         .act-star { background: var(--accent) !important; color: #082744 !important; border-color: transparent !important;
@@ -580,6 +585,9 @@
             <div class="flex items-center" style="gap:8px;margin-left:auto;">
                 <!-- 配置上移(2026-07-14b)：比赛阶段是唯一高频调整项，单独拎出常驻下拉；
                      其余赛事配置（低频）收进 ⚙ 配置 下拉面板，不再占主界面左列 -->
+                <button id="blindWidget" onclick="toggleConfig()" title="盲注 & 升盲倒计时（点开配置修改）"
+                    class="text-xs font-bold rounded border border-white/10 bg-black/30 text-white px-2"
+                    style="display:none;font-family:var(--font-mono);min-height:28px;flex:0 0 auto;white-space:nowrap;"></button>
                 <select id="stageQuickSelect" onchange="onStageQuickChange(this.value)"
                     title="比赛阶段（高频调整项；其余赛制配置在 ⚙ 配置 里）"
                     class="text-xs font-bold rounded border border-white/10 bg-black/30 text-white px-1"
@@ -616,6 +624,28 @@
                             <div class="flex justify-between items-center pt-1 border-t border-white/10">
                                 <span class="text-[10px] text-yellow-500 font-bold">BB Ante (MTT)</span>
                                 <button id="anteToggle" onclick="toggleAnte()" class="bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded">开启</button>
+                            </div>
+                            <!-- 自动移位 + 升盲同步 + 筹码单位（2026-07-21） -->
+                            <div class="flex justify-between items-center pt-1 border-t border-white/10">
+                                <span class="text-[10px] text-yellow-500 font-bold" title="下一手时我的位置自动往前退一格（BTN→CO→…→UTG→BB→SB→BTN），错位时点座位带修正">下一手自动移位</span>
+                                <button id="autoPosToggle" onclick="toggleAutoPos()" class="bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded">开启</button>
+                            </div>
+                            <div class="pt-1 border-t border-white/10">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-[10px] text-yellow-500 font-bold">盲注 & 升盲同步</span>
+                                    <div class="flex gap-1 items-center"><span class="text-[10px] text-gray-400">筹码单位</span>
+                                        <button id="unitBB" onclick="setChipUnit('bb')" class="cfg-btn active">BB</button>
+                                        <button id="unitChips" onclick="setChipUnit('chips')" class="cfg-btn">筹码数</button></div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <div><div class="text-[10px] text-gray-400">SB</div><input type="number" id="blSb" class="p-1 text-center text-xs h-[26px]" placeholder="500"></div>
+                                    <div><div class="text-[10px] text-gray-400">BB</div><input type="number" id="blBb" class="p-1 text-center text-xs h-[26px]" placeholder="1000"></div>
+                                    <div><div class="text-[10px] text-gray-400">Ante</div><input type="number" id="blAnte" class="p-1 text-center text-xs h-[26px]" placeholder="1000"></div>
+                                    <div><div class="text-[10px] text-gray-400">每级(分)</div><input type="number" id="blLevelMin" class="p-1 text-center text-xs h-[26px]" placeholder="12"></div>
+                                    <div><div class="text-[10px] text-gray-400">本级剩余(分)</div><input type="number" id="blRemain" step="0.5" class="p-1 text-center text-xs h-[26px]" placeholder="12"></div>
+                                    <div class="flex items-end gap-1"><button onclick="blStart()" class="cfg-btn active flex-1" style="min-height:26px;">开始/更新</button><button onclick="blStop()" class="cfg-btn flex-1" style="min-height:26px;">停止</button></div>
+                                </div>
+                                <div id="blStatus" class="text-[10px] text-gray-500 mt-1">未计时（填好后点「开始计时」）</div>
                             </div>
                             <div class="panel-bg p-1.5 rounded flex items-center gap-2 mt-1">
                                 <label class="text-[10px] text-gray-400 shrink-0 w-24">Vision API Key</label>
@@ -655,7 +685,8 @@
                 </div>
                 <ol style="margin:0;padding-left:1.2em;color:var(--text-secondary);font-size:14px;line-height:1.85;">
                     <li><b style="color:var(--text-primary);">选底牌</b>：点 52 张牌网格选两张（红/蓝/绿/灰即花色）。选错了按 <b>Z</b> 撤回，<b>H</b> 清底牌。</li>
-                    <li><b style="color:var(--text-primary);">录时间线</b>：选我的位置，在座位带上按顺序点"谁做了什么"（弃/跛入/跟注/加注到 X/全下），场景自动识别并实时出决策；推导不准时展开「传统场景标签」手动指定。</li>
+                    <li><b style="color:var(--text-primary);">录时间线</b>：选我的位置，<b>单击</b>座位循环 弃→加注→跟注→全下（加注额就地可改），<b>右键/长按</b>选完整动作；场景自动识别并实时出决策；推导不准时展开「传统场景标签」手动指定。<b>下一手</b>时我的位置自动往前退一格（配置可关）。</li>
+                    <li><b style="color:var(--text-primary);">升盲同步</b>：⚙ 配置里填当前盲注、每级时长、本级剩余分钟并「开始/更新」，顶栏显示倒计时，升盲自动推进并提示；筹码单位切「筹码数」后按牌桌真实筹码数输入，自动换算 BB。</li>
                     <li><b style="color:var(--text-primary);">出建议</b>：点 <span style="color:var(--gold);">解析 GTO</span>（或按回车）。</li>
                     <li><b style="color:var(--text-primary);">截图识别</b>：<b>Ctrl+V</b> 粘贴牌桌截图自动填入，对照"识别结果核对"卡，点 ✎ 可改。</li>
                     <li><b style="color:var(--text-primary);">翻后</b>：底牌选满后直接在同一网格点选公共牌即自动进入翻后并算胜率（截图也自动进入）；在行动线区记录双方动作看跟/弃/加建议。</li>
@@ -756,7 +787,7 @@
                     <div id="tlNote" class="text-[10px] mt-1" style="color:#e0a83a;display:none;"></div>
                     <div class="grid grid-cols-3 gap-1.5 mt-1.5">
                         <div class="panel-bg p-1.5 rounded border-red-900/50">
-                            <label class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
+                            <label id="tlStackHeroLabel" class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
                             <input type="number" id="tlStackHero" value="40" oninput="tlOnStackInput('hero')" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
                         </div>
                         <div class="panel-bg p-1.5 rounded">
@@ -764,10 +795,11 @@
                             <input type="number" id="tlStackVillain" value="40" oninput="tlOnStackInput('villain')" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                         </div>
                         <div class="panel-bg p-1.5 rounded">
-                            <label class="text-[10px] text-yellow-500 block mb-1">桌面平均码 (BB)</label>
+                            <label id="tlAvgStackLabel" class="text-[10px] text-yellow-500 block mb-1">桌面平均码 (BB)</label>
                             <input type="number" id="tlAvgStack" value="40" oninput="tlOnStackInput('avg')" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                         </div>
                     </div>
+                    <div id="tlUnitHint" class="text-[10px] mt-1" style="color:var(--gold);display:none;"></div>
                     <div class="mt-1.5 flex items-center gap-2">
                         <button id="legacyScenarioToggle" onclick="toggleLegacyScenario()" class="macro-btn" title="按传统 7 个场景标签手动指定（兼容/强制入口）">传统场景标签 ▸</button>
                         <span class="text-[10px] text-gray-600">时间线推导不准时可在此手动指定场景</span>
@@ -965,7 +997,11 @@
             // M5 诈唬极化(2026-07-20)：对手模型开关——exploit=纯价值收窄（对
             // under-bluff 实战池的剥削方向，历史默认行为）；gto=假设对手 GTO
             // 均衡下注（含诈唬），收窄后从弱端按极化比补回诈唬牌
-            villainModel: 'exploit' // exploit / gto
+            villainModel: 'exploit', // exploit / gto
+            // 升盲同步/筹码单位/自动移位(2026-07-21)
+            autoAdvancePos: true,    // 下一手自动把我的位置往前退一格
+            chipUnit: 'bb',          // 'bb' | 'chips'（筹码框按真实筹码数输入，自动换算 BB）
+            blinds: { sb: 500, bb: 1000, ante: 1000, levelMin: 12, levelStartTs: 0, running: false }
         };
 
         const gameTypeOpts = [
@@ -1087,8 +1123,9 @@
             const ante = gameConfig.ante ? ' · Ante' : '';
             const psLabel = gameConfig.playStyle === 'tight' ? ' · 紧' : gameConfig.playStyle === 'loose' ? ' · 松' : '';
             const vmLabel = gameConfig.villainModel === 'gto' ? ' · GTO对手' : ''; // M5
+            const cuLabel = gameConfig.chipUnit === 'chips' ? ' · 筹码数' : ''; // 2026-07-21
             const el = document.getElementById('cfgSummary');
-            if (el) el.innerText = `${gt} · ${ts} · ${st}${ante}${psLabel}${vmLabel}`;
+            if (el) el.innerText = `${gt} · ${ts} · ${st}${ante}${psLabel}${vmLabel}${cuLabel}`;
             try { updateDecisionHUD(); } catch (e) {} // 常驻决策 HUD(2026-07-21)：重置/下一手/配置变更后同步
             // 配置上移(2026-07-14b)：同步 header 阶段快捷下拉（配置面板内改 stage 时保持一致）
             const sq = document.getElementById('stageQuickSelect');
@@ -2618,6 +2655,8 @@
             gameConfig.gameType = 'normal'; gameConfig.tableSize = '9max'; gameConfig.stage = 'normal'; gameConfig.ante = true;
             gameConfig.playStyle = 'normal'; // B1：彻底重置应包含打法风格
             gameConfig.villainModel = 'exploit'; // M5：对手模型复位为默认剥削
+            gameConfig.autoAdvancePos = true; gameConfig.chipUnit = 'bb'; gameConfig.blinds.running = false; // 2026-07-21
+            chipVals = { hero: null, villain: null, avg: null }; try { blSave(); blRender(); } catch (e) {}
             globalHeroStack = 40; globalVillainStack = 40;
             globalAvgStack = 40; avgStackTouched = false; // O4：平均码持久化一并复位
             globalPosHero = 'BTN'; globalPosVillain = 'UTG'; globalPosCaller = 'CO';
@@ -2790,7 +2829,15 @@
             const savedHero = globalHeroStack, savedVillain = globalVillainStack;
             // 翻前时间线(2026-07-21)：下一手座位带回到"前方全部弃牌"（场景随之回 open），位置/筹码/赛制仍保留
             tlReset();
+            // 自动移位(2026-07-21)：按钮每手顺时针移一位 → 我的位置往前退一格
+            let _np = null;
+            if (gameConfig.autoAdvancePos !== false && !_undoRestoring) {
+                _np = tlAdvanceHeroPos();
+                if (_np) showToast(`位置 → ${_np === 'UTG1' ? 'U+1' : (POS_LABEL[_np] || _np)}（自动移位，错位点座位带修正）`, 'info');
+            }
             switchMode('open');
+            // open 模式的排除规则会把 BB 踢回 BTN——时间线以座位为准（BB 无人入池=walk，有人加注即 vs Raise）
+            if (_np && globalPosHero !== _np) { globalPosHero = _np; try { tlSyncFromMode(); } catch (e) {} }
             // switchMode 重渲 dynamicInputs 后，强制把筹码值写回对应 input，确保显示正确
             const shEl = document.getElementById('stackHero');
             const svEl = document.getElementById('stackVillain');
@@ -3136,9 +3183,12 @@
             const h = parseFloat(document.getElementById('tlStackHero')?.value);
             const v = parseFloat(document.getElementById('tlStackVillain')?.value);
             const a = document.getElementById('tlAvgStack');
-            if (h > 0) globalHeroStack = h;
-            if (v > 0) globalVillainStack = v;
-            if (a && a.value && parseFloat(a.value) > 0) { globalAvgStack = parseFloat(a.value); if (a.dataset.touched === '1') avgStackTouched = true; }
+            // 筹码单位(2026-07-21)：筹码数模式下输入框是真实筹码，存 chipVals 并按当前 BB 换算
+            const chips = gameConfig.chipUnit === 'chips' && gameConfig.blinds.bb > 0;
+            const cv = x => chips ? Math.round(x / gameConfig.blinds.bb * 10) / 10 : x;
+            if (h > 0) { if (chips) chipVals.hero = h; globalHeroStack = cv(h); }
+            if (v > 0) { if (chips) chipVals.villain = v; globalVillainStack = cv(v); }
+            if (a && a.value && parseFloat(a.value) > 0) { const av = parseFloat(a.value); if (chips) chipVals.avg = av; globalAvgStack = cv(av); if (a.dataset.touched === '1') avgStackTouched = true; }
         }
 
         /** 外部 switchMode（OCR / 传统标签 / 撤回）后，用当前模式与全局值重建座位带 */
@@ -3193,25 +3243,51 @@
                 if (e.action === 'allin') return `全下 ${e.amount}`;
                 return e.action;
             };
+            // 点选简化(2026-07-21)：单击座位循环 弃→加注→跟注/跛入→全下；加注/全下额就地可改；
+            // 右键 / 长按（450ms）才弹出完整动作弹层
+            const amtInput = (p, amt) => `<input class="tl-amt-inline" type="number" step="0.1" min="0.5" value="${amt}" data-tlamtpos="${p}" title="就地改额，回车确认">`;
             ribbon.innerHTML = seats.map((p, i) => {
                 const isHero = p === globalPosHero;
                 const e = tlEvents[p];
                 const cls = isHero ? 'hero' : (e && e.action !== 'fold' ? e.action : 'fold');
                 const disabled = !isHero && i > hi && !tlHero;
-                return `<div class="tl-seat ${cls}${disabled ? ' disabled' : ''}" data-tlseat="${p}" title="${disabled ? '我先行动；先记录我的行动后此座位才能行动' : '点击记录该座位行动'}">
-                    <div class="tl-pos">${isHero ? '我 · ' : ''}${tlLbl(p)}</div><div class="tl-act">${actTxt(p)}</div></div>`;
+                let act = actTxt(p);
+                if (isHero && tlHero && tlHero.action === 'open') act = `我开池 ${amtInput(p, tlHero.amount)}`;
+                else if (!isHero && e && e.action === 'raise') act = `加注 ${amtInput(p, e.amount)}`;
+                else if (!isHero && e && e.action === 'allin') act = `全下 ${amtInput(p, e.amount)}`;
+                return `<div class="tl-seat ${cls}${disabled ? ' disabled' : ''}" data-tlseat="${p}" title="${disabled ? '我先行动；先点我的座位记录"我开池/我已跟注"，后位才能行动' : '单击循环 弃→加注→跟注→全下 · 右键/长按选择'}">
+                    <div class="tl-pos">${isHero ? '我 · ' : ''}${tlLbl(p)}</div><div class="tl-act">${act}</div></div>`;
             }).join('');
-            ribbon.querySelectorAll('[data-tlseat]').forEach(el => el.onclick = (e) => {
-                if (el.classList.contains('disabled')) { showToast('我先行动——先点我的座位记录"我开池/我已跟注"，后位才能行动', 'warn'); return; }
-                tlOpenPopover(el.dataset.tlseat, el);
+            ribbon.querySelectorAll('[data-tlseat]').forEach(el => {
+                const pos = el.dataset.tlseat;
+                let pressTimer = null, longPressed = false;
+                const guard = () => { if (el.classList.contains('disabled')) { showToast('我先行动——先点我的座位记录"我开池/我已跟注"，后位才能行动', 'warn'); return false; } return true; };
+                el.onclick = (e) => {
+                    if (e.target.closest('.tl-amt-inline')) return;
+                    if (longPressed) { longPressed = false; return; }
+                    if (!guard()) return;
+                    tlCycleSeat(pos);
+                };
+                el.oncontextmenu = (e) => { e.preventDefault(); if (guard()) tlOpenPopover(pos, el); };
+                el.addEventListener('touchstart', () => { longPressed = false; pressTimer = setTimeout(() => { longPressed = true; if (guard()) tlOpenPopover(pos, el); }, 450); }, { passive: true });
+                ['touchend', 'touchmove', 'touchcancel'].forEach(ev => el.addEventListener(ev, () => clearTimeout(pressTimer), { passive: true }));
+            });
+            ribbon.querySelectorAll('.tl-amt-inline').forEach(inp => {
+                inp.onclick = (e) => e.stopPropagation();
+                inp.onchange = () => tlSetAmount(inp.dataset.tlamtpos, inp.value);
+                inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); inp.blur(); } e.stopPropagation(); };
             });
             // 筹码行（不覆盖用户正在输入的框）
             const d = deriveScenario();
             const vl = document.getElementById('tlStackVillainLabel');
             if (vl) vl.textContent = d.posV ? `对手筹码 · ${tlLbl(d.posV)} (BB)` : '对手筹码 (BB)';
             const setIf = (id, v) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = v; };
-            setIf('tlStackHero', globalHeroStack); setIf('tlStackVillain', globalVillainStack);
-            setIf('tlAvgStack', avgStackTouched ? globalAvgStack : globalHeroStack);
+            // 筹码单位(2026-07-21)：筹码数模式下框里显示真实筹码（BB×当前大盲）
+            const chipsMode = gameConfig.chipUnit === 'chips' && gameConfig.blinds.bb > 0;
+            const disp = (bbVal, key) => chipsMode ? (chipVals[key] > 0 ? chipVals[key] : Math.round(bbVal * gameConfig.blinds.bb)) : bbVal;
+            setIf('tlStackHero', disp(globalHeroStack, 'hero')); setIf('tlStackVillain', disp(globalVillainStack, 'villain'));
+            setIf('tlAvgStack', disp(avgStackTouched ? globalAvgStack : globalHeroStack, 'avg'));
+            try { blRenderUnitLabels(); } catch (e) {}
         }
 
         /** 座位动作弹层 */
@@ -3225,9 +3301,7 @@
             const raiseBefore = seats.slice(0, idx).some(p => (tlEvents[p] || {}).action === 'raise') || (idx > hi && tlHero && tlHero.action === 'open');
             const cur = tlEvents[pos] || { action: 'fold' };
             const openAmt = tlOpenDefault();
-            const defRaise = raiseBefore
-                ? tlThreeBetDefault(seats.slice(0, idx).reduce((m, p) => Math.max(m, (tlEvents[p] || {}).action === 'raise' ? tlEvents[p].amount : 0), tlHero?.amount || 0) || openAmt)
-                : openAmt;
+            const defRaise = tlDefaultRaise(pos);
             const btn = (label, key, extra = '') => `<button class="macro-btn tl-pop-btn" data-tlact="${key}" ${extra}>${label}</button>`;
             let html = `<div class="text-[10px] text-gray-400 w-full mb-1">${isHero ? '我的翻前行动' : tlLbl(pos) + ' 的行动'}</div>`;
             if (isHero) {
@@ -3296,6 +3370,170 @@
             const box = document.getElementById('legacyScenario'), b = document.getElementById('legacyScenarioToggle');
             if (box) box.style.display = _legacyOpen() ? '' : 'none';
             if (b) b.textContent = _legacyOpen() ? '传统场景标签 ▾' : '传统场景标签 ▸';
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // 升盲同步 + 筹码单位 + 下一手自动移位（2026-07-21，用户三点诉求）
+        // ══════════════════════════════════════════════════════════════════
+        // 盲注结构：只填当前级（SB/BB/Ante）+ 每级时长 + 本级剩余分钟，后续等级按常见 MTT 标准
+        // 结构自动推进（用户拍板"只填当前级，后续按标准推"）。levelStartTs 为绝对时间戳并
+        // 持久化到 localStorage，刷新页面倒计时不丢。升盲时 toast 提示；筹码单位=筹码数时，
+        // 三个筹码框存原始筹码、BB 值自动重算（全局仍以 BB 供引擎使用，引擎零改动）。
+        // GG 标准结构 BB 数列：1 / 1.2 / 1.6 / 2 / 2.4 / 3 / 4 / 5 / 6 / 8 × 10ⁿ（500/1000→600/1200→800/1600→1000/2000…）
+        const STD_BB_LEVELS = (() => { const out = []; for (let k = 1; k <= 6; k++) [1, 1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8].forEach(m => out.push(Math.round(m * Math.pow(10, k)))); return out; })();
+        let chipVals = { hero: null, villain: null, avg: null }; // 筹码单位=筹码数时的原始筹码
+        let _blTimer = null;
+        function blNextBB(bb) { const n = STD_BB_LEVELS.find(x => x > bb); return n || Math.round(bb * 1.25 / 100) * 100; }
+        function blFmt(n) { return (n || 0).toLocaleString('en-US'); }
+        function blSave() { try { localStorage.setItem('blind_cfg', JSON.stringify(gameConfig.blinds)); localStorage.setItem('chip_unit', gameConfig.chipUnit); localStorage.setItem('auto_pos', gameConfig.autoAdvancePos ? '1' : '0'); } catch (e) {} }
+        function blLoad() {
+            try {
+                const s = localStorage.getItem('blind_cfg'); if (s) Object.assign(gameConfig.blinds, JSON.parse(s));
+                const u = localStorage.getItem('chip_unit'); if (u === 'chips' || u === 'bb') gameConfig.chipUnit = u;
+                const a = localStorage.getItem('auto_pos'); if (a === '0') gameConfig.autoAdvancePos = false;
+            } catch (e) {}
+        }
+        function blRemainingMs() {
+            const b = gameConfig.blinds;
+            if (!b.running || !b.levelStartTs) return null;
+            return b.levelStartTs + b.levelMin * 60000 - Date.now();
+        }
+        function blRender() {
+            const b = gameConfig.blinds;
+            const w = document.getElementById('blindWidget');
+            if (w) {
+                const ms = blRemainingMs();
+                if (ms === null) { w.style.display = 'none'; }
+                else {
+                    const sec = Math.max(0, Math.floor(ms / 1000)), mm = String(Math.floor(sec / 60)).padStart(2, '0'), ss = String(sec % 60).padStart(2, '0');
+                    w.style.display = '';
+                    w.innerHTML = `<span style="color:var(--gold)">${blFmt(b.sb)}/${blFmt(b.bb)}${b.ante ? '/' + blFmt(b.ante) : ''}</span> <span style="opacity:.75">升盲</span> ${mm}:${ss}`;
+                    w.classList.toggle('urgent', sec <= 60);
+                }
+            }
+            const set = (id, v) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = v; };
+            set('blSb', b.sb); set('blBb', b.bb); set('blAnte', b.ante); set('blLevelMin', b.levelMin);
+            const ms = blRemainingMs();
+            if (ms !== null) set('blRemain', Math.max(0, Math.ceil(ms / 60000 * 10) / 10));
+            const st = document.getElementById('blStatus');
+            if (st) st.textContent = b.running ? `计时中 · 下一级 ${blFmt(b.bb / 2 * 0 + blNextBB(b.bb) / 2)}/${blFmt(blNextBB(b.bb))}（标准结构推算）` : '未计时（填好后点「开始计时」）';
+            const ub = document.getElementById('unitBB'), uc = document.getElementById('unitChips');
+            if (ub) ub.className = 'cfg-btn' + (gameConfig.chipUnit === 'bb' ? ' active' : '');
+            if (uc) uc.className = 'cfg-btn' + (gameConfig.chipUnit === 'chips' ? ' active' : '');
+            const ap = document.getElementById('autoPosToggle');
+            if (ap) { ap.innerText = gameConfig.autoAdvancePos ? '开启' : '关闭'; ap.className = (gameConfig.autoAdvancePos ? 'bg-green-600' : 'bg-gray-600') + ' text-white text-[10px] font-bold px-3 py-0.5 rounded'; }
+            blRenderUnitLabels();
+        }
+        function blRenderUnitLabels() {
+            const chips = gameConfig.chipUnit === 'chips';
+            const bb = gameConfig.blinds.bb || 0;
+            const hl = document.getElementById('tlStackHeroLabel'), al = document.getElementById('tlAvgStackLabel');
+            if (hl) hl.textContent = chips ? `我的筹码（筹码数 = ${globalHeroStack}BB）` : '我的筹码 (BB)';
+            if (al) al.textContent = chips ? `桌面平均码（筹码数）` : '桌面平均码 (BB)';
+            const vl = document.getElementById('tlStackVillainLabel');
+            if (vl && chips) vl.textContent = vl.textContent.replace(' (BB)', '') + `（筹码数 = ${globalVillainStack}BB）`;
+            const hint = document.getElementById('tlUnitHint');
+            if (hint) { hint.style.display = chips ? '' : 'none'; hint.textContent = chips ? `筹码单位：筹码数 · 当前 BB = ${blFmt(bb)} · 输入牌桌上看到的筹码数，自动换算为 BB（底池/有效筹码框仍为 BB）` : ''; }
+        }
+        window.blStart = function() {
+            const b = gameConfig.blinds;
+            const g = id => parseFloat(document.getElementById(id)?.value);
+            const sb = g('blSb'), bb = g('blBb'), ante = g('blAnte'), lm = g('blLevelMin'), rem = g('blRemain');
+            if (!(bb > 0) || !(lm > 0)) { showToast('请填写大盲与每级时长', 'error'); return; }
+            b.sb = sb > 0 ? sb : Math.round(bb / 2); b.bb = bb; b.ante = ante >= 0 ? ante : 0; b.levelMin = lm;
+            const remain = (rem >= 0 && rem <= lm) ? rem : lm;
+            b.levelStartTs = Date.now() - (lm - remain) * 60000; b.running = true;
+            blSave(); blRender(); blRecomputeChipStacks();
+            showToast(`升盲计时开始：${blFmt(b.sb)}/${blFmt(b.bb)}，${remain} 分钟后升至 ${blFmt(blNextBB(b.bb))}`, 'info');
+        };
+        window.blStop = function() { gameConfig.blinds.running = false; blSave(); blRender(); showToast('升盲计时已停止', 'info'); };
+        function blLevelUp() {
+            const b = gameConfig.blinds;
+            const prevBB = b.bb;
+            b.bb = blNextBB(b.bb); b.sb = Math.round(b.bb / 2); if (b.ante > 0) b.ante = b.bb;
+            b.levelStartTs += b.levelMin * 60000;
+            blSave();
+            const before = globalHeroStack;
+            blRecomputeChipStacks();
+            const msg = gameConfig.chipUnit === 'chips'
+                ? `已升盲 → ${blFmt(b.sb)}/${blFmt(b.bb)}：你的筹码 ${before}BB → ${globalHeroStack}BB`
+                : `已升盲 → ${blFmt(b.sb)}/${blFmt(b.bb)}（原 BB ${blFmt(prevBB)}），请核对 BB 数`;
+            showToast(msg, 'warn');
+        }
+        function blTick() {
+            const ms = blRemainingMs();
+            if (ms !== null && ms <= 0) { let guard = 0; while (blRemainingMs() <= 0 && guard++ < 50) blLevelUp(); }
+            blRender();
+        }
+        function blRecomputeChipStacks() {
+            if (gameConfig.chipUnit !== 'chips') return;
+            const bb = gameConfig.blinds.bb; if (!(bb > 0)) return;
+            const cv = v => Math.round(v / bb * 10) / 10;
+            if (chipVals.hero > 0) globalHeroStack = cv(chipVals.hero);
+            if (chipVals.villain > 0) globalVillainStack = cv(chipVals.villain);
+            if (chipVals.avg > 0) globalAvgStack = cv(chipVals.avg);
+            const w = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+            w('stackHero', globalHeroStack); w('stackVillain', globalVillainStack); w('avgStack', avgStackTouched ? globalAvgStack : globalHeroStack);
+            try { renderTimeline(); } catch (e) {}
+            // 翻前已有底牌 → 重跑；翻后不动（有效筹码/底池以翻后输入框为准）
+            try { if (heroCard1 && heroCard2 && postState.board.filter(c => c !== null).length < 3 && typeof tlScheduleApply === 'function') tlScheduleApply(); } catch (e) {}
+        }
+        window.setChipUnit = function(u) {
+            if (u === gameConfig.chipUnit) return;
+            const bb = gameConfig.blinds.bb || 0;
+            if (u === 'chips' && !(bb > 0)) { showToast('请先在盲注里填当前大盲', 'error'); return; }
+            if (u === 'chips') { chipVals = { hero: Math.round(globalHeroStack * bb), villain: Math.round(globalVillainStack * bb), avg: Math.round((avgStackTouched ? globalAvgStack : globalHeroStack) * bb) }; }
+            gameConfig.chipUnit = u; blSave(); blRender();
+            try { renderTimeline(); } catch (e) {}
+            updateCfgSummary();
+        };
+        window.toggleAutoPos = function() { gameConfig.autoAdvancePos = !gameConfig.autoAdvancePos; blSave(); blRender(); };
+        /** 下一手自动移位：按钮每手顺时针移一位 → 我的位置往前退一格（BTN→CO→…→UTG→BB→SB→BTN） */
+        function tlAdvanceHeroPos() {
+            const seats = getPositions(); const i = seats.indexOf(globalPosHero);
+            if (i < 0) return null;
+            globalPosHero = seats[(i - 1 + seats.length) % seats.length];
+            return globalPosHero;
+        }
+        /** 座位单击循环：弃 → 加注 → 跟注/跛入 → 全下 → 弃；我的座位：轮到我 → 我已开池 → (我已跟注) → 轮到我 */
+        function tlDefaultRaise(pos) {
+            const seats = getPositions(); const idx = seats.indexOf(pos), hi = seats.indexOf(globalPosHero);
+            const openAmt = tlOpenDefault();
+            const prior = seats.slice(0, idx).reduce((m, p) => Math.max(m, (tlEvents[p] || {}).action === 'raise' ? tlEvents[p].amount : 0), 0);
+            const heroOpen = (idx > hi && tlHero && tlHero.action === 'open') ? tlHero.amount : 0;
+            const base = Math.max(prior, heroOpen);
+            return base > 0 ? tlThreeBetDefault(base) : openAmt;
+        }
+        function tlCycleSeat(pos) {
+            const seats = getPositions(); const idx = seats.indexOf(pos), hi = seats.indexOf(globalPosHero);
+            const raiseBefore = seats.slice(0, idx).some(p => (tlEvents[p] || {}).action === 'raise') || (idx > hi && tlHero && tlHero.action === 'open');
+            if (pos === globalPosHero) {
+                const raiseAhead = seats.slice(0, hi).some(p => (tlEvents[p] || {}).action === 'raise');
+                const seq = ['none', 'open'].concat(raiseAhead ? ['call'] : []);
+                const cur = tlHero ? tlHero.action : 'none';
+                const next = seq[(seq.indexOf(cur) + 1) % seq.length];
+                pushUndo(`时间线：我 → ${next === 'none' ? '轮到我' : next === 'open' ? '已开池' : '已跟注'}`);
+                if (next === 'none') { tlHero = null; seats.slice(hi + 1).forEach(p => delete tlEvents[p]); }
+                else if (next === 'open') tlHero = { action: 'open', amount: tlOpenDefault() };
+                else tlHero = { action: 'call' };
+                tlScheduleApply(); return;
+            }
+            const seq = ['fold', 'raise', raiseBefore ? 'call' : 'limp', 'allin'];
+            const cur = (tlEvents[pos] || {}).action || 'fold';
+            const next = seq[(seq.indexOf(cur) + 1) % seq.length];
+            pushUndo(`时间线：${tlLbl(pos)} → ${{ fold: '弃牌', raise: '加注', call: '跟注', limp: '跛入', allin: '全下' }[next]}`);
+            if (next === 'fold') delete tlEvents[pos];
+            else if (next === 'raise') tlEvents[pos] = { action: 'raise', amount: tlDefaultRaise(pos) };
+            else if (next === 'allin') tlEvents[pos] = { action: 'allin', amount: globalVillainStack };
+            else tlEvents[pos] = { action: next };
+            tlScheduleApply();
+        }
+        function tlSetAmount(pos, val) {
+            const amt = parseFloat(val);
+            if (!(amt > 0)) return;
+            if (pos === globalPosHero) { if (tlHero && tlHero.action === 'open') { pushUndo(`时间线：我开池额 ${amt}`); tlHero.amount = amt; } }
+            else if (tlEvents[pos] && ['raise', 'allin'].includes(tlEvents[pos].action)) { pushUndo(`时间线：${tlLbl(pos)} 额 ${amt}`); tlEvents[pos].amount = amt; }
+            tlScheduleApply();
         }
 
         // ── 翻前输入校验（P0-4）──
@@ -4268,6 +4506,8 @@
         syncHeroCardCompat();
         switchMode('open');
         applyLegacyPref(); // 翻前时间线(2026-07-21)：传统标签折叠区
+        blLoad(); blRender(); _blTimer = setInterval(blTick, 1000); // 升盲同步(2026-07-21)
+        try { renderTimeline(); } catch (e) {} // 加载持久化的筹码单位后刷新筹码框
         initStageQuickSelect(); // 配置上移(2026-07-14b)：header 阶段下拉填充
         updateCfgSummary();
 
