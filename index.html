@@ -517,6 +517,20 @@
         .macro-btn:hover { background: rgba(255,255,255,.09); color: var(--text-primary); }
         .macro-btn:disabled { cursor: not-allowed; }
         .macro-btn kbd { font-family: var(--font-mono); font-size: 10px; opacity: .55; margin-left: 4px; }
+        /* 下一手(2026-07-21)：全流程最高频动作，升为主行动样式（实心 accent + 更大） */
+        .macro-btn.macro-next { background: var(--accent); color: #082744; border-color: transparent;
+            font-size: var(--fs-caption); padding: 5px 14px; min-height: 28px; }
+        .macro-btn.macro-next:hover { background: var(--accent-hover); color: #082744; }
+        .macro-btn.macro-next kbd { opacity: .7; color: #082744; }
+        /* 待发牌提示(2026-07-21)：本街打完后，下一张公共牌槽位呼吸高亮，指明"该发牌了" */
+        @keyframes slotPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(87,169,255,.55); border-color: var(--accent); }
+                               50% { box-shadow: 0 0 0 5px rgba(87,169,255,0); border-color: rgba(87,169,255,.5); } }
+        .slot-await { animation: slotPulse 1.4s ease-in-out infinite; border-style: solid !important; }
+        .next-cta { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 9px;
+            border-radius: var(--radius-sm); background: rgba(87,169,255,.12); border: 1px solid var(--accent);
+            font-size: var(--fs-body); font-weight: 700; color: var(--accent); }
+        .next-cta button { background: var(--accent); color: #082744; font-weight: 800; border: none;
+            border-radius: var(--radius-sm); padding: 6px 16px; cursor: pointer; font-size: var(--fs-caption); }
         #postRightContent.hide-details #postHandCard, #postRightContent.hide-details #postRangeCard,
         #postRightContent.hide-details #postTextureCard, #postRightContent.hide-details #postDebugCard { display: none !important; }
         #mathProofPanel.proof-collapsed > :not(h3) { display: none; }
@@ -778,7 +792,7 @@
                             <button onclick="undoLastStep();" id="macroUndoBtn" class="macro-btn" title="没有可撤回的操作">↶ 撤回<kbd>Z</kbd></button>
                             <button onclick="clearHeroCards();" class="macro-btn" title="清底牌（H）">清底牌<kbd>H</kbd></button>
                             <button onclick="clearBoard();" class="macro-btn" title="清公共牌，回到翻前（G）">清公共牌<kbd>G</kbd></button>
-                            <button onclick="nextHand();" class="macro-btn" title="下一手（N）">下一手<kbd>N</kbd></button>
+                            <button onclick="nextHand();" class="macro-btn macro-next" title="下一手（N）——最常用，故做成主行动样式">下一手<kbd>N</kbd></button>
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
                             <span id="currentHandStr" class="text-base font-black text-yellow-400 tracking-wider">A♠ Q♥</span>
@@ -4440,8 +4454,13 @@
                     // 原固定按 1 个 caller，多人跟注时尺度不足；All-in 上限改用有效
                     // 筹码 effStack——与 faceBet 的 P1-2 修复对齐，原用 sH 会在对手
                     // 更短时显示超出实际可推额度的尺度）
+                    // 尺度修正(2026-07-21，用户提问"为什么 11BB"引出)：4x + 每 caller 1x 是
+                    // OOP 挤压的标准尺度（2.2 开池 + 1 跟注者 → 11BB，深码正确）。但原本只在
+                    // ≥85% 有效筹码才转全押——20BB 时 11BB 占 55%、被跟后 SPR 仅 0.35，
+                    // 留 9BB 在后面毫无操作空间。改为**投入 ≥35% 有效筹码即直接全押**
+                    //（承诺线：加注到这个比例已经不可弃牌，留小筹码只会削弱弃牌压力）。
                     const squeezeAmt = raiseSize * 4 + raiseSize * numCallers;
-                    const squeezeSize = (effStack > 0 && squeezeAmt >= effStack * 0.85)
+                    const squeezeSize = (effStack > 0 && squeezeAmt >= effStack * 0.35)
                         ? `${effStack.toFixed(1)}BB All-in`
                         : squeezeAmt.toFixed(1) + "BB";
                     document.getElementById('sizingContent').innerText = squeezeSize;
@@ -5713,6 +5732,36 @@
          * 渲染公共牌槽位
          * 第二阶段新增：槽位激活高亮 + 阶段状态提示更新
          */
+        /** 当前街行动是否已结束（双方过牌 / 有人跟注 / 有人弃牌 / 摊牌）——用于"该发下一张牌了"提示 */
+        function isStreetSettled() {
+            const n = postState.board.filter(c => c !== null).length;
+            if (n < 3 || n >= 5) return false;                 // 未到翻牌 / 河牌已满
+            const street = n === 3 ? 'flop' : 'turn';
+            const sa = (postState.potTracker.actions || []).filter(a => a.street === street);
+            if (!sa.length) return false;
+            const ph = getStreetState(sa).phase;
+            return ph === 'street_over' || ph === 'showdown';
+        }
+        /** 本手是否已结束（有人弃牌）——用于"下一手"大按钮 */
+        function isHandOver() {
+            return (postState.potTracker.actions || []).some(a => a.action === 'fold');
+        }
+
+        /** 给"下一张该发的空槽"加/去呼吸高亮（renderBoard 与每次行动后都会调用） */
+        function applyBoardSlotHint() {
+            const filled = postState.board.filter(c => c !== null).length;
+            // 本手已因弃牌结束 → 不再提示发牌（该点的是「下一手」）
+            const await_ = (isStreetSettled() && !isHandOver()) ? filled : -1;
+            for (let i = 0; i < 5; i++) {
+                const slot = document.getElementById('boardSlot' + i);
+                if (!slot || postState.board[i]) continue;
+                const on = i === await_;
+                slot.classList.toggle('slot-await', on);
+                const lbl = slot.querySelector('span');
+                if (lbl) lbl.className = `text-[10px] ${on ? 'text-sky-300 font-bold' : 'text-gray-500'}`;
+            }
+        }
+
         function renderBoard() {
             const slotLabels = ['F1', 'F2', 'F3', 'T', 'R'];
 
@@ -5727,8 +5776,12 @@
                     slot.title = `${slotLabels[i]}：${card}（点击移除）`;
                     slot.onclick = () => removeBoardCard(i);
                 } else {
-                    slot.className = "w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0";
-                    slot.innerHTML = `<span class="text-[10px] text-gray-500">${slotLabels[i]}</span>`;
+                    // 待发牌高亮(2026-07-21)：本街行动打完后，下一张该发的槽位呼吸提示，
+                    // 免得"打完了不知道下一步该干嘛"（用户反馈翻后流程复杂的主因之一）
+                    const awaiting = (i === postState.board.filter(c => c !== null).length) && isStreetSettled();
+                    slot.className = "w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"
+                        + (awaiting ? ' slot-await' : '');
+                    slot.innerHTML = `<span class="text-[10px] ${awaiting ? 'text-sky-300 font-bold' : 'text-gray-500'}">${slotLabels[i]}</span>`;
                     slot.onclick = null;
                 }
             }
@@ -6237,10 +6290,24 @@
 
             // ── 当前行动区 ──
             if (ss.phase === 'showdown') {
-                html += `<div class="text-[10px] text-yellow-400 text-center py-2 border border-yellow-700/40 bg-yellow-900/15 rounded font-bold">🃏 进入摊牌阶段，等待公共牌 Run Out</div>`;
+                const moreCards = count < 5;
+                html += `<div class="next-cta" style="background:rgba(224,168,58,.12);border-color:#e0a83a;color:#e0a83a;">
+                    <span>🃏 已全下对跟${moreCards ? ` → 左侧继续发${count === 3 ? '转牌' : '河牌'}看结果` : '，本手结束'}</span>
+                    ${moreCards ? '' : '<button onclick="nextHand()" style="background:#e0a83a;">下一手 N</button>'}</div>`;
 
             } else if (ss.phase === 'street_over') {
-                html += `<div class="text-[10px] text-green-400 text-center py-1.5 border border-green-800/30 bg-green-900/10 rounded">✓ 本街行动完毕 → 在牌面区点下一张公共牌（转牌 / 河牌）继续</div>`;
+                // 下一步指引(2026-07-21)：本街打完后明确告诉用户下一步做什么，
+                // 弃牌收场直接给"下一手"大按钮，免得再去找按钮（用户反馈流程复杂）
+                const folded = streetActions.some(a => a.action === 'fold');
+                const nextLabel = count === 3 ? '转牌' : count === 4 ? '河牌' : null;
+                if (folded || !nextLabel) {
+                    html += `<div class="next-cta">
+                        <span>${folded ? '🏁 有人弃牌，本手结束' : '🏁 河牌行动完毕'}</span>
+                        <button onclick="nextHand()">下一手 N</button></div>`;
+                } else {
+                    html += `<div class="next-cta">
+                        <span>✓ 本街完毕 → 左侧点选<b>${nextLabel}</b>（槽位已闪烁提示）</span></div>`;
+                }
 
             } else {
                 const actor     = ss.nextToAct;
@@ -6359,6 +6426,9 @@
             area.innerHTML = html;
             // 折叠(2026-07-14)：面板每次重渲后恢复次要卡折叠状态
             if (typeof applyCardCollapsePrefs === 'function') applyCardCollapsePrefs();
+            // 待发牌高亮(2026-07-21)：行动后需刷新槽位提示——setActionRecord 只调本函数，
+            // 不调 renderBoard，故在此单独应用（避免 renderBoard↔renderBettingPanel 互调）
+            applyBoardSlotHint();
         }
 
         /**
@@ -7712,10 +7782,13 @@
             const validSims = 0;
             const equity = null;
 
-            // ---- 相对牌力计算（替代"坚果度"概念）----
-            // 我方牌力在自己范围里的百分位（前 X% 强）
+            // ---- 相对牌力计算（我方牌力打赢对手范围的比例）----
+            // 引擎修复(2026-07-21，用户 K10s@2-2-Q 实战暴露)：原用 `heroRank > sampleSolved.rank`
+            // 比较——但 pokersolver 的 .rank 只是**牌型大类**（2=一对/3=两对…），同类不分踢脚。
+            // 于是 AK 顶对 vs A3 顶对被判"我不更强"，成对牌面上双方都是"一对2"更是恒为 0。
+            // 后果：relStrength 在所有牌面被系统性低估，而它正是 Fix-7 强制弃牌与套牢警告的判据
+            // → 系统性过弃。改用 Hand.winners 做完整比较（含踢脚），平局记半分。
             let strongerThan = 0, relCompared = 0;
-            const heroRank = solvedHand.rank;
 
             for (let i = 0; i < 300; i++) {
                 try {
@@ -7725,7 +7798,9 @@
                     if (!sampleHand) continue;
                     const sampleSolved = Hand.solve([...sampleHand, ...board]);
                     relCompared++;
-                    if (heroRank > sampleSolved.rank) strongerThan++;
+                    const w = Hand.winners([solvedHand, sampleSolved]);
+                    if (w.length === 2) strongerThan += 0.5;          // 踢脚相同 → 平分
+                    else if (w[0] === solvedHand) strongerThan += 1;  // 含踢脚的真实胜负
                 } catch (e) { continue; }
             }
             const relStrength = relCompared > 0 ? (strongerThan / relCompared) * 100 : 0;
@@ -8265,6 +8340,51 @@
                         const before = equity;
                         equity = Math.round((50 + (equity - 50) * 0.2) * 10) / 10;
                         warnings.push(`⚠ underpair 校正：${hc[0][0]}${hc[1][0]} 在 ${highCard} 高牌面为 bluff-catcher，相对牌力降级（${before.toFixed(0)}%→${equity.toFixed(0)}%）`);
+                    }
+                }
+            }
+
+            // ════════════════════════════════════════════════════
+            // 权益实现率修正(2026-07-21，用户 K10s @ 2-2-Q 实战暴露)
+            // ════════════════════════════════════════════════════
+            // 现象：K10s 在 2-2-Q 面对 40% 池下注，MC 算出裸胜率 33%、赔率 19% → 建议 CALL。
+            // 但这是"看到全部五张牌"的摊牌胜率；实战里 K 高牌没有摊牌价值也没有听牌，
+            // 后续每条街都要面对下注，真实能兑现的权益远低于 33%（经典 equity vs
+            // equity-realization 差距，solver 靠完整博弈树隐式处理，启发式引擎必须显式建模）。
+            // 做法：无自己成手（不成对、未配公牌、非顺子/同花以上）且无有效听牌时，
+            // 按实现率折扣裸胜率——OOP 0.60 / IP 0.68（无位置更难兑现）。
+            // 只在"面对下注"时折扣：我方主动线本就靠弃牌率盈利，不该按摊牌胜率打折。
+            {
+                const hc = (postState.heroCards || []).filter(c => c).map(normalizeCard);
+                if (hc.length === 2 && board.length >= 3) {
+                    const hr = hc.map(c => c[0]), br = board.map(c => normalizeCard(c)[0]);
+                    const ownPair = hr[0] === hr[1] || hr.some(r => br.includes(r));
+                    let madeStrong = false;
+                    try { // 顺子/同花及以上算成手，不折扣（不成对也可能是同花/顺子）
+                        madeStrong = typeof Hand !== 'undefined' &&
+                            Hand.solve([...hc, ...board.map(normalizeCard)]).rank >= 5;
+                    } catch (e) {}
+                    const noShowdownValue = !ownPair && !madeStrong;
+                    const noRealDraw = outs < (SC[street].semiBluffOuts);
+                    if (noShowdownValue && noRealDraw && villainBet > 0 && equity > 15) {
+                        // 后门补牌显著改善实现率：三张同花色（后门同花）或三张落在五连跨度内
+                        //（后门顺子）→ 0.70/0.75；纯空气（连后门都没有）→ 0.55/0.62。
+                        // 区间取自公开的 equity-realization 经验值：坚果>1、中等成手≈0.9-1、
+                        // 听牌≈1、无摊牌价值的空气≈0.5-0.7，无位置再打约 9 折。
+                        const suits = [...hc, ...board.map(normalizeCard)].map(c => c[1]);
+                        const bdFlush = ['s', 'h', 'd', 'c'].some(s =>
+                            suits.filter(x => x === s).length === 3 && hc.some(c => c[1] === s));
+                        const RK = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
+                        const vals = [...new Set([...hr, ...br].map(r => RK[r]))].sort((a, b) => a - b);
+                        let bdStraight = false;
+                        for (let i = 0; i + 2 < vals.length; i++)
+                            if (vals[i + 2] - vals[i] <= 4) { bdStraight = true; break; }
+                        const backdoor = bdFlush || bdStraight;
+                        const R = backdoor ? (heroPos === 'OOP' ? 0.65 : 0.72)
+                                           : (heroPos === 'OOP' ? 0.50 : 0.58);
+                        const before = equity;
+                        equity = Math.round(equity * R * 10) / 10;
+                        warnings.push(`⚠ 权益实现率修正：无成手无听牌（${eq.handStrength || '高牌'}${backdoor ? '，有后门补牌' : '，无后门补牌'}），裸胜率 ${before.toFixed(0)}% 难以兑现，按 ${heroPos} 实现率 ${Math.round(R * 100)}% 折算为 ${equity.toFixed(0)}%`);
                     }
                 }
             }
