@@ -530,8 +530,8 @@
         /* ══════════ 翻前行动时间线 + 翻后行动条突出（2026-07-21）══════════ */
         /* 自适应修订(2026-07-21，用户照片实锤溢出)：座位带与"我的位置"改 CSS grid 自动等宽换行，
            任何宽度/缩放下都不冲出卡片；加注额输入在格内独占一行 */
-        .tl-ribbon { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 4px; }
-        .tl-hero-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 4px; }
+        .tl-ribbon { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 4px; }
+        .tl-hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(50px, 1fr)); gap: 4px; }
         .tl-hero-grid .pos-btn-hero { width: 100%; }
         .tl-seat { min-width: 0; border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
                    padding: 5px 2px; text-align: center; cursor: pointer; background: rgba(255,255,255,.03); user-select: none;
@@ -555,6 +555,10 @@
                          background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.18); border-radius: 4px; color: inherit; -moz-appearance: textfield; }
         /* 配置面板盲注区：按钮等高不折行 */
         .bl-btn { min-height: 26px; height: 26px; padding: 0 6px !important; white-space: nowrap; line-height: 26px; }
+        /* 触控目标下限(2026-07-21)：环节键/详情/速记等小幽灵键统一 ≥24px，手机端 ≥32px */
+        .macro-btn { min-height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+        @media (max-width: 767.98px) { .macro-btn { min-height: 32px; padding: 4px 10px; } }
+        /* zone-head 已有 ::after 分隔线撑满剩余空间，右侧操作键自然靠右——不再叠加 space-between */
         .tl-amt-inline::-webkit-outer-spin-button, .tl-amt-inline::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         #blindWidget.urgent { border-color: #e5484d; color: #ff7a7d; animation: blPulse 1s ease-in-out infinite; }
         @keyframes blPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.0); } 50% { box-shadow: 0 0 0 3px rgba(229,72,77,.35); } }
@@ -565,7 +569,7 @@
         .act-star kbd { opacity: .75; color: #082744; }
         @media (max-width: 767.98px) {
             .act-btn kbd, .qc-btn kbd, .act-hint { display: none; }
-            .tl-ribbon { gap: 3px; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); }
+            .tl-ribbon { gap: 3px; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); }
             .tl-seat { padding: 4px 1px; }
             .tl-seat .tl-act { font-size: var(--fs-micro); }
         }
@@ -645,10 +649,12 @@
                                         <button id="unitBB" onclick="setChipUnit('bb')" class="cfg-btn bl-btn active">BB</button>
                                         <button id="unitChips" onclick="setChipUnit('chips')" class="cfg-btn bl-btn">筹码数</button></div>
                                 </div>
-                                <div class="grid grid-cols-3 gap-1">
-                                    <div><div class="text-[10px] text-gray-400">当前大盲（筹码）</div><input type="number" id="blBb" class="p-1 text-center text-xs h-[26px] w-full" placeholder="1000"></div>
-                                    <div><div class="text-[10px] text-gray-400">每级(分)</div><input type="number" id="blLevelMin" class="p-1 text-center text-xs h-[26px] w-full" placeholder="12"></div>
-                                    <div><div class="text-[10px] text-gray-400">本级剩余(分)</div><input type="number" id="blRemain" step="0.5" class="p-1 text-center text-xs h-[26px] w-full" placeholder="12"></div>
+                                <!-- 2026-07-21 用户反馈：Ante 规则各赛事不同需可填；时间精确到秒（分:秒） -->
+                                <div class="grid grid-cols-4 gap-1">
+                                    <div><div class="text-[10px] text-gray-400">大盲(筹码)</div><input type="number" id="blBb" class="p-1 text-center text-xs h-[26px] w-full" placeholder="1000"></div>
+                                    <div><div class="text-[10px] text-gray-400">Ante(筹码)</div><input type="number" id="blAnte" class="p-1 text-center text-xs h-[26px] w-full" placeholder="1000"></div>
+                                    <div><div class="text-[10px] text-gray-400">每级 分:秒</div><input type="text" inputmode="numeric" id="blLevelMin" class="p-1 text-center text-xs h-[26px] w-full" placeholder="12:00"></div>
+                                    <div><div class="text-[10px] text-gray-400">剩余 分:秒</div><input type="text" inputmode="numeric" id="blRemain" class="p-1 text-center text-xs h-[26px] w-full" placeholder="2:34"></div>
                                 </div>
                                 <div class="flex items-center gap-1 mt-1">
                                     <div id="blStatus" class="text-[10px] text-gray-500 flex-1 min-w-0">未计时 · SB 0.5BB · Ante 1BB</div>
@@ -714,7 +720,7 @@
                     <span id="visionStatus" style="font-size:12px;color:#6b7280;">Ctrl+V 粘贴截图自动识别</span>
                     <button onclick="pickVisionImage()" style="font-size:10px;color:var(--text-secondary);background:transparent;border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">📷 选择图片</button>
                     <button id="visionBarToggle" onclick="toggleVisionBar()" title="收起/展开截图栏（记住选择）" style="font-size:10px;color:var(--text-secondary);background:transparent;border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">收起 ▴</button>
-                    <button onclick="clearVisionHistory()" title="清空截图历史与识别结果" style="font-size:10px;color:#ff8589;background:none;border:none;cursor:pointer;padding:0;">清截图</button>
+                    <button onclick="clearVisionHistory()" title="清空截图历史与识别结果" style="font-size:10px;color:#ff8589;background:transparent;border:1px solid rgba(229,72,77,0.35);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">清截图</button>
                 </div>
                 <input type="file" id="visionFileInput" accept="image/*" style="display:none">
             </div>
@@ -937,7 +943,7 @@
                     <div id="actionSummaryArea"></div>
                 </div>
 
-                <div class="zone-head" style="display:flex;justify-content:space-between;align-items:center;"><span>分析 · 翻后</span><button id="postDetailsToggle" onclick="togglePostDetails()" class="macro-btn" title="展开/收起对手范围、牌面纹理、手型与调试卡（分层显示 2026-07-21）">详情 ▸</button></div>
+                <div class="zone-head"><span>分析 · 翻后</span><button id="postDetailsToggle" onclick="togglePostDetails()" class="macro-btn" title="展开/收起对手范围、牌面纹理、手型与调试卡（分层显示 2026-07-21）">详情 ▸</button></div>
                 <!-- 翻后分析区（原翻后页右栏迁移，id/结构保留；initPostRightCards 仍重建 postRightContent） -->
                 <div id="postRight" class="flex flex-col gap-1.5 w-full shrink-0">
                     <!-- SPR仅在决策面板中显示，此处隐藏 -->
@@ -2780,10 +2786,11 @@
             Object.entries(WINDOW_COLORS).forEach(([k, v]) => {
                 const on = k === activeKey;
                 const dotColor = v.c || '#3a4150';
+                // 触控目标(2026-07-21)：18px 圆点太小，外扩到 26px 可点区域（色点视觉仍 16px）
                 html += `<button onclick="applyWindowColor('${k}')" title="窗口标记：${v.name}${v.e ? '（浏览器标签显示 ' + v.e + '）' : '（清除窗口颜色标记）'}"
-                    style="width:18px;height:18px;border-radius:50%;cursor:pointer;transition:0.12s;
-                    background:${dotColor};
-                    border:2px solid ${on ? '#fff' : dotColor + '66'};"></button>`;
+                    style="width:26px;height:26px;padding:0;border:none;background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+                    <span style="width:16px;height:16px;border-radius:50%;display:block;transition:0.12s;
+                    background:${dotColor};border:2px solid ${on ? '#fff' : dotColor + '66'};"></span></button>`;
             });
             host.innerHTML = html;
         }
@@ -3402,6 +3409,16 @@
                 const a = localStorage.getItem('auto_pos'); if (a === '0') gameConfig.autoAdvancePos = false;
             } catch (e) {}
         }
+        /** 时间解析：'2:34' → 154 秒；'12' → 720 秒（按分钟）；'2.5' → 150 秒；非法 → NaN */
+        function blParseSec(str) {
+            const s = String(str ?? '').trim();
+            if (!s) return NaN;
+            const m = s.match(/^(\d+)\s*[:：]\s*(\d{1,2})$/);
+            if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+            const f = parseFloat(s);
+            return isNaN(f) ? NaN : Math.round(f * 60);
+        }
+        function blFmtSec(sec) { sec = Math.max(0, Math.round(sec)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
         function blRemainingMs() {
             const b = gameConfig.blinds;
             if (!b.running || !b.levelStartTs) return null;
@@ -3421,16 +3438,17 @@
                 }
             }
             const set = (id, v) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = v; };
-            set('blBb', b.bb); set('blLevelMin', b.levelMin);
+            set('blBb', b.bb); set('blAnte', b.ante); set('blLevelMin', blFmtSec(b.levelMin * 60));
             const ms = blRemainingMs();
-            if (ms !== null) set('blRemain', Math.max(0, Math.ceil(ms / 60000 * 10) / 10));
+            if (ms !== null) set('blRemain', blFmtSec(ms / 1000));
             const st = document.getElementById('blStatus');
             if (st) {
-                // 统一按 BB 语义显示：SB 0.5BB / Ante 1BB 固定，升盲 = 筹码按比例缩小
+                // 统一按 BB 语义显示：SB 0.5BB 固定，Ante 按所填筹码换成 BB，升盲 = 筹码按比例缩小
                 const nx = blNextBB(b.bb), ratio = (nx / b.bb).toFixed(2);
+                const anteBB = b.bb > 0 ? Math.round(b.ante / b.bb * 100) / 100 : 0;
                 st.textContent = b.running
-                    ? `计时中 · 1BB=${blFmt(b.bb)} · SB 0.5BB · Ante 1BB · 下一级 1BB=${blFmt(nx)}，升盲后筹码 ÷${ratio}（${globalHeroStack}BB → ${Math.round(globalHeroStack / (nx / b.bb) * 10) / 10}BB，自动换算）`
-                    : '未计时 · SB 0.5BB · Ante 1BB · 填大盲/时长/剩余后点「开始/更新」';
+                    ? `计时中 · 1BB=${blFmt(b.bb)} · SB 0.5BB · Ante ${anteBB}BB · 下一级 1BB=${blFmt(nx)}，升盲后筹码 ÷${ratio}（${globalHeroStack}BB → ${Math.round(globalHeroStack / (nx / b.bb) * 10) / 10}BB，自动换算）`
+                    : `未计时 · SB 0.5BB · Ante ${anteBB}BB · 填大盲/Ante/每级/剩余（分:秒）后点「开始/更新」`;
             }
             const ub = document.getElementById('unitBB'), uc = document.getElementById('unitChips');
             if (ub) ub.className = 'cfg-btn' + (gameConfig.chipUnit === 'bb' ? ' active' : '');
@@ -3453,20 +3471,23 @@
         window.blStart = function() {
             const b = gameConfig.blinds;
             const g = id => parseFloat(document.getElementById(id)?.value);
-            const bb = g('blBb'), lm = g('blLevelMin'), rem = g('blRemain');
-            if (!(bb > 0) || !(lm > 0)) { showToast('请填写当前大盲与每级时长', 'error'); return; }
-            // SB=0.5BB、Ante=1BB（BB ante）固定，只需一个大盲筹码数作换算基准
-            b.sb = Math.round(bb / 2); b.bb = bb; b.ante = gameConfig.ante ? bb : 0; b.levelMin = lm;
-            const remain = (rem >= 0 && rem <= lm) ? rem : lm;
-            b.levelStartTs = Date.now() - (lm - remain) * 60000; b.running = true;
+            const bb = g('blBb'), anteIn = g('blAnte');
+            const lvSec = blParseSec(document.getElementById('blLevelMin')?.value), remSec = blParseSec(document.getElementById('blRemain')?.value);
+            if (!(bb > 0) || !(lvSec > 0)) { showToast('请填写当前大盲与每级时长（分:秒，如 12:00）', 'error'); return; }
+            // SB=0.5BB 固定；Ante 按所填筹码（各赛事规则不同），留空则按 BB ante 开关默认
+            b.sb = Math.round(bb / 2); b.bb = bb; b.ante = anteIn >= 0 ? anteIn : (gameConfig.ante ? bb : 0);
+            b.levelMin = lvSec / 60;
+            const remain = (remSec >= 0 && remSec <= lvSec) ? remSec : lvSec;
+            b.levelStartTs = Date.now() - (lvSec - remain) * 1000; b.running = true;
             blSave(); blRender(); blRecomputeChipStacks();
-            showToast(`升盲计时开始：${blFmt(b.sb)}/${blFmt(b.bb)}，${remain} 分钟后升至 ${blFmt(blNextBB(b.bb))}`, 'info');
+            showToast(`升盲计时开始：${blFmt(b.sb)}/${blFmt(b.bb)}${b.ante ? '/' + blFmt(b.ante) : ''}，${blFmtSec(remain)} 后升至 ${blFmt(blNextBB(b.bb))}`, 'info');
         };
         window.blStop = function() { gameConfig.blinds.running = false; blSave(); blRender(); showToast('升盲计时已停止', 'info'); };
         function blLevelUp() {
             const b = gameConfig.blinds;
             const prevBB = b.bb;
-            b.bb = blNextBB(b.bb); b.sb = Math.round(b.bb / 2); if (b.ante > 0) b.ante = b.bb;
+            b.bb = blNextBB(b.bb); b.sb = Math.round(b.bb / 2);
+            if (b.ante > 0) b.ante = Math.round(b.ante * b.bb / prevBB); // Ante 与大盲同比例推进（保持赛事 ante/BB 比）
             b.levelStartTs += b.levelMin * 60000;
             blSave();
             const before = globalHeroStack;
@@ -4462,7 +4483,10 @@
                 // "伪百分位 ≤ villainPushRange 的 Nash 推注范围"（与 Nash 表 inRange 判据
                 // 同一刻度），组合加权采样 2000 次预翻 runout（±1.1 点，浏览器内 <100ms）。
                 const pushHands = ALL_169_HANDS.filter(h => getHandPercentile(h) <= villainPushRange);
-                const _mcEq = preflopEquityVsRange([heroCard1, heroCard2], pushHands, 2000);
+                // 2026-07-21：2000→6000 次。接全下是 MTT 最贵的决策，2000 次噪声 ±1.1 点会在
+                // "真值距红线仅 2 点"的边界局面上随机翻转结论（实测 55 vs UTG 10BB：真值 42.3%、
+                // 红线 44.4%，偶发抽到 44.6% 就从弃牌跳成边缘接注）。6000 次噪声降至 ±0.64，仍 <300ms。
+                const _mcEq = preflopEquityVsRange([heroCard1, heroCard2], pushHands, 6000);
                 const eqIsMC = _mcEq !== null;
                 const actEq = eqIsMC ? Math.round(_mcEq * 10) / 10 : 40; // 库未加载时保守兜底
                 const netEv = actEq - adjustedReqEq; // 用 adjustedReqEq（含大码 vs 短码放宽）
@@ -4489,7 +4513,7 @@
                 document.getElementById('mathBox2').innerText = (riskPrem >= 0 ? "+" : "") + riskPrem.toFixed(1) + "%";
                 document.getElementById('lblBox3').innerText = "最终红线（调整后）";
                 document.getElementById('mathBox3').innerText = adjustedReqEq.toFixed(1) + "%";
-                document.getElementById('lblBar1').innerText = `vs ${villainPushRange.toFixed(0)}% push range 胜率${eqIsMC ? '（MC×2000）' : '（兜底估算）'}`;
+                document.getElementById('lblBar1').innerText = `vs ${villainPushRange.toFixed(0)}% push range 胜率${eqIsMC ? '（MC×6000）' : '（兜底估算）'}`;
                 document.getElementById('mathBar1Text').innerText = actEq.toFixed(1) + "%";
                 document.getElementById('mathBar1Fill').style.width = actEq + "%";
                 document.getElementById('mathBar2Text').innerText = adjustedReqEq.toFixed(1) + "%";
@@ -6527,17 +6551,22 @@
                 <!-- 卡片1：错误/警告提示（有问题时显示） -->
                 <div id="postErrorPanel" class="hidden"></div>
 
-                <!-- 卡片2：决策建议（最重要，放最前） -->
-                <div id="decisionPanel" class="panel-bg rounded overflow-hidden hidden" style="border: 2px solid var(--accent)">
-                    <div id="decisionMain" class="p-3 text-center" style="background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(0,0,0,0.3));">
-                        <div class="text-[10px] text-gray-400 mb-1">决策助手</div>
-                        <div id="decisionAction" class="text-3xl font-black tracking-wider mb-1">--</div>
-                        <div id="decisionSizing" class="text-base text-yellow-300 font-bold"></div>
-                        <div id="decisionReason" class="text-xs text-gray-300 mt-2 px-2"></div>
+                <!-- 卡片2：决策依据（职责分离 2026-07-21：顶部 HUD = 答案，本卡 = 依据。
+                     原本大字动作+尺度+频率条与 HUD 逐项重复，实测 255px 全是重复内容） -->
+                <div id="decisionPanel" class="panel-bg rounded overflow-hidden hidden" style="border: 1px solid var(--glass-border)">
+                    <div id="decisionMain" class="px-3 py-2" style="background: linear-gradient(135deg, rgba(87,169,255,0.10), rgba(0,0,0,0.25));">
+                        <div class="flex items-baseline justify-between gap-2 mb-1">
+                            <span class="text-[10px] text-gray-400 shrink-0">决策依据</span>
+                            <span class="text-[10px] text-gray-500 shrink-0">答案见上方决策条 ↑</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 flex-wrap">
+                            <span id="decisionAction" class="text-base font-black tracking-wider">--</span>
+                            <span id="decisionSizing" class="text-xs font-bold" style="color:var(--gold)"></span>
+                        </div>
+                        <div id="decisionReason" class="text-xs text-gray-300 mt-1.5" style="line-height:1.5"></div>
                     </div>
-                    <div class="p-2 bg-black/20">
-                        <div id="decisionFreqLabels" class="flex justify-between text-[10px] font-bold text-gray-300 mb-1"></div>
-                        <div class="freq-bar" id="decisionFreqBar"></div>
+                    <div class="hidden">
+                        <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
                     </div>
                     <div class="p-2 grid grid-cols-3 gap-1 text-center bg-black/10" id="decisionMath">
                         <div class="bg-black/20 p-1 rounded">
@@ -8411,17 +8440,21 @@
                 panel.className = 'panel-bg rounded mb-2 overflow-hidden';
                 panel.style.border = '2px solid var(--accent)';
                 panel.innerHTML = `
-                    <!-- 主判决区 -->
-                    <div id="decisionMain" class="p-3 text-center" style="background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(0,0,0,0.3));">
-                        <div class="text-[10px] text-gray-400 mb-1">决策建议</div>
-                        <div id="decisionAction" class="text-3xl font-black tracking-wider mb-1">--</div>
-                        <div id="decisionSizing" class="text-base text-yellow-300 font-bold"></div>
-                        <div id="decisionReason" class="text-xs text-gray-300 mt-2 px-2"></div>
+                    <!-- 职责分离(2026-07-21)：顶部 HUD = 答案（动作/尺度/频率/标识），本面板 = 依据（完整理由+数学+警告）。
+                         原本大字动作+尺度+频率条与 HUD 逐项重复（实测面板 255px 全是重复内容），现收敛为一行上下文标签。 -->
+                    <div id="decisionMain" class="px-3 py-2" style="background: linear-gradient(135deg, rgba(87,169,255,0.10), rgba(0,0,0,0.25));">
+                        <div class="flex items-baseline justify-between gap-2 mb-1">
+                            <span class="text-[10px] text-gray-400 shrink-0">决策依据</span>
+                            <span class="text-[10px] text-gray-500 shrink-0">答案见上方决策条</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 flex-wrap">
+                            <span id="decisionAction" class="text-base font-black tracking-wider">--</span>
+                            <span id="decisionSizing" class="text-xs font-bold" style="color:var(--gold)"></span>
+                        </div>
+                        <div id="decisionReason" class="text-xs text-gray-300 mt-1.5" style="line-height:1.5"></div>
                     </div>
-                    <!-- 频率条 -->
-                    <div class="p-2 bg-black/20">
-                        <div id="decisionFreqLabels" class="flex justify-between text-[10px] font-bold text-gray-300 mb-1"></div>
-                        <div class="freq-bar" id="decisionFreqBar"></div>
+                    <div class="hidden">
+                        <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
                     </div>
                     <!-- 底层数据 -->
                     <div class="p-2 grid grid-cols-3 gap-1 text-center bg-black/10" id="decisionMath">
@@ -8449,7 +8482,7 @@
                 // loading 状态
                 panel.classList.remove('hidden');
                 document.getElementById('decisionAction').innerText = '计算中...';
-                document.getElementById('decisionAction').className = 'text-2xl font-black text-gray-400';
+                document.getElementById('decisionAction').className = 'text-base font-black text-gray-400';
                 document.getElementById('decisionSizing').innerText = '';
                 document.getElementById('decisionReason').innerText = '';
                 document.getElementById('decisionFreqBar').innerHTML = '';
@@ -8470,7 +8503,8 @@
                 'CHECK': 'text-blue-400',
                 'FOLD': 'text-gray-400'
             };
-            actionEl.className = 'text-3xl font-black tracking-wider mb-1 ' + (actionColors[result.primaryAction] || 'text-white');
+            // 职责分离(2026-07-21)：本面板是"依据"，动作词降为上下文标签（大字答案在顶部 HUD）
+            actionEl.className = 'text-base font-black tracking-wider ' + (actionColors[result.primaryAction] || 'text-white');
 
             // 尺度 —— 若折算 BB 数 ≥ 有效筹码×80%，直接显示 All-in（P1-1）
             {
