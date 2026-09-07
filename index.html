@@ -557,6 +557,13 @@
                          background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.18); border-radius: 4px; color: inherit; -moz-appearance: textfield; }
         /* 配置面板盲注区：按钮等高不折行 */
         .bl-btn { min-height: 26px; height: 26px; padding: 0 6px !important; white-space: nowrap; line-height: 26px; }
+        /* 盲注输入框(2026-07-21)：原 text-xs 灰字在深底上看不清且不好打——白字 mono 升一档 */
+        .bl-input { width: 100%; height: 30px; padding: 0 4px; text-align: center;
+                    font-family: var(--font-mono); font-size: var(--fs-body); font-weight: 700;
+                    color: var(--text-primary); background: rgba(0,0,0,.42);
+                    border: 1px solid rgba(255,255,255,.18); border-radius: var(--radius-sm); }
+        .bl-input:focus { outline: none; border-color: var(--accent); background: rgba(0,0,0,.6); }
+        .bl-input::placeholder { color: #6b7280; font-weight: 400; font-size: var(--fs-micro); }
         /* 触控目标下限(2026-07-21)：环节键/详情/速记等小幽灵键统一 ≥24px，手机端 ≥32px */
         .macro-btn { min-height: 24px; display: inline-flex; align-items: center; justify-content: center; }
         @media (max-width: 767.98px) { .macro-btn { min-height: 32px; padding: 4px 10px; } }
@@ -652,12 +659,15 @@
                                         <button id="unitChips" onclick="setChipUnit('chips')" class="cfg-btn bl-btn">筹码数</button></div>
                                 </div>
                                 <!-- 2026-07-21 用户反馈：Ante 规则各赛事不同需可填；时间精确到秒（分:秒） -->
+                                <!-- 输入体验(2026-07-21)：白字 mono 大一档看得清；时间只打数字即可（234=2:34）；
+                                     任一框回车立即生效；编辑中不被每秒倒计时刷回（dirty 保护） -->
                                 <div class="grid grid-cols-4 gap-1">
-                                    <div><div class="text-[10px] text-gray-400">大盲(筹码)</div><input type="number" id="blBb" class="p-1 text-center text-xs h-[26px] w-full" placeholder="1000"></div>
-                                    <div><div class="text-[10px] text-gray-400">Ante(筹码)</div><input type="number" id="blAnte" class="p-1 text-center text-xs h-[26px] w-full" placeholder="1000"></div>
-                                    <div><div class="text-[10px] text-gray-400">每级 分:秒</div><input type="text" inputmode="numeric" id="blLevelMin" class="p-1 text-center text-xs h-[26px] w-full" placeholder="12:00"></div>
-                                    <div><div class="text-[10px] text-gray-400">剩余 分:秒</div><input type="text" inputmode="numeric" id="blRemain" class="p-1 text-center text-xs h-[26px] w-full" placeholder="2:34"></div>
+                                    <div><div class="text-[10px] text-gray-300">大盲(筹码)</div><input type="number" id="blBb" oninput="blOnInput(this)" onkeydown="blOnKey(event)" class="bl-input" placeholder="1000"></div>
+                                    <div><div class="text-[10px] text-gray-300">Ante(筹码)</div><input type="number" id="blAnte" oninput="blOnInput(this)" onkeydown="blOnKey(event)" class="bl-input" placeholder="150"></div>
+                                    <div><div class="text-[10px] text-gray-300">每级时长</div><input type="text" inputmode="numeric" id="blLevelMin" oninput="blOnInput(this)" onkeydown="blOnKey(event)" class="bl-input" placeholder="12 或 1200"></div>
+                                    <div><div class="text-[10px] text-gray-300">本级剩余</div><input type="text" inputmode="numeric" id="blRemain" oninput="blOnInput(this)" onkeydown="blOnKey(event)" class="bl-input" placeholder="234 = 2:34"></div>
                                 </div>
+                                <div id="blPreview" class="text-[10px] mt-1" style="color:var(--text-secondary);display:none"></div>
                                 <div class="flex items-center gap-1 mt-1">
                                     <div id="blStatus" class="text-[10px] text-gray-500 flex-1 min-w-0">未计时 · SB 0.5BB · Ante 1BB</div>
                                     <button onclick="blStart()" class="cfg-btn bl-btn active shrink-0">开始/更新</button>
@@ -3411,14 +3421,43 @@
                 const a = localStorage.getItem('auto_pos'); if (a === '0') gameConfig.autoAdvancePos = false;
             } catch (e) {}
         }
-        /** 时间解析：'2:34' → 154 秒；'12' → 720 秒（按分钟）；'2.5' → 150 秒；非法 → NaN */
+        /** 时间解析（2026-07-21 扩展"只打数字"）：
+         *  '2:34'/'2：34' → 154 · '234' → 2:34 · '1234' → 12:34 · '12' → 12:00（分）
+         *  '2.5' → 150（分的小数）· 非法 → NaN。纯数字 3-4 位按 mmss 读，1-2 位按分钟读。 */
         function blParseSec(str) {
             const s = String(str ?? '').trim();
             if (!s) return NaN;
             const m = s.match(/^(\d+)\s*[:：]\s*(\d{1,2})$/);
             if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+            if (/^\d{3,4}$/.test(s)) {                    // 234 → 2:34 ; 1234 → 12:34
+                const sec = parseInt(s.slice(-2), 10);
+                if (sec < 60) return parseInt(s.slice(0, -2), 10) * 60 + sec;
+            }
             const f = parseFloat(s);
             return isNaN(f) ? NaN : Math.round(f * 60);
+        }
+        /** 盲注框：编辑即标记 dirty（阻止每秒回写）；回车 = 立即生效 */
+        window.blOnInput = function(el) {
+            el.dataset.dirty = '1';
+            const prev = document.getElementById('blPreview');
+            if (!prev) return;
+            const bb = parseFloat(document.getElementById('blBb')?.value);
+            const ante = parseFloat(document.getElementById('blAnte')?.value);
+            const lv = blParseSec(document.getElementById('blLevelMin')?.value);
+            const rm = blParseSec(document.getElementById('blRemain')?.value);
+            const bad = v => isNaN(v) ? '<span style="color:#ff7a7d">?</span>' : '';
+            prev.innerHTML = `将设为 <b style="color:var(--gold)">${bb > 0 ? blFmt(Math.round(bb / 2)) + '/' + blFmt(bb) : '?'}${ante > 0 ? '/' + blFmt(ante) : ''}</b>`
+                + ` · 每级 <b>${isNaN(lv) ? '?' : blFmtSec(lv)}</b>${bad(lv)} · 剩余 <b>${isNaN(rm) ? '?' : blFmtSec(rm)}</b>${bad(rm)} · 回车生效`;
+            prev.style.display = '';
+        };
+        window.blOnKey = function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); blStart(); }
+        };
+        function blClearDirty() {
+            ['blBb', 'blAnte', 'blLevelMin', 'blRemain'].forEach(id => {
+                const el = document.getElementById(id); if (el) delete el.dataset.dirty;
+            });
+            const prev = document.getElementById('blPreview'); if (prev) prev.style.display = 'none';
         }
         function blFmtSec(sec) { sec = Math.max(0, Math.round(sec)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
         function blRemainingMs() {
@@ -3439,7 +3478,13 @@
                     w.classList.toggle('urgent', sec <= 60);
                 }
             }
-            const set = (id, v) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = v; };
+            // 回滚 Bug 修复(2026-07-21)：blTick 每秒调 blRender 回写输入框，而旧守卫只保护"当前聚焦"
+            // 的那一个——填完大盲去点 Ante，大盲就在 1 秒内被刷回旧值（用户实测"输了一次又变回来"）。
+            // 现改为：任一盲注框被编辑即标记 dirty，在提交(blStart)/停止(blStop)前一律不回写。
+            const set = (id, v) => {
+                const el = document.getElementById(id);
+                if (el && document.activeElement !== el && el.dataset.dirty !== '1') el.value = v;
+            };
             set('blBb', b.bb); set('blAnte', b.ante); set('blLevelMin', blFmtSec(b.levelMin * 60));
             const ms = blRemainingMs();
             if (ms !== null) set('blRemain', blFmtSec(ms / 1000));
@@ -3481,10 +3526,10 @@
             b.levelMin = lvSec / 60;
             const remain = (remSec >= 0 && remSec <= lvSec) ? remSec : lvSec;
             b.levelStartTs = Date.now() - (lvSec - remain) * 1000; b.running = true;
-            blSave(); blRender(); blRecomputeChipStacks();
+            blClearDirty(); blSave(); blRender(); blRecomputeChipStacks();
             showToast(`升盲计时开始：${blFmt(b.sb)}/${blFmt(b.bb)}${b.ante ? '/' + blFmt(b.ante) : ''}，${blFmtSec(remain)} 后升至 ${blFmt(blNextBB(b.bb))}`, 'info');
         };
-        window.blStop = function() { gameConfig.blinds.running = false; blSave(); blRender(); showToast('升盲计时已停止', 'info'); };
+        window.blStop = function() { gameConfig.blinds.running = false; blClearDirty(); blSave(); blRender(); showToast('升盲计时已停止', 'info'); };
         function blLevelUp() {
             const b = gameConfig.blinds;
             const prevBB = b.bb;
@@ -8765,45 +8810,33 @@ async function callQwenStream(compressed, apiKey, model, heroCropUrl) {
         ? `Image 1 is the full screenshot, ${imgW}x${imgH} pixels.` : 'Image 1 is the full screenshot.';
     const cropNote = heroCropUrl
         ? ` Image 2 is a ZOOMED CROP of the bottom-center of image 1 (the hero hole cards area). Read hero_cards rank/suit/color from image 2 (it is much clearer), but bbox must refer to IMAGE 1 pixel coordinates.` : '';
-    const PROMPT = `Analyze this GG Poker screenshot. ${dimNote}${cropNote}
+    const PROMPT = `GG Poker screenshot. ${dimNote}${cropNote}
 
-=== STEP 1: SUIT IDENTIFICATION (READ THIS FIRST) ===
-GG Poker uses a 4-COLOR deck. Determine suit ONLY by card background/symbol color:
-  BLACK symbol → Spades → "s"
-  RED symbol   → Hearts  → "h"
-  BLUE symbol  → Diamonds → "d"
-  GREEN symbol → Clubs   → "c"
-NEVER assume standard red/black only. Examine each card's color independently.
+SUITS — 4-COLOR deck, judge ONLY by card color: BLACK=s(spade) RED=h(heart) BLUE=d(diamond) GREEN=c(club). Check each card's color independently; never assume red/black only.
 
-Extract ONLY clearly visible information. Return null for unclear values.
-No markdown. Pure JSON only.
+Layout: hero cards bottom-center, community cards table-center, pot "底池：X BB", stacks under names, bets as "X BB" near chips ON the table surface. Ignore seat-number badges.
 
-Layout: hero cards at bottom center, community cards in table center,
-pot shown as "底池：X BB", stacks shown below player names,
-seat number badge on avatar top-left (IGNORE THIS),
-bet amounts shown as "X BB" near chips on table surface.
+Rules:
+- Extract only what is clearly visible; use null when unclear. Output pure JSON, no markdown.
+- rank: A K Q J T 2-9 (A not 1/ACE). suit: s h d c. color: black|red|blue|green.
+- bbox: [x1,y1,x2,y2] of the card in IMAGE 1, ABSOLUTE PIXELS${imgW ? ` (0<x<=${imgW}, 0<y<=${imgH})` : ''}, top-left origin, integers. NOT 0-1000 normalized.
+- players[].bet: only if a chip stack sits on the table in front of that player; else 0. NEVER copy stack into bet.
+- players[].has_cards: true if that seat still holds cards this hand, false if folded. Include all visible players.
+- is_allin: true if "全推"/"All-in" shows at that player; their villain_bet = remaining stack.
+- villain_bet: largest active bet visible on the table surface for the main opponent; 0 if no chips on table.
+- villain_position: the opponent who still has cards AND the largest active bet (else the most relevant one facing hero). Same value set as hero_position; null if unclear.
+- hero_position: UTG/UTG+1/MP/LJ/HJ/CO/BTN/SB/BB from the dealer D button; null if unclear.
+- table_size: total seats (6/8/9), not active players.
+- street: preflop(0)/flop(3)/turn(4)/river(5).
+- community_cards_present: true ONLY if face-up cards are dealt in the table center; false if center has only chips/pot.
+- blinds: current level in CHIPS (not BB), shown as "500/1,000" or "500/1,000/1,000" (sb/bb/ante), usually top-left or in the info bar; ante=0 if absent; null if not visible.
+- level_time_remaining: countdown to next blind level as "MM:SS"; null if not visible.
 
-players[].bet: ONLY if chip stack physically on table surface in front of player. If none visible, bet=0. NEVER copy stack into bet.
-players[].has_cards: true if that player still holds cards this hand (card backs or face-up cards visible at their seat); false if folded (no cards at seat). Include ALL visible players.
-is_allin: If a player shows "全推" or "All-in" text near their name or chips, set is_allin=true for that player. The villain_bet for an all-in player should be set to their remaining stack amount shown.
-villain_position: position of the MAIN OPPONENT — the player who still has cards AND has the largest active bet (if no bets, the most relevant opponent facing hero). Same values as hero_position. null if unclear.
-villain_bet: Look for chip stacks with number labels physically placed on the table surface. In GG Poker, bet amounts appear as "X BB" text near chip piles between players. For the main villain (the player Hero is acting against), set villain_bet to their visible bet amount on the table. If multiple bet amounts are visible, use the largest active bet. If no chips are visible on the table surface, set villain_bet to 0.
-hero_position: one of UTG/UTG+1/MP/LJ/HJ/CO/BTN/SB/BB based on dealer D button. null if unclear.
-table_size: total seats (6, 8, or 9), NOT active players count.
-street: preflop(0 cards)/flop(3)/turn(4)/river(5)
-community_cards_present: true ONLY if there are face-up community cards dealt in the CENTER of the table. false if the table center has only chips/pot with no cards.
-rank values: use A K Q J T 2-9 only. Use A (not 1 or ACE) for ace.
-suit values: use single letter only: s h d c
-color: MUST be exactly one of: black / red / blue / green
-bbox: [x1,y1,x2,y2] of that card in IMAGE 1, in ABSOLUTE PIXELS${imgW ? ` (image 1 is ${imgW}x${imgH}, so x1<x2<=${imgW}, y1<y2<=${imgH})` : ''}, top-left origin, integers. Do NOT use 0-1000 normalized coordinates.
-
-Return:
-{"hero_cards":[{"rank":string,"suit":string,"color":string,"bbox":[number,number,number,number]},{"rank":string,"suit":string,"color":string,"bbox":[number,number,number,number]}],
-"board_cards":[{"rank":string,"suit":string,"color":string,"bbox":[number,number,number,number]}],
-"pot":number,"hero_stack":number,"villain_bet":number,
-"hero_position":string,"villain_position":string,"street":string,"community_cards_present":boolean,
-"players":[{"name":string,"stack":number,"bet":number,"is_allin":boolean,"has_cards":boolean}],
-"table_size":number}`;
+{"hero_cards":[{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]},{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]}],
+"board_cards":[{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]}],
+"pot":n,"hero_stack":n,"villain_bet":n,"hero_position":s,"villain_position":s,"street":s,"community_cards_present":b,
+"players":[{"stack":n,"bet":n,"is_allin":b,"has_cards":b}],
+"table_size":n,"blinds":{"sb":n,"bb":n,"ante":n},"level_time_remaining":s}`;
 
     const controller = new AbortController();
     let timeoutId = null;
@@ -9097,7 +9130,7 @@ async function verifyCardSuitsByColor(dataUrl, d) {
 window.verifyCardSuitsByColor = verifyCardSuitsByColor;
 
 // 测试钩子(2026-07-13)：jsdom 回归用，与 classifySuitPixel 挂 window 同一约定
-window._visionTestHooks = () => ({ buildPayload, autoFill, renderVisionReviewCard, getVisionModel });
+window._visionTestHooks = () => ({ buildPayload, autoFill, renderVisionReviewCard, getVisionModel, callQwenStream, parseVisionJSON });
 
 // ─── Payload 构建 ──────────────────────────────────────
 function buildPayload(d) {
@@ -9133,7 +9166,10 @@ function buildPayload(d) {
         villainBet:   d.villain_bet ?? 0,
         heroPosition: d.hero_position ?? null,
         villainPosition: d.villain_position ?? null,
-        tableSize:    d.table_size ?? null
+        tableSize:    d.table_size ?? null,
+        // 盲注识别(2026-07-21)：牌桌上的 "500/1,000/1,000" 与升盲倒计时
+        blinds:       (d.blinds && d.blinds.bb > 0) ? d.blinds : null,
+        levelRemain:  d.level_time_remaining ?? null
     };
 }
 
@@ -9168,6 +9204,34 @@ function autoFill(payload, _id) {
         globalVillainStack = payload.villainStack;
         const el = document.getElementById('stackVillain');
         if (el) { el.value = payload.villainStack; console.log('[Vision] stackVillain 填入:', payload.villainStack); }
+    }
+
+    // ③b 盲注 & 升盲倒计时(2026-07-21)：截图里读到就自动填入并开始计时，省去手输。
+    // 手动改过盲注框（dirty）时不覆盖；识别到倒计时才自动启动，只有盲注则仅更新等级。
+    if (payload.blinds && payload.blinds.bb > 0) {
+        const bl = gameConfig.blinds, nb = payload.blinds;
+        const dirty = ['blBb', 'blAnte', 'blLevelMin', 'blRemain']
+            .some(id => document.getElementById(id)?.dataset.dirty === '1');
+        if (!dirty) {
+            const prevBB = bl.bb;
+            bl.bb = nb.bb; bl.sb = nb.sb > 0 ? nb.sb : Math.round(nb.bb / 2);
+            bl.ante = nb.ante >= 0 ? nb.ante : bl.ante;
+            const remSec = typeof blParseSec === 'function' ? blParseSec(payload.levelRemain) : NaN;
+            if (remSec > 0) {
+                bl.levelStartTs = Date.now() - (bl.levelMin * 60 - remSec) * 1000;
+                bl.running = true;
+            }
+            try { blSave(); blRender(); } catch (e) {}
+            // 筹码单位=筹码数时按新大盲重算 BB；BB 模式下大盲变化 = 筹码相对变小
+            try {
+                if (gameConfig.chipUnit === 'chips') blRecomputeChipStacks();
+                else if (prevBB > 0 && prevBB !== bl.bb) blRescaleStacksBB(prevBB, bl.bb);
+            } catch (e) {}
+            console.log('[Vision] 盲注填入:', bl.sb + '/' + bl.bb + '/' + bl.ante, '剩余', payload.levelRemain);
+            if (typeof showToast === 'function') {
+                showToast(`已读取盲注 ${bl.sb}/${bl.bb}${bl.ante ? '/' + bl.ante : ''}${remSec > 0 ? ' · 剩余 ' + blFmtSec(remSec) + '，计时已启动' : ''}`, 'info');
+            }
+        }
     }
 
     // ④ 位置（手动点过则跳过）
