@@ -200,7 +200,7 @@
             .scroll-area { padding: 0.6rem; gap: 0.6rem; }
             .col-left { padding-right: 0.25rem; }
             .col-right { padding-left: 0.25rem; }
-            #decisionAction { font-size: 2rem; }
+            /* 2026-07-21：决策大字已移至 HUD，此处不再放大（原 2rem 是"面板即答案"时代的遗留） */
             #postHandCard, #postTextureCard { padding: 0.4rem; }
         }
 
@@ -294,7 +294,9 @@
         /* 决策动作大字：mono 大写仪表读数 + 解算器语义色
            （JS 类名沿旧映射：BET→green-400 / RAISE→red-400 / CALL→yellow-400 /
              CHECK→blue-400 / FOLD→gray-400，此处按语义重上色） */
-        #decisionAction { font-family: var(--font-mono); font-size: var(--fs-display) !important; line-height: 1.05; letter-spacing: 0.01em; }
+        /* 职责分离(2026-07-21)：决策大字已移到顶部 HUD，本处降为"依据卡"的上下文标签
+           （原 --fs-display 40px !important 会覆盖 Tailwind 类，使面板与 HUD 继续重复大字） */
+        #decisionAction { font-family: var(--font-mono); font-size: var(--fs-title) !important; line-height: 1.15; letter-spacing: 0.01em; }
         /* !important：压过 .text-yellow-* 琥珀 catch-all，语义色必须赢 */
         #decisionAction.text-green-400 { color: var(--lose) !important; }   /* BET → 进攻红（亮） */
         #decisionAction.text-red-400   { color: var(--lose) !important; }   /* RAISE → 进攻红（亮） */
