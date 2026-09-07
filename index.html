@@ -564,6 +564,16 @@
                     border: 1px solid rgba(255,255,255,.18); border-radius: var(--radius-sm); }
         .bl-input:focus { outline: none; border-color: var(--accent); background: rgba(0,0,0,.6); }
         .bl-input::placeholder { color: #6b7280; font-weight: 400; font-size: var(--fs-micro); }
+        /* 跨街行动线(2026-07-21)：每街一行，已结束淡化、当前街高亮 */
+        .st-timeline { display: flex; flex-direction: column; gap: 3px; }
+        .st-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: var(--radius-sm);
+                  background: rgba(255,255,255,.03); border: 1px solid var(--glass-border); font-size: var(--fs-caption); opacity: .62; }
+        .st-row.cur { opacity: 1; background: rgba(87,169,255,.07); border-color: rgba(87,169,255,.45); }
+        .st-name { flex: 0 0 34px; font-weight: 800; color: var(--text-secondary); }
+        .st-row.cur .st-name { color: var(--accent); }
+        .st-pot { flex: 0 0 56px; font-family: var(--font-mono); color: var(--gold); font-size: var(--fs-micro); }
+        .st-chain { flex: 1; min-width: 0; font-family: var(--font-mono); line-height: 1.5; }
+        @media (max-width: 767.98px) { .st-row { flex-wrap: wrap; gap: 4px; } .st-chain { flex-basis: 100%; } }
         /* 触控目标下限(2026-07-21)：环节键/详情/速记等小幽灵键统一 ≥24px，手机端 ≥32px */
         .macro-btn { min-height: 24px; display: inline-flex; align-items: center; justify-content: center; }
         @media (max-width: 767.98px) { .macro-btn { min-height: 32px; padding: 4px 10px; } }
@@ -1036,8 +1046,9 @@
             // schedule：赛前截图"比赛信息/盲注结构"页识别出的完整等级表（方案B，精确按表升盲）；
             // 为空时走方案A——标准数列推进 + ante 按当前 ante/BB 比例跟随（GG 各赛事 ante 比例不同，
             // 实测 500/1000/150 = 15%，行业常见 10-12.5%，无统一公式可硬编码）
+            // nextLevel：赛事时钟页「下一步 90/180(22)」读到的下一级，升盲时优先使用（用掉即清）
             blinds: { sb: 500, bb: 1000, ante: 150, levelMin: 12, levelStartTs: 0, running: false,
-                      schedule: null, levelIdx: -1 }
+                      schedule: null, levelIdx: -1, nextLevel: null }
         };
 
         const gameTypeOpts = [
@@ -3527,12 +3538,16 @@
             if (st) {
                 // 按 BB 语义显示；下一级优先取结构表（方案B），否则标准数列 + ante 比例跟随（方案A）
                 const nxRow = blScheduleNext(b.bb);
-                const nxBB = nxRow ? nxRow.bb : blNextBB(b.bb);
+                // 换算比例须与实际升盲来源一致：截图下一级 > 结构表 > 标准数列
+                const nxBB = (b.nextLevel && b.nextLevel.bb > 0) ? b.nextLevel.bb : (nxRow ? nxRow.bb : blNextBB(b.bb));
                 const ratio = (nxBB / b.bb).toFixed(2);
                 const antePct = b.bb > 0 ? Math.round(b.ante / b.bb * 100) : 0;
-                const src = nxRow
+                const nl = b.nextLevel;
+                const src = nl
+                    ? `<b style="color:#45d68a">截图读到 ${blFmt(nl.sb)}/${blFmt(nl.bb)}${nl.ante ? '/' + blFmt(nl.ante) : ''}</b>（赛事真值）`
+                    : nxRow
                     ? `结构表第 ${nxRow.level || '?'} 级 ${blFmt(nxRow.sb)}/${blFmt(nxRow.bb)}${nxRow.ante ? '/' + blFmt(nxRow.ante) : ''}`
-                    : `标准数列 1BB=${blFmt(nxBB)}，ante 按 ${antePct}% 跟随`;
+                    : `标准数列 1BB=${blFmt(nxBB)}，ante 按 ${antePct}% 跟随（<b style="color:var(--gold)">截图赛事时钟页可读到真实下一级</b>）`;
                 st.innerHTML = (b.running ? '计时中' : '未计时')
                     + ` · 1BB=${blFmt(b.bb)} · Ante ${antePct}% BB · 下一级 ${src}`
                     + ` · 升盲后 ${globalHeroStack}BB → ${Math.round(globalHeroStack / ratio * 10) / 10}BB`
@@ -3582,7 +3597,21 @@
         function blLevelUp() {
             const b = gameConfig.blinds;
             const prevBB = b.bb;
-            // 方案B 优先：载入过结构表就精确按表走下一级（含该级时长）
+            // 优先级(2026-07-21)：① 时钟页读到的"下一步"最准（就是赛事真值，无需任何公式）
+            //                    ② 结构表 ③ 标准数列 + ante 比例跟随
+            if (b.nextLevel && b.nextLevel.bb > 0) {
+                b.bb = b.nextLevel.bb;
+                b.sb = b.nextLevel.sb > 0 ? b.nextLevel.sb : Math.round(b.bb / 2);
+                b.ante = b.nextLevel.ante >= 0 ? b.nextLevel.ante : b.ante;
+                b.nextLevel = null;   // 用掉即失效——再升一级需重新截图或回落下面的推算
+                b.levelStartTs += b.levelMin * 60000;
+                blSave();
+                const before0 = globalHeroStack;
+                if (gameConfig.chipUnit === 'chips') blRecomputeChipStacks();
+                else blRescaleStacksBB(prevBB, b.bb);
+                showToast(`已升盲 → ${blFmt(b.sb)}/${blFmt(b.bb)}${b.ante ? '/' + blFmt(b.ante) : ''}（截图读到的下一级）：${before0}BB → ${globalHeroStack}BB`, 'warn');
+                return;
+            }
             const nx = blScheduleNext(b.bb);
             if (nx) {
                 b.bb = nx.bb; b.sb = nx.sb > 0 ? nx.sb : Math.round(nx.bb / 2);
@@ -6042,6 +6071,48 @@
          *   waiting_second_response / waiting_first_response → 面对下注（有 Fold/Call/Raise）
          *   street_over → 本街结束提示
          */
+        /**
+         * 跨街行动线(2026-07-21)：翻牌/转牌/河牌各一行，保留全手行动历史。
+         * 每行 = 街名 + 该街起始底池 + 时序动作链（我方蓝 / 对手绿）。
+         * 已结束的街淡化不抢眼但完整可读；当前街高亮描边。
+         * @param {string} curStreet 当前街（'flop'|'turn'|'river'）
+         */
+        function renderStreetTimeline(curStreet) {
+            const acts = postState.potTracker.actions || [];
+            const STREETS = [['flop', '翻牌'], ['turn', '转牌'], ['river', '河牌']];
+            const curIdx = STREETS.findIndex(s => s[0] === curStreet);
+            const CN = { check: '过牌', bet: '下注', call: '跟注', raise: '加注', fold: '弃牌', allin: '全下' };
+            // 各街起始底池：翻前底池 + 之前各街双方投入
+            let potAt = postState.potTracker.preflopPot || 0;
+            const rows = [];
+            STREETS.forEach(([key, cn], i) => {
+                if (i > curIdx) return;
+                const sa = acts.filter(a => a.street === key);
+                const isCur = i === curIdx;
+                if (!sa.length && !isCur) { return; }        // 没打过也不是当前街 → 不占位
+                const chain = sa.map(a => {
+                    const isH = a.player === 'hero';
+                    const amt = a.amount > 0 ? ` ${a.amount.toFixed(1)}` : '';
+                    const col = isH ? 'color:#7cc0ff' : 'color:#45d68a';
+                    return `<span style="${col}"><b>${isH ? '我' : '对手'}</b> ${CN[a.action] || a.action}${amt}</span>`;
+                }).join('<span style="color:#4b5563;margin:0 5px;">→</span>');
+                rows.push(`<div class="st-row${isCur ? ' cur' : ''}">
+                    <span class="st-name">${cn}</span>
+                    <span class="st-pot">${potAt.toFixed(1)}BB</span>
+                    <span class="st-chain">${chain || '<span style="color:#6b7280;">尚无行动</span>'}</span>
+                </div>`);
+                // 累加该街双方匹配投入，作为下一街起始底池
+                let h = 0, v = 0;
+                sa.forEach(a => {
+                    if (['bet', 'raise', 'allin'].includes(a.action)) { if (a.player === 'hero') h = a.amount; else v = a.amount; }
+                    else if (a.action === 'call') { if (a.player === 'hero') h = v; else v = h; }
+                });
+                potAt += h + v;
+            });
+            if (!rows.length) return '';
+            return `<div class="st-timeline mb-2">${rows.join('')}</div>`;
+        }
+
         function renderBettingPanel() {
             const area = document.getElementById('postBettingArea');
             if (!area) return;
@@ -6119,7 +6190,18 @@
                 ${streetActions.length > 0 ? `<button onclick="undoLastStep()" class="text-[10px] bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-0.5 rounded border border-gray-500 font-bold shrink-0">↩ 撤回</button>` : ''}
             </div>`;
 
-            // IP/OOP 切换
+            // IP/OOP 切换 + 判定依据外露(2026-07-21，用户第1点)：
+            // 谁先行动是由双方翻前位置推出的（determineFirstToAct 按 POSTFLOP_ORDER），
+            // 但界面上一直只有两个按钮、没说"凭什么"。现在显式写出 我BB vs 对手MP → 谁先动。
+            {
+                const hp = POS_LABEL[globalPosHero] || globalPosHero || '?';
+                const vpKey = (currentMode === 'coldCall') ? globalPosCaller : globalPosVillain;
+                const vp = POS_LABEL[vpKey] || vpKey || '?';
+                html += `<div class="text-[10px] mb-1 px-1" style="color:var(--text-muted);">
+                    行动顺序：我 <b style="color:#ff7a7d">${hp}</b> · 对手 <b style="color:#45d68a">${vp}</b>
+                    → <b style="color:${heroIsOOP ? '#7cc0ff' : '#45d68a'}">${heroIsOOP ? '我先行动（OOP）' : '对手先行动（我 IP）'}</b>
+                    <span style="color:#6b7280;">· 位置不对可点下方按钮改</span></div>`;
+            }
             html += `<div class="flex gap-1 mb-2">
                 <button onclick="overrideFirstActor('OOP')"
                     class="flex-1 py-1 text-[10px] rounded border transition-all ${heroIsOOP
@@ -6147,19 +6229,11 @@
                 </div>`;
             }
 
-            // 历史动作（时序日志）
-            if (streetActions.length > 0) {
-                html += `<div class="mb-2 space-y-0.5">`;
-                streetActions.forEach(a => {
-                    const isH = a.player === 'hero';
-                    const bgc = isH ? 'bg-blue-900/20 border-blue-700/30 text-blue-300' : 'bg-emerald-900/20 border-emerald-700/30 text-emerald-300';
-                    html += `<div class="flex items-center gap-1.5 px-2 py-0.5 rounded border ${bgc} opacity-70 text-[10px]">
-                        <span class="w-8 shrink-0 font-bold">${isH ? '我' : '对手'}</span>
-                        <span class="flex-1">${actDesc(a)}</span>
-                    </div>`;
-                });
-                html += `</div>`;
-            }
+            // 跨街行动线(2026-07-21，用户要求"进入新街要保留之前的动作")：
+            // 原本只列当前街，进转牌后翻牌的行动就看不见了——而"对手翻牌过牌、我下注被跟"
+            // 恰恰是判断转牌怎么打的关键信息。现在每条街一行，已结束的街淡化但完整可读，
+            // 当前街高亮；行首标该街起始底池，行内按时间序连成动作链。
+            html += renderStreetTimeline(street);
 
             // ── 当前行动区 ──
             if (ss.phase === 'showdown') {
@@ -8929,15 +9003,20 @@ Rules:
 - blinds: current level in CHIPS (not BB). MOST OFTEN it is in the WINDOW TITLE BAR at the very top, written as "盲注 400 | 800" (pipe separator, sb then bb) or "Blinds 400 | 800"; it may also appear as "500/1,000/1,000". COPY THOSE EXACT DIGITS — do not compute, scale, or guess. Stacks/pot shown as "X BB" are NOT blinds. If you cannot literally read the blind digits, return null for the whole blinds object.
 - blind_level: the level number, shown top-left as "级别 14" / "Level 14"; null if not visible.
 - level_time_remaining: countdown next to the level badge, "MM:SS" (e.g. "00:06"); null if not visible.
-- image_kind: "table" for a live table screenshot; "structure" if this image is instead a tournament INFO / BLIND STRUCTURE page listing many levels in a table (columns like Level / Blinds / Ante / Duration).
-- blind_schedule: ONLY when image_kind="structure" — every row of that table, in order, blinds in CHIPS: [{"level":n,"sb":n,"bb":n,"ante":n,"minutes":n}]. Use null (not []) for a table screenshot.
+- image_kind: "table" = live table screenshot · "clock" = the tournament CLOCK/INFO overlay (big countdown, 级别/Level N, 盲注/Blinds, 下一步/Next, 平均筹码/Average stack, 剩余玩家/Players left) · "structure" = a blind STRUCTURE page listing many levels as rows.
+- next_blinds: ONLY on a clock image — the NEXT level shown under 下一步/Next, e.g. "90 / 180 (22)" → {"sb":90,"bb":180,"ante":22}. This is the single most useful field on that screen; read it exactly. null elsewhere.
+- avg_stack_bb: on a clock image, 平均筹码/Average in BB (the parenthesised "(43BB)"); null otherwise.
+- players_left: on a clock image, 剩余玩家/Players left count (the first number of "526 / 610"); null otherwise.
+- blind_schedule: ONLY when image_kind="structure" — every row, blinds in CHIPS: [{"level":n,"sb":n,"bb":n,"ante":n,"minutes":n}]. null otherwise.
+NOTE on clock images: blinds there are written "80 / 160 (20)" = sb / bb (ante).
 
 {"hero_cards":[{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]},{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]}],
 "board_cards":[{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]}],
 "pot":n,"hero_stack":n,"villain_bet":n,"hero_position":s,"villain_position":s,"street":s,"community_cards_present":b,
 "players":[{"stack":n,"bet":n,"is_allin":b,"has_cards":b}],
 "table_size":n,"blinds":{"sb":n,"bb":n,"ante":n},"blind_level":n,"level_time_remaining":s,
-"image_kind":s,"blind_schedule":[{"level":n,"sb":n,"bb":n,"ante":n,"minutes":n}]}`;
+"image_kind":s,"next_blinds":{"sb":n,"bb":n,"ante":n},"avg_stack_bb":n,"players_left":n,
+"blind_schedule":[{"level":n,"sb":n,"bb":n,"ante":n,"minutes":n}]}`;
 
     const controller = new AbortController();
     let timeoutId = null;
@@ -9289,6 +9368,10 @@ function buildPayload(d) {
         levelRemain:  d.level_time_remaining ?? null,
         // 方案B(2026-07-21)：赛前"比赛信息/盲注结构"页截图 → 完整等级表
         imageKind:    d.image_kind ?? null,
+        // 时钟页(2026-07-21)：「下一步 90/180(22)」直接给出下一级，比任何结构表/公式都准
+        nextBlinds:   (d.next_blinds && d.next_blinds.bb > 0) ? d.next_blinds : null,
+        avgStackBB:   d.avg_stack_bb ?? null,
+        playersLeft:  d.players_left ?? null,
         blindSchedule: Array.isArray(d.blind_schedule) && d.blind_schedule.length >= 2 ? d.blind_schedule : null
     };
 }
@@ -9297,6 +9380,33 @@ function buildPayload(d) {
 function autoFill(payload, _id) {
     console.log('[Vision] autoFill payload:', JSON.stringify(payload));
     if (typeof pushUndo === 'function') pushUndo('截图识别填入'); // 全局撤回栈(2026-07-21)
+
+    // 时钟页分流(2026-07-21)：赛事时钟截图只更新盲注/时间/平均码，不碰牌局状态
+    // （那张图里没有底牌，走常规填充会把当前手清空）
+    if (payload.imageKind === 'clock' && payload.blinds && payload.blinds.bb > 0 && !payload.card1) {
+        const bl = gameConfig.blinds;
+        bl.bb = payload.blinds.bb;
+        bl.sb = payload.blinds.sb > 0 ? payload.blinds.sb : Math.round(bl.bb / 2);
+        bl.ante = payload.blinds.ante >= 0 ? payload.blinds.ante : bl.ante;
+        if (payload.nextBlinds && payload.nextBlinds.bb > 0) {
+            bl.nextLevel = { sb: payload.nextBlinds.sb || Math.round(payload.nextBlinds.bb / 2),
+                             bb: payload.nextBlinds.bb, ante: payload.nextBlinds.ante || 0 };
+        }
+        const rs = typeof blParseSec === 'function' ? blParseSec(payload.levelRemain) : NaN;
+        if (rs > 0) { bl.levelStartTs = Date.now() - (bl.levelMin * 60 - rs) * 1000; bl.running = true; }
+        // 平均码用于 ICM 压力（getICMPressure 读 globalAvgStack）
+        if (payload.avgStackBB > 0) { globalAvgStack = payload.avgStackBB; avgStackTouched = true;
+            const el = document.getElementById('avgStack'); if (el) el.value = globalAvgStack;
+            const tl = document.getElementById('tlAvgStack'); if (tl) tl.value = globalAvgStack; }
+        try { blSave(); blRender(); renderTimeline(); } catch (e) {}
+        console.log('[Vision] 赛事时钟页:', bl.sb + '/' + bl.bb + '/' + bl.ante, '下一级', bl.nextLevel, '平均码', payload.avgStackBB);
+        if (typeof showToast === 'function') {
+            showToast(`赛事时钟：盲注 ${blFmt(bl.sb)}/${blFmt(bl.bb)}${bl.ante ? '/' + blFmt(bl.ante) : ''}`
+                + (bl.nextLevel ? ` · 下一级 ${blFmt(bl.nextLevel.sb)}/${blFmt(bl.nextLevel.bb)}${bl.nextLevel.ante ? '/' + blFmt(bl.nextLevel.ante) : ''}` : '')
+                + (payload.avgStackBB > 0 ? ` · 平均码 ${payload.avgStackBB}BB` : ''), 'info');
+        }
+        return;
+    }
 
     // 方案B 分流(2026-07-21)：结构表截图只载入盲注等级表，不碰牌局状态
     // （赛前截图里没有底牌/公共牌，若走常规填充会把当前手牌清空）
@@ -9373,6 +9483,11 @@ function autoFill(payload, _id) {
                 break applyBlinds; // 只跳过盲注块，其余字段照常填充
             }
             bl.bb = rb; bl.sb = rs; bl.ante = ra;
+            // 时钟页「下一步」：存下来，升盲时直接用（赛事真值，胜过任何推算）
+            if (payload.nextBlinds && payload.nextBlinds.bb > 0) {
+                bl.nextLevel = { sb: payload.nextBlinds.sb || Math.round(payload.nextBlinds.bb / 2),
+                                 bb: payload.nextBlinds.bb, ante: payload.nextBlinds.ante || 0 };
+            }
             const remSec = typeof blParseSec === 'function' ? blParseSec(payload.levelRemain) : NaN;
             if (remSec > 0) {
                 bl.levelStartTs = Date.now() - (bl.levelMin * 60 - remSec) * 1000;
