@@ -529,8 +529,22 @@
         .next-cta { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 9px;
             border-radius: var(--radius-sm); background: rgba(87,169,255,.12); border: 1px solid var(--accent);
             font-size: var(--fs-body); font-weight: 700; color: var(--accent); }
-        .next-cta button { background: var(--accent); color: #082744; font-weight: 800; border: none;
+        /* 只染 CTA 自己的直接子按钮：内嵌发牌器的 52 个格子也在 .next-cta 里，
+           后代选择器会把四色花色背景全部盖成 accent 蓝（实测截图暴露）。 */
+        .next-cta > button { background: var(--accent); color: #082744; font-weight: 800; border: none;
             border-radius: var(--radius-sm); padding: 6px 16px; cursor: pointer; font-size: var(--fs-caption); }
+        /* 内嵌发牌器(2026-07-21)：行动区就地发下一张，省掉左右栏视线来回 */
+        /* minmax(0,1fr)：1fr 的 min-width 默认是 auto，格子不会缩到内容宽度以下，
+           13 列会溢出被切掉右侧一列（实测 scrollWidth 706 > 容器 659）。 */
+        .mini-deal { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 2px; width: 100%; }
+        /* 基类命名为 .md-card，避免与梅花花色类 .md-c 撞名 */
+        .md-card { font-size: var(--fs-micro); font-weight: 800; padding: 4px 0; min-height: 24px; border-radius: 3px;
+                border: 1px solid rgba(255,255,255,.12); color: #fff; cursor: pointer; line-height: 1; }
+        .md-card:hover:not(:disabled) { filter: brightness(1.35); }
+        .md-s { background: #2d2c3a; } .md-h { background: #4a2832; }
+        .md-d { background: #21384f; } .md-c { background: #244a37; }
+        .md-off { opacity: .18; cursor: not-allowed; }
+        @media (max-width: 767.98px) { .md-card { min-height: 30px; font-size: var(--fs-caption); } }
         #postRightContent.hide-details #postHandCard, #postRightContent.hide-details #postRangeCard,
         #postRightContent.hide-details #postTextureCard, #postRightContent.hide-details #postDebugCard { display: none !important; }
         #mathProofPanel.proof-collapsed > :not(h3) { display: none; }
@@ -4601,7 +4615,12 @@
                 if (isNaN(sH) || sH <= 0 || isNaN(sV) || sV <= 0) { alert("筹码须大于 0。"); return; }
                 
                 // 对手 push 范围估算(用 Nash 表)
-                const villainPushRange = getNashPushRange(sV, posV) + stageCfg.pushMod;
+                // 深码全推收紧(2026-07-21)：Nash 表是"只能推/弃"的模型，仅在 ≤12-15BB 成立。
+                // 20BB+ 还选择直接全推的玩家放弃了加注-弃牌线，范围明显更极化/更强，
+                // 若仍按 15BB 的宽范围估算会高估我方胜率、导致过度接注。
+                // 每超 1BB 收紧 1.2 个伪百分位，下限 36（约前 8% 组合）。
+                let villainPushRange = getNashPushRange(sV, posV) + stageCfg.pushMod;
+                if (sV > 15) villainPushRange = Math.max(36, villainPushRange - (sV - 15) * 1.2);
                 const handPct = getHandPercentile(handStr);
                 const cat = getStrictCategory(v1, v2, isSuited);
                 
@@ -4610,8 +4629,17 @@
                 // 对手；Hero 短于对手时所需胜率被虚高，偏保守弃牌）
                 const effAllin = Math.min(sH, sV);
                 // 全盘审计修复(2026-07-21)：死钱补入 ante（原固定 1.5 漏算，所需胜率略虚高）
-                const deadPre = 1.5 + (gameConfig.ante ? 1.0 : 0);
-                const baseOdds = (effAllin / (effAllin + effAllin + deadPre)) * 100;
+                // 死钱按位置算(2026-07-21)：原固定 1.5(SB+BB) —— 但 Hero/对手本身是盲注位时，
+                // 那份盲注已计入其投入(effAllin)，再放进死钱就是重复计算，底池被高估、
+                // 所需胜率虚高。与 initPotTracker 用同一套判据。
+                let deadPre = gameConfig.ante ? 1.0 : 0;
+                if (posH !== 'SB' && posV !== 'SB') deadPre += 0.5;
+                if (posH !== 'BB' && posV !== 'BB') deadPre += 1.0;
+                // 已投盲注修正：在 BB/SB 时我已投入的盲注是沉没成本，实际只需补差额 →
+                // 所需胜率更低。原按"补满 effAllin"算，系统性偏保守弃牌。
+                const posted = posH === 'BB' ? 1.0 : posH === 'SB' ? 0.5 : 0;
+                const toCallAllin = Math.max(0, effAllin - posted);
+                const baseOdds = (toCallAllin / (effAllin + effAllin + deadPre)) * 100;
                 
                 // ICM 风险溢价（使用动态 icmPressure）
                 let riskPrem = (icmPressure - 1) * 8 + stageCfg.defMod;
@@ -4635,15 +4663,39 @@
                 // "伪百分位 ≤ villainPushRange 的 Nash 推注范围"（与 Nash 表 inRange 判据
                 // 同一刻度），组合加权采样 2000 次预翻 runout（±1.1 点，浏览器内 <100ms）。
                 const pushHands = ALL_169_HANDS.filter(h => getHandPercentile(h) <= villainPushRange);
-                // 2026-07-21：2000→6000 次。接全下是 MTT 最贵的决策，2000 次噪声 ±1.1 点会在
-                // "真值距红线仅 2 点"的边界局面上随机翻转结论（实测 55 vs UTG 10BB：真值 42.3%、
-                // 红线 44.4%，偶发抽到 44.6% 就从弃牌跳成边缘接注）。6000 次噪声降至 ±0.64，仍 <300ms。
-                const _mcEq = preflopEquityVsRange([heroCard1, heroCard2], pushHands, 6000);
+                // 自适应采样(2026-07-21)：接全下是 MTT 最贵的决策，而 MC 噪声已在二项分布
+                // 理论下限上（√(p(1-p)/n)，6000 次实测 sd=0.60，与理论 0.63 吻合）——试过
+                // 按对手组合分层抽样，sd 仅 0.599→0.557，因为单次结果是 0/1，组合层差异
+                // 已含在 p(1-p) 内，无处可减。唯一解是加采样，但没必要每次都加：
+                // 先 6000 次快跑（~120ms），只在"真值距红线 <2.5 点"的刀尖局面才补到
+                // 50000 次（sd→0.22，~1s）。绝大多数手牌不付这个代价。
+                let _mcEq = preflopEquityVsRange([heroCard1, heroCard2], pushHands, 6000);
+                let simsUsed = 6000, razorThin = false;
+                if (_mcEq !== null && Math.abs(_mcEq - adjustedReqEq) < 2.5) {
+                    razorThin = true; simsUsed = 50000;
+                    _mcEq = preflopEquityVsRange([heroCard1, heroCard2], pushHands, simsUsed);
+                }
                 const eqIsMC = _mcEq !== null;
                 const actEq = eqIsMC ? Math.round(_mcEq * 10) / 10 : 40; // 库未加载时保守兜底
                 const netEv = actEq - adjustedReqEq; // 用 adjustedReqEq（含大码 vs 短码放宽）
+                // 噪声带内不让随机数替用户做决定(2026-07-21)：加采样也解决不了刀尖局面——
+                // 55 接 UTG 10BB 的真实优势只有 +0.3 点，而 50000 次采样的标准差就有 0.22 点，
+                // 约 9% 的运行会落到红线另一侧（实测连跑 5 次出现 弃牌/边缘 两种结论）。
+                // 要把 0.3 点采样到确定需要约 100 万次(≈20s)，是在跟统计学硬碰。
+                // 正解：差距落在自身 95% 置信区间内时，确定性地判为硬币局并说明理由，
+                // 结论稳定且诚实，而不是让噪声在 Call/Fold 之间随机翻转。
+                const moe = eqIsMC ? 1.96 * Math.sqrt(actEq / 100 * (1 - actEq / 100) / simsUsed) * 100 : 0;
+                const coinFlip = eqIsMC && Math.abs(netEv) < Math.max(0.6, moe);
 
-                if (netEv >= 3) {
+                if (coinFlip) {
+                    box.style.borderColor = '#e0a83a'; box.style.backgroundColor = 'rgba(224,168,58,0.1)';
+                    vText.style.color = '#e0a83a'; vText.innerText = '🟡 边缘接注';
+                    logicText.innerHTML = `胜率 ${actEq}% 与门槛 ${adjustedReqEq.toFixed(1)}% 相差仅 ${Math.abs(netEv).toFixed(1)} 点，` +
+                        `已在计算精度（±${moe.toFixed(1)}）之内 —— <b>这是真正的硬币局，接与弃长期收益几乎相同</b>。` +
+                        `chipEV 分不出高下时，有 ICM 压力（近奖金圈/决赛桌）应弃牌保命；纯累积筹码期可接。` +
+                        `<br><span class="text-gray-400 text-[10px]">已按 ${simsUsed.toLocaleString()} 次采样精算，再加采样也无法分出胜负</span>` +
+                        (warnings.length ? `<br><span class="text-green-400 text-[10px]">${warnings.join('<br>')}</span>` : '');
+                } else if (netEv >= 3) {
                     box.style.borderColor = '#2ea86a'; box.style.backgroundColor = 'rgba(46,168,106,0.1)';
                     vText.style.color = '#45d68a'; vText.innerText = '🟢 接全下 (Call)';
                     logicText.innerHTML = `对手 ${POS_LABEL[posV]} ${sV}BB push 范围 ≈ ${villainPushRange.toFixed(0)}%，我方胜率达标。` +
@@ -4651,7 +4703,9 @@
                 } else if (netEv >= 0) {
                     box.style.borderColor = '#e0a83a'; box.style.backgroundColor = 'rgba(224,168,58,0.1)';
                     vText.style.color = '#e0a83a'; vText.innerText = '🟡 边缘接注';
-                    logicText.innerHTML = `压线越过门槛，方差大，可接可弃。` +
+                    logicText.innerHTML = `胜率 ${actEq}% 高出门槛 ${netEv.toFixed(1)} 点，压线过关但方差大。` +
+                        `有 ICM 压力（近奖金圈/决赛桌）时应偏弃牌保命。` +
+                        (razorThin ? `<br><span class="text-gray-400 text-[10px]">已按 ${simsUsed.toLocaleString()} 次采样精算（误差 ±${moe.toFixed(1)} 点）</span>` : '') +
                         (warnings.length ? `<br><span class="text-green-400 text-[10px]">${warnings.join('<br>')}</span>` : '');
                 } else {
                     box.style.borderColor = '#5c667f'; box.style.backgroundColor = 'rgba(92,102,127,0.12)';
@@ -4858,11 +4912,18 @@
             const nCallers = (() => { const el = document.getElementById('limpCount'); const n = el ? parseInt(el.value) : 1; return n > 0 ? n : 1; })();
             let each = 0, extraDead = 0;
             if (currentMode === 'open') {
-                each = openAmt;
+                // 用时间线里我的真实开池额（iso-raise 到 5BB 时 pot 应按 5 算，而非默认 2.2）
+                each = (typeof tlHero !== 'undefined' && tlHero && tlHero.action === 'open' && tlHero.amount > 0)
+                    ? tlHero.amount : openAmt;
             } else if (currentMode === 'vsLimp') {
+                // 底池修复(2026-07-21，用户 T6 明三条 @ 7-T-T 实战暴露)：原本一律按"我 iso-raise
+                // 到 3+n 且有一人跟注"算 → 两人跛入时底池 12.5BB，而真实跛入池只有约 4BB。
+                // 虚高 3 倍导致 SPR 0.88 被误判为承诺区，于是拿明三条建议全押（实际该小注建池）。
+                // vsLimp 的语义是"面对跛入者、我尚未行动"，进翻后即为过牌看牌的跛入池；
+                // 我若真 iso-raise 了，时间线会把场景路由成 open 模式（用我的实际开池额算池）。
                 const n = Math.max(1, (selectedLimperPositions || []).length);
-                each = 3 + n;                       // Iso 尺度 3BB + 每跛入者 1BB，一人跟注
-                extraDead = Math.max(0, n - 1) * 1.0; // 其余跛入者弃掉的 1BB
+                each = 1;                               // 跛入池：主对手跛 1BB，我在 BB 已有 1BB
+                extraDead = Math.max(0, n - 1) * 1.0;   // 其余跛入者的 1BB 作死钱
             } else if (currentMode === 'faceBet') {
                 each = globalRaiseSize;
             } else if (currentMode === 'squeeze') {
@@ -6130,6 +6191,33 @@
          * 已结束的街淡化不抢眼但完整可读；当前街高亮描边。
          * @param {string} curStreet 当前街（'flop'|'turn'|'river'）
          */
+        /**
+         * 内嵌发牌器(2026-07-21)：本街打完后在行动区就地发下一张公共牌。
+         * 13 列 × 4 行紧凑网格，已用牌置灰；点击即发牌并重跑分析。
+         * 与左栏共享网格互不冲突（各自渲染，发牌后两边一起刷新）。
+         */
+        function renderInlineDealer() {
+            const RANKS = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+            const SUITS = ['s','h','d','c'];
+            const used = new Set([heroCard1, heroCard2, ...getBoardSafe()].filter(Boolean));
+            let h = '<div class="mini-deal">';
+            SUITS.forEach(s => RANKS.forEach(r => {
+                const c = r + s, dis = used.has(c);
+                h += `<button class="md-card md-${s}${dis ? ' md-off' : ''}" ${dis ? 'disabled' : `onclick="dealNextCard('${c}')"`}
+                    title="${dis ? '已使用' : '发出 ' + r + SUIT_SYMBOLS[s]}">${r}${SUIT_SYMBOLS[s]}</button>`;
+            }));
+            return h + '</div>';
+        }
+        /** 发出下一张公共牌（内嵌发牌器专用；走撤回栈，可 Z 撤回） */
+        window.dealNextCard = function(card) {
+            const boardSel = getBoardSafe();
+            if (boardSel.length >= 5) { showToast('公共牌已满 5 张', 'warn'); return; }
+            if ([heroCard1, heroCard2, ...boardSel].includes(card)) { showToast('这张牌已被使用', 'error'); return; }
+            pushUndo(`发牌 ${card[0]}${SUIT_SYMBOLS[card[1]] || ''}`);
+            postState.board[boardSel.length] = card;
+            renderBoard(); renderSharedPicker(); autoTriggerAnalysis();
+        };
+
         function renderStreetTimeline(curStreet) {
             const acts = postState.potTracker.actions || [];
             const STREETS = [['flop', '翻牌'], ['turn', '转牌'], ['river', '河牌']];
@@ -6305,8 +6393,12 @@
                         <span>${folded ? '🏁 有人弃牌，本手结束' : '🏁 河牌行动完毕'}</span>
                         <button onclick="nextHand()">下一手 N</button></div>`;
                 } else {
-                    html += `<div class="next-cta">
-                        <span>✓ 本街完毕 → 左侧点选<b>${nextLabel}</b>（槽位已闪烁提示）</span></div>`;
+                    // 内嵌发牌器(2026-07-21，用户要求)：本街打完就地发下一张，
+                    // 省掉左右两栏之间的视线来回——这是翻后输入最大的一段摩擦
+                    html += `<div class="next-cta" style="flex-direction:column;align-items:stretch;gap:6px;">
+                        <span style="text-align:center;">✓ 本街完毕 → 直接点下面发<b>${nextLabel}</b></span>
+                        ${renderInlineDealer()}
+                    </div>`;
                 }
 
             } else {
@@ -7836,17 +7928,27 @@
             const deck = [];
             ['A','K','Q','J','T','9','8','7','6','5','4','3','2'].forEach(r =>
                 ['s','h','d','c'].forEach(s => { const c = r + s; if (!baseUsed.has(c)) deck.push(c); }));
+            // 分层抽样(2026-07-21)：原来每次 sims 都随机抽一手对手牌，方差的**主来源不是
+            // 随机牌面而是"抽到了哪手对手牌"**——55 打 AA 只有 18%、打 K8s 有 52%，跨度极大，
+            // 所以 6000 次采样仍有 ±1.1 点抖动（实测 spread 1.14pt），足以在刀尖局面
+            // （如 55 接 UTG 10BB 全推：真值 42.2% vs 红线 41.9%）来回翻转结论。
+            // 改为遍历对手范围的**每一个具体组合**、每个组合跑等量牌面：组合层方差归零，
+            // 只剩牌面层噪声，且天然按组合数加权（组合多的牌类自动占更大权重）。
+            const index = buildRangeComboIndex(rangeHands, baseUsed);
+            if (!index || !index.flat.length) return null;
+            const flat = index.flat;
+            const per = Math.max(6, Math.round(sims / flat.length));
             let w = 0, t = 0, v = 0;
-            for (let i = 0; i < sims; i++) {
-                const vh = sampleHandFromRange(rangeHands, baseUsed);
-                if (!vh) break;
-                const used = new Set(baseUsed); vh.forEach(c => used.add(c));
-                const run = sampleNCards(deck.filter(c => !used.has(c)), 5);
-                try {
-                    const hs = Hand.solve([...hero, ...run]), vs = Hand.solve([...vh, ...run]);
-                    const win = Hand.winners([hs, vs]); v++;
-                    if (win.length === 2) t++; else if (win[0] === hs) w++;
-                } catch (e) {}
+            for (const vh of flat) {
+                const avail = deck.filter(c => c !== vh[0] && c !== vh[1]);
+                for (let i = 0; i < per; i++) {
+                    const run = sampleNCards(avail, 5);
+                    try {
+                        const hs = Hand.solve([...hero, ...run]), vs = Hand.solve([...vh, ...run]);
+                        const win = Hand.winners([hs, vs]); v++;
+                        if (win.length === 2) t++; else if (win[0] === hs) w++;
+                    } catch (e) {}
+                }
             }
             return v ? (w + t / 2) / v * 100 : null;
         }
@@ -7855,13 +7957,28 @@
          * 从范围里采样一手具体牌
          */
         function sampleHandFromRange(rangeHands, usedCards) {
+            const entry = buildRangeComboIndex(rangeHands, usedCards);
+            if (!entry || !entry.total) return null;
+            // 按累计组合数二分定位牌类，再在其合法组合内均匀抽一手
+            const r = Math.random() * entry.total;
+            let lo = 0, hi = entry.cum.length - 1;
+            while (lo < hi) { const mid = (lo + hi) >> 1; if (entry.cum[mid] > r) hi = mid; else lo = mid + 1; }
+            const combos = entry.items[lo];
+            return combos[Math.floor(Math.random() * combos.length)];
+        }
+
+        /**
+         * 把牌类范围（如 ['AA','AKs']）展开成扣除已知牌后的全部合法具体组合。
+         * 供随机采样（sampleHandFromRange）与分层抽样（preflopEquityVsRange）共用。
+         */
+        function buildRangeComboIndex(rangeHands, usedCards) {
             if (!rangeHands || rangeHands.length === 0) return null;
             // 全盘审计修复(2026-07-21，用户授权动胜率核心)：采样改为按"扣除已知牌后的
             // 合法组合数"加权。原按牌类均匀抽（对子 6 组合、同花 4、非同花 12 一视同仁）
             // 把对子/同花权重高估 2-3 倍 → 对手范围显得更强，实测 AQo@T97 胜率压低 2.0 点、
             // 88@K72 压低 3.0 点，方向恒为偏弃牌；河牌精确穷举本就按组合数，导致转→河跳变。
             // 按 rangeHands 数组引用 + 已知牌签名缓存展开结果，MC 循环内零重复展开。
-            const cache = sampleHandFromRange._cache || (sampleHandFromRange._cache = new WeakMap());
+            const cache = buildRangeComboIndex._cache || (buildRangeComboIndex._cache = new WeakMap());
             const sig = usedCards.size + ':' + [...usedCards].sort().join('');
             let entry = cache.get(rangeHands);
             if (!entry || entry.sig !== sig) {
@@ -7894,16 +8011,10 @@
                     total += combos.length;
                     items.push(combos); cum.push(total);
                 }
-                entry = { sig, items, cum, total };
+                entry = { sig, items, cum, total, flat: items.flat() };
                 cache.set(rangeHands, entry);
             }
-            if (!entry.total) return null;
-            // 按累计组合数二分定位牌类，再在其合法组合内均匀抽一手
-            const r = Math.random() * entry.total;
-            let lo = 0, hi = entry.cum.length - 1;
-            while (lo < hi) { const mid = (lo + hi) >> 1; if (entry.cum[mid] > r) hi = mid; else lo = mid + 1; }
-            const combos = entry.items[lo];
-            return combos[Math.floor(Math.random() * combos.length)];
+            return entry;
         }
 
         /**
@@ -8142,6 +8253,64 @@
          * 翻后决策引擎
          * 综合胜率/相对牌力/SPR/底池赔率/对手动作，输出动作建议
          */
+        /**
+         * Blocker 建模（2026-07-21，用户点名要求；转牌/河牌生效）
+         * ─────────────────────────────────────────────────────────
+         * 牌被移除的**算术**效果早已存在（算胜率时排除我方两张牌）。这里补的是**策略性 blocker**：
+         * 我挡住的到底是对手的坚果、还是他的诈唬？这决定我该多诈唬还是多弃牌。
+         *   · 挡住坚果多 → 他更少有强牌 → 我诈唬更有效、抓诈唬也更该跟
+         *   · 挡住空气多 → 他更少在诈唬 → 我该收紧跟注（经典"挡住他的诈唬所以别抓"）
+         * 做法：枚举对手范围在当前牌面的全部 combo，按成手强度排序分三桶
+         * （坚果前 20% / 中段 / 空气后 45%），分别算我方两张牌移除了各桶多少比例，
+         * 取 nutBlock − airBlock 作为 blockerEdge（正=利于进攻与抓诈唬）。
+         * @returns {{nutBlock:number, airBlock:number, edge:number, note:string}|null}
+         */
+        function analyzeBlockers(heroCards, board, rangeHands) {
+            try {
+                if (typeof Hand === 'undefined' || !rangeHands || !rangeHands.length) return null;
+                if (board.length < 4) return null;                 // 仅转牌/河牌
+                const hero = heroCards.map(normalizeCard);
+                const bd = board.map(normalizeCard);
+                const heroSet = new Set(hero);
+                const boardSet = new Set(bd);
+                const SUITS = ['s', 'h', 'd', 'c'];
+                const combos = [];
+                for (const h of rangeHands) {
+                    const r1 = h[0].toUpperCase(), r2 = h[1].toUpperCase();
+                    const isPair = r1 === r2, isSuited = h.length === 3 && h[2].toLowerCase() === 's';
+                    const push = (a, c) => {
+                        if (boardSet.has(a) || boardSet.has(c)) return;   // 只排公共牌，保留我方牌以便统计"被我挡住"
+                        combos.push([a, c]);
+                    };
+                    if (isPair) { for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) push(r1 + SUITS[i], r2 + SUITS[j]); }
+                    else if (isSuited) SUITS.forEach(s => push(r1 + s, r2 + s));
+                    else for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if (i !== j) push(r1 + SUITS[i], r2 + SUITS[j]);
+                }
+                if (combos.length < 12) return null;
+                // 排序键：牌型等级为主，五张牌点数依次为辅（避免 O(n²) 两两比较）
+                const scored = combos.map(c => {
+                    const s = Hand.solve([...c, ...bd]);
+                    let k = s.rank * 1e10;
+                    (s.cards || []).slice(0, 5).forEach((cd, i) => { k += (cd.rank || 0) * Math.pow(100, 4 - i); });
+                    return { c, k, blocked: heroSet.has(c[0]) || heroSet.has(c[1]) };
+                }).sort((a, b) => b.k - a.k);
+                const n = scored.length;
+                const nutN = Math.max(1, Math.round(n * 0.20));
+                const airStart = Math.round(n * 0.55);
+                const nut = scored.slice(0, nutN);
+                const air = scored.slice(airStart);
+                const pct = arr => arr.length ? arr.filter(x => x.blocked).length / arr.length * 100 : 0;
+                const nutBlock = pct(nut), airBlock = pct(air);
+                const edge = Math.round((nutBlock - airBlock) * 10) / 10;
+                const note = edge >= 4
+                    ? `你挡住对手 ${nutBlock.toFixed(0)}% 的坚果、仅 ${airBlock.toFixed(0)}% 的空气 → 他更少强牌，利于施压与抓诈唬`
+                    : edge <= -4
+                    ? `你挡住对手 ${airBlock.toFixed(0)}% 的空气、仅 ${nutBlock.toFixed(0)}% 的坚果 → 他更少在诈唬，抓诈唬要收紧`
+                    : `Blocker 影响中性（挡坚果 ${nutBlock.toFixed(0)}% / 挡空气 ${airBlock.toFixed(0)}%）`;
+                return { nutBlock: Math.round(nutBlock * 10) / 10, airBlock: Math.round(airBlock * 10) / 10, edge, note };
+            } catch (e) { console.warn('[Blocker] 跳过:', e.message); return null; }
+        }
+
         function postEngine() {
             const eq = postState.equityResult;
             if (!eq) return null;
@@ -8303,7 +8472,17 @@
                 callMargin:   _scBase.callMargin + 2 * _mwN
             } : _scBase;
 
+            // Blocker 接入(2026-07-21)：转牌/河牌按"挡坚果 vs 挡空气"调整两处——
+            //   ① 抓诈唬门槛 callMargin：挡住他坚果多 → 可以跟得更宽；挡住他空气多 → 收紧
+            //   ② 诈唬频率（下方各诈唬分支）：挡住他继续范围越多，诈唬越有效
+            // 强度刻意保守（callMargin 至多 ±4、频率至多 ±15），避免单一信号主导决策。
+            const blk = analyzeBlockers(postState.heroCards || [], board, postState.villainRange?.hands || []);
+            const blkMargin = blk ? Math.max(-4, Math.min(4, -blk.edge * 0.25)) : 0;
+            const blkBluff = blk ? Math.max(-15, Math.min(15, Math.round(blk.edge * 0.6))) : 0;
+            if (blk && Math.abs(blk.edge) >= 4) sc.callMargin = Math.max(2, sc.callMargin + blkMargin);
+
             const warnings = [];
+            if (blk && Math.abs(blk.edge) >= 4) warnings.push(`🎯 ${blk.note}`);
             if (_mwN > 0) {
                 warnings.push(`⚠ 多人底池：${_mwN + 1} 名对手在局，胜率按多人计算，价值/诈唬门槛已收紧`);
             }
@@ -8437,10 +8616,11 @@
                         reasoning = `河牌胜率${equity.toFixed(0)}%，${heroPos === 'OOP' ? '封锁注控池（' + sc.sizes.medium + '），' : ''}薄价值下注`;
                     } else if (equity < 30 && hadPrevStreetBet) {
                         // 低频小尺度诈唬：前街有代表性的行动线支撑（ICM 期间降频）
-                        const maxBluff = Math.max(0, Math.round(18 / icmTighten) - (stage === 'bubble' ? 15 : stage === 'final' ? 5 : 0));
+                        // Blocker 接入：挡住对手坚果越多，纯诈唬越有效（他更难有牌跟）
+                        const maxBluff = Math.max(0, Math.round(18 / icmTighten) - (stage === 'bubble' ? 15 : stage === 'final' ? 5 : 0) + blkBluff);
                         primaryAction = 'BET'; sizing = '33% 底池';
                         frequencies = { bet: maxBluff, check: 100 - maxBluff };
-                        reasoning = `河牌胜率${equity.toFixed(0)}%，前街有代表性，${maxBluff}%低频诈唬（33%底池）`;
+                        reasoning = `河牌胜率${equity.toFixed(0)}%，前街有代表性，${maxBluff}%低频诈唬（33%底池）${blkBluff ? `｜blocker ${blkBluff > 0 ? '+' : ''}${blkBluff}%` : ''}`;
                     } else {
                         // 中间带：无法价值也无法诈唬，过牌
                         primaryAction = 'CHECK'; sizing = '';
@@ -8484,9 +8664,11 @@
                         reasoning = `${outs}张进张（≥10 才转牌半诈唬），${drawFreq}%频率施压`;
                     } else if (iHaveNutAdv && sprZone === 'deep' && equity < 35 && iHaveRangeAdv) {
                         // 极化诈唬：坚果范围+范围优势
+                        // Blocker 接入：极化诈唬最看 blocker——挡住他的坚果才敢开大
+                        const polFreq = Math.max(0, Math.min(45, 18 + blkBluff));
                         primaryAction = 'BET'; sizing = sc.sizes.nut;
-                        frequencies = { bet: 18, check: 82 };
-                        reasoning = `转牌坚果范围+范围优势，18%极化超池诈唬`;
+                        frequencies = { bet: polFreq, check: 100 - polFreq };
+                        reasoning = `转牌坚果范围+范围优势，${polFreq}%极化超池诈唬${blkBluff ? `｜blocker ${blkBluff > 0 ? '+' : ''}${blkBluff}%` : ''}`;
                     } else {
                         primaryAction = 'CHECK'; sizing = '';
                         frequencies = { check: 100 };
