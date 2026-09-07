@@ -668,6 +668,7 @@
                                     <div><div class="text-[10px] text-gray-300">本级剩余</div><input type="text" inputmode="numeric" id="blRemain" oninput="blOnInput(this)" onkeydown="blOnKey(event)" class="bl-input" placeholder="234 = 2:34"></div>
                                 </div>
                                 <div id="blPreview" class="text-[10px] mt-1" style="color:var(--text-secondary);display:none"></div>
+                                <div id="blSchedInfo" class="text-[10px] mt-1" style="color:var(--text-muted);line-height:1.5"></div>
                                 <div class="flex items-center gap-1 mt-1">
                                     <div id="blStatus" class="text-[10px] text-gray-500 flex-1 min-w-0">未计时 · SB 0.5BB · Ante 1BB</div>
                                     <button onclick="blStart()" class="cfg-btn bl-btn active shrink-0">开始/更新</button>
@@ -1028,7 +1029,11 @@
             // 升盲同步/筹码单位/自动移位(2026-07-21)
             autoAdvancePos: true,    // 下一手自动把我的位置往前退一格
             chipUnit: 'bb',          // 'bb' | 'chips'（筹码框按真实筹码数输入，自动换算 BB）
-            blinds: { sb: 500, bb: 1000, ante: 1000, levelMin: 12, levelStartTs: 0, running: false }
+            // schedule：赛前截图"比赛信息/盲注结构"页识别出的完整等级表（方案B，精确按表升盲）；
+            // 为空时走方案A——标准数列推进 + ante 按当前 ante/BB 比例跟随（GG 各赛事 ante 比例不同，
+            // 实测 500/1000/150 = 15%，行业常见 10-12.5%，无统一公式可硬编码）
+            blinds: { sb: 500, bb: 1000, ante: 150, levelMin: 12, levelStartTs: 0, running: false,
+                      schedule: null, levelIdx: -1 }
         };
 
         const gameTypeOpts = [
@@ -3412,6 +3417,32 @@
         let chipVals = { hero: null, villain: null, avg: null }; // 筹码单位=筹码数时的原始筹码
         let _blTimer = null;
         function blNextBB(bb) { const n = STD_BB_LEVELS.find(x => x > bb); return n || Math.round(bb * 1.25 / 100) * 100; }
+        /** 方案B：结构表里 bb 之后的下一级（找不到表或已到末级 → null，回落方案A） */
+        function blScheduleNext(bb) {
+            const sc = gameConfig.blinds.schedule;
+            if (!Array.isArray(sc) || !sc.length) return null;
+            const i = sc.findIndex(l => l.bb === bb);
+            if (i >= 0) return sc[i + 1] || null;
+            return sc.find(l => l.bb > bb) || null;   // 当前级不在表内：取表中第一个更大的级
+        }
+        /** 清洗并载入结构表（升序、去重、字段合法性） */
+        function blLoadSchedule(rows) {
+            if (!Array.isArray(rows)) return 0;
+            const clean = rows
+                .map(r => ({ level: +r.level || 0, sb: +r.sb || 0, bb: +r.bb || 0,
+                             ante: r.ante == null ? 0 : (+r.ante || 0), minutes: +r.minutes || 0 }))
+                .filter(r => r.bb > 0)
+                .sort((a, b) => a.bb - b.bb)
+                .filter((r, i, arr) => i === 0 || r.bb !== arr[i - 1].bb);
+            if (clean.length < 2) return 0;      // 至少两级才有"下一级"的意义
+            gameConfig.blinds.schedule = clean;
+            blSave();
+            return clean.length;
+        }
+        window.blClearSchedule = function() {
+            gameConfig.blinds.schedule = null; blSave(); blRender();
+            showToast('已清除结构表，升盲改按标准数列 + ante 比例跟随', 'info');
+        };
         function blFmt(n) { return (n || 0).toLocaleString('en-US'); }
         function blSave() { try { localStorage.setItem('blind_cfg', JSON.stringify(gameConfig.blinds)); localStorage.setItem('chip_unit', gameConfig.chipUnit); localStorage.setItem('auto_pos', gameConfig.autoAdvancePos ? '1' : '0'); } catch (e) {} }
         function blLoad() {
@@ -3490,12 +3521,25 @@
             if (ms !== null) set('blRemain', blFmtSec(ms / 1000));
             const st = document.getElementById('blStatus');
             if (st) {
-                // 统一按 BB 语义显示：SB 0.5BB 固定，Ante 按所填筹码换成 BB，升盲 = 筹码按比例缩小
-                const nx = blNextBB(b.bb), ratio = (nx / b.bb).toFixed(2);
-                const anteBB = b.bb > 0 ? Math.round(b.ante / b.bb * 100) / 100 : 0;
-                st.textContent = b.running
-                    ? `计时中 · 1BB=${blFmt(b.bb)} · SB 0.5BB · Ante ${anteBB}BB · 下一级 1BB=${blFmt(nx)}，升盲后筹码 ÷${ratio}（${globalHeroStack}BB → ${Math.round(globalHeroStack / (nx / b.bb) * 10) / 10}BB，自动换算）`
-                    : `未计时 · SB 0.5BB · Ante ${anteBB}BB · 填大盲/Ante/每级/剩余（分:秒）后点「开始/更新」`;
+                // 按 BB 语义显示；下一级优先取结构表（方案B），否则标准数列 + ante 比例跟随（方案A）
+                const nxRow = blScheduleNext(b.bb);
+                const nxBB = nxRow ? nxRow.bb : blNextBB(b.bb);
+                const ratio = (nxBB / b.bb).toFixed(2);
+                const antePct = b.bb > 0 ? Math.round(b.ante / b.bb * 100) : 0;
+                const src = nxRow
+                    ? `结构表第 ${nxRow.level || '?'} 级 ${blFmt(nxRow.sb)}/${blFmt(nxRow.bb)}${nxRow.ante ? '/' + blFmt(nxRow.ante) : ''}`
+                    : `标准数列 1BB=${blFmt(nxBB)}，ante 按 ${antePct}% 跟随`;
+                st.innerHTML = (b.running ? '计时中' : '未计时')
+                    + ` · 1BB=${blFmt(b.bb)} · Ante ${antePct}% BB · 下一级 ${src}`
+                    + ` · 升盲后 ${globalHeroStack}BB → ${Math.round(globalHeroStack / ratio * 10) / 10}BB`
+                    + (b.running ? '' : ' · 填好后点「开始/更新」或回车');
+                const sch = document.getElementById('blSchedInfo');
+                if (sch) {
+                    const n = Array.isArray(b.schedule) ? b.schedule.length : 0;
+                    sch.innerHTML = n
+                        ? `📋 已载入结构表 <b style="color:var(--accent)">${n}</b> 级（升盲按表精确推进） <button onclick="blClearSchedule()" class="macro-btn" style="margin-left:4px;">清除</button>`
+                        : `📋 未载入结构表：升盲按标准数列 + ante 比例跟随。<b style="color:var(--gold)">赛前把「比赛信息/盲注结构」页截图 Ctrl+V 粘贴</b>，即可精确按表升盲。`;
+                }
             }
             const ub = document.getElementById('unitBB'), uc = document.getElementById('unitChips');
             if (ub) ub.className = 'cfg-btn' + (gameConfig.chipUnit === 'bb' ? ' active' : '');
@@ -3522,7 +3566,8 @@
             const lvSec = blParseSec(document.getElementById('blLevelMin')?.value), remSec = blParseSec(document.getElementById('blRemain')?.value);
             if (!(bb > 0) || !(lvSec > 0)) { showToast('请填写当前大盲与每级时长（分:秒，如 12:00）', 'error'); return; }
             // SB=0.5BB 固定；Ante 按所填筹码（各赛事规则不同），留空则按 BB ante 开关默认
-            b.sb = Math.round(bb / 2); b.bb = bb; b.ante = anteIn >= 0 ? anteIn : (gameConfig.ante ? bb : 0);
+            // Ante 以用户所填/识别为准（GG 各赛事 ante/BB 比例不同，不再默认 = 1BB）
+            b.sb = Math.round(bb / 2); b.bb = bb; b.ante = anteIn >= 0 ? anteIn : b.ante;
             b.levelMin = lvSec / 60;
             const remain = (remSec >= 0 && remSec <= lvSec) ? remSec : lvSec;
             b.levelStartTs = Date.now() - (lvSec - remain) * 1000; b.running = true;
@@ -3533,8 +3578,16 @@
         function blLevelUp() {
             const b = gameConfig.blinds;
             const prevBB = b.bb;
-            b.bb = blNextBB(b.bb); b.sb = Math.round(b.bb / 2);
-            if (b.ante > 0) b.ante = Math.round(b.ante * b.bb / prevBB); // Ante 与大盲同比例推进（保持赛事 ante/BB 比）
+            // 方案B 优先：载入过结构表就精确按表走下一级（含该级时长）
+            const nx = blScheduleNext(b.bb);
+            if (nx) {
+                b.bb = nx.bb; b.sb = nx.sb > 0 ? nx.sb : Math.round(nx.bb / 2);
+                b.ante = nx.ante >= 0 ? nx.ante : b.ante;
+                if (nx.minutes > 0) b.levelMin = nx.minutes;
+            } else {
+                b.bb = blNextBB(b.bb); b.sb = Math.round(b.bb / 2);
+                if (b.ante > 0) b.ante = Math.round(b.ante * b.bb / prevBB); // 方案A：ante 按当前比例跟随
+            }
             b.levelStartTs += b.levelMin * 60000;
             blSave();
             const before = globalHeroStack;
@@ -8831,12 +8884,15 @@ Rules:
 - community_cards_present: true ONLY if face-up cards are dealt in the table center; false if center has only chips/pot.
 - blinds: current level in CHIPS (not BB), shown as "500/1,000" or "500/1,000/1,000" (sb/bb/ante), usually top-left or in the info bar; ante=0 if absent; null if not visible.
 - level_time_remaining: countdown to next blind level as "MM:SS"; null if not visible.
+- image_kind: "table" for a live table screenshot; "structure" if this image is instead a tournament INFO / BLIND STRUCTURE page listing many levels in a table (columns like Level / Blinds / Ante / Duration).
+- blind_schedule: ONLY when image_kind="structure" — every row of that table, in order, blinds in CHIPS: [{"level":n,"sb":n,"bb":n,"ante":n,"minutes":n}]. Use null (not []) for a table screenshot.
 
 {"hero_cards":[{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]},{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]}],
 "board_cards":[{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]}],
 "pot":n,"hero_stack":n,"villain_bet":n,"hero_position":s,"villain_position":s,"street":s,"community_cards_present":b,
 "players":[{"stack":n,"bet":n,"is_allin":b,"has_cards":b}],
-"table_size":n,"blinds":{"sb":n,"bb":n,"ante":n},"level_time_remaining":s}`;
+"table_size":n,"blinds":{"sb":n,"bb":n,"ante":n},"level_time_remaining":s,
+"image_kind":s,"blind_schedule":[{"level":n,"sb":n,"bb":n,"ante":n,"minutes":n}]}`;
 
     const controller = new AbortController();
     let timeoutId = null;
@@ -9114,12 +9170,18 @@ async function verifyCardSuitsByColor(dataUrl, d) {
             }
             // 投票规则：至少 1 个窗口置信，且所有置信窗口判色一致才覆盖；
             // 任何分歧（可能跨牌/压到背景）→ 拒绝，保持模型结果
+            // 校验状态外露(2026-07-21)：把三种结果写进 c._sv 供核对卡显示——
+            //   'corrected' 像素判色纠正了模型 · 'ok' 判色与模型一致 · 未表态则保持 undefined，
+            //   核对卡标"未校验"提醒人工看一眼（花色错误正是藏在这一档里）
             if (!verdicts.length) continue;
             const win = verdicts[0].suit;
             if (verdicts.some(v => v.suit !== win)) continue;
             if (c.suit !== win) {
                 const t = verdicts[0].cnt;
                 console.log(`[Vision] 本地判色覆盖: ${c.rank}${c.suit || '?'} → ${c.rank}${win}（${verdicts.length}窗一致，黑${t.s}/红${t.h}/蓝${t.d}/绿${t.c}）`);
+                c._sv = 'corrected';
+            } else {
+                c._sv = 'ok';
             }
             c.suit = win;
         }
@@ -9169,7 +9231,10 @@ function buildPayload(d) {
         tableSize:    d.table_size ?? null,
         // 盲注识别(2026-07-21)：牌桌上的 "500/1,000/1,000" 与升盲倒计时
         blinds:       (d.blinds && d.blinds.bb > 0) ? d.blinds : null,
-        levelRemain:  d.level_time_remaining ?? null
+        levelRemain:  d.level_time_remaining ?? null,
+        // 方案B(2026-07-21)：赛前"比赛信息/盲注结构"页截图 → 完整等级表
+        imageKind:    d.image_kind ?? null,
+        blindSchedule: Array.isArray(d.blind_schedule) && d.blind_schedule.length >= 2 ? d.blind_schedule : null
     };
 }
 
@@ -9177,6 +9242,25 @@ function buildPayload(d) {
 function autoFill(payload, _id) {
     console.log('[Vision] autoFill payload:', JSON.stringify(payload));
     if (typeof pushUndo === 'function') pushUndo('截图识别填入'); // 全局撤回栈(2026-07-21)
+
+    // 方案B 分流(2026-07-21)：结构表截图只载入盲注等级表，不碰牌局状态
+    // （赛前截图里没有底牌/公共牌，若走常规填充会把当前手牌清空）
+    if (payload.blindSchedule && (payload.imageKind === 'structure' || !payload.card1)) {
+        const n = typeof blLoadSchedule === 'function' ? blLoadSchedule(payload.blindSchedule) : 0;
+        if (n) {
+            // 表已载入；若当前大盲还没设过，用表首级作为起点
+            const b = gameConfig.blinds;
+            if (!(b.bb > 0) && b.schedule[0]) {
+                b.bb = b.schedule[0].bb; b.sb = b.schedule[0].sb || Math.round(b.bb / 2);
+                b.ante = b.schedule[0].ante || 0;
+                if (b.schedule[0].minutes > 0) b.levelMin = b.schedule[0].minutes;
+            }
+            try { blSave(); blRender(); } catch (e) {}
+            if (typeof showToast === 'function') showToast(`已载入盲注结构表 ${n} 级，升盲将按表精确推进`, 'info');
+            console.log('[Vision] 结构表载入:', n, '级');
+            return; // 结构表截图到此为止
+        }
+    }
 
     // ① 底牌（始终填，加防御检查）
     const c1 = payload.card1;
@@ -9486,14 +9570,31 @@ function renderVisionReviewCard(payload) {
             ${sub ? `<div style="font-size:10px;color:#6b7280;margin-top:2px;">${sub}</div>` : ''}
         </div>`;
 
-    // 牌 chip（可点编辑：data-edit；大尺寸 36×40 好点）
+    // 牌 chip（可点编辑；2026-07-21 增大到 44×52 并外露花色校验状态）
+    // 校验状态来自 verifyCardSuitsByColor 写入的 c._sv：
+    //   'corrected' 像素判色纠正过模型（绿✓·已校正）· 'ok' 判色与模型一致（绿✓）
+    //   undefined   本地判色未表态（bbox 不可用/多窗分歧/未过门槛）→ 琥珀 ? 提醒人工看一眼，
+    //               花色识别错误恰恰只可能藏在这一档，这是全系统最该外露的信号
     const chip = (c, editKey) => {
         const r = c && c.rank, s = c && c.suit;
-        const base = 'display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:40px;border-radius:var(--radius-sm);font-weight:900;font-size:1rem;margin-right:4px;position:relative;cursor:pointer;';
+        const base = 'display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:44px;height:52px;border-radius:var(--radius-sm);font-weight:900;font-size:1.15rem;margin-right:5px;position:relative;cursor:pointer;';
         const active = (_vrcEdit === editKey) ? 'outline:2px solid var(--accent-hover);' : '';
-        if (!r || !s) return `<span data-edit="${editKey}" style="${base}${active}background:rgba(234,179,8,0.15);border:1px solid #eab308;color:#eab308;">?<span style="position:absolute;bottom:-2px;right:0;font-size:10px;color:var(--accent-hover);">✎</span></span>`;
-        return `<span data-edit="${editKey}" style="${base}${active}background:${suitBg[s]||'#2d2c3a'};color:#fff;padding:0 4px;">${r}${SYM[s]||''}<span style="position:absolute;bottom:-2px;right:0;font-size:10px;color:#fff;opacity:0.65;">✎</span></span>`;
+        if (!r || !s) return `<span data-edit="${editKey}" title="未识别，点击手动选牌" style="${base}${active}background:rgba(234,179,8,0.15);border:1px solid #eab308;color:#eab308;">?<span style="font-size:9px;font-weight:400;">点击选牌</span></span>`;
+        const sv = c._sv;
+        const mark = sv === 'corrected'
+            ? { t: '✓ 已校正', col: '#45d68a', tip: '本地像素判色纠正了模型的花色，可信' }
+            : sv === 'ok'
+            ? { t: '✓ 已校验', col: '#45d68a', tip: '本地像素判色与模型一致，可信' }
+            : { t: '? 未校验', col: '#eab308', tip: '本地判色未能表态（截图区域不清晰），花色请人工确认' };
+        const border = sv ? 'border:1px solid rgba(69,214,138,0.45);' : 'border:1px solid #eab308;';
+        return `<span data-edit="${editKey}" title="${mark.tip}｜点击可改" style="${base}${active}${border}background:${suitBg[s]||'#2d2c3a'};color:#fff;padding:2px 4px;">
+            <span>${r}${SYM[s]||''}</span>
+            <span style="font-size:9px;font-weight:700;color:${mark.col};margin-top:1px;">${mark.t}</span></span>`;
     };
+    // 花色校验汇总：有未校验的牌就把它顶到最前面提醒
+    const allCards = [p.card1, p.card2, ...board].filter(Boolean);
+    const unverified = allCards.filter(c => c.rank && c.suit && !c._sv);
+    const corrected  = allCards.filter(c => c._sv === 'corrected');
 
     const heroCardsCell = () =>
         cellWrap('底牌（点牌改）', chip(p.card1, 'hero0') + chip(p.card2, 'hero1'), (!p.card1 || !p.card2));
@@ -9511,19 +9612,37 @@ function renderVisionReviewCard(payload) {
         cellWrap('对手下注', `${p.villainBet != null ? p.villainBet : 0}BB`, false, '如对手有下注请核对', 'vbet');
 
     // ── 按街道裁剪字段（preflop 筹码两项为只读快照，不挂 editKey）──
+    // 排序原则(2026-07-21)：按"识别错了后果多严重"降序——底牌/公共牌错=整手分析作废，
+    // 位置错=范围全错，下注/底池错=赔率偏移，筹码错=SPR 偏移。最贵的排最前、最显眼。
+    const blindsCell = () => {
+        if (!p.blinds || !(p.blinds.bb > 0)) return '';
+        // blFmt 定义在另一个 <script> 块（顶层声明故为全局），仍做保护性回退
+        const fmt = (typeof blFmt === 'function') ? blFmt : (n => String(n || 0));
+        const pct = Math.round((p.blinds.ante || 0) / p.blinds.bb * 100);
+        return cellWrap('盲注（已自动填入）',
+            `${fmt(p.blinds.sb || Math.round(p.blinds.bb / 2))}/${fmt(p.blinds.bb)}${p.blinds.ante ? '/' + fmt(p.blinds.ante) : ''}`,
+            false, `Ante ${pct}% BB${p.levelRemain ? ' · 剩余 ' + p.levelRemain : ''}`);
+    };
     let cells = '';
     if (p.isPreflop) {
         cells = heroCardsCell() + posCell()
               + numCell('我方筹码', p.heroStack, 'BB')
-              + numCell('对手筹码', p.villainStack, 'BB');
+              + numCell('对手筹码', p.villainStack, 'BB')
+              + blindsCell();
     } else {
         cells = heroCardsCell() + boardCell() + villainBetCell()
+              + posCell()
               + numCell('底池', p.pot, 'BB', 'pot')
               + numCell('有效筹码', eff, 'BB', 'eff')
-              + posCell();
+              + blindsCell();
     }
 
     const streetTag = p.isPreflop ? '翻前' : (p.street || '翻后');
+    // 花色校验横幅(2026-07-21)：未校验的牌是花色错误的唯一藏身处，直接顶到最前
+    const suitBanner = unverified.length
+        ? `<div style="margin-bottom:6px;padding:5px 8px;border-radius:var(--radius-sm);background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.5);font-size:10px;color:#eab308;line-height:1.5;">
+             ⚠️ <b>${unverified.map(c => c.rank + (SYM[c.suit] || '')).join('、')}</b> 的花色未经像素校验（截图该区域不够清晰）——花色识别错误只会出现在这里，<b>请重点确认这几张</b>，点牌即可改。${corrected.length ? `　其余已由像素判色校正 ${corrected.length} 张。` : ''}</div>`
+        : '';
     // 多人在局警示(2026-07-13)：≥3 人持牌时对手是按"下注最大者优先"自动选的，
     // 多人底池引擎只建模单挑，提醒人工核对对手位置/筹码（实战抓错对手案例的防线）
     const multiWarn = (p.alivePlayers >= 3)
@@ -9535,10 +9654,10 @@ function renderVisionReviewCard(payload) {
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
                 <span style="font-size:10px;font-weight:bold;color:var(--accent-hover);">📋 识别结果核对</span>
                 <span style="font-size:10px;color:#6b7280;">${streetTag}</span>
-                <span style="font-size:10px;color:#eab308;">琥珀=未识别</span>
-                <span style="font-size:10px;color:#6b7280;">· 点 ✎ 即改，自动生效</span>
+                ${suitBanner ? '' : '<span style="font-size:10px;color:#45d68a;">✓ 花色全部经像素校验</span>'}
+                <span style="font-size:10px;color:#6b7280;">· 点牌/数字即改，自动生效</span>
             </div>
-            ${multiWarn}
+            ${suitBanner}${multiWarn}
             <div class="grid grid-cols-2 md:grid-cols-3" style="gap:6px;">${cells}</div>
             <div id="vrcEditor"></div>
         </div>`;
