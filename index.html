@@ -607,7 +607,8 @@
         @media (max-width: 767.98px) { .macro-btn { min-height: 32px; padding: 4px 10px; } }
         /* zone-head 已有 ::after 分隔线撑满剩余空间，右侧操作键自然靠右——不再叠加 space-between */
         .tl-amt-inline::-webkit-outer-spin-button, .tl-amt-inline::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        #blindWidget.urgent { border-color: #e5484d; color: #ff7a7d; animation: blPulse 1s ease-in-out infinite; }
+        /* 挂件改用途(2026-09-08)：原为升盲倒计时（已移除），现显示唯一会变且影响决策的数字——距钱圈人数 */
+        #moneyWidget.urgent { border-color: #e5484d; color: #ff7a7d; animation: blPulse 1s ease-in-out infinite; }
         @keyframes blPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.0); } 50% { box-shadow: 0 0 0 3px rgba(229,72,77,.35); } }
         .act-btn { min-height: 42px; font-size: var(--fs-body) !important; font-weight: 700; }
         .act-btn kbd, .qc-btn kbd { font-family: var(--font-mono); font-size: 10px; opacity: .55; margin-left: 5px; font-weight: 600; }
@@ -642,7 +643,7 @@
             <div class="flex items-center" style="gap:8px;margin-left:auto;">
                 <!-- 配置上移(2026-07-14b)：比赛阶段是唯一高频调整项，单独拎出常驻下拉；
                      其余赛事配置（低频）收进 ⚙ 配置 下拉面板，不再占主界面左列 -->
-                <button id="blindWidget" onclick="toggleConfig()" title="盲注 & 升盲倒计时（点开配置修改）"
+                <button id="moneyWidget" onclick="toggleConfig()" title="距离钱圈还需淘汰几人（点开配置修改赛事信息）"
                     class="text-xs font-bold rounded border border-white/10 bg-black/30 text-white px-2"
                     style="display:none;font-family:var(--font-mono);min-height:28px;flex:0 0 auto;white-space:nowrap;"></button>
                 <select id="stageQuickSelect" onchange="onStageQuickChange(this.value)"
@@ -652,11 +653,40 @@
                 <!-- ↑ width:auto/flex:none 覆盖全局 select{width:100%}（否则吃满右组宽度挤扁相邻按钮） -->
                 <div style="position:relative;">
                     <button onclick="toggleConfig()" id="cfgToggleBtn" title="赛事配置（赛制/桌型/风格/Ante/Vision）" class="nav-phase-btn" style="padding:6px 10px;">⚙ 配置</button>
-                    <div id="cfgDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;z-index:9000;width:min(340px, calc(100vw - 24px));background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:0 12px 32px rgba(0,0,0,0.55);text-align:left;">
+                    <div id="cfgDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;z-index:9000;width:min(340px, calc(100vw - 24px));max-height:calc(100vh - 72px);overflow-y:auto;overscroll-behavior:contain;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:0 12px 32px rgba(0,0,0,0.55);text-align:left;">
                         <div id="cfgContent" class="p-2 space-y-2">
                             <div class="flex justify-between items-center border-b border-white/10 pb-1">
                                 <span class="text-xs font-bold" style="color: var(--accent-hover);">⚙ 赛事配置</span>
                                 <span id="cfgSummary" class="text-[10px] text-gray-400 truncate ml-2"></span>
+                            </div>
+                            <!-- 赛事信息(2026-09-08)：赛前从大厅「比赛信息」页截图一次带入全部字段 -->
+                            <div class="pb-1 border-b border-white/10">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-[10px] text-yellow-500 font-bold">🏆 赛事信息</span>
+                                    <button onclick="tyClear()" class="cfg-btn bl-btn" style="padding:0 6px;">清空</button>
+                                </div>
+                                <div id="tyName" class="text-[10px] text-gray-400 truncate mb-1" style="display:none;"></div>
+                                <!-- 字段瘦身(2026-09-08)：只留能改变决策的维度。
+                                     前三项开赛后固定，**一场比赛只录一次**；只有「剩余玩家」会变，
+                                     而它也只在临近钱圈时才影响决策。平均筹码不再手填/截图——
+                                     由 总参赛×起始筹码÷剩余÷当前大盲 精确算出（实测 44.2BB，与 GG 显示一致）。 -->
+                                <div class="text-[10px] text-gray-500 mb-1">下面 3 项开赛后固定，录一次即可 ↓</div>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <label class="text-[10px] text-gray-400">总参赛
+                                        <input id="tyEntrants" class="bl-input" oninput="tyOnInput()" placeholder="277"></label>
+                                    <label class="text-[10px] text-gray-400">奖金分配%
+                                        <input id="tyPayoutPct" class="bl-input" oninput="tyOnInput()" placeholder="15"></label>
+                                    <label class="text-[10px] text-gray-400">起始筹码
+                                        <input id="tyStartStack" class="bl-input" oninput="tyOnInput()" placeholder="6000"></label>
+                                </div>
+                                <div class="text-[10px] text-gray-500 mt-1 mb-1">↓ 只有这项会变（临近钱圈时才需要更新）</div>
+                                <div class="grid grid-cols-2 gap-1">
+                                    <label class="text-[10px] text-gray-400">剩余玩家
+                                        <input id="tyRemaining" class="bl-input" oninput="tyOnInput()" placeholder="235"></label>
+                                    <label class="text-[10px] text-gray-400">盲注间隔分
+                                        <input id="tyLevelMin" class="bl-input" oninput="tyOnInput()" placeholder="3"></label>
+                                </div>
+                                <div id="tyDerived" class="text-[10px] mt-1 leading-relaxed" style="color:var(--accent);"></div>
                             </div>
                             <div>
                                 <div class="text-[10px] text-gray-400 mb-1">赛事类型</div>
@@ -668,7 +698,8 @@
                             </div>
                             <div>
                                 <div class="text-[10px] text-gray-400 mb-1">比赛阶段</div>
-                                <div class="grid grid-cols-4 gap-1" id="grpStage"></div>
+                                <div class="grid grid-cols-3 gap-1" id="grpStage"></div>
+                                <div id="stageAdvice" class="text-[10px] mt-1 leading-relaxed" style="display:none;"></div>
                             </div>
                             <div>
                                 <div class="text-[10px] text-gray-400 mb-1">打法风格</div>
@@ -687,31 +718,24 @@
                                 <span class="text-[10px] text-yellow-500 font-bold" title="下一手时我的位置自动往前退一格（BTN→CO→…→UTG→BB→SB→BTN），错位时点座位带修正">下一手自动移位</span>
                                 <button id="autoPosToggle" onclick="toggleAutoPos()" class="bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded">开启</button>
                             </div>
+                            <!-- 升盲计时机器移除(2026-09-08，用户："不要一直做加法")：
+                                 原来这里有大盲/Ante/每级时长/本级剩余 + 倒计时 + 自动升盲 + 盲注结构表，
+                                 约 250 行。但**引擎全程用 BB 计算，0 处读取 gameConfig.blinds**——那套机器
+                                 对决策的唯一贡献就是"筹码数 → BB"的换算基准，却带来了输入回滚、盲注误读、
+                                 ante 公式靠猜等一连串 bug。现在只留换算基准本身，且它由每手的牌桌截图
+                                 自动更新（OCR 一直在读标题栏盲注），无需任何手工维护。 -->
                             <div class="pt-1 border-t border-white/10">
-                                <!-- 盲注区修订(2026-07-21，用户反馈)：只填一个"当前大盲(筹码)"作换算基准，SB=0.5BB、
-                                     Ante=1BB 固定按 BB 显示；按钮等高不折行；升盲时 BB 模式下筹码自动按比例换算 -->
                                 <div class="flex justify-between items-center mb-1 gap-2">
-                                    <span class="text-[10px] text-yellow-500 font-bold shrink-0">盲注 & 升盲同步</span>
+                                    <span class="text-[10px] text-yellow-500 font-bold shrink-0">筹码换算基准</span>
                                     <div class="flex gap-1 items-center"><span class="text-[10px] text-gray-400 shrink-0">筹码框单位</span>
                                         <button id="unitBB" onclick="setChipUnit('bb')" class="cfg-btn bl-btn active">BB</button>
                                         <button id="unitChips" onclick="setChipUnit('chips')" class="cfg-btn bl-btn">筹码数</button></div>
                                 </div>
-                                <!-- 2026-07-21 用户反馈：Ante 规则各赛事不同需可填；时间精确到秒（分:秒） -->
-                                <!-- 输入体验(2026-07-21)：白字 mono 大一档看得清；时间只打数字即可（234=2:34）；
-                                     任一框回车立即生效；编辑中不被每秒倒计时刷回（dirty 保护） -->
-                                <div class="grid grid-cols-4 gap-1">
-                                    <div><div class="text-[10px] text-gray-300">大盲(筹码)</div><input type="number" id="blBb" oninput="blOnInput(this)" onkeydown="blOnKey(event)" class="bl-input" placeholder="1000"></div>
-                                    <div><div class="text-[10px] text-gray-300">Ante(筹码)</div><input type="number" id="blAnte" oninput="blOnInput(this)" onkeydown="blOnKey(event)" class="bl-input" placeholder="150"></div>
-                                    <div><div class="text-[10px] text-gray-300">每级时长</div><input type="text" inputmode="numeric" id="blLevelMin" oninput="blOnInput(this)" onkeydown="blOnKey(event)" class="bl-input" placeholder="12 或 1200"></div>
-                                    <div><div class="text-[10px] text-gray-300">本级剩余</div><input type="text" inputmode="numeric" id="blRemain" oninput="blOnInput(this)" onkeydown="blOnKey(event)" class="bl-input" placeholder="234 = 2:34"></div>
+                                <div class="grid grid-cols-2 gap-1">
+                                    <div><div class="text-[10px] text-gray-300">当前大盲(筹码)</div><input type="number" id="blBb" oninput="blOnInput(this)" class="bl-input" placeholder="160"></div>
+                                    <div><div class="text-[10px] text-gray-300">Ante(筹码)</div><input type="number" id="blAnte" oninput="blOnInput(this)" class="bl-input" placeholder="20"></div>
                                 </div>
-                                <div id="blPreview" class="text-[10px] mt-1" style="color:var(--text-secondary);display:none"></div>
-                                <div id="blSchedInfo" class="text-[10px] mt-1" style="color:var(--text-muted);line-height:1.5"></div>
-                                <div class="flex items-center gap-1 mt-1">
-                                    <div id="blStatus" class="text-[10px] text-gray-500 flex-1 min-w-0">未计时 · SB 0.5BB · Ante 1BB</div>
-                                    <button onclick="blStart()" class="cfg-btn bl-btn active shrink-0">开始/更新</button>
-                                    <button onclick="blStop()" class="cfg-btn bl-btn shrink-0">停止</button>
-                                </div>
+                                <div id="blStatus" class="text-[10px] text-gray-500 mt-1 leading-relaxed"></div>
                             </div>
                             <div class="panel-bg p-1.5 rounded flex items-center gap-2 mt-1">
                                 <label class="text-[10px] text-gray-400 shrink-0 w-24">Vision API Key</label>
@@ -756,7 +780,15 @@
                 <ol style="margin:0;padding-left:1.2em;color:var(--text-secondary);font-size:14px;line-height:1.85;">
                     <li><b style="color:var(--text-primary);">选底牌</b>：点 52 张牌网格选两张（红/蓝/绿/灰即花色）。选错了按 <b>Z</b> 撤回，<b>H</b> 清底牌。</li>
                     <li><b style="color:var(--text-primary);">录时间线</b>：选我的位置，<b>单击</b>座位循环 弃→加注→跟注→全下（加注额就地可改），<b>右键/长按</b>选完整动作；场景自动识别并实时出决策；推导不准时展开「传统场景标签」手动指定。<b>下一手</b>时我的位置自动往前退一格（配置可关）。</li>
-                    <li><b style="color:var(--text-primary);">升盲同步</b>：⚙ 配置里填当前盲注、每级时长、本级剩余分钟并「开始/更新」，顶栏显示倒计时，升盲自动推进并提示；筹码单位切「筹码数」后按牌桌真实筹码数输入，自动换算 BB。</li>
+                    <li><b style="color:var(--text-primary);">赛事信息 · 什么时候截图</b>（决定 ICM 与阶段，全程只有 4 个时点）：
+                        <ol style="margin:4px 0 0;padding-left:1.1em;font-size:13px;line-height:1.7;">
+                            <li><b>坐下时</b>：截大厅「比赛信息」页 → 起始筹码 / 盲注间隔 / 奖金分配% / 桌型 一次全填。</li>
+                            <li><b>延迟报名结束时</b>（唯一必须记住的时点）：再截一次 → 锁定「总参赛」，进钱名额才算得准（报名期间人数一直在涨）。</li>
+                            <li><b>打牌全程</b>：Ctrl+V 粘贴牌桌截图即可 —— 底牌 / 公共牌 / 筹码 / 位置 / 盲注全自动，无需额外动作。</li>
+                            <li><b>距钱圈 30 人以内</b>：偶尔更新「剩余玩家」（改一个数，或截赛事时钟页）。配置里会直接告诉你现在该不该更新、隔多久更新。</li>
+                        </ol>
+                        平均筹码由「总参赛 × 起始筹码 ÷ 剩余 ÷ 当前大盲」自动推算，不用管。筹码单位可切「筹码数」按牌桌真实筹码输入，自动换算 BB。</li>
+                    <li><b style="color:var(--text-primary);">比赛阶段怎么选</b>：填了赛事信息后系统会算出「距钱圈还需淘汰几人」并<b>给出建议按钮，点一下即应用</b>，不用自己判断。手动选时把鼠标停在阶段按钮上会显示该档的适用时机；选中后说明常驻显示在下方。</li>
                     <li><b style="color:var(--text-primary);">出建议</b>：点 <span style="color:var(--gold);">解析 GTO</span>（或按回车）。</li>
                     <li><b style="color:var(--text-primary);">截图识别</b>：<b>Ctrl+V</b> 粘贴牌桌截图自动填入，对照"识别结果核对"卡，点 ✎ 可改。</li>
                     <li><b style="color:var(--text-primary);">翻后</b>：底牌选满后直接在同一网格点选公共牌即自动进入翻后并算胜率（截图也自动进入）；在行动线区记录双方动作看跟/弃/加建议。</li>
@@ -1071,12 +1103,28 @@
             // 升盲同步/筹码单位/自动移位(2026-07-21)
             autoAdvancePos: true,    // 下一手自动把我的位置往前退一格
             chipUnit: 'bb',          // 'bb' | 'chips'（筹码框按真实筹码数输入，自动换算 BB）
-            // schedule：赛前截图"比赛信息/盲注结构"页识别出的完整等级表（方案B，精确按表升盲）；
-            // 为空时走方案A——标准数列推进 + ante 按当前 ante/BB 比例跟随（GG 各赛事 ante 比例不同，
-            // 实测 500/1000/150 = 15%，行业常见 10-12.5%，无统一公式可硬编码）
-            // nextLevel：赛事时钟页「下一步 90/180(22)」读到的下一级，升盲时优先使用（用掉即清）
-            blinds: { sb: 500, bb: 1000, ante: 150, levelMin: 12, levelStartTs: 0, running: false,
-                      schedule: null, levelIdx: -1, nextLevel: null }
+            // 纯换算基准(2026-09-08)：只保留当前级三个数，供「筹码数」输入模式换算成 BB。
+            // 升盲计时/自动推进/结构表等字段已移除——引擎全程用 BB，从不读这里。
+            blinds: { sb: 80, bb: 160, ante: 20 },
+            // 赛事信息(2026-09-08)：赛前从大厅「比赛信息」页截图一次即可全部带入。
+            // 其中 payoutPct + entrants + remaining 三项能算出**距离钱圈还有几人**，
+            // 这是泡沫期码量决策的关键输入（见 getStageOpenAdjust 的 canFoldIn）。
+            // 字段瘦身(2026-09-08)：买入/奖金池/保底/重入规则**不改变任何一次决策**，已移除。
+            // 留下的每一项都有明确消费者：payoutPct+entrants→进钱名额；remaining→距钱圈；
+            // startStack+entrants+remaining+当前大盲→平均码（喂 ICM）；levelMin→是否极速赛。
+            tourney: {
+                name: null,
+                payoutPct: null,      // 奖金分配 %（GG 大厅"奖金分配 15%"）
+                paidPlaces: null,     // 进钱名额（有则直接用，否则由 entrants×payoutPct 推算）
+                entrants: null,       // 总参赛（"剩余玩家 235 / 277" 的分母）
+                remaining: null,      // 剩余玩家
+                toBubble: null,       // 距离钱圈还有几人被淘汰（推算值）
+                startStack: null,     // 起始筹码
+                startStackBB: null,   // 起始筹码（BB）
+                levelMin: null,       // 盲注间隔（分钟）
+                tableType: null,      // 牌桌类型文字（"6人桌" → 自动设桌型）
+                avgStackBB: null      // 平均筹码（BB）——**推算值**，非输入
+            }
         };
 
         const gameTypeOpts = [
@@ -1089,11 +1137,22 @@
             { val: '8max', label: '8 人桌' },
             { val: '9max', label: '9 人桌' }
         ];
+        // 阶段扩充(2026-09-08，用户诉求"泡沫期不同码量范围要变")：原 4 档缺了泡沫前后
+        // 两个 ICM 曲线最陡的区段 —— 临近泡沫（ICM 开始咬人但还没到最紧）与钱圈后
+        // （泡沫一破 ICM 骤降、全场开始博，是最该放宽的时刻，原来只能选"常规期"将就）。
         const stageOpts = [
-            { val: 'normal',  label: '常规期' },
-            { val: 'bubble',  label: '泡沫期' },
-            { val: 'final',   label: '决赛桌' },
-            { val: 'headsup', label: '单挑' }
+            { val: 'normal',     label: '常规期',
+              tip: '距钱圈还远（>30 人要被淘汰）。没人为了进钱改变打法，按标准 GTO 打，专心积累筹码。' },
+            { val: 'prebubble',  label: '临近泡沫',
+              tip: '钱圈已经看得见但还没到（约 1-3 桌人要被淘汰，10-30 人）。全场开始收紧、短码开始拖延，但你还<b>弃不进去</b>——盲注会先吃掉你。收紧幅度约为泡沫期的一半。' },
+            { val: 'bubble',     label: '泡沫期',
+              tip: '再淘汰约一桌人就进钱（≤9 人），常常已开始 hand-for-hand。ICM 全程最大：大码放开施压印钞，中码收得最紧，短码只要弃得进去就弃。' },
+            { val: 'postbubble', label: '钱圈后',
+              tip: '泡沫刚破的那段窗口。ICM 降到全程最低——min-cash 已锁定、近钱名次跳跃极小，刚才憋着的短码全部开始博。这是最该放开打的时段。再往里走名次跳跃变大，就该切回常规期。' },
+            { val: 'final',      label: '决赛桌',
+              tip: '剩余人数已坐得下一桌（GG 决赛桌 = 桌型 +1，如 6 人桌决赛桌 7 人）。名次跳跃很大，整体收紧。' },
+            { val: 'headsup',    label: '单挑',
+              tip: '只剩最后两人。名次已定，几乎没有 ICM 顾虑，SB 开池范围极宽（按牌力下限直接判定），全程主动施压。' }
         ];
         const playStyleOpts = [
             { val: 'tight',  label: '紧' },
@@ -1136,6 +1195,7 @@
                 const btn = document.createElement('button');
                 btn.className = 'cfg-btn' + (active ? ' active' : '');
                 btn.innerText = o.label;
+                if (o.tip) btn.title = o.tip;   // 阶段说明(2026-09-08)：悬停即看到"什么时候用这一档"
                 btn.onclick = () => { gameConfig[key] = o.val; renderCfgGroup(containerId, opts, key); onConfigChange(); };
                 c.appendChild(btn);
             });
@@ -1154,14 +1214,34 @@
             if (!d) return;
             const opening = d.style.display === 'none';
             d.style.display = opening ? 'block' : 'none';
-            if (opening) updateCfgSummary();
+            if (opening) {
+                updateCfgSummary();
+                try { tyRender(); } catch (e) {}
+                // 限高(2026-09-08)：本轮加入赛事信息后面板高约 960px，小屏会顶出视口底部。
+                // CSS 里的固定偏移不够用——手机 header 换行后按钮位置会下移，必须按实测
+                // top 计算（position:absolute 的元素在 CSS 里拿不到自身视口位置）。
+                d.style.maxHeight = Math.max(240, window.innerHeight - d.getBoundingClientRect().top - 12) + 'px';
+                // 横向夹取(2026-09-08，既有问题顺手修)：面板 right:0 是相对定位祖先，
+                // 手机上该祖先右边缘只到 x=214，340px 宽的面板会从 -126 起——左半边直接
+                // 跑到屏幕外。每次打开时先归零再按实测左边缘回推。
+                d.style.right = '0px';
+                const lft = d.getBoundingClientRect().left;
+                if (lft < 8) d.style.right = (lft - 8) + 'px';
+            }
         }
         // 点击下拉外部区域自动关闭
+        // 配置弹窗误关修复(2026-09-08，用户反馈"选完赛事类型/桌型/阶段弹窗就消失")：
+        // 这些按钮的 onclick 会调 renderCfgGroup 重建整组按钮，**被点的按钮在事件冒泡到
+        // document 之前就已被移出 DOM**，于是 closest('#cfgDropdown') 沿着孤儿节点向上
+        // 找不到容器 → 被误判成"点了外部"→ 关闭。Ante 开关只改 innerText 不重建自身，
+        // 所以不受影响，正是用户观察到的差异。
+        // 解法：改用**捕获阶段**监听 —— 捕获在目标元素自己的 onclick 之前触发，
+        // 此时 DOM 还完整，closest() 判定可靠。
         document.addEventListener('click', (e) => {
             const d = document.getElementById('cfgDropdown');
             if (!d || d.style.display === 'none') return;
             if (!e.target.closest('#cfgDropdown') && !e.target.closest('#cfgToggleBtn')) d.style.display = 'none';
-        });
+        }, true);
         // 配置上移(2026-07-14b)：header 常驻比赛阶段下拉（高频调整项），与配置面板内 grpStage 双向同步
         function onStageQuickChange(v) {
             gameConfig.stage = v;
@@ -1173,6 +1253,182 @@
             if (!sel) return;
             sel.innerHTML = stageOpts.map(o => `<option value="${o.val}">${o.label}</option>`).join('');
             sel.value = gameConfig.stage;
+        }
+
+        // ============================================================
+        // 赛事信息(2026-09-08)：录入 → 推算进钱名额/距离钱圈 → 建议比赛阶段
+        // ============================================================
+        // 字段瘦身(2026-09-08)：avgStackBB 从输入项改为**推算项**（见 tyRecalc），不再需要截图/手填
+        const tyFields = [['tyEntrants','entrants'], ['tyRemaining','remaining'], ['tyPayoutPct','payoutPct'],
+                          ['tyStartStack','startStack'], ['tyLevelMin','levelMin']];
+        function tyNum(v) { const n = parseFloat(String(v == null ? '' : v).replace(/[,\s]/g, '')); return isFinite(n) ? n : null; }
+
+        /** 由已知字段推算 paidPlaces / toBubble，并给出建议阶段（不自动切换，只建议） */
+        function tyRecalc() {
+            const t = gameConfig.tourney;
+            if (t.paidPlaces == null && t.entrants > 0 && t.payoutPct > 0) {
+                t.paidPlaces = Math.max(1, Math.round(t.entrants * t.payoutPct / 100));
+            }
+            t.toBubble = (t.remaining > 0 && t.paidPlaces > 0) ? Math.max(0, t.remaining - t.paidPlaces) : null;
+            const bb = gameConfig.blinds.bb;
+            if (t.startStack > 0 && bb > 0) t.startStackBB = +(t.startStack / bb).toFixed(1);
+            // 平均筹码**推算**(2026-09-08)：场上总筹码恒定 = 总参赛 × 起始筹码（重入已计入总参赛），
+            // 除以剩余人数即平均筹码，再除当前大盲得 BB。实测 277×6000/235/160 = 44.2BB，
+            // 与 GG 大厅显示的 44.2BB 完全一致 —— 所以平均码不需要再截图，
+            // 且随「剩余玩家」和「当前大盲」自动更新。getICMPressure 读 globalAvgStack。
+            t.staleBlinds = false;
+            if (t.entrants > 0 && t.startStack > 0 && t.remaining > 0 && bb > 0) {
+                t.avgStackBB = +(t.entrants * t.startStack / t.remaining / bb).toFixed(1);
+                // 盲注过期检测(2026-09-08)：推算依赖「当前大盲」，大盲一旦过期平均码就会虚高，
+                // 而它直接驱动码量分档（hero/avg 之比），错了比没有更糟。
+                // 判据：真实 MTT 里平均码（BB）随赛程**下降**（盲注涨得比筹码集中快），
+                // 淘汰过半后还算出 >100BB，只可能是大盲停留在早期级别。
+                t.staleBlinds = t.avgStackBB > 100 && t.remaining < t.entrants * 0.5;
+                if (!t.staleBlinds) {
+                    try { globalAvgStack = t.avgStackBB; avgStackTouched = true;
+                          const el = document.getElementById('avgStack'); if (el) el.value = t.avgStackBB;
+                          const tl = document.getElementById('tlAvgStack'); if (tl) tl.value = t.avgStackBB; } catch (e) {}
+                }
+            }
+            return t;
+        }
+
+        /** 由"距离钱圈"给出建议阶段：还有多少人被淘汰才进钱 */
+        function tySuggestStage() {
+            const t = gameConfig.tourney;
+            if (t.toBubble == null) return null;
+            // 决赛桌优先（剩余人数已坐得下一桌）。GG 的决赛桌比常规桌多一人
+            // ——用户截图实证："牌桌类型 6人桌 / 决赛桌有7名玩家"。
+            const seats = (parseInt(gameConfig.tableSize) || 9) + 1;
+            if (t.remaining > 0 && t.remaining <= seats) return 'final';
+            if (t.toBubble === 0) {
+                // 钱圈后是一个**窗口**而不是"进钱之后永远"：泡沫刚破时全场松，
+                // 但越往里走名次跳跃越大、ICM 会重新回来。以"还剩过半奖金名额"为界，
+                // 之后回到常规期（再往后由上面的决赛桌分支接管）。
+                return (t.paidPlaces > 0 && t.remaining > t.paidPlaces * 0.5) ? 'postbubble' : 'normal';
+            }
+            if (t.toBubble <= 9) return 'bubble';             // 约一桌内 → 真泡沫
+            // 临近泡沫：绝对距离（约 3 桌内）或占剩余人数 20% 以内 —— 只用比例会在
+            // 中等规模赛事漏判（剩 60 人、距钱圈 18 人显然已经在收紧了，却算不到 25%）
+            if (t.toBubble <= 30 || (t.remaining > 0 && t.toBubble <= t.remaining * 0.2)) return 'prebubble';
+            return 'normal';
+        }
+
+        /** 「我什么时候该再动它」——更新频率完全由距钱圈决定，直接把答案写出来 */
+        function tyUpdateHint() {
+            const t = gameConfig.tourney;
+            const g = s => `<span style="color:#45d68a">✅ ${s}</span>`;
+            const y = s => `<span style="color:#e0a83a">🔔 ${s}</span>`;
+            if (!(t.entrants > 0) || !(t.payoutPct > 0)) {
+                return y('先截一张大厅「比赛信息」页（Ctrl+V）——总参赛/奖金分配%/起始筹码/盲注间隔一次全填。' +
+                         '<b>延迟报名结束后再截一次</b>，那时"总参赛"才是最终数，进钱名额才算得准。');
+            }
+            if (t.toBubble == null) return y('还差「剩余玩家」——填一个数，或截一张赛事时钟页。');
+            if (t.toBubble === 0) return g('已进钱圈。之后只在人数明显减少（约每 2-3 次休息）时更新一次即可。');
+            if (t.toBubble > 50) return g(`距钱圈 ${t.toBubble} 人，还远 —— 现在什么都不用管，专心打。等距钱圈进到 30 人以内再来更新。`);
+            if (t.toBubble > 15) return y(`距钱圈 ${t.toBubble} 人，快进入临近泡沫 —— 建议约每 15 分钟更新一次「剩余玩家」。`);
+            return y(`距钱圈只剩 ${t.toBubble} 人，正是决策最贵的时候 —— 建议每几手就更新一次「剩余玩家」（改一个数即可）。`);
+        }
+        function tyRender() {
+            const t = tyRecalc();
+            tyFields.forEach(([id, key]) => {
+                const el = document.getElementById(id);
+                if (el && el.dataset.dirty !== '1' && document.activeElement !== el) el.value = t[key] == null ? '' : t[key];
+            });
+            const nm = document.getElementById('tyName');
+            if (nm) { nm.style.display = t.name ? 'block' : 'none'; nm.innerText = t.name || ''; }
+            const d = document.getElementById('tyDerived');
+            if (d) {
+                const parts = [];
+                if (t.paidPlaces) parts.push(`进钱 ${t.paidPlaces} 名`);
+                if (t.toBubble != null) parts.push(t.toBubble === 0 ? '<b>已进钱圈</b>' : `距钱圈还需淘汰 <b>${t.toBubble}</b> 人`);
+                if (t.avgStackBB && !t.staleBlinds) parts.push(`平均码 <b>${t.avgStackBB}BB</b>（推算）`);
+                const sug = tySuggestStage();
+                let html = parts.length ? parts.join(' · ') : '<span class="text-gray-500">填入总参赛/剩余/奖金分配% 即可算出距离钱圈</span>';
+                if (t.staleBlinds) {
+                    html += `<br><span style="color:#e0a83a">⚠️ 平均码推算出 ${t.avgStackBB}BB，明显偏高 —— 说明「当前大盲 ${blFmt(gameConfig.blinds.bb)}」还停在早期级别。` +
+                            `粘贴一张牌桌截图即可自动更新；在此之前不套用推算的平均码（宁可不用，也不拿错的比率去调范围）。</span>`;
+                }
+                if (sug && sug !== gameConfig.stage) {
+                    const lb = stageOpts.find(o => o.val === sug);
+                    html += `<br><button onclick="tyApplyStage('${sug}')" class="cfg-btn bl-btn" style="margin-top:3px;">建议切到「${lb ? lb.label : sug}」→ 点此应用</button>`;
+                }
+                if (t.levelMin && t.levelMin <= 5 && gameConfig.gameType !== 'turbo') {
+                    html += `<br><button onclick="tyApplyTurbo()" class="cfg-btn bl-btn" style="margin-top:3px;">每级仅 ${t.levelMin} 分钟 → 按「极速赛」计算</button>`;
+                }
+                // 直接回答"我什么时候该再动它"(2026-09-08)：更新频率完全由距钱圈决定
+                html += '<br>' + tyUpdateHint();
+                d.innerHTML = html;
+            }
+            renderMoneyWidget();
+            renderStageAdvice();
+        }
+        /** header 挂件：只显示唯一会变且真正影响决策的数字——距钱圈还需淘汰几人 */
+        function renderMoneyWidget() {
+            const w = document.getElementById('moneyWidget');
+            if (!w) return;
+            const t = gameConfig.tourney;
+            if (t.toBubble == null) { w.style.display = 'none'; return; }
+            w.style.display = '';
+            if (t.toBubble === 0) { w.classList.remove('urgent'); w.innerText = `💰 已进钱 · 剩 ${t.remaining}`; }
+            else { w.classList.toggle('urgent', t.toBubble <= 9);   // 一桌以内 → 红色脉冲提醒
+                   w.innerText = `距钱圈 ${t.toBubble} 人`; }
+        }
+        function tyOnInput() {
+            tyFields.forEach(([id, key]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.dataset.dirty = '1';   // 手填优先，tyRender 不再回写覆盖
+                gameConfig.tourney[key] = tyNum(el.value);
+            });
+            gameConfig.tourney.paidPlaces = null; // 由 entrants×payoutPct 重算
+            tyRender();                            // dirty 字段本就跳过回写，无需保存/还原
+            try { updateCfgSummary(); } catch (e) {}
+        }
+        /** 截图识别填入前调用：解除手填保护，让识别值可以落盘 */
+        function tyClearDirty() { tyFields.forEach(([id]) => { const el = document.getElementById(id); if (el) el.dataset.dirty = ''; }); }
+        function tyApplyStage(s) {
+            gameConfig.stage = s;
+            renderCfgGroup('grpStage', stageOpts, 'stage');
+            const sq = document.getElementById('stageQuickSelect'); if (sq) sq.value = s;
+            onConfigChange(); tyRender();
+            showToast(`比赛阶段 → ${(stageOpts.find(o => o.val === s) || {}).label || s}`, 'ok');
+        }
+        function tyApplyTurbo() {
+            gameConfig.gameType = 'turbo';
+            renderCfgGroup('grpGameType', gameTypeOpts, 'gameType');
+            onConfigChange(); tyRender();
+            showToast('赛事类型 → 极速赛', 'ok');
+        }
+        function tyClear() {
+            Object.keys(gameConfig.tourney).forEach(k => gameConfig.tourney[k] = null);
+            tyFields.forEach(([id]) => { const el = document.getElementById(id); if (el) { el.value = ''; el.dataset.dirty = ''; } });
+            tyRender();
+        }
+
+        /** 把当前"阶段 × 码量"的具体调整讲清楚（用户："基于这个维度，我们的调整是什么？"） */
+        function renderStageAdvice() {
+            const box = document.getElementById('stageAdvice');
+            if (!box) return;
+            let hero = 0;
+            try { hero = globalHeroStack || 0; } catch (e) {}
+            let avg = 0;
+            try { avg = globalAvgStack || 0; } catch (e) {}
+            const opt = stageOpts.find(o => o.val === gameConfig.stage);
+            // 当前阶段是什么意思，常驻显示（不能只藏在悬停里——不看说明就没法选对档）
+            const meaning = opt && opt.tip
+                ? `<span class="text-gray-500">【${opt.label}】${opt.tip}</span>` : '';
+            const adj = getStageOpenAdjust(gameConfig.stage, hero, avg);
+            box.style.display = 'block';
+            if (!adj.tier) { box.innerHTML = meaning; return; }
+            const dir = adj.delta < 0 ? '放宽' : adj.delta > 0 ? '收紧' : '不额外收紧';
+            const color = adj.delta < 0 ? '#45d68a' : adj.delta > 0 ? '#e0a83a' : '#7cc0ff';
+            const ratio = avg > 0 ? (hero / avg).toFixed(2) + '× 平均' : '未填平均码';
+            box.innerHTML = `<span style="color:${color};font-weight:700;">${adj.tier}</span>` +
+                `<span class="text-gray-400">（${hero}BB / ${ratio}）→ 开池${dir}` +
+                (adj.delta ? ` ${Math.abs(adj.delta)} 个胜率点` : '') + `</span>` +
+                `<br><span class="text-gray-400">${adj.note}</span>` +
+                (meaning ? `<br>${meaning}` : '');
         }
 
         function toggleAnte() {
@@ -1199,8 +1455,11 @@
             const psLabel = gameConfig.playStyle === 'tight' ? ' · 紧' : gameConfig.playStyle === 'loose' ? ' · 松' : '';
             const vmLabel = gameConfig.villainModel === 'gto' ? ' · GTO对手' : ''; // M5
             const cuLabel = gameConfig.chipUnit === 'chips' ? ' · 筹码数' : ''; // 2026-07-21
+            const t = gameConfig.tourney || {};
+            const tbLabel = (t.toBubble != null) ? (t.toBubble === 0 ? ' · 已进钱' : ` · 距钱圈 ${t.toBubble}人`) : '';
             const el = document.getElementById('cfgSummary');
-            if (el) el.innerText = `${gt} · ${ts} · ${st}${ante}${psLabel}${vmLabel}${cuLabel}`;
+            if (el) el.innerText = `${gt} · ${ts} · ${st}${ante}${psLabel}${vmLabel}${cuLabel}${tbLabel}`;
+            try { renderStageAdvice(); } catch (e) {} // 阶段×码量建议随配置/筹码变化刷新
             try { updateDecisionHUD(); } catch (e) {} // 常驻决策 HUD(2026-07-21)：重置/下一手/配置变更后同步
             // 配置上移(2026-07-14b)：同步 header 阶段快捷下拉（配置面板内改 stage 时保持一致）
             const sq = document.getElementById('stageQuickSelect');
@@ -1567,24 +1826,34 @@
         // ============================================================
         // stageConfig 多维矩阵(替代原 icmPenalty 单一数字)
         // ============================================================
+        // 注：openMod / icmMult 是历史遗留的**死字段**（全文无任何读取点，2026-09-08 核实）。
+        // 实际生效的只有 pushMod（加到 Nash 推注范围%，正=推得更宽）与 defMod（加到接注
+        // 所需胜率溢价，正=跟得更紧）；开池范围的阶段修正走 getStageOpenAdjust()。
+        // 两个死字段暂留以免影响任何旧引用，勿据其数值推断行为。
         const STAGE_CONFIG = {
             normal: {
-                normal:   { openMod: 0,    icmMult: 1.0, pushMod: 0,  defMod: 0 },
-                bubble:   { openMod: 0,    icmMult: 2.5, pushMod: 2,  defMod: 4 },
-                final:    { openMod: 0.5,  icmMult: 1.8, pushMod: 1,  defMod: 2 },
-                headsup:  { openMod: -15,  icmMult: 0.5, pushMod: -8, defMod: -10 }
+                normal:     { openMod: 0,    icmMult: 1.0, pushMod: 0,  defMod: 0 },
+                prebubble:  { openMod: 0,    icmMult: 1.6, pushMod: 1,  defMod: 2 },
+                bubble:     { openMod: 0,    icmMult: 2.5, pushMod: 2,  defMod: 4 },
+                postbubble: { openMod: 0,    icmMult: 0.9, pushMod: 3,  defMod: -2 },
+                final:      { openMod: 0.5,  icmMult: 1.8, pushMod: 1,  defMod: 2 },
+                headsup:    { openMod: -15,  icmMult: 0.5, pushMod: -8, defMod: -10 }
             },
             turbo: {
-                normal:   { openMod: 1.5,  icmMult: 1.0, pushMod: -3, defMod: 0 },
-                bubble:   { openMod: 1.0,  icmMult: 2.8, pushMod: 0,  defMod: 4 },
-                final:    { openMod: 2.0,  icmMult: 2.0, pushMod: -1, defMod: 2 },
-                headsup:  { openMod: -13,  icmMult: 0.5, pushMod: -8, defMod: -10 }
+                normal:     { openMod: 1.5,  icmMult: 1.0, pushMod: -3, defMod: 0 },
+                prebubble:  { openMod: 1.0,  icmMult: 1.8, pushMod: -1, defMod: 2 },
+                bubble:     { openMod: 1.0,  icmMult: 2.8, pushMod: 0,  defMod: 4 },
+                postbubble: { openMod: 1.5,  icmMult: 0.9, pushMod: 1,  defMod: -2 },
+                final:      { openMod: 2.0,  icmMult: 2.0, pushMod: -1, defMod: 2 },
+                headsup:    { openMod: -13,  icmMult: 0.5, pushMod: -8, defMod: -10 }
             },
             bounty: {
-                normal:   { openMod: 0,    icmMult: 0.85, pushMod: -1, defMod: -2 },
-                bubble:   { openMod: 0,    icmMult: 2.0,  pushMod: 1,  defMod: 3 },
-                final:    { openMod: 0,    icmMult: 1.6,  pushMod: 0,  defMod: 1 },
-                headsup:  { openMod: -15,  icmMult: 0.5,  pushMod: -8, defMod: -10 }
+                normal:     { openMod: 0,    icmMult: 0.85, pushMod: -1, defMod: -2 },
+                prebubble:  { openMod: 0,    icmMult: 1.4,  pushMod: 0,  defMod: 1 },
+                bubble:     { openMod: 0,    icmMult: 2.0,  pushMod: 1,  defMod: 3 },
+                postbubble: { openMod: 0,    icmMult: 0.8,  pushMod: 2,  defMod: -3 },
+                final:      { openMod: 0,    icmMult: 1.6,  pushMod: 0,  defMod: 1 },
+                headsup:    { openMod: -15,  icmMult: 0.5,  pushMod: -8, defMod: -10 }
             }
         };
 
@@ -1597,16 +1866,96 @@
             return gameConfig.ante ? -2.5 : 0;
         }
 
+        // ============================================================
+        // 泡沫期码量分档（2026-09-08，用户诉求："不同码量对应的手牌范围会有调整变化"、
+        // "优先保证在短码的时候能进钱圈"）
+        // ------------------------------------------------------------
+        // 原来 isHandInOpenRange 对 bubble 一刀切加 +9 rawEq 下限 —— **不分码量**，
+        // 于是泡沫期的大码和短码被收得一样紧。这是明确的牌理错误：泡沫期最大的一块 EV
+        // 恰恰来自大码施压（全场都在保命，你的弃牌率红利最高），大码该**放宽**而不是收紧。
+        //
+        // 分档依据 = hero/平均筹码之比 r（ICM 压力是 r 的函数，不是绝对筹码的函数）：
+        //   r≥2.0 大码   → 解除 ICM 收紧（恢复完整 GTO 开池范围）+ 推注范围放宽
+        //   r≥1.2 中大码 → 轻微解除
+        //   r≥0.7 中码   → **ICM 压力最大**：有名次可丢、又没有施压优势，收得最紧
+        //   r<0.7 短码   → 优先苟进钱圈（用户明确的前提），最紧
+        // 例外（关键）：**濒死短码不能靠弃牌进钱**。每圈固定失血 SB+BB+ante ≈ 2.5BB，
+        //   ≤8BB 只剩约 3 圈。此时继续收紧＝被盲注吃死，等于自动出局拿 $0。
+        //   所以只有"泡沫近在眼前（距离钱圈 ≤ 9 人，约一桌）"时才值得弃到进钱；
+        //   否则必须放宽抢盲求生。距离钱圈来自赛事信息（剩余人数 − 奖金名额），
+        //   没填时保守假设"还早"（宁可让短码去搏，也不让它被盲注吃死）。
+        // ============================================================
+        function getStageOpenAdjust(stage, heroStackBB, avgStackBB) {
+            const none = { delta: 0, tier: '', note: '' };
+            if (stage !== 'bubble' && stage !== 'prebubble' && stage !== 'postbubble' && stage !== 'final') return none;
+
+            if (stage === 'postbubble') {
+                return { delta: -2, tier: '钱圈后',
+                    note: '泡沫已破，ICM 骤降、全场开始博 —— 这是全局最该放宽施压的时段，别继续用泡沫期的紧范围打。' };
+            }
+            if (stage === 'final') return { delta: 5, tier: '决赛桌', note: '决赛桌名次跳跃大，整体收紧。' };
+
+            const r = heroStackBB / (avgStackBB || heroStackBB || 1);
+            const soft = stage === 'prebubble' ? 0.5 : 1.0;   // 临近泡沫：同方向、力度减半
+            const label = stage === 'prebubble' ? '临近泡沫' : '泡沫期';
+            const t = gameConfig.tourney || {};
+            const toBubble = (typeof t.toBubble === 'number') ? t.toBubble : null;
+            // 距离钱圈 ≤9 人（约一桌）才算"弃得进去"；未知时保守当作还早
+            const canFoldIn = toBubble !== null && toBubble <= 9;
+
+            // 濒死短码：每圈失血约 2.5BB，≤8BB 只剩约 3 圈
+            if (heroStackBB > 0 && heroStackBB <= 8) {
+                if (canFoldIn) {
+                    return { delta: Math.round(12 * soft), tier: `${label}·濒死短码`,
+                        note: `距离钱圈只剩 ${toBubble} 人，${heroStackBB.toFixed(1)}BB 也该弃到进钱 —— 每多苟一手都是钱。只玩最强牌。` };
+                }
+                return { delta: 0, tier: `${label}·濒死短码`,
+                    note: `${heroStackBB.toFixed(1)}BB 每圈失血约 2.5BB，只剩约 ${Math.max(1, Math.floor(heroStackBB / 2.5))} 圈，${toBubble === null ? '且不知还有多远到钱圈' : `距钱圈还有 ${toBubble} 人`} —— 已无弃牌空间，继续收紧＝被盲注吃死。靠抢盲求生，推注范围放宽而非收紧。` };
+            }
+            if (r >= 2.0) {
+                return { delta: Math.round(-6 * soft), tier: `${label}·大码`,
+                    note: '大码在此阶段弃牌率红利最高（别人都在保命）—— 解除 ICM 收紧，恢复完整开池范围并加大偷盲/施压。' };
+            }
+            if (r >= 1.2) {
+                return { delta: Math.round(-2 * soft), tier: `${label}·中大码`,
+                    note: '筹码高于平均，ICM 负担轻，可正常开池并选择性施压。' };
+            }
+            if (r >= 0.7) {
+                return { delta: Math.round(8 * soft), tier: `${label}·中码`,
+                    note: '中码 ICM 压力最大：有名次可丢、又没有大码的施压优势 —— 收紧回避边缘对抗，让大码去互相消耗。' };
+            }
+            return { delta: Math.round(10 * soft), tier: `${label}·短码`,
+                note: '短码优先苟进钱圈（先回本再谈冲榜）：放弃所有边缘牌，只在有明确弃牌率或强牌时进池。' };
+        }
+
         // ICM 筹码深度非线性修正（基于 hero/avg 筹码比例）
         function getICMPressure(heroStack, avgStack, stage) {
             if (stage === 'normal') return 1.0;
             const ratio = heroStack / (avgStack || heroStack);
+            // 钱圈后：泡沫一破 ICM 大幅释放，略低于 1（比常规期还敢打）
+            if (stage === 'postbubble') return ratio >= 1.2 ? 0.75 : 0.9;
+            // 临近泡沫：与泡沫期同方向、力度约一半
+            if (stage === 'prebubble') {
+                if (ratio >= 2.0) return 0.8;
+                if (ratio >= 1.2) return 0.92;
+                if (ratio >= 0.7) return 1.1;
+                if (ratio >= 0.4) return 1.3;
+                return 1.6;
+            }
             if (stage === 'bubble') {
                 if (ratio >= 2.0) return 0.6;   // 大码可欺负短码，ICM 风险小
                 if (ratio >= 1.2) return 0.85;  // 中码，轻微放宽
                 if (ratio >= 0.7) return 1.2;   // 偏短，收紧
                 if (ratio >= 0.4) return 1.6;   // 短码，大幅收紧
-                return 2.5;                      // 极短码，濒死保命
+                // 濒死短码修正(2026-09-08)：原一律 2.5（最强收紧）。但 ≤8BB 每圈失血约
+                // 2.5BB、只剩约 3 圈，除非泡沫近在眼前（距钱圈 ≤9 人）否则弃牌进不了钱，
+                // 继续收紧＝被盲注吃死拿 $0。与 getStageOpenAdjust 用同一判据保持一致。
+                {
+                    const t = gameConfig.tourney || {};
+                    const canFoldIn = typeof t.toBubble === 'number' && t.toBubble <= 9;
+                    if (heroStack <= 8 && !canFoldIn) return 1.0; // 放行，靠抢盲求生
+                }
+                return 2.5;                      // 极短码且弃得进钱：濒死保命
             }
             if (stage === 'final') {
                 if (ratio >= 1.5) return 0.8;
@@ -1743,16 +2092,22 @@
                 const extendedLimit = Math.floor(range.length * 1.1);
                 if (deepHandRank >= 0 && deepHandRank < extendedLimit) return true;
             }
-            // 阶段收窄：bubble/final 按 rawEq 绝对下限截断
-            // percentile-based 对 pairs / 弱端手牌无效，改用直接 rawEq 比较
-            if (stage === 'bubble' || stage === 'final') {
-                const rawEq    = getRawEquity(handStr);
-                const posThresh = OPEN_THRESHOLDS[position] || 50;
-                const boost    = stage === 'bubble' ? 9 : 5;
-                // scaleback：高 posThresh 位置（UTG 60 → scaleback 5），防 AKs 被误删
-                const scaleback = Math.max(0, (posThresh - 50) * 0.5);
-                const bubbleFloor = posThresh + boost - scaleback + getAnteMod();
-                if (rawEq < bubbleFloor) return false;
+            // 阶段收窄：按 rawEq 绝对下限截断（percentile-based 对 pairs / 弱端手牌无效）
+            // 码量分档(2026-09-08)：boost 原为固定 bubble +9 / final +5，**不分码量** ——
+            // 泡沫期大码与短码被收得一样紧，而大码恰恰该放宽施压。改由
+            // getStageOpenAdjust 按 hero/平均筹码之比给出 delta（负=放宽，正=收紧）。
+            // 注：delta 为负时最多恢复到完整 GTO 开池范围，无法超出表本身（范围成员
+            // 检查在前）；大码在泡沫期的额外侵略性由 pushMod（推注范围）承担。
+            {
+                const adj = getStageOpenAdjust(stage, effStack, (typeof globalAvgStack !== 'undefined' ? globalAvgStack : 0));
+                if (adj.delta !== 0) {
+                    const rawEq    = getRawEquity(handStr);
+                    const posThresh = OPEN_THRESHOLDS[position] || 50;
+                    // scaleback：高 posThresh 位置（UTG 60 → scaleback 5），防 AKs 被误删
+                    const scaleback = Math.max(0, (posThresh - 50) * 0.5);
+                    const stageFloor = posThresh + adj.delta - scaleback + getAnteMod();
+                    if (rawEq < stageFloor) return false;
+                }
             }
             // 极速赛：截断尾端（阈值乘以 scale）
             if (gameType === 'turbo') {
@@ -2731,6 +3086,7 @@
             gameConfig.playStyle = 'normal'; // B1：彻底重置应包含打法风格
             gameConfig.villainModel = 'exploit'; // M5：对手模型复位为默认剥削
             gameConfig.autoAdvancePos = true; gameConfig.chipUnit = 'bb'; gameConfig.blinds.running = false; // 2026-07-21
+            try { tyClear(); } catch (e) {} // 赛事信息(2026-09-08)：彻底重置连同赛事信息一并清空
             chipVals = { hero: null, villain: null, avg: null }; try { blSave(); blRender(); } catch (e) {}
             globalHeroStack = 40; globalVillainStack = 40;
             globalAvgStack = 40; avgStackTouched = false; // O4：平均码持久化一并复位
@@ -3449,150 +3805,57 @@
         }
 
         // ══════════════════════════════════════════════════════════════════
-        // 升盲同步 + 筹码单位 + 下一手自动移位（2026-07-21，用户三点诉求）
+        // 筹码换算基准 + 下一手自动移位
         // ══════════════════════════════════════════════════════════════════
-        // 盲注结构：只填当前级（SB/BB/Ante）+ 每级时长 + 本级剩余分钟，后续等级按常见 MTT 标准
-        // 结构自动推进（用户拍板"只填当前级，后续按标准推"）。levelStartTs 为绝对时间戳并
-        // 持久化到 localStorage，刷新页面倒计时不丢。升盲时 toast 提示；筹码单位=筹码数时，
-        // 三个筹码框存原始筹码、BB 值自动重算（全局仍以 BB 供引擎使用，引擎零改动）。
-        // GG 标准结构 BB 数列：1 / 1.2 / 1.6 / 2 / 2.4 / 3 / 4 / 5 / 6 / 8 × 10ⁿ（500/1000→600/1200→800/1600→1000/2000…）
-        const STD_BB_LEVELS = (() => { const out = []; for (let k = 1; k <= 6; k++) [1, 1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8].forEach(m => out.push(Math.round(m * Math.pow(10, k)))); return out; })();
+        // 升盲计时机器移除(2026-09-08，用户："不要一直做加法，只保留对胜率真正有帮助的信息")：
+        // 原本这里有倒计时/自动升盲/标准数列/盲注结构表/ante 比例推进等约 250 行。核查结论：
+        // **引擎全程以 BB 计算，0 处读取 gameConfig.blinds** —— 那套机器对决策的唯一贡献就是
+        // "筹码数 → BB"的换算基准，却接连制造了输入被倒计时刷回、盲注误读 400/800→1800/3600、
+        // ante 增长公式无据可依等 bug。现在只留基准本身：当前大盲 + Ante 两个数，
+        // 且它们由每手粘贴的牌桌截图自动更新（OCR 一直在读标题栏盲注），无需手工维护。
         let chipVals = { hero: null, villain: null, avg: null }; // 筹码单位=筹码数时的原始筹码
-        let _blTimer = null;
-        function blNextBB(bb) { const n = STD_BB_LEVELS.find(x => x > bb); return n || Math.round(bb * 1.25 / 100) * 100; }
-        /** 方案B：结构表里 bb 之后的下一级（找不到表或已到末级 → null，回落方案A） */
-        function blScheduleNext(bb) {
-            const sc = gameConfig.blinds.schedule;
-            if (!Array.isArray(sc) || !sc.length) return null;
-            const i = sc.findIndex(l => l.bb === bb);
-            if (i >= 0) return sc[i + 1] || null;
-            return sc.find(l => l.bb > bb) || null;   // 当前级不在表内：取表中第一个更大的级
-        }
-        /** 清洗并载入结构表（升序、去重、字段合法性） */
-        function blLoadSchedule(rows) {
-            if (!Array.isArray(rows)) return 0;
-            const clean = rows
-                .map(r => ({ level: +r.level || 0, sb: +r.sb || 0, bb: +r.bb || 0,
-                             ante: r.ante == null ? 0 : (+r.ante || 0), minutes: +r.minutes || 0 }))
-                .filter(r => r.bb > 0)
-                .sort((a, b) => a.bb - b.bb)
-                .filter((r, i, arr) => i === 0 || r.bb !== arr[i - 1].bb);
-            if (clean.length < 2) return 0;      // 至少两级才有"下一级"的意义
-            gameConfig.blinds.schedule = clean;
-            blSave();
-            return clean.length;
-        }
-        window.blClearSchedule = function() {
-            gameConfig.blinds.schedule = null; blSave(); blRender();
-            showToast('已清除结构表，升盲改按标准数列 + ante 比例跟随', 'info');
-        };
         function blFmt(n) { return (n || 0).toLocaleString('en-US'); }
-        function blSave() { try { localStorage.setItem('blind_cfg', JSON.stringify(gameConfig.blinds)); localStorage.setItem('chip_unit', gameConfig.chipUnit); localStorage.setItem('auto_pos', gameConfig.autoAdvancePos ? '1' : '0'); } catch (e) {} }
+        function blSave() { try { localStorage.setItem('blind_cfg', JSON.stringify(gameConfig.blinds)); localStorage.setItem('chip_unit', gameConfig.chipUnit); localStorage.setItem('auto_pos', gameConfig.autoAdvancePos ? '1' : '0');
+            localStorage.setItem('tourney_cfg', JSON.stringify(gameConfig.tourney)); } catch (e) {} } // 赛事信息随之持久化（刷新不丢，一场比赛只需录一次）
         function blLoad() {
             try {
                 const s = localStorage.getItem('blind_cfg'); if (s) Object.assign(gameConfig.blinds, JSON.parse(s));
                 const u = localStorage.getItem('chip_unit'); if (u === 'chips' || u === 'bb') gameConfig.chipUnit = u;
                 const a = localStorage.getItem('auto_pos'); if (a === '0') gameConfig.autoAdvancePos = false;
+                const ty = localStorage.getItem('tourney_cfg'); if (ty) Object.assign(gameConfig.tourney, JSON.parse(ty));
             } catch (e) {}
         }
-        /** 时间解析（2026-07-21 扩展"只打数字"）：
-         *  '2:34'/'2：34' → 154 · '234' → 2:34 · '1234' → 12:34 · '12' → 12:00（分）
-         *  '2.5' → 150（分的小数）· 非法 → NaN。纯数字 3-4 位按 mmss 读，1-2 位按分钟读。 */
-        function blParseSec(str) {
-            const s = String(str ?? '').trim();
-            if (!s) return NaN;
-            const m = s.match(/^(\d+)\s*[:：]\s*(\d{1,2})$/);
-            if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-            if (/^\d{3,4}$/.test(s)) {                    // 234 → 2:34 ; 1234 → 12:34
-                const sec = parseInt(s.slice(-2), 10);
-                if (sec < 60) return parseInt(s.slice(0, -2), 10) * 60 + sec;
-            }
-            const f = parseFloat(s);
-            return isNaN(f) ? NaN : Math.round(f * 60);
-        }
-        /** 盲注框：编辑即标记 dirty（阻止每秒回写）；回车 = 立即生效 */
         window.blOnInput = function(el) {
             el.dataset.dirty = '1';
-            const prev = document.getElementById('blPreview');
-            if (!prev) return;
-            const bb = parseFloat(document.getElementById('blBb')?.value);
-            const ante = parseFloat(document.getElementById('blAnte')?.value);
-            const lv = blParseSec(document.getElementById('blLevelMin')?.value);
-            const rm = blParseSec(document.getElementById('blRemain')?.value);
-            const bad = v => isNaN(v) ? '<span style="color:#ff7a7d">?</span>' : '';
-            prev.innerHTML = `将设为 <b style="color:var(--gold)">${bb > 0 ? blFmt(Math.round(bb / 2)) + '/' + blFmt(bb) : '?'}${ante > 0 ? '/' + blFmt(ante) : ''}</b>`
-                + ` · 每级 <b>${isNaN(lv) ? '?' : blFmtSec(lv)}</b>${bad(lv)} · 剩余 <b>${isNaN(rm) ? '?' : blFmtSec(rm)}</b>${bad(rm)} · 回车生效`;
-            prev.style.display = '';
-        };
-        window.blOnKey = function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); blStart(); }
+            const g = id => parseFloat(document.getElementById(id)?.value);
+            const bb = g('blBb'), ante = g('blAnte');
+            const b = gameConfig.blinds;
+            if (bb > 0) { b.bb = bb; b.sb = Math.round(bb / 2); }
+            if (ante >= 0 && !isNaN(ante)) b.ante = ante;
+            blSave(); blRecomputeChipStacks(); blRender();
+            try { tyRender(); } catch (e) {}   // 大盲变了 → 平均码/起始码 BB 换算随之更新
         };
         function blClearDirty() {
-            ['blBb', 'blAnte', 'blLevelMin', 'blRemain'].forEach(id => {
-                const el = document.getElementById(id); if (el) delete el.dataset.dirty;
-            });
-            const prev = document.getElementById('blPreview'); if (prev) prev.style.display = 'none';
-        }
-        function blFmtSec(sec) { sec = Math.max(0, Math.round(sec)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
-        function blRemainingMs() {
-            const b = gameConfig.blinds;
-            if (!b.running || !b.levelStartTs) return null;
-            return b.levelStartTs + b.levelMin * 60000 - Date.now();
+            ['blBb', 'blAnte'].forEach(id => { const el = document.getElementById(id); if (el) delete el.dataset.dirty; });
         }
         function blRender() {
             const b = gameConfig.blinds;
-            const w = document.getElementById('blindWidget');
-            if (w) {
-                const ms = blRemainingMs();
-                if (ms === null) { w.style.display = 'none'; }
-                else {
-                    const sec = Math.max(0, Math.floor(ms / 1000)), mm = String(Math.floor(sec / 60)).padStart(2, '0'), ss = String(sec % 60).padStart(2, '0');
-                    w.style.display = '';
-                    w.innerHTML = `<span style="color:var(--gold)">${blFmt(b.sb)}/${blFmt(b.bb)}${b.ante ? '/' + blFmt(b.ante) : ''}</span> <span style="opacity:.75">升盲</span> ${mm}:${ss}`;
-                    w.classList.toggle('urgent', sec <= 60);
-                }
-            }
-            // 回滚 Bug 修复(2026-07-21)：blTick 每秒调 blRender 回写输入框，而旧守卫只保护"当前聚焦"
-            // 的那一个——填完大盲去点 Ante，大盲就在 1 秒内被刷回旧值（用户实测"输了一次又变回来"）。
-            // 现改为：任一盲注框被编辑即标记 dirty，在提交(blStart)/停止(blStop)前一律不回写。
-            const set = (id, v) => {
-                const el = document.getElementById(id);
-                if (el && document.activeElement !== el && el.dataset.dirty !== '1') el.value = v;
-            };
-            set('blBb', b.bb); set('blAnte', b.ante); set('blLevelMin', blFmtSec(b.levelMin * 60));
-            const ms = blRemainingMs();
-            if (ms !== null) set('blRemain', blFmtSec(ms / 1000));
+            const set = (id, v) => { const el = document.getElementById(id);
+                if (el && el.dataset.dirty !== '1' && document.activeElement !== el) el.value = v; };
+            set('blBb', b.bb || ''); set('blAnte', b.ante || '');
             const st = document.getElementById('blStatus');
             if (st) {
-                // 按 BB 语义显示；下一级优先取结构表（方案B），否则标准数列 + ante 比例跟随（方案A）
-                const nxRow = blScheduleNext(b.bb);
-                // 换算比例须与实际升盲来源一致：截图下一级 > 结构表 > 标准数列
-                const nxBB = (b.nextLevel && b.nextLevel.bb > 0) ? b.nextLevel.bb : (nxRow ? nxRow.bb : blNextBB(b.bb));
-                const ratio = (nxBB / b.bb).toFixed(2);
-                const antePct = b.bb > 0 ? Math.round(b.ante / b.bb * 100) : 0;
-                const nl = b.nextLevel;
-                const src = nl
-                    ? `<b style="color:#45d68a">截图读到 ${blFmt(nl.sb)}/${blFmt(nl.bb)}${nl.ante ? '/' + blFmt(nl.ante) : ''}</b>（赛事真值）`
-                    : nxRow
-                    ? `结构表第 ${nxRow.level || '?'} 级 ${blFmt(nxRow.sb)}/${blFmt(nxRow.bb)}${nxRow.ante ? '/' + blFmt(nxRow.ante) : ''}`
-                    : `标准数列 1BB=${blFmt(nxBB)}，ante 按 ${antePct}% 跟随（<b style="color:var(--gold)">截图赛事时钟页可读到真实下一级</b>）`;
-                st.innerHTML = (b.running ? '计时中' : '未计时')
-                    + ` · 1BB=${blFmt(b.bb)} · Ante ${antePct}% BB · 下一级 ${src}`
-                    + ` · 升盲后 ${globalHeroStack}BB → ${Math.round(globalHeroStack / ratio * 10) / 10}BB`
-                    + (b.running ? '' : ' · 填好后点「开始/更新」或回车');
-                const sch = document.getElementById('blSchedInfo');
-                if (sch) {
-                    const n = Array.isArray(b.schedule) ? b.schedule.length : 0;
-                    sch.innerHTML = n
-                        ? `📋 已载入结构表 <b style="color:var(--accent)">${n}</b> 级（升盲按表精确推进） <button onclick="blClearSchedule()" class="macro-btn" style="margin-left:4px;">清除</button>`
-                        : `📋 未载入结构表：升盲按标准数列 + ante 比例跟随。<b style="color:var(--gold)">赛前把「比赛信息/盲注结构」页截图 Ctrl+V 粘贴</b>，即可精确按表升盲。`;
-                }
+                st.innerHTML = b.bb > 0
+                    ? `1BB = ${blFmt(b.bb)} 筹码${b.ante ? ` · Ante ${blFmt(b.ante)}（${Math.round(b.ante / b.bb * 100)}% BB）` : ''}` +
+                      `<br><span class="text-gray-500">粘贴牌桌截图会自动更新（读标题栏「盲注 X | Y」），一般无需手填</span>`
+                    : '<span class="text-gray-500">用于「筹码数」输入模式的换算；粘贴牌桌截图会自动填入</span>';
             }
             const ub = document.getElementById('unitBB'), uc = document.getElementById('unitChips');
-            if (ub) ub.className = 'cfg-btn' + (gameConfig.chipUnit === 'bb' ? ' active' : '');
-            if (uc) uc.className = 'cfg-btn' + (gameConfig.chipUnit === 'chips' ? ' active' : '');
+            if (ub && uc) { const chips = gameConfig.chipUnit === 'chips';
+                ub.classList.toggle('active', !chips); uc.classList.toggle('active', chips); }
             const ap = document.getElementById('autoPosToggle');
-            if (ap) { ap.innerText = gameConfig.autoAdvancePos ? '开启' : '关闭'; ap.className = (gameConfig.autoAdvancePos ? 'bg-green-600' : 'bg-gray-600') + ' text-white text-[10px] font-bold px-3 py-0.5 rounded'; }
+            if (ap) { ap.innerText = gameConfig.autoAdvancePos ? '开启' : '关闭';
+                ap.className = (gameConfig.autoAdvancePos ? 'bg-green-600' : 'bg-gray-600') + ' text-white text-[10px] font-bold px-3 py-0.5 rounded'; }
             blRenderUnitLabels();
         }
         function blRenderUnitLabels() {
@@ -3605,72 +3868,6 @@
             if (vl && chips) vl.textContent = vl.textContent.replace(' (BB)', '') + `（筹码数 = ${globalVillainStack}BB）`;
             const hint = document.getElementById('tlUnitHint');
             if (hint) { hint.style.display = chips ? '' : 'none'; hint.textContent = chips ? `筹码单位：筹码数 · 当前 BB = ${blFmt(bb)} · 输入牌桌上看到的筹码数，自动换算为 BB（底池/有效筹码框仍为 BB）` : ''; }
-        }
-        window.blStart = function() {
-            const b = gameConfig.blinds;
-            const g = id => parseFloat(document.getElementById(id)?.value);
-            const bb = g('blBb'), anteIn = g('blAnte');
-            const lvSec = blParseSec(document.getElementById('blLevelMin')?.value), remSec = blParseSec(document.getElementById('blRemain')?.value);
-            if (!(bb > 0) || !(lvSec > 0)) { showToast('请填写当前大盲与每级时长（分:秒，如 12:00）', 'error'); return; }
-            // SB=0.5BB 固定；Ante 按所填筹码（各赛事规则不同），留空则按 BB ante 开关默认
-            // Ante 以用户所填/识别为准（GG 各赛事 ante/BB 比例不同，不再默认 = 1BB）
-            b.sb = Math.round(bb / 2); b.bb = bb; b.ante = anteIn >= 0 ? anteIn : b.ante;
-            b.levelMin = lvSec / 60;
-            const remain = (remSec >= 0 && remSec <= lvSec) ? remSec : lvSec;
-            b.levelStartTs = Date.now() - (lvSec - remain) * 1000; b.running = true;
-            blClearDirty(); blSave(); blRender(); blRecomputeChipStacks();
-            showToast(`升盲计时开始：${blFmt(b.sb)}/${blFmt(b.bb)}${b.ante ? '/' + blFmt(b.ante) : ''}，${blFmtSec(remain)} 后升至 ${blFmt(blNextBB(b.bb))}`, 'info');
-        };
-        window.blStop = function() { gameConfig.blinds.running = false; blClearDirty(); blSave(); blRender(); showToast('升盲计时已停止', 'info'); };
-        function blLevelUp() {
-            const b = gameConfig.blinds;
-            const prevBB = b.bb;
-            // 优先级(2026-07-21)：① 时钟页读到的"下一步"最准（就是赛事真值，无需任何公式）
-            //                    ② 结构表 ③ 标准数列 + ante 比例跟随
-            if (b.nextLevel && b.nextLevel.bb > 0) {
-                b.bb = b.nextLevel.bb;
-                b.sb = b.nextLevel.sb > 0 ? b.nextLevel.sb : Math.round(b.bb / 2);
-                b.ante = b.nextLevel.ante >= 0 ? b.nextLevel.ante : b.ante;
-                b.nextLevel = null;   // 用掉即失效——再升一级需重新截图或回落下面的推算
-                b.levelStartTs += b.levelMin * 60000;
-                blSave();
-                const before0 = globalHeroStack;
-                if (gameConfig.chipUnit === 'chips') blRecomputeChipStacks();
-                else blRescaleStacksBB(prevBB, b.bb);
-                showToast(`已升盲 → ${blFmt(b.sb)}/${blFmt(b.bb)}${b.ante ? '/' + blFmt(b.ante) : ''}（截图读到的下一级）：${before0}BB → ${globalHeroStack}BB`, 'warn');
-                return;
-            }
-            const nx = blScheduleNext(b.bb);
-            if (nx) {
-                b.bb = nx.bb; b.sb = nx.sb > 0 ? nx.sb : Math.round(nx.bb / 2);
-                b.ante = nx.ante >= 0 ? nx.ante : b.ante;
-                if (nx.minutes > 0) b.levelMin = nx.minutes;
-            } else {
-                b.bb = blNextBB(b.bb); b.sb = Math.round(b.bb / 2);
-                if (b.ante > 0) b.ante = Math.round(b.ante * b.bb / prevBB); // 方案A：ante 按当前比例跟随
-            }
-            b.levelStartTs += b.levelMin * 60000;
-            blSave();
-            const before = globalHeroStack;
-            if (gameConfig.chipUnit === 'chips') blRecomputeChipStacks();
-            else blRescaleStacksBB(prevBB, b.bb); // BB 模式：筹码数不变 → BB 按比例缩小并自动换算（用户反馈"没有跳转动作"）
-            showToast(`已升盲 → ${blFmt(b.sb)}/${blFmt(b.bb)}：你的筹码 ${before}BB → ${globalHeroStack}BB（已自动换算）`, 'warn');
-        }
-        function blTick() {
-            const ms = blRemainingMs();
-            if (ms !== null && ms <= 0) { let guard = 0; while (blRemainingMs() <= 0 && guard++ < 50) blLevelUp(); }
-            blRender();
-        }
-        /** BB 模式升盲：三个筹码按 prevBB/newBB 比例换算（筹码数不变），写回输入框并重跑翻前 */
-        function blRescaleStacksBB(prevBB, newBB) {
-            if (!(prevBB > 0) || !(newBB > 0) || prevBB === newBB) return;
-            const r = prevBB / newBB, cv = v => Math.round(v * r * 10) / 10;
-            globalHeroStack = cv(globalHeroStack); globalVillainStack = cv(globalVillainStack);
-            if (avgStackTouched) globalAvgStack = cv(globalAvgStack);
-            const w = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-            w('stackHero', globalHeroStack); w('stackVillain', globalVillainStack); w('avgStack', avgStackTouched ? globalAvgStack : globalHeroStack);
-            try { renderTimeline(); } catch (e) {}
-            try { if (heroCard1 && heroCard2 && postState.board.filter(c => c !== null).length < 3 && typeof tlScheduleApply === 'function') tlScheduleApply(); } catch (e) {}
         }
         function blRecomputeChipStacks() {
             if (gameConfig.chipUnit !== 'chips') return;
@@ -3688,7 +3885,7 @@
         window.setChipUnit = function(u) {
             if (u === gameConfig.chipUnit) return;
             const bb = gameConfig.blinds.bb || 0;
-            if (u === 'chips' && !(bb > 0)) { showToast('请先在盲注里填当前大盲', 'error'); return; }
+            if (u === 'chips' && !(bb > 0)) { showToast('请先填「当前大盲(筹码)」', 'error'); return; }
             if (u === 'chips') { chipVals = { hero: Math.round(globalHeroStack * bb), villain: Math.round(globalVillainStack * bb), avg: Math.round((avgStackTouched ? globalAvgStack : globalHeroStack) * bb) }; }
             gameConfig.chipUnit = u; blSave(); blRender();
             try { renderTimeline(); } catch (e) {}
@@ -4761,7 +4958,7 @@
         syncHeroCardCompat();
         switchMode('open');
         applyLegacyPref(); // 翻前时间线(2026-07-21)：传统标签折叠区
-        blLoad(); blRender(); _blTimer = setInterval(blTick, 1000); // 升盲同步(2026-07-21)
+        blLoad(); blRender(); // 筹码换算基准（升盲计时器已于 2026-09-08 移除）
         try { renderTimeline(); } catch (e) {} // 加载持久化的筹码单位后刷新筹码框
         initStageQuickSelect(); // 配置上移(2026-07-14b)：header 阶段下拉填充
         updateCfgSummary();
@@ -9303,22 +9500,23 @@ Rules:
 - street: preflop(0)/flop(3)/turn(4)/river(5).
 - community_cards_present: true ONLY if face-up cards are dealt in the table center; false if center has only chips/pot.
 - blinds: current level in CHIPS (not BB). MOST OFTEN it is in the WINDOW TITLE BAR at the very top, written as "盲注 400 | 800" (pipe separator, sb then bb) or "Blinds 400 | 800"; it may also appear as "500/1,000/1,000". COPY THOSE EXACT DIGITS — do not compute, scale, or guess. Stacks/pot shown as "X BB" are NOT blinds. If you cannot literally read the blind digits, return null for the whole blinds object.
-- blind_level: the level number, shown top-left as "级别 14" / "Level 14"; null if not visible.
-- level_time_remaining: countdown next to the level badge, "MM:SS" (e.g. "00:06"); null if not visible.
-- image_kind: "table" = live table screenshot · "clock" = the tournament CLOCK/INFO overlay (big countdown, 级别/Level N, 盲注/Blinds, 下一步/Next, 平均筹码/Average stack, 剩余玩家/Players left) · "structure" = a blind STRUCTURE page listing many levels as rows.
-- next_blinds: ONLY on a clock image — the NEXT level shown under 下一步/Next, e.g. "90 / 180 (22)" → {"sb":90,"bb":180,"ante":22}. This is the single most useful field on that screen; read it exactly. null elsewhere.
-- avg_stack_bb: on a clock image, 平均筹码/Average in BB (the parenthesised "(43BB)"); null otherwise.
-- players_left: on a clock image, 剩余玩家/Players left count (the first number of "526 / 610"); null otherwise.
-- blind_schedule: ONLY when image_kind="structure" — every row, blinds in CHIPS: [{"level":n,"sb":n,"bb":n,"ante":n,"minutes":n}]. null otherwise.
+- image_kind: "table" = live table screenshot · "clock" = the tournament CLOCK/INFO overlay (big countdown, 级别/Level N, 盲注/Blinds, 剩余玩家/Players left) · "lobby" = the tournament LOBBY / 比赛信息 page (起始筹码/Starting stack, 盲注间隔/Blind interval, 牌桌类型/Table type, 奖金分配/Payout %, 剩余玩家/Players left).
+- tourney: ONLY on a "lobby" or "clock" image. Read literally, do not compute:
+  {"name":s (赛事名, e.g. "$2 每日急速赛"),
+   "payout_pct":n (奖金分配 "15%" → 15), "entrants":n (the DENOMINATOR of 剩余玩家 "235 / 277" → 277),
+   "remaining":n (the NUMERATOR → 235), "paid_places":n (进钱名额 if explicitly shown, else null),
+   "start_stack":n (起始筹码 "6,000 (37.5 BB)" → 6000), "level_min":n (盲注间隔 "3 分钟" → 3),
+   "table_type":s ("6人桌")}
+  null when the image is a live table.
+- players_left: on a clock or lobby image, 剩余玩家/Players left count (the first number of "235 / 277"); null otherwise.
 NOTE on clock images: blinds there are written "80 / 160 (20)" = sb / bb (ante).
 
 {"hero_cards":[{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]},{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]}],
 "board_cards":[{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]}],
 "pot":n,"hero_stack":n,"villain_bet":n,"hero_position":s,"villain_position":s,"street":s,"community_cards_present":b,
 "players":[{"stack":n,"bet":n,"is_allin":b,"has_cards":b}],
-"table_size":n,"blinds":{"sb":n,"bb":n,"ante":n},"blind_level":n,"level_time_remaining":s,
-"image_kind":s,"next_blinds":{"sb":n,"bb":n,"ante":n},"avg_stack_bb":n,"players_left":n,
-"blind_schedule":[{"level":n,"sb":n,"bb":n,"ante":n,"minutes":n}]}`;
+"table_size":n,"blinds":{"sb":n,"bb":n,"ante":n},"image_kind":s,"players_left":n,
+"tourney":{"name":s,"payout_pct":n,"entrants":n,"remaining":n,"paid_places":n,"start_stack":n,"level_min":n,"table_type":s}}`;
 
     const controller = new AbortController();
     let timeoutId = null;
@@ -9666,15 +9864,10 @@ function buildPayload(d) {
         tableSize:    d.table_size ?? null,
         // 盲注识别(2026-07-21)：牌桌上的 "500/1,000/1,000" 与升盲倒计时
         blinds:       (d.blinds && d.blinds.bb > 0) ? d.blinds : null,
-        blindLevel:   d.blind_level ?? null,
-        levelRemain:  d.level_time_remaining ?? null,
-        // 方案B(2026-07-21)：赛前"比赛信息/盲注结构"页截图 → 完整等级表
-        imageKind:    d.image_kind ?? null,
-        // 时钟页(2026-07-21)：「下一步 90/180(22)」直接给出下一级，比任何结构表/公式都准
-        nextBlinds:   (d.next_blinds && d.next_blinds.bb > 0) ? d.next_blinds : null,
-        avgStackBB:   d.avg_stack_bb ?? null,
-        playersLeft:  d.players_left ?? null,
-        blindSchedule: Array.isArray(d.blind_schedule) && d.blind_schedule.length >= 2 ? d.blind_schedule : null
+        imageKind:    d.image_kind ?? null,   // table | clock | lobby
+        playersLeft:  d.players_left ?? null,  // 唯一会变且影响决策的赛事数字
+        // 赛事信息(2026-09-08)：大厅「比赛信息」页一次带入全部赛前信息
+        tourney:      (d.tourney && typeof d.tourney === 'object') ? d.tourney : null
     };
 }
 
@@ -9683,51 +9876,54 @@ function autoFill(payload, _id) {
     console.log('[Vision] autoFill payload:', JSON.stringify(payload));
     if (typeof pushUndo === 'function') pushUndo('截图识别填入'); // 全局撤回栈(2026-07-21)
 
-    // 时钟页分流(2026-07-21)：赛事时钟截图只更新盲注/时间/平均码，不碰牌局状态
-    // （那张图里没有底牌，走常规填充会把当前手清空）
-    if (payload.imageKind === 'clock' && payload.blinds && payload.blinds.bb > 0 && !payload.card1) {
-        const bl = gameConfig.blinds;
-        bl.bb = payload.blinds.bb;
-        bl.sb = payload.blinds.sb > 0 ? payload.blinds.sb : Math.round(bl.bb / 2);
-        bl.ante = payload.blinds.ante >= 0 ? payload.blinds.ante : bl.ante;
-        if (payload.nextBlinds && payload.nextBlinds.bb > 0) {
-            bl.nextLevel = { sb: payload.nextBlinds.sb || Math.round(payload.nextBlinds.bb / 2),
-                             bb: payload.nextBlinds.bb, ante: payload.nextBlinds.ante || 0 };
+    // 赛事信息分流(2026-09-08)：大厅「比赛信息」页截图 → 只填赛事配置，绝不碰当前牌局
+    // （与结构表/时钟页同一模式：那些图里没有底牌，走常规填充会把当前手清空）
+    if (payload.tourney && !payload.card1) {
+        const src = payload.tourney, t = gameConfig.tourney;
+        const num = v => { const n = parseFloat(String(v == null ? '' : v).replace(/[,%\s]/g, '')); return isFinite(n) ? n : null; };
+        if (typeof tyClearDirty === 'function') tyClearDirty(); // 允许识别值落盘
+        const map = { name: 'name', table_type: 'tableType' };
+        Object.entries(map).forEach(([k, key]) => { if (src[k]) t[key] = String(src[k]); });
+        [['payout_pct','payoutPct'], ['entrants','entrants'], ['remaining','remaining'], ['paid_places','paidPlaces'],
+         ['start_stack','startStack'], ['level_min','levelMin']]
+            .forEach(([k, key]) => { const v = num(src[k]); if (v != null && v > 0) t[key] = v; });
+        // 牌桌类型 → 桌型（"6人桌" → 6max），受 manualFields 保护
+        const tt = String(src.table_type || '');
+        const m = tt.match(/(\d+)\s*人/);
+        if (m && !manualFields.has('tableSize')) {
+            const sz = { '6': '6max', '8': '8max', '9': '9max' }[m[1]];
+            if (sz && sz !== gameConfig.tableSize) { gameConfig.tableSize = sz; try { renderCfgGroup('grpTableSize', tableSizeOpts, 'tableSize'); onConfigChange(); } catch (e) {} }
         }
-        const rs = typeof blParseSec === 'function' ? blParseSec(payload.levelRemain) : NaN;
-        if (rs > 0) { bl.levelStartTs = Date.now() - (bl.levelMin * 60 - rs) * 1000; bl.running = true; }
-        // 平均码用于 ICM 压力（getICMPressure 读 globalAvgStack）
-        if (payload.avgStackBB > 0) { globalAvgStack = payload.avgStackBB; avgStackTouched = true;
-            const el = document.getElementById('avgStack'); if (el) el.value = globalAvgStack;
-            const tl = document.getElementById('tlAvgStack'); if (tl) tl.value = globalAvgStack; }
-        try { blSave(); blRender(); renderTimeline(); } catch (e) {}
-        console.log('[Vision] 赛事时钟页:', bl.sb + '/' + bl.bb + '/' + bl.ante, '下一级', bl.nextLevel, '平均码', payload.avgStackBB);
+        if (typeof tyRender === 'function') tyRender();
+        const t2 = gameConfig.tourney;
+        showToast(`已载入赛事信息${t2.toBubble != null ? ` · 距钱圈 ${t2.toBubble} 人` : ''}`, 'ok');
+        try { renderVisionReviewCard(payload); } catch (e) {}
+        return;
+    }
+
+    // 时钟页分流(2026-07-21；2026-09-08 精简)：只取两样真正影响决策的东西——
+    // 换算基准（当前盲注）与**剩余人数**（唯一会变且决定"距钱圈"的数字）。
+    // 原先还读下一级盲注/本级倒计时用于自动升盲，那套机器已移除。
+    if (payload.imageKind === 'clock' && !payload.card1) {
+        const bl = gameConfig.blinds;
+        if (payload.blinds && payload.blinds.bb > 0) {
+            bl.bb = payload.blinds.bb;
+            bl.sb = payload.blinds.sb > 0 ? payload.blinds.sb : Math.round(bl.bb / 2);
+            if (payload.blinds.ante >= 0) bl.ante = payload.blinds.ante;
+        }
+        if (payload.playersLeft > 0) gameConfig.tourney.remaining = payload.playersLeft;
+        try { blSave(); blRecomputeChipStacks(); blRender(); tyRender(); renderTimeline(); } catch (e) {}
+        const t = gameConfig.tourney;
         if (typeof showToast === 'function') {
-            showToast(`赛事时钟：盲注 ${blFmt(bl.sb)}/${blFmt(bl.bb)}${bl.ante ? '/' + blFmt(bl.ante) : ''}`
-                + (bl.nextLevel ? ` · 下一级 ${blFmt(bl.nextLevel.sb)}/${blFmt(bl.nextLevel.bb)}${bl.nextLevel.ante ? '/' + blFmt(bl.nextLevel.ante) : ''}` : '')
-                + (payload.avgStackBB > 0 ? ` · 平均码 ${payload.avgStackBB}BB` : ''), 'info');
+            showToast((bl.bb > 0 ? `盲注 ${blFmt(bl.sb)}/${blFmt(bl.bb)}${bl.ante ? '/' + blFmt(bl.ante) : ''}` : '赛事时钟')
+                + (payload.playersLeft > 0 ? ` · 剩余 ${payload.playersLeft} 人` : '')
+                + (t.toBubble != null ? ` · 距钱圈 ${t.toBubble} 人` : '')
+                + (t.avgStackBB ? ` · 平均码 ${t.avgStackBB}BB` : ''), 'info');
         }
         return;
     }
 
-    // 方案B 分流(2026-07-21)：结构表截图只载入盲注等级表，不碰牌局状态
-    // （赛前截图里没有底牌/公共牌，若走常规填充会把当前手牌清空）
-    if (payload.blindSchedule && (payload.imageKind === 'structure' || !payload.card1)) {
-        const n = typeof blLoadSchedule === 'function' ? blLoadSchedule(payload.blindSchedule) : 0;
-        if (n) {
-            // 表已载入；若当前大盲还没设过，用表首级作为起点
-            const b = gameConfig.blinds;
-            if (!(b.bb > 0) && b.schedule[0]) {
-                b.bb = b.schedule[0].bb; b.sb = b.schedule[0].sb || Math.round(b.bb / 2);
-                b.ante = b.schedule[0].ante || 0;
-                if (b.schedule[0].minutes > 0) b.levelMin = b.schedule[0].minutes;
-            }
-            try { blSave(); blRender(); } catch (e) {}
-            if (typeof showToast === 'function') showToast(`已载入盲注结构表 ${n} 级，升盲将按表精确推进`, 'info');
-            console.log('[Vision] 结构表载入:', n, '级');
-            return; // 结构表截图到此为止
-        }
-    }
+    // 盲注结构表分流已移除(2026-09-08)：它只服务于自动升盲，而升盲机器已删。
 
     // ① 底牌（始终填，加防御检查）
     const c1 = payload.card1;
@@ -9761,49 +9957,29 @@ function autoFill(payload, _id) {
     // 手动改过盲注框（dirty）时不覆盖；识别到倒计时才自动启动，只有盲注则仅更新等级。
     if (payload.blinds && payload.blinds.bb > 0) {
         const bl = gameConfig.blinds, nb = payload.blinds;
-        const dirty = ['blBb', 'blAnte', 'blLevelMin', 'blRemain']
+        const dirty = ['blBb', 'blAnte']   // 2026-09-08：每级时长/本级剩余两框随升盲机器移除
             .some(id => document.getElementById(id)?.dataset.dirty === '1');
         applyBlinds: if (!dirty) {
             const prevBB = bl.bb;
             let rb = nb.bb, rs = nb.sb > 0 ? nb.sb : Math.round(nb.bb / 2), ra = nb.ante >= 0 ? nb.ante : bl.ante;
             // 盲注纠偏(2026-07-21，用户实测把 400/800 读成 1,800/3,600)：
-            // ① 已载入结构表时，把识别值吸附到表中最接近的一级（优先按 level 号精确命中）——
-            //    结构表是赛前人工确认过的真值，比单张截图的 OCR 可靠得多；
-            // ② 偏差超过一个数量级则拒绝采纳，避免幻觉值污染筹码换算。
-            const sc = bl.schedule;
-            if (Array.isArray(sc) && sc.length) {
-                const byLevel = payload.blindLevel ? sc.find(l => l.level === payload.blindLevel) : null;
-                const nearest = byLevel || sc.reduce((a, b) =>
-                    Math.abs(Math.log(b.bb / rb)) < Math.abs(Math.log(a.bb / rb)) ? b : a);
-                if (nearest && nearest.bb !== rb) {
-                    console.warn('[Vision] 盲注吸附到结构表:', rb, '→', nearest.bb, byLevel ? '(按级别号)' : '(按最接近)');
-                }
-                if (nearest) { rb = nearest.bb; rs = nearest.sb || Math.round(rb / 2); ra = nearest.ante || 0; }
-            } else if (prevBB > 0 && (rb / prevBB > 4 || rb / prevBB < 0.25)) {
+            // 原有"吸附到结构表"一路已随升盲机器移除(2026-09-08)；保留 4 倍防线——
+            // 它挡的正是上面那个实测过的真错误。
+            if (prevBB > 0 && (rb / prevBB > 4 || rb / prevBB < 0.25)) {
                 console.warn('[Vision] 盲注识别值与当前级差距过大，已忽略:', rb, 'vs', prevBB);
                 if (typeof showToast === 'function') showToast(`截图读到盲注 ${rb}，与当前 ${prevBB} 差距过大已忽略——如确实升了多级请手动填`, 'warn');
                 break applyBlinds; // 只跳过盲注块，其余字段照常填充
             }
             bl.bb = rb; bl.sb = rs; bl.ante = ra;
-            // 时钟页「下一步」：存下来，升盲时直接用（赛事真值，胜过任何推算）
-            if (payload.nextBlinds && payload.nextBlinds.bb > 0) {
-                bl.nextLevel = { sb: payload.nextBlinds.sb || Math.round(payload.nextBlinds.bb / 2),
-                                 bb: payload.nextBlinds.bb, ante: payload.nextBlinds.ante || 0 };
-            }
-            const remSec = typeof blParseSec === 'function' ? blParseSec(payload.levelRemain) : NaN;
-            if (remSec > 0) {
-                bl.levelStartTs = Date.now() - (bl.levelMin * 60 - remSec) * 1000;
-                bl.running = true;
-            }
             try { blSave(); blRender(); } catch (e) {}
-            // 筹码单位=筹码数时按新大盲重算 BB；BB 模式下大盲变化 = 筹码相对变小
-            try {
-                if (gameConfig.chipUnit === 'chips') blRecomputeChipStacks();
-                else if (prevBB > 0 && prevBB !== bl.bb) blRescaleStacksBB(prevBB, bl.bb);
-            } catch (e) {}
-            console.log('[Vision] 盲注填入:', bl.sb + '/' + bl.bb + '/' + bl.ante, '剩余', payload.levelRemain);
+            // 筹码单位=筹码数时按新大盲重算 BB。
+            // 注：BB 模式下不再按比例缩放筹码 —— 同一次 autoFill 里 payload.heroStack
+            // 已经写入了截图上读到的真实筹码，再缩放会重复作用。
+            try { if (gameConfig.chipUnit === 'chips') blRecomputeChipStacks(); } catch (e) {}
+            try { tyRender(); } catch (e) {}   // 大盲变了 → 平均码 BB 换算随之更新
+            console.log('[Vision] 盲注填入:', bl.sb + '/' + bl.bb + '/' + bl.ante);
             if (typeof showToast === 'function') {
-                showToast(`已读取盲注 ${bl.sb}/${bl.bb}${bl.ante ? '/' + bl.ante : ''}${remSec > 0 ? ' · 剩余 ' + blFmtSec(remSec) + '，计时已启动' : ''}`, 'info');
+                showToast(`已读取盲注 ${bl.sb}/${bl.bb}${bl.ante ? '/' + bl.ante : ''}`, 'info');
             }
         }
     }
@@ -10115,7 +10291,7 @@ function renderVisionReviewCard(payload) {
         const pct = Math.round((p.blinds.ante || 0) / p.blinds.bb * 100);
         return cellWrap('盲注（已自动填入）',
             `${fmt(p.blinds.sb || Math.round(p.blinds.bb / 2))}/${fmt(p.blinds.bb)}${p.blinds.ante ? '/' + fmt(p.blinds.ante) : ''}`,
-            false, `Ante ${pct}% BB${p.levelRemain ? ' · 剩余 ' + p.levelRemain : ''}`);
+            false, `Ante ${pct}% BB`);
     };
     let cells = '';
     if (p.isPreflop) {
