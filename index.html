@@ -1237,6 +1237,55 @@
         // 所以不受影响，正是用户观察到的差异。
         // 解法：改用**捕获阶段**监听 —— 捕获在目标元素自己的 onclick 之前触发，
         // 此时 DOM 还完整，closest() 判定可靠。
+        // ══════════════════════════════════════════════════════════════════
+        // 输入框滚轮调值(2026-09-08，用户诉求：更快地输入)
+        // ══════════════════════════════════════════════════════════════════
+        // 鼠标悬停在任意数字输入框上滚动即可改值，无需点进去打字。
+        // 步长自适应：滚得越快步长越大（连续滚动时按事件间隔加速，最高 10×），
+        // 慢滚一格一步、快滚可以迅速拉到目标量级——筹码/底池这类跨度大的框尤其省事。
+        // 触发后派发 input 事件，走各输入框原有的 oninput 逻辑（联动/校验一律不绕过）。
+        (() => {
+            let lastTs = 0, streak = 0, lastDir = 0, lastEl = null;
+            const stepOf = (el) => {
+                const s = parseFloat(el.step);
+                if (s > 0) return s;
+                const v = Math.abs(parseFloat(el.value) || 0);
+                // 按当前量级给基础步长：筹码数(几千) → 100；BB 值(几十) → 0.5
+                if (v >= 2000) return 100;
+                if (v >= 200) return 10;
+                if (v >= 20) return 1;
+                return 0.5;
+            };
+            document.addEventListener('wheel', (e) => {
+                const el = e.target;
+                if (!el || el.tagName !== 'INPUT') return;
+                const type = (el.type || '').toLowerCase();
+                if (type !== 'number' && !(type === 'text' && el.inputMode === 'numeric')) return;
+                if (el.disabled || el.readOnly) return;
+                e.preventDefault();                       // 阻止页面滚动
+                const now = performance.now();
+                const dir = e.deltaY < 0 ? 1 : -1;
+                // 加速度只在"同一个框、同一方向、连续快滚"时累积——
+                // 反向或换框立即归零，否则往回调一格会多跳一截，手感很怪。
+                streak = (now - lastTs < 120 && dir === lastDir && el === lastEl)
+                    ? Math.min(streak + 1, 40) : 0;
+                lastTs = now; lastDir = dir; lastEl = el;
+                const accel = 1 + streak * 0.25;          // 连续快滚 → 步长最高约 10×
+                const step = stepOf(el) * accel;
+                const cur = parseFloat(el.value);
+                let next = (isFinite(cur) ? cur : 0) + dir * step;
+                const min = parseFloat(el.min), max = parseFloat(el.max);
+                if (isFinite(min)) next = Math.max(min, next);
+                else next = Math.max(0, next);            // 牌局里没有负数
+                if (isFinite(max)) next = Math.min(max, next);
+                next = Math.round(next * 10) / 10;         // 统一保留一位小数
+                if (next === cur) return;
+                el.value = next;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            }, { passive: false });
+        })();
+
         document.addEventListener('click', (e) => {
             const d = document.getElementById('cfgDropdown');
             if (!d || d.style.display === 'none') return;
@@ -2771,11 +2820,34 @@
         }
 
         // 翻后底池常驻输入回调
+        /** 翻后各街已记录的双方投入合计（与 recalculatePot 同一口径，供底池反解用） */
+        function postflopInvested() {
+            const actions = postState.potTracker?.actions || [];
+            let total = 0;
+            ['flop', 'turn', 'river'].forEach(street => {
+                let villainIn = 0, heroIn = 0;
+                actions.filter(a => a.street === street).forEach(a => {
+                    if (['bet', 'raise', 'allin'].includes(a.action)) {
+                        if (a.player === 'villain') villainIn = a.amount; else heroIn = a.amount;
+                    } else if (a.action === 'call') {
+                        if (a.player === 'villain') villainIn = heroIn; else heroIn = villainIn;
+                    }
+                });
+                total += villainIn + heroIn;
+            });
+            return total;
+        }
+
         function onPotDirectChange(val) {
             const v = parseFloat(val);
             if (!isNaN(v) && v > 0) {
-                // 同步更新 preflopPot（recalculatePot 的重算基准），否则记录行动后会被覆盖回默认值
-                postState.potTracker.preflopPot = v;
+                // 审计修复#7(2026-09-08)：原来直接把"当前底池"写进 preflopPot，而 recalculatePot
+                // 会从 preflopPot 起**再加一遍**各街已记录的投入 —— 在转/河牌手填或 OCR 填入
+                // 真实底池时，已完成街道被重复计入，且逐街累积。实测转牌填 20 后底池变 40
+                // （应为 30），赔率 25%→20%，同一 28% 胜率下 FOLD 被翻成 CALL。
+                // 正解是**反解**：把 preflopPot 反推成"能让现有公式重算出用户所填数值"的基准，
+                // 这样公式不必改动，后续行动也继续正确累加。
+                postState.potTracker.preflopPot = Math.max(0, v - postflopInvested());
                 postState.potTracker.currentPot = v;
                 postState.potTracker.spr = postState.potTracker.effStack > 0 ? postState.potTracker.effStack / v : 0;
                 postState.potTracker._manualOverride = true;  // 标记用户已手动修改，重入翻后时不重置
@@ -3400,6 +3472,34 @@
         }
 
         // 判断面对 3-Bet 的应对（查 FACING_3BET_RANGES，含筹码深度分层）
+        /**
+         * 审计修复#5(2026-09-08)：面对 3-Bet 的 call/fold **必须看价格**。
+         * 原来 threeBetSize 只影响 4-Bet 尺度，不进入跟注判定 —— 99 面对 9BB 和 80BB 的
+         * 3-Bet 都输出 Call 100%（实测），后者需补 77.5BB、理论 EV −8.5BB。
+         * 这里统一算出：所需胜率（真实赔率）与我方对 3-Bet 者范围的实时 MC 胜率。
+         * @returns {{req:number, eq:number, toCall:number, pot:number}|null} 数据不足时 null
+         */
+        function threeBetCallPrice(heroCards, threeBetterPos, heroPos, invested, threeBetSize, extraDead) {
+            if (!(threeBetSize > 0) || typeof Hand === 'undefined') return null;
+            const key = `${threeBetterPos}_vs_${heroPos}`;
+            const tbl = THREBET_RANGES[gameConfig.tableSize] || THREBET_RANGES['9max'] || {};
+            const entry = tbl[key] || (THREBET_RANGES['9max'] || {})[key];
+            // THREBET_RANGES 的值是 { value:[...], bluff:[...] } 而非裸数组——
+            // 3-Bet 者的真实范围是两者之和（价值 + 诈唬），只取其一会严重偏估。
+            const range = entry ? [...(entry.value || []), ...(entry.bluff || [])] : null;
+            if (!range || !range.length) return null;
+            const toCall = Math.max(0, threeBetSize - invested);
+            // 死钱：Hero/对手本身是盲注位时其盲注已在各自投入里，不重复计（同 initPotTracker 口径）
+            let dead = gameConfig.ante ? 1.0 : 0;
+            if (heroPos !== 'SB' && threeBetterPos !== 'SB') dead += 0.5;
+            if (heroPos !== 'BB' && threeBetterPos !== 'BB') dead += 1.0;
+            const pot = threeBetSize * 2 + dead + (extraDead || 0);
+            if (!(pot > 0) || !(toCall > 0)) return null;
+            const eq = preflopEquityVsRange(heroCards, range, 6000);
+            if (eq === null) return null;
+            return { req: toCall / pot * 100, eq, toCall, pot };
+        }
+
         function getFacing3BetAction(handStr, heroPos, tableSize, effStack) {
             // 硬伤修复H1(2026-07-10)：FACING_3BET_RANGES 只有 9max 表，8max/6max 查表
             // undefined 导致任何手牌（含AA）面对3-Bet一律返回fold。兜底用9max表近似。
@@ -3483,7 +3583,11 @@
         // 传统输入框），引擎零改动。传统场景标签保留在折叠区作兼容/强制入口。
         // 反向同步：外部 switchMode（OCR autoFill / 传统标签 / 撤回）→ tlSyncFromMode 重建座位带。
         let tlEvents = {};          // { pos: { action: 'fold'|'limp'|'call'|'raise'|'allin', amount } }
-        let tlHero = null;          // null=轮到我 | { action:'open', amount } | { action:'call' }
+        // 审计修复#6(2026-09-08)：新增 '3bet' —— 原本 Hero 只能标"轮到我/已开池/已跟注"，
+        // 于是按工具自己的建议 3-Bet 之后进翻后，底池仍按"平跟开池额"算。
+        // 实测 AA 在 BB 被建议 3-Bet 到 10BB，若对手跟注真实底池应为 21.5BB / SPR 1.40，
+        // 系统却给 6.5BB / SPR 5.77（放大 4.1 倍），承诺区被误判成深码区。
+        let tlHero = null;          // null=轮到我 | {action:'open',amount} | {action:'call'} | {action:'3bet',amount}
         let _tlApplying = false;    // 时间线驱动 switchMode 时防反向同步回环
         let _tlTimer = null;
         const TL_MODE_LABEL = { open: 'Open 开池', vsLimp: 'vs Limp 隔离', faceBet: 'vs Raise', squeeze: 'Squeeze',
@@ -3514,6 +3618,27 @@
                 if (allins.length > 1) out.note = `另有 ${allins.length - 1} 人全下，按最大者估算`;
                 return out;
             }
+            // 我方新状态(2026-09-08)：弃牌 → 本手结束，不出决策；跛入 → 已入池，按跛入池记账
+            if (tlHero && tlHero.action === 'fold') {
+                out.blocked = true;
+                out.label = '我已弃牌';
+                out.note = '本手已弃牌，无需决策。点我的座位可切回"轮到我"重新推演。';
+                return out;
+            }
+            if (tlHero && tlHero.action === 'limp') {
+                out.mode = 'vsLimp';
+                out.limpers = lBefore.concat(has(after, 'limp'));
+                out.posV = lBefore[0] || has(after, 'limp')[0] || null;
+                out.label = `${lBefore.map(tlLbl).join('/') || '前位'} 跛入 → 我跟着跛入`;
+                out.note = '你已跛入（over-limp）：下方为该决策的复核；翻后按跛入池记账';
+                if (rAfter.length) {
+                    out.mode = 'faceBet'; out.posV = rAfter[0];
+                    out.raiseSize = ev(rAfter[0]).amount || openAmt;
+                    out.label = `我跛入 → ${tlLbl(rAfter[0])} 加注到 ${out.raiseSize}BB`;
+                    out.note = '跛入后被后位 Iso-raise，按面对加注决策';
+                }
+                return out;
+            }
             if (tlHero && tlHero.action === 'open') {
                 out.raiseSize = tlHero.amount || openAmt;
                 if (rAfter.length) {
@@ -3521,11 +3646,33 @@
                     out.label = `我开池 ${out.raiseSize}BB → ${tlLbl(rAfter[0])} 3-Bet 到 ${out.threeBetSize}BB`;
                     if (rAfter.length > 1) out.note = `多人再加注，按第一位 3-Bet 者估算`;
                     if (cAfter.length) out.note += (out.note ? '；' : '') + `另有 ${cAfter.map(tlLbl).join('/')} 跟注`;
+                } else if (cAfter.length) {
+                    // 多人底池(2026-09-08)：我开池被跟 —— 主对手取**翻后最先行动**的那位
+                    //（3 人池里他最常发起行动），其余自动进"多人+"额外对手。
+                    // 原来这里只留一句提示，posV 仍是上一手残留的位置，翻后主对手会指向没入池的人。
+                    const byPost = [...cAfter].sort((a, b) => (POSTFLOP_ORDER[a] || 0) - (POSTFLOP_ORDER[b] || 0));
+                    out.mode = 'open'; out.posV = byPost[0];
+                    out.label = `我开池 ${out.raiseSize}BB → ${cAfter.map(tlLbl).join('/')} 跟注`;
+                    out.note = cAfter.length > 1
+                        ? `${cAfter.length + 1} 人底池：主对手 ${tlLbl(byPost[0])}（翻后最先行动），其余已自动加入"多人+"`
+                        : `${tlLbl(byPost[0])} 跟注，翻后单挑`;
                 } else {
                     out.mode = 'open'; out.label = `我开池 ${out.raiseSize}BB，无人再加注`;
                     out.note = '你已开池且无人再加注——下方为开池决策复核；对手行动后在座位带补录即可';
                 }
                 return out;
+            }
+            // 审计修复#6：我已 3-Bet —— 翻前决策已完成，场景仍按 faceBet 编译
+            // （引擎复核该 3-Bet 是否正确），底池/SPR 与侵略者归属另由 tlHero.action 判定
+            if (tlHero && tlHero.action === '3bet') {
+                const r0 = rBefore[0] || rAfter[0];
+                if (r0) {
+                    out.mode = 'faceBet'; out.posV = r0;
+                    out.raiseSize = ev(r0).amount || openAmt;
+                    out.label = `${tlLbl(r0)} 开池 ${out.raiseSize} → 我 3-Bet 到 ${tlHero.amount}BB`;
+                    out.note = '已按你的 3-Bet 记账：翻后底池/SPR 与范围优势均按"我是翻前侵略者"计算';
+                    return out;
+                }
             }
             if (tlHero && tlHero.action === 'call') {
                 if (rBefore.length && rAfter.length) {
@@ -3665,7 +3812,11 @@
             const actTxt = (p) => {
                 if (p === globalPosHero) {
                     if (!tlHero) return '轮到我';
-                    return tlHero.action === 'open' ? `我开池 ${tlHero.amount}` : '我已跟注';
+                    if (tlHero.action === 'open') return `我开池 ${tlHero.amount}`;
+                    if (tlHero.action === '3bet') return `我 3-Bet ${tlHero.amount}`;   // 审计修复#6
+                    if (tlHero.action === 'limp') return '我跛入';                       // 2026-09-08
+                    if (tlHero.action === 'fold') return '我已弃牌';                     // 2026-09-08
+                    return '我已跟注';
                 }
                 const e = tlEvents[p];
                 if (!e || e.action === 'fold') return '弃';
@@ -3685,6 +3836,7 @@
                 const disabled = !isHero && i > hi && !tlHero;
                 let act = actTxt(p);
                 if (isHero && tlHero && tlHero.action === 'open') act = `我开池 ${amtInput(p, tlHero.amount)}`;
+                else if (isHero && tlHero && tlHero.action === '3bet') act = `我 3-Bet ${amtInput(p, tlHero.amount)}`;   // 审计修复#6
                 else if (!isHero && e && e.action === 'raise') act = `加注 ${amtInput(p, e.amount)}`;
                 else if (!isHero && e && e.action === 'allin') act = `全下 ${amtInput(p, e.amount)}`;
                 return `<div class="tl-seat ${cls}${disabled ? ' disabled' : ''}" data-tlseat="${p}" title="${disabled ? '我先行动；先点我的座位记录"我开池/我已跟注"，后位才能行动' : '单击循环 弃→加注→跟注→全下 · 右键/长按选择'}">
@@ -3913,13 +4065,28 @@
             const raiseBefore = seats.slice(0, idx).some(p => (tlEvents[p] || {}).action === 'raise') || (idx > hi && tlHero && tlHero.action === 'open');
             if (pos === globalPosHero) {
                 const raiseAhead = seats.slice(0, hi).some(p => (tlEvents[p] || {}).action === 'raise');
-                const seq = ['none', 'open'].concat(raiseAhead ? ['call'] : []);
+                // 我方可选动作补齐(2026-09-08，用户："前位 limp 我在后位应该能跟注/弃牌/加注")：
+                // 原循环只有 轮到我→开池（+前方有加注时 跟注/3-Bet），于是
+                //   · 前位只跛入时我**无法表达"跟着跛入"**（over-limp），只能开池；
+                //   · 任何情况下都**没有弃牌**——而弃牌恰恰是最常见的动作。
+                // 现按"前方发生了什么"给出真实可选项，末位一律接弃牌再回到轮到我。
+                const limpAhead = seats.slice(0, hi).some(p => (tlEvents[p] || {}).action === 'limp');
+                const seq = raiseAhead ? ['none', 'call', '3bet', 'fold']
+                          : limpAhead  ? ['none', 'limp', 'open', 'fold']
+                                       : ['none', 'open', 'fold'];
                 const cur = tlHero ? tlHero.action : 'none';
-                const next = seq[(seq.indexOf(cur) + 1) % seq.length];
-                pushUndo(`时间线：我 → ${next === 'none' ? '轮到我' : next === 'open' ? '已开池' : '已跟注'}`);
+                const idxCur = seq.indexOf(cur);
+                const next = seq[(idxCur < 0 ? 0 : idxCur + 1) % seq.length];
+                const lbl3 = { none: '轮到我', open: limpAhead ? '已加注(Iso)' : '已开池',
+                               call: '已跟注', '3bet': '已 3-Bet', limp: '已跛入', fold: '已弃牌' };
+                pushUndo(`时间线：我 → ${lbl3[next]}`);
                 if (next === 'none') { tlHero = null; seats.slice(hi + 1).forEach(p => delete tlEvents[p]); }
                 else if (next === 'open') tlHero = { action: 'open', amount: tlOpenDefault() };
-                else tlHero = { action: 'call' };
+                else if (next === '3bet') {
+                    // 默认 3-Bet 额：面对最大一笔加注的 3.4 倍取 .5（与 tlDefaultRaise 同口径）
+                    const maxAhead = Math.max(0, ...seats.slice(0, hi).map(p => (tlEvents[p] || {}).amount || 0));
+                    tlHero = { action: '3bet', amount: Math.round(Math.max(maxAhead * 3.4, 3) * 2) / 2 };
+                } else tlHero = { action: next };   // call / limp / fold
                 tlScheduleApply(); return;
             }
             const seq = ['fold', 'raise', raiseBefore ? 'call' : 'limp', 'allin'];
@@ -3935,7 +4102,11 @@
         function tlSetAmount(pos, val) {
             const amt = parseFloat(val);
             if (!(amt > 0)) return;
-            if (pos === globalPosHero) { if (tlHero && tlHero.action === 'open') { pushUndo(`时间线：我开池额 ${amt}`); tlHero.amount = amt; } }
+            if (pos === globalPosHero) {
+                if (tlHero && (tlHero.action === 'open' || tlHero.action === '3bet')) {
+                    pushUndo(`时间线：我${tlHero.action === '3bet' ? ' 3-Bet' : '开池'}额 ${amt}`); tlHero.amount = amt;
+                }
+            }
             else if (tlEvents[pos] && ['raise', 'allin'].includes(tlEvents[pos].action)) { pushUndo(`时间线：${tlLbl(pos)} 额 ${amt}`); tlEvents[pos].amount = amt; }
             tlScheduleApply();
         }
@@ -4057,7 +4228,12 @@
             const limpCount = currentMode === 'vsLimp'
                 ? Math.max(1, selectedLimperPositions.length)
                 : (elLimp && elLimp.value ? parseInt(elLimp.value) : 1);
-            const avgStack = elAvg && elAvg.value ? parseFloat(elAvg.value) : sH;
+            // 审计修复#4(2026-09-08)：原来没有 #avgStack 输入框时直接回退成 sH（Hero 自己的
+            // 筹码），于是 hero/avg 恒为 1.0 —— **除 Open 外所有模式的 ICM 码量分档全部失效**
+            // （泡沫期大码 0.6 与短码 1.6 的压力差被抹平成同一档）。#avgStack 只在部分模式
+            // 渲染，而 globalAvgStack 是全局真源（赛事信息推算/时间线/OCR 都写它）。
+            const avgStack = (elAvg && elAvg.value) ? parseFloat(elAvg.value)
+                           : ((typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : sH);
             
             let effStack = sH;
             if (sH > 0 && sV > 0) effStack = Math.min(sH, sV);
@@ -4124,21 +4300,27 @@
                     const handPct = getHandPercentile(handStr);
                     isPushMode = true;
                     
-                    if (sH <= 3) {
-                        // ATC push
+                    // 审计修复#2(2026-09-08，P0)：原来 ≤3BB **无条件 ATC 全推**，
+                    // 与本项目自己的数表直接矛盾——getNashPushRange(3,'UTG')=60（伪百分位），
+                    // 而 getHandPercentile('72o')=91.1，按自家刻度 72o 根本不在范围内，
+                    // 却被建议 100% 全推。3BB 行早在 2026-07-13 重校准时已由 ATC 改为分档，
+                    // 但这个硬编码分支没跟着改，把重校准成果整个绕过了。
+                    // 现在 ≤3BB 仍走同一张表：位置越后范围越宽（BTN 87 / UTG 60），
+                    // 只有真正命中范围才推，否则落到下面的常规 push/fold 判定。
+                    if (sH <= 3 && handPct <= pushRange) {
                         box.style.borderColor = '#e5484d'; box.style.backgroundColor = 'rgba(214,57,64,0.1)';
-                        vText.style.color = '#ff7a7d'; vText.innerText = '🔥 全下 ATC';
-                        logicText.innerText = `筹码 ≤3BB,Nash 强制 ATC 推全下。`;
+                        vText.style.color = '#ff7a7d'; vText.innerText = '🔥 全下 (极短码)';
+                        logicText.innerText = `筹码 ≤3BB，${POS_LABEL[posH] || posH} 位 Nash 推注范围 ${pushRange.toFixed(0)}%（伪百分位），本手 ${handPct.toFixed(0)} 命中，全推。`;
                         freqBox.classList.remove('hidden');
                         document.getElementById('freqBar').innerHTML = `<div class="freq-fill bg-open" style="width:100%">100%</div>`;
                         document.getElementById('freqLabels').innerHTML = `<span class="text-blue-400">Push 100%</span>`;
-                        document.getElementById('lblBox1').innerText = "Nash 推牌范围"; document.getElementById('mathBox1').innerText = "100%";
+                        document.getElementById('lblBox1').innerText = "Nash 推牌范围"; document.getElementById('mathBox1').innerText = pushRange.toFixed(0) + "%";
                         document.getElementById('lblBox2').innerText = "阶段修正"; document.getElementById('mathBox2').innerText = (stageCfg.pushMod>=0?"+":"")+stageCfg.pushMod;
-                        document.getElementById('lblBox3').innerText = "最终红线"; document.getElementById('mathBox3').innerText = "ATC";
+                        document.getElementById('lblBox3').innerText = "最终红线"; document.getElementById('mathBox3').innerText = pushRange.toFixed(0) + "%";
                         document.getElementById('lblBar1').innerText = "手牌强度百分位"; 
                         document.getElementById('mathBar1Text').innerText = (100-handPct).toFixed(0) + "%"; 
                         document.getElementById('mathBar1Fill').style.width = (100-handPct) + "%";
-                        document.getElementById('mathBar2Text').innerText = "100%"; document.getElementById('mathBar2Line').style.left = "100%";
+                        document.getElementById('mathBar2Text').innerText = (100-pushRange).toFixed(0) + "%"; document.getElementById('mathBar2Line').style.left = (100-pushRange) + "%";
                         proofPanel.classList.remove('hidden');
                         document.getElementById('resultPanel').classList.remove('invisible');
                         updateCfgSummary();
@@ -4508,6 +4690,18 @@
                             logic='不在防守范围，弃牌。';
                             break;
                     }
+                    // 审计修复#5(2026-09-08)：跟注前过价格闸门 —— 3-Bet 越大，跟注所需胜率越高。
+                    // 留 3 点容差给隐含赔率/翻后位置优势；差距超过它就把跟注改为弃牌。
+                    if (c > 0) {
+                        const pr = threeBetCallPrice([heroCard1, heroCard2], posV, posH, raiseSize, threeBetSize, 0);
+                        if (pr && pr.eq < pr.req - 3) {
+                            logic = `面对 ${threeBetSize}BB 3-Bet 需补 ${pr.toCall.toFixed(1)}BB，所需胜率 ${pr.req.toFixed(1)}%，` +
+                                    `而 ${handStr} 对 ${POS_LABEL[posV]} 的 3-Bet 范围仅 ${pr.eq.toFixed(1)}% —— 价格不划算，弃牌。`;
+                            f = 100; c = 0; b = 0; postSizing = '';
+                        } else if (pr) {
+                            logic += `（价格核对：需 ${pr.req.toFixed(1)}%，实有 ${pr.eq.toFixed(1)}%）`;
+                        }
+                    }
                     // ICM 修正：泡沫期/决赛桌收紧 bluff 频率
                     // Fix-3: 直接按 stage 判断，泡沫期削减 55%（原 40% 效果不足）
                     const icmSuppStage = gameConfig.stage === 'bubble' || gameConfig.stage === 'final';
@@ -4766,6 +4960,25 @@
                     logic = `${handStr} 不适合 Cold Call 3-Bet，弃牌保留筹码。`;
                 }
 
+                // 审计修复#5(2026-09-08)：Cold Call 同样必须看价格 —— 原来 22 面对 5BB 与
+                // 19BB 的 3-Bet 都输出 Cold Call 100%。Hero 尚未投入，需补全额 3-Bet；
+                // 开池者那份加注是死钱。跟注后剩余筹码不足 ~10BB 时也没有买 Set 的隐含赔率。
+                if (c > 0) {
+                    const pr = threeBetCallPrice([heroCard1, heroCard2], globalPosCaller || posV, posH,
+                                                 0, threeBetSize, raiseSize);
+                    const leftAfter = effStack - threeBetSize;
+                    if (pr && pr.eq < pr.req - 3) {
+                        logic = `面对 ${threeBetSize}BB 3-Bet 需补全额，所需胜率 ${pr.req.toFixed(1)}%，` +
+                                `而 ${handStr} 对 3-Bet 范围仅 ${pr.eq.toFixed(1)}% —— 价格不划算，弃牌。`;
+                        c = 0; b = 0; f = 100;
+                    } else if (isPair && leftAfter < 10) {
+                        logic = `跟注后仅剩 ${Math.max(0, leftAfter).toFixed(1)}BB，买 Set 的隐含赔率不存在（需约 10 倍于跟注额的后续筹码），弃牌。`;
+                        c = 0; b = 0; f = 100;
+                    } else if (pr) {
+                        logic += `（价格核对：需 ${pr.req.toFixed(1)}%，实有 ${pr.eq.toFixed(1)}%）`;
+                    }
+                }
+
                 // 泡沫期 ICM 修正：收紧跟注频率
                 if (isBubble && c > 0) {
                     const cut = Math.min(c, Math.floor(c * 0.3));
@@ -4816,8 +5029,14 @@
                 // 20BB+ 还选择直接全推的玩家放弃了加注-弃牌线，范围明显更极化/更强，
                 // 若仍按 15BB 的宽范围估算会高估我方胜率、导致过度接注。
                 // 每超 1BB 收紧 1.2 个伪百分位，下限 36（约前 8% 组合）。
-                let villainPushRange = getNashPushRange(sV, posV) + stageCfg.pushMod;
-                if (sV > 15) villainPushRange = Math.max(36, villainPushRange - (sV - 15) * 1.2);
+                // 审计修复#3(2026-09-08)：原用 sV（对手**总**筹码）查表并做深码收紧 ——
+                // 但 push/fold 的博弈只发生在**有效筹码**上：40BB 的 SB 推向 10BB 的 BB，
+                // 实际只押上 10BB，其推注范围是 10BB 有效深度的宽范围（伪 66），
+                // 而非 40BB 的极化范围（收紧到 36）。实测 A9o 因此把真实 56.5% 的胜率
+                // 显示成 37.7% 并建议弃牌。深码收紧本身没错，只是喂错了输入。
+                const pushEff = Math.min(sH, sV);
+                let villainPushRange = getNashPushRange(pushEff, posV) + stageCfg.pushMod;
+                if (pushEff > 15) villainPushRange = Math.max(36, villainPushRange - (pushEff - 15) * 1.2);
                 const handPct = getHandPercentile(handStr);
                 const cat = getStrictCategory(v1, v2, isSuited);
                 
@@ -4882,7 +5101,11 @@
                 // 正解：差距落在自身 95% 置信区间内时，确定性地判为硬币局并说明理由，
                 // 结论稳定且诚实，而不是让噪声在 Call/Fold 之间随机翻转。
                 const moe = eqIsMC ? 1.96 * Math.sqrt(actEq / 100 * (1 - actEq / 100) / simsUsed) * 100 : 0;
-                const coinFlip = eqIsMC && Math.abs(netEv) < Math.max(0.6, moe);
+                // 下限 0.6→1.0(2026-09-08，回归抽查发现)：50000 次采样的 moe 只有约 0.43，
+                // 于是 0.6 成了实际下限，[0.6, 1.0] 这段变成"声称能分辨、实则分辨不了"的地带
+                // ——netEv 恰好 0.6 时还会在两个分支间来回跳。而且统计误差之外还有**模型误差**：
+                // 对手推注范围本身就是估计值，1 点以内的优势不该被当成确定结论。
+                const coinFlip = eqIsMC && Math.abs(netEv) < Math.max(1.0, moe);
 
                 if (coinFlip) {
                     box.style.borderColor = '#e0a83a'; box.style.backgroundColor = 'rgba(224,168,58,0.1)';
@@ -5122,7 +5345,9 @@
                 each = 1;                               // 跛入池：主对手跛 1BB，我在 BB 已有 1BB
                 extraDead = Math.max(0, n - 1) * 1.0;   // 其余跛入者的 1BB 作死钱
             } else if (currentMode === 'faceBet') {
-                each = globalRaiseSize;
+                // 审计修复#6(2026-09-08)：Hero 若已标记 3-Bet，双方投入是 3-Bet 额而非开池额
+                each = (typeof tlHero !== 'undefined' && tlHero && tlHero.action === '3bet' && tlHero.amount > 0)
+                    ? tlHero.amount : globalRaiseSize;
             } else if (currentMode === 'squeeze') {
                 each = globalRaiseSize * (4 + nCallers); // Squeeze 尺度（与翻前引擎一致），原加注者跟注
                 extraDead = globalRaiseSize * nCallers;  // 被挤走的跟注者投入
@@ -5659,7 +5884,12 @@
                     if (anyAggro && bc.length >= 3 && typeof Hand !== 'undefined') {
                         const cache = rangeEstimator._bsCache || (rangeEstimator._bsCache = new Map());
                         if (cache.size > 3000) cache.clear(); // 防跨局无限增长
-                        const bKey = bc.join('');
+                        // 审计修复#12(2026-09-08)：缓存键原本只有 board+牌类，但下面的 dead
+                        // 集合明确包含 Hero 底牌 —— 换底牌而公共牌不变时会复用上一手的
+                        // blocker 结果，返回合法组合数为零的牌类（实测 6s6h4d 面换成 AdAc 后
+                        // 仍保留 A6s，其四个同花组合已被完全阻断）。键必须覆盖全部 dead 输入。
+                        const heroKey = (postState.heroCards || []).join('');
+                        const bKey = bc.join('') + '#' + heroKey;
                         const dead = new Set([...(postState.heroCards || []), ...bc]);
                         const boardScore = (hand) => {
                             const k = bKey + '|' + hand;
@@ -5676,17 +5906,27 @@
                                 const c1 = r1 + suits[i], c2 = r2 + suits[j];
                                 if (dead.has(c1) || dead.has(c2)) continue;
                                 try {
-                                    let sc = Hand.solve([c1, c2, ...bc]).rank * 100;
-                                    if (bc.length < 5) { // flop/turn：同花听加成
+                                    // 审计修复#1(2026-09-08)：原用 `.rank * 100` 排序 —— 但 pokersolver 的
+                                    // `.rank` **只是牌型大类**（2=一对/3=两对…），同类不分踢脚。于是
+                                    // A 高牌面上 KK(underpair) 与 A5s(顶对) 同为 rank 2，再由翻前胜率
+                                    // 破平 → KK 排在 A5s 前面，收窄时保留 underpair、裁掉顶对，方向完全反了。
+                                    // 实测 QQ@As7h2d 面对加注：错误范围给 45.7% 胜率，真实强端仅 7.3%，虚高 38 点。
+                                    // 改用"大类 × 1e10 + 最佳五张的位置权重"——pokersolver 的 .cards 已按
+                                    // 比较相关性降序排列，位置加权即等价于完整比大小（已实测：
+                                    // AK顶对顶踢 > A5顶对 > A3顶对 > KK underpair），且保持可排序的数值键。
+                                    const sv = Hand.solve([c1, c2, ...bc]);
+                                    let sc = sv.rank * 1e10;
+                                    for (let k = 0; k < sv.cards.length && k < 5; k++) sc += sv.cards[k].rank * Math.pow(15, 4 - k);
+                                    if (bc.length < 5) { // flop/turn：同花听加成（沿用原权重＝约 1.5 个牌型档）
                                         const cnt = { s: 0, h: 0, d: 0, c: 0 };
                                         [...bc, c1, c2].forEach(x => cnt[x[1]]++);
-                                        if (Math.max(cnt.s, cnt.h, cnt.d, cnt.c) === 4) sc += 150;
+                                        if (Math.max(cnt.s, cnt.h, cnt.d, cnt.c) === 4) sc += 1.5e10;
                                     }
                                     total += sc; n++;
                                 } catch (e) {}
                                 if (n >= 4) break outer; // 每类采样上限 4 组合控开销
                             }
-                            const score = (n ? total / n : 0) + getRawEquity(hand) / 100;
+                            const score = (n ? total / n : 0) + getRawEquity(hand) / 1000;  // 仅作同分破平，必须小于位置权重的最小分辨率
                             cache.set(k, score);
                             return score;
                         };
@@ -5830,9 +6070,18 @@
                     if (p && p !== globalPosHero && p !== globalPosVillain &&
                         !postState.extraVillains.includes(p)) postState.extraVillains.push(p);
                 };
-                // 全盘审计修复(2026-07-21)：coldCall 不再把 3-Bet 者预填为额外对手——
-                // 其范围现已作为主对手范围（rangeEstimator coldCall 分支），预填会重复计算；
-                // 开池者通常弃牌，若实际跟注请在"多人+"手动勾选
+                // 翻前→翻后多人底池(2026-09-08，用户："BTN 开池、SB 和 BB 都进来了，
+                // 翻后就该是三人底池")：**直接读时间线**——谁没弃牌谁就在池里。
+                // 原来只有 squeeze / vsLimp 两种场景会预填，我开池被两人跟注这种最常见的
+                // 多人底池反而完全带不过来（deriveScenario 只在提示里写一句"另有 X 跟注"）。
+                // 判据：tlEvents 里 action 非 fold 的座位即在池；Hero 与主对手自动排除。
+                if (typeof tlEvents === 'object' && tlEvents) {
+                    Object.keys(tlEvents).forEach(pos => {
+                        const a = (tlEvents[pos] || {}).action;
+                        if (a && a !== 'fold') _addExtra(pos);
+                    });
+                }
+                // 传统场景标签路径（未走时间线时）仍按原逻辑补充
                 if (currentMode === 'squeeze') _addExtra(globalPosCaller);
                 else if (currentMode === 'vsLimp' && Array.isArray(selectedLimperPositions))
                     selectedLimperPositions.forEach(_addExtra); // 最早跛入者=主对手，自动被 _addExtra 排除
@@ -5921,8 +6170,11 @@
                 const SUITS = ['s','h','d','c'];
                 const fullDeck = [];
                 RANKS.forEach(r => SUITS.forEach(s => fullDeck.push(r + s)));
-                let wins = 0, ties = 0, valid = 0;
-                const TRIALS = 400;
+                let wins = 0, ties = 0, valid = 0, tieShare = 0;   // tieShare：平局时按 1/分池人数 累加
+                // 采样量 400→2000(2026-09-08)：实测三人局 400 次抖动达 3.1 点（两次运行
+                // 34.9% vs 40.5%），而多人底池恰恰是最需要准的场合——门槛已按人数收紧，
+                // 胜率再抖 3 点就会来回翻转结论。2000 次抖动降到 1.4 点，耗时仅 81ms。
+                const TRIALS = 2000;
                 for (let i = 0; i < TRIALS; i++) {
                     const used = new Set([...hero, ...board]);
                     const vHands = [];
@@ -5947,17 +6199,25 @@
                         const winners = Hand.winners(solved);
                         valid++;
                         if (winners.includes(heroS)) {
-                            if (winners.length === 1) wins++; else ties++;
+                            // 审计修复#11(2026-09-08)：原来只数"是否平局"，下面一律按 ×0.5 折算，
+                            // 三人分池实为 1/3、四人 1/4。公牌成顺/成同花等多人 chop 局面
+                            // 权益被高估 16.7-25 个点。改为累加实际分得的份额。
+                            if (winners.length === 1) wins++;
+                            else { ties++; tieShare += 1 / winners.length; }
                         }
                     } catch (e) { continue; }
                 }
                 if (!valid || version !== postState.postCalcVersion) return;
                 const merged = {
                     ...postState.equityResult,
-                    equity:   Math.round((wins + ties * 0.5) / valid * 1000) / 10,
+                    equity:   Math.round((wins + tieShare) / valid * 1000) / 10,
                     winRate:  Math.round(wins / valid * 1000) / 10,
                     tieRate:  Math.round(ties / valid * 1000) / 10,
                     loseRate: Math.round((valid - wins - ties) / valid * 1000) / 10,
+                    // 样本数同步(2026-09-08)：原来沿用了 postState.equityResult 的 1500，
+                    // 但多人覆盖实际只跑 valid 次 —— 胜率卡徽章会显示"MC×1500"而底下写着
+                    // "多人MC×400"，同一屏两个口径（正是交叉审计里批评过的问题）。
+                    sampleCount: valid,
                     method:   `多人MC×${valid}·${ranges.length}名对手`
                 };
                 postState.equityResult = merged;
@@ -6604,8 +6864,7 @@
                 // 是否正面对一个激进行动（需要 Fold/Call/Raise）
                 const isFacing  = ['waiting_second_response','waiting_first_response'].includes(ss.phase);
                 const lastBet   = ss.lastBet || 0;
-                const odds      = isFacing && lastBet > 0 && pot > 0
-                    ? ((lastBet / (pot + lastBet)) * 100).toFixed(0) : null;
+                // 审计修复#8(2026-09-08)：odds 移到 _si（本街投入）之后计算——见下方。
                 // 检测对手是否全下（最后一条激进动作为 allin）
                 const lastAggAct = [...streetActions].reverse().find(a => ['bet','raise','allin'].includes(a.action));
                 const isFacingAllin = isFacing && lastAggAct && lastAggAct.action === 'allin' && lastAggAct.player !== 'hero';
@@ -6616,6 +6875,13 @@
                 }); return { h, v }; })();
                 const toCallHero    = Math.max(0, _si.v - _si.h);
                 const toCallVillain = Math.max(0, _si.h - _si.v);
+                // 审计修复#8(2026-09-08)：原用 `lastBet /(pot+lastBet)`，lastBet 是**加注到**的
+                // 总额，而 pot 已含 Hero 本街已投入的部分 —— 面对加注时把"还需补的差额"
+                // 算成了对手的全额。实测同屏出现两个互相矛盾的红线：postEngine 给 25%，
+                // 面板给 33%（虚高 8.3 点），用户可能据面板手动过弃。
+                // 与引擎 E3 同一公式：所需胜率 = 补注额 /（当前底池 + 补注额）。
+                const odds = isFacing && toCallHero > 0 && pot > 0
+                    ? ((toCallHero / (pot + toCallHero)) * 100).toFixed(0) : null;
 
                 // ════ 统一行动条(2026-07-14)：扑克客户端三键位 ════
                 // 抛弃"我方/对手两套布局"——固定槽位 [弃牌][过牌/跟注][金额+下注/加注][全押]，
@@ -8595,7 +8861,10 @@
             // （把对手范围优势当成自己的 → 错误 C-Bet / 漏掉控池）。
             // 翻前场景即侵略者记录：open/vsLimp/squeeze = Hero 主动；
             // faceBet/face3b/coldCall/defend = 对手主动（Hero 以跟注继续为近似）。
-            const heroIsPFA = ['open', 'vsLimp', 'squeeze'].includes(currentMode);
+            // 审计修复#6(2026-09-08)：Hero 在 faceBet 里 3-Bet 之后，翻前侵略者是 Hero 而非开池者
+            const _hero3bet = (typeof tlHero !== 'undefined' && tlHero && tlHero.action === '3bet');
+            const heroIsPFA = ['open', 'vsLimp', 'squeeze'].includes(currentMode) ||
+                              (currentMode === 'faceBet' && _hero3bet);
             const iHaveRangeAdv  = (rangeAdv === 'Raiser' && heroIsPFA)
                                  || (rangeAdv === 'Caller' && !heroIsPFA);
             const oppHasRangeAdv = (rangeAdv === 'Raiser' && !heroIsPFA)
@@ -8681,7 +8950,7 @@
             const warnings = [];
             if (blk && Math.abs(blk.edge) >= 4) warnings.push(`🎯 ${blk.note}`);
             if (_mwN > 0) {
-                warnings.push(`⚠ 多人底池：${_mwN + 1} 名对手在局，胜率按多人计算，价值/诈唬门槛已收紧`);
+                warnings.push(`⚠ 多人底池：${_mwN + 1} 名对手在局 —— 胜率按多人计算，价值门槛已收紧，<b>纯诈唬一律关闭</b>（有真实进张的半诈唬仍保留）`);
             }
             if (stage === 'bubble' || stage === 'final') {
                 warnings.push('⚠ ' + (stage === 'bubble' ? '泡沫期' : '决赛桌') + '：避免边缘 bluff 和 bluff catch');
@@ -8814,10 +9083,22 @@
                     } else if (equity < 30 && hadPrevStreetBet) {
                         // 低频小尺度诈唬：前街有代表性的行动线支撑（ICM 期间降频）
                         // Blocker 接入：挡住对手坚果越多，纯诈唬越有效（他更难有牌跟）
-                        const maxBluff = Math.max(0, Math.round(18 / icmTighten) - (stage === 'bubble' ? 15 : stage === 'final' ? 5 : 0) + blkBluff);
+                        // 多人底池禁纯诈唬(2026-09-08，用户拍板)：每多一名对手就多一次"有人有牌"，
+                        // 要让 N 个人全部弃牌所需的弃牌率是单挑的 N 次方——纯诈唬在多人池几乎恒负 EV。
+                        // 单挑时保留（由 blocker 驱动：挡住对手坚果越多，诈唬越有效）。
+                        const maxBluff = _mwN > 0 ? 0
+                            : Math.max(0, Math.round(18 / icmTighten) - (stage === 'bubble' ? 15 : stage === 'final' ? 5 : 0) + blkBluff);
+                        if (maxBluff <= 0) {
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { check: 100 };
+                            reasoning = _mwN > 0
+                                ? `河牌胜率${equity.toFixed(0)}%，${_mwN + 1} 名对手在局 —— 多人底池不做纯诈唬，过牌`
+                                : `河牌胜率${equity.toFixed(0)}%，诈唬频率已被 ICM/blocker 压至 0，过牌`;
+                        } else {
                         primaryAction = 'BET'; sizing = '33% 底池';
                         frequencies = { bet: maxBluff, check: 100 - maxBluff };
                         reasoning = `河牌胜率${equity.toFixed(0)}%，前街有代表性，${maxBluff}%低频诈唬（33%底池）${blkBluff ? `｜blocker ${blkBluff > 0 ? '+' : ''}${blkBluff}%` : ''}`;
+                        }
                     } else {
                         // 中间带：无法价值也无法诈唬，过牌
                         primaryAction = 'CHECK'; sizing = '';
@@ -8862,10 +9143,19 @@
                     } else if (iHaveNutAdv && sprZone === 'deep' && equity < 35 && iHaveRangeAdv) {
                         // 极化诈唬：坚果范围+范围优势
                         // Blocker 接入：极化诈唬最看 blocker——挡住他的坚果才敢开大
-                        const polFreq = Math.max(0, Math.min(45, 18 + blkBluff));
+                        // 多人底池禁纯诈唬(2026-09-08)：同河牌，极化超池诈唬在多人池归零
+                        const polFreq = _mwN > 0 ? 0 : Math.max(0, Math.min(45, 18 + blkBluff));
+                        if (polFreq <= 0) {
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { check: 100 };
+                            reasoning = _mwN > 0
+                                ? `转牌胜率${equity.toFixed(0)}%，${_mwN + 1} 名对手在局 —— 多人底池不做极化诈唬，过牌`
+                                : `转牌胜率${equity.toFixed(0)}%，诈唬频率被 blocker 压至 0，过牌`;
+                        } else {
                         primaryAction = 'BET'; sizing = sc.sizes.nut;
                         frequencies = { bet: polFreq, check: 100 - polFreq };
                         reasoning = `转牌坚果范围+范围优势，${polFreq}%极化超池诈唬${blkBluff ? `｜blocker ${blkBluff > 0 ? '+' : ''}${blkBluff}%` : ''}`;
+                        }
                     } else {
                         primaryAction = 'CHECK'; sizing = '';
                         frequencies = { check: 100 };
@@ -8947,8 +9237,16 @@
             else {
                 const equityMargin = equity - potOdds;
                 const isPushSize   = villainBet >= effStack * 0.7;
-                // Fix-6: 面对全下（villainBet ≥ 85% effStack）只能跟注或弃牌
-                const isFacingAllin = effStack > 0 && villainBet >= effStack * 0.85;
+                // Fix-6: 面对全下只能跟注或弃牌
+                // 审计修复#10(2026-09-08)：原判据是 `villainBet >= effStack*0.85` —— 把"大注但
+                // 未全下"也当成全下，于是 8.49BB 的普通下注给 RAISE 全押、8.50BB 却突然变 CALL，
+                // 在 85% 处出现动作悬崖；对手实际还剩 1.5BB，河牌坚果加注不可能比平跟差。
+                // 改为**只认真正的全下**：显式 allin 动作，或下注额已达有效筹码（留 1% 容差
+                // 吸收小数误差）。输入层本就在 ≥95% 才自动转全下，两处口径现在一致。
+                const lastAgg = [...actions].reverse().find(a =>
+                    a.street === street && a.player === 'villain' && ['bet','raise','allin'].includes(a.action));
+                const isFacingAllin = effStack > 0 &&
+                    ((lastAgg && lastAgg.action === 'allin') || villainBet >= effStack * 0.99);
 
                 // 被动转主动警示(2026-07-13)：对手前街只有过牌/跟注、转牌或河牌突然
                 // 主动下注——该线在真实玩家池强烈偏成牌（过牌-过牌-河牌领打≈同花/
@@ -10078,6 +10376,17 @@ function autoFill(payload, _id) {
                 .some(a => a.street === _st7 && a.player === 'villain');
             if (_st7 && !villainActed && typeof setActionRecord === 'function') {
                 const act7 = payload.villainAllin ? 'allin' : 'bet';
+                // 审计修复#9(2026-09-08)：Hero OOP（先行动）时若本街还没有 Hero 的记录，
+                // 直接插入对手下注会造出非法状态 —— 行动摘要显示"我先行动(OOP)"，
+                // 状态机却算出 nextToAct='villain'，面板同屏显示"轮到对手 · 面对下注"。
+                // 之后每一步都会把对手记成"跟注/加注自己的下注"，污染底池、范围收窄与撤回栈。
+                // 事实上 Hero OOP 而对手已下注，只可能是 Hero 先过牌了——补上这条隐含动作。
+                const heroActed7 = (postState.potTracker.actions || [])
+                    .some(a => a.street === _st7 && a.player === 'hero');
+                if (postState.firstToAct === 'hero' && !heroActed7) {
+                    setActionRecord('hero', 'check', 0);
+                    console.log('[Vision] Hero OOP 且对手已下注 → 补录 Hero 过牌，避免非法行动序');
+                }
                 setActionRecord('villain', act7, payload.villainBet);
                 postState._pendingVillainBet = null;
                 if (typeof showToast === 'function') {
