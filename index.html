@@ -502,6 +502,13 @@
         .hud-badge[data-level="明确"] { background: rgba(46,168,106,.18); color: #45d68a; }
         .hud-badge[data-level="边缘"] { background: rgba(224,168,58,.18); color: #e0a83a; }
         .hud-badge[data-level="混合"] { background: rgba(87,169,255,.18); color: #7cc0ff; }
+        /* 来源分级(2026-09-08)：这条建议是查表来的、实算来的，还是经验档位——悬停看构成 */
+        .hud-src { font-size: var(--fs-micro); font-weight: 700; padding: 1px 7px; border-radius: 999px;
+                   margin-left: auto; margin-right: 6px; cursor: help; white-space: nowrap;
+                   border: 1px solid transparent; }
+        .hud-src[data-src="ref"]  { background: rgba(87,169,255,.12);  color: #7cc0ff; border-color: rgba(87,169,255,.30); }
+        .hud-src[data-src="calc"] { background: rgba(46,168,106,.12);  color: #45d68a; border-color: rgba(46,168,106,.30); }
+        .hud-src[data-src="mix"]  { background: rgba(224,168,58,.12);  color: #e0a83a; border-color: rgba(224,168,58,.30); }
         .hud-action { font-family: var(--font-mono); font-size: var(--fs-heading); font-weight: 900; line-height: 1.15; margin-top: 2px; color: var(--text-primary); }
         #decisionHUD[data-sem="attack"]  .hud-action { color: #ff7a7d; }
         #decisionHUD[data-sem="passive"] .hud-action { color: #45d68a; }
@@ -607,6 +614,12 @@
         @media (max-width: 767.98px) { .macro-btn { min-height: 32px; padding: 4px 10px; } }
         /* zone-head 已有 ::after 分隔线撑满剩余空间，右侧操作键自然靠右——不再叠加 space-between */
         .tl-amt-inline::-webkit-outer-spin-button, .tl-amt-inline::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        /* 第二轮应对(2026-09-08)：我加注后，前方已行动者的再次表态 */
+        .tl-resp { display:block; width:100%; margin-top:3px; font-size:10px; line-height:1.4; padding:1px 2px;
+                   border:1px dashed var(--glass-border); border-radius:4px; background:transparent;
+                   color:var(--text-muted); cursor:pointer; }
+        .tl-resp.set { border-style:solid; border-color:#e0a83a; color:#e0a83a; }
+        .tl-resp:hover { filter:brightness(1.4); }
         /* 挂件改用途(2026-09-08)：原为升盲倒计时（已移除），现显示唯一会变且影响决策的数字——距钱圈人数 */
         #moneyWidget.urgent { border-color: #e5484d; color: #ff7a7d; animation: blPulse 1s ease-in-out infinite; }
         @keyframes blPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.0); } 50% { box-shadow: 0 0 0 3px rgba(229,72,77,.35); } }
@@ -709,9 +722,30 @@
                                 <div class="text-[10px] text-gray-400 mb-1">对手模型（翻后范围估计）</div>
                                 <div class="grid grid-cols-2 gap-1" id="grpVillainModel"></div>
                             </div>
-                            <div class="flex justify-between items-center pt-1 border-t border-white/10">
-                                <span class="text-[10px] text-yellow-500 font-bold">BB Ante (MTT)</span>
-                                <button id="anteToggle" onclick="toggleAnte()" class="bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded">开启</button>
+                            <!-- 尺度可选(2026-09-08)：范围表按 2.2x/2.5x 校准，选别的尺度会同步调整该开多宽 -->
+                            <div>
+                                <div class="text-[10px] text-gray-400 mb-1">我的开池尺度</div>
+                                <div class="grid grid-cols-5 gap-1" id="grpOpenSize"></div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-gray-400 mb-1">我的 3-Bet 尺度（开池额的倍数）</div>
+                                <div class="grid grid-cols-5 gap-1" id="grpTbSize"></div>
+                                <div id="sizingAdvice" class="text-[10px] mt-1 leading-relaxed text-gray-400"></div>
+                            </div>
+                            <div class="pt-1 border-t border-white/10">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] text-yellow-500 font-bold">Ante (MTT)</span>
+                                    <button id="anteToggle" onclick="toggleAnte()" class="bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded">开启</button>
+                                </div>
+                                <!-- ante 口径(2026-09-08)：牌桌显示的 ante 是全桌总额还是每人一份，
+                                     两种读法差约 8 倍，而死钱直接决定底池/赔率/SPR。
+                                     下方实时显示算出的死钱，开一手牌对一眼即可确认。 -->
+                                <div class="flex items-center gap-1 mt-1">
+                                    <span class="text-[10px] text-gray-400 shrink-0">上面填的 ante 是</span>
+                                    <button id="anteModePer" onclick="setAnteMode('perPlayer')" class="cfg-btn bl-btn active" title="时钟/牌桌标题栏显示的数（如 80/160 (20) 的 20）——每人一份，总额 = 该值 × 桌上人数">每人一份</button>
+                                    <button id="anteModeTotal" onclick="setAnteMode('total')" class="cfg-btn bl-btn" title="手牌回顾里的 All Ante——已经是全桌总额，不用再乘人数">全桌总额</button>
+                                </div>
+                                <div id="anteInfo" class="text-[10px] mt-1 leading-relaxed"></div>
                             </div>
                             <!-- 自动移位 + 升盲同步 + 筹码单位（2026-07-21） -->
                             <div class="flex justify-between items-center pt-1 border-t border-white/10">
@@ -914,6 +948,7 @@
                         <button onclick="switchMode('faceBet')" id="tabFaceBet" class="tab-btn">vs Raise</button>
                         <button onclick="switchMode('squeeze')" id="tabSqueeze" class="tab-btn">Squeeze</button>
                         <button onclick="switchMode('face3b')" id="tabFace3b" class="tab-btn">vs 3B</button>
+                        <button onclick="switchMode('face4b')" id="tabFace4b" class="tab-btn">vs 4B</button>
                         <button onclick="switchMode('coldCall')" id="tabColdCall" class="tab-btn">Cold Call</button>
                         <button onclick="switchMode('defend')" id="tabDefend" class="tab-btn">All-in</button>
                     </div>
@@ -986,7 +1021,7 @@
                 <!-- 常驻决策 HUD(2026-07-21)：桌面 sticky 置顶、手机 fixed 底部；翻前/翻后共用一个位置，
                      动作词 + 尺度 + 频率条 + 一句理由 + 明确/边缘/混合 标识，状态变即刷新（updateDecisionHUD） -->
                 <div id="decisionHUD" class="hud-empty" data-sem="neutral">
-                    <div class="hud-top"><span id="hudStage" class="hud-stage">翻前</span><span id="hudBadge" class="hud-badge" style="display:none"></span></div>
+                    <div class="hud-top"><span id="hudStage" class="hud-stage">翻前</span><span id="hudSrc" class="hud-src" style="display:none"></span><span id="hudBadge" class="hud-badge" style="display:none"></span></div>
                     <div id="hudAction" class="hud-action">等待输入</div>
                     <div id="hudSizing" class="hud-sizing" style="display:none"></div>
                     <div id="hudFreq" class="freq-bar hud-freq" style="display:none"></div>
@@ -1095,7 +1130,22 @@
             tableSize: '9max',   // 6max / 8max / 9max
             stage: 'normal',     // normal / bubble / final / headsup
             ante: true,          // BB ante on/off
+            // ante 口径(2026-09-08，经三张真实手牌回顾的底池算术验证)：
+            // GG **时钟/牌桌**显示的 ante（如 "80/160 (20)" 的 20）是**每人一份**；
+            // **手牌回顾**里的 "All Ante" 是**全桌总额** = 每人 × 桌上人数。
+            // 验证（底池精确对上，非估算）：
+            //   60/120 · All Ante 90  → 翻前 270 = 60+120+90 ✓，翻牌 870、转牌 1740 均精确
+            //   350/700 · All Ante 510 → 翻前 1560 = 350+700+510 ✓
+            //   时钟 80/160 (20) × 6 人 = 120 = 0.75BB，与上面两例的 90/120=0.75 一致
+            // 因此 OCR 从时钟/标题栏读到的数按 'perPlayer' 处理（默认）。
+            anteMode: 'perPlayer',
             playStyle: 'normal', // tight / normal / loose
+            // 尺度可选(2026-09-08)：我方开池 / 3-Bet 的尺度此前写死（开池 ante 2.2x / 无 ante
+            // 2.5x，3-Bet IP 3.0x / OOP 4.0x），但不同赛事、不同池子习惯的尺度差别很大，
+            // 而**尺度直接决定该开多宽**（开得越大，必须赢得越频繁 → 范围越紧）。
+            // 'auto' = 保持历史行为；数值 = 固定倍数（开池按 BB、3-Bet 按开池额的倍数）。
+            openSize: 'auto',    // 'auto' | 2 | 2.2 | 2.5 | 3
+            tbSize: 'auto',      // 'auto' | 2.5 | 3 | 3.5 | 4（3-Bet = 开池额 × 此值）
             // M5 诈唬极化(2026-07-20)：对手模型开关——exploit=纯价值收窄（对
             // under-bluff 实战池的剥削方向，历史默认行为）；gto=假设对手 GTO
             // 均衡下注（含诈唬），收窄后从弱端按极化比补回诈唬牌
@@ -1159,6 +1209,37 @@
             { val: 'normal', label: '标准' },
             { val: 'loose',  label: '松' }
         ];
+        // 尺度可选(2026-09-08)
+        const openSizeOpts = [
+            { val: 'auto', label: '自动', tip: '有 ante 用 2.2x、无 ante 用 2.5x；<25BB 用 2x（历史默认）' },
+            { val: 2,      label: '2x',   tip: '小开池：可以开得更宽（范围放宽约 1 个胜率点）' },
+            { val: 2.2,    label: '2.2x', tip: '含 ante 的标准开池尺度，范围表就是按它校准的' },
+            { val: 2.5,    label: '2.5x', tip: '无 ante 的标准开池尺度' },
+            { val: 3,      label: '3x',   tip: '大开池：需要更高的弃牌率才划算，范围相应收紧' }
+        ];
+        const tbSizeOpts = [
+            { val: 'auto', label: '自动', tip: '有位置 3.0x、无位置 4.0x（历史默认）' },
+            { val: 2.5,    label: '2.5x', tip: '小 3-Bet：给对手好赔率，只适合深码且有位置' },
+            { val: 3,      label: '3x',   tip: '有位置时的标准 3-Bet' },
+            { val: 3.5,    label: '3.5x', tip: '中间档' },
+            { val: 4,      label: '4x',   tip: '无位置时的标准 3-Bet' }
+        ];
+        function renderSizingAdvice() {
+            const el = document.getElementById('sizingAdvice'); if (!el) return;
+            const d = getOpenSizeAdjust();
+            const base = getOpenBaselineBB();
+            if (d === 0) {
+                el.innerHTML = `开池 <b>${getOpenSizeBB()}x</b>（= 校准基准 ${base}x），开池范围不做尺度修正。`;
+            } else {
+                el.innerHTML = `开池 <b>${getOpenSizeBB()}x</b> 偏离校准基准 ${base}x → 开池范围` +
+                    (d > 0
+                      ? `<b style="color:#e0a83a">收紧 ${d.toFixed(1)}</b> 个胜率点。` +
+                        `<span style="color:#8b95ab">尺度越大越需要对手弃牌，范围必须越紧。</span>`
+                      : `<b style="color:#45d68a">放宽 ${(-d).toFixed(1)}</b> 个胜率点。` +
+                        `<span style="color:#8b95ab">注意：放宽只能抵消阶段（泡沫/决赛桌）造成的收紧；` +
+                        `常规期本来就是完整范围表，不会再宽——范围表就是天花板。</span>`);
+            }
+        }
         // M5 诈唬极化(2026-07-20)：对手模型两档——剥削(默认，纯价值收窄)/GTO均衡(补回诈唬)
         const villainModelOpts = [
             { val: 'exploit', label: '剥削（少诈唬池）' },
@@ -1175,6 +1256,9 @@
                 btn.onclick = () => {
                     gameConfig.villainModel = o.val;
                     renderVillainModelGroup();
+                renderCfgGroup('grpOpenSize', openSizeOpts, 'openSize');   // 尺度可选(2026-09-08)
+                renderCfgGroup('grpTbSize', tbSizeOpts, 'tbSize');
+                renderSizingAdvice();
                     updateCfgSummary();
                     // 已进翻后且有分析结果：对手范围构成改变，即时重跑完整管线
                     try {
@@ -1205,6 +1289,9 @@
             // 桌型变化时，重新渲染位置选择器
             if (currentMode) switchMode(currentMode);
             updateCfgSummary();
+            // 尺度可选(2026-09-08)：改尺度要刷新说明，并让时间线按新开池额重算决策
+            try { renderSizingAdvice(); } catch (e) {}
+            try { if (typeof tlApply === 'function' && (tlHero || Object.keys(tlEvents || {}).length)) { renderTimeline(); tlApply(); } } catch (e) {}
         }
 
         // 配置上移(2026-07-14b)：赛事配置从左列面板改为 header ⚙ 配置 下拉，
@@ -1480,6 +1567,34 @@
                 (meaning ? `<br>${meaning}` : '');
         }
 
+        window.setAnteMode = function(m) {
+            gameConfig.anteMode = m;
+            renderAnteInfo();
+            onConfigChange();
+            try { if (heroCard1 && heroCard2) executeEngine(); } catch (e) {}
+        };
+        /** 把算出的死钱显示出来——用户开一手牌看底池即可核对口径对不对 */
+        function renderAnteInfo() {
+            const el = document.getElementById('anteInfo');
+            if (!el) return;
+            const tot = document.getElementById('anteModeTotal'), per = document.getElementById('anteModePer');
+            if (tot && per) { tot.classList.toggle('active', gameConfig.anteMode !== 'perPlayer');
+                              per.classList.toggle('active', gameConfig.anteMode === 'perPlayer'); }
+            if (!gameConfig.ante) { el.innerHTML = '<span class="text-gray-500">Ante 关闭：翻前死钱 = SB + BB = 1.5BB</span>'; return; }
+            const b = gameConfig.blinds || {};
+            const a = getAnteBB();
+            if (!(b.bb > 0) || !(b.ante > 0)) {
+                el.innerHTML = `<span class="text-gray-500">未填盲注，暂按 ante = 0.75BB 估算（实测 GG 急速赛稳定值）· 翻前死钱 ${(1.5 + 0.75).toFixed(2)}BB</span>`;
+                return;
+            }
+            const seats = parseInt(gameConfig.tableSize) || 9;
+            el.innerHTML = `Ante ${blFmt(b.ante)} / 大盲 ${blFmt(b.bb)} = <b>${a.toFixed(3)}BB</b>` +
+                (gameConfig.anteMode === 'perPlayer' ? `（每人 ${(b.ante / b.bb).toFixed(3)}BB × ${seats} 人 = 全桌 ${blFmt(b.ante * seats)}）` : '（已是全桌总额）') +
+                `<br><span style="color:var(--accent)">翻前死钱 = SB 0.5 + BB 1 + Ante ${a.toFixed(2)} = <b>${(1.5 + a).toFixed(2)}BB</b>` +
+                `（筹码数约 ${blFmt(Math.round((1.5 + a) * b.bb))}）</span>` +
+                `<br><span class="text-gray-500">对照手牌回顾的「翻牌前」底池，对不上就切另一个口径</span>`;
+        }
+
         function toggleAnte() {
             gameConfig.ante = !gameConfig.ante;
             const b = document.getElementById('anteToggle');
@@ -1487,6 +1602,7 @@
             b.className = gameConfig.ante 
                 ? 'bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded'
                 : 'bg-gray-600 text-white text-[10px] font-bold px-3 py-0.5 rounded';
+            renderAnteInfo();
             onConfigChange();
         }
 
@@ -1872,6 +1988,192 @@
         }
         };
 
+        // ══════════════════════════════════════════════════════════════════
+        // 范围表结构修复（2026-09-08，用户授权动禁改区）
+        // ══════════════════════════════════════════════════════════════════
+        // 由全表不变量审计（regression_tests/range_invariants.mjs）发现的结构性错误。
+        // 修复方式一律用**并集**，可证单调且**不凭空发明任何一手牌**——
+        // 只把"本该被包含却漏掉"的牌补进来，绝不新增表里从未出现过的手牌。
+        //
+        // 发现的问题：
+        //   ① SB 开池比 BTN 还紧（9max 32.4% vs 39.7%）—— SB 身后只有 1 人、BTN 身后 2 人，
+        //      身后人少反而开得更紧，牌理上不可能成立。
+        //   ② BTN 的 3-Bet 范围比 CO 还紧（对 UTG：4.37% vs 4.83%，CO 有 JJ 而 BTN 没有）。
+        //   ③ 缺键：9max 的 UTG1_vs_UTG、8max 的 SB_vs_UTG/MP/LJ/HJ —— 缺键会静默回退。
+        //
+        // 已知残余（写下来而不是藏着）：并集只能保证"SB ⊇ BTN"，修复后 SB 约 43%；
+        // 真实 GTO 的 SB vs BB 约 45-55%（含跛入策略），要达到那个宽度需要可引用的基准数据，
+        // 不在本次范围内——**我不会凭记忆补那一段**。
+        // 由 RangeConverter「8 max 40bb 1bb ante MTT GTO Ranges」RFI 页按像素判色提取
+        // （regression_tests/reference/ 有校验记录；二值化阈值=加注频率≥50%）
+        // 键 = 身后还有几个非盲注玩家；数组顺序 = 强度序（跨 6 个位置的加注频率之和降序），
+        // 供 isHandInOpenRange 的 percentile 截断使用 —— 顺序有语义，勿按字母重排。
+        const RC_40BB_RFI = {
+            /* 身后0人 BTN  49.92% */ 0: ['55', '66', '77', '88', '99', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8s', 'A9s', 'AA', 'AJo', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'ATo', 'ATs', 'J9s', 'JJ', 'JTs', 'K8s', 'K9s', 'KJo', 'KJs', 'KK', 'KQo', 'KQs', 'KTs', 'Q9s', 'QJs', 'QQ', 'QTs', 'T8s', 'T9s', 'TT', '44', 'K6s', 'K7s', '98s', 'KTo', 'QJo', '22', 'A2s', '33', 'Q8s', 'J8s', '87s', 'JTo', '97s', 'A9o', 'K5s', '76s', 'QTo', '65s', 'A8o', 'J7s', 'K4s', 'K9o', 'Q7s', 'T7s', '86s', '54s', 'A5o', 'A6o', 'A7o', 'J6s', 'J9o', 'K2s', 'K3s', 'K8o', 'Q4s', 'Q5s', 'Q6s', 'Q9o', 'T6s', 'T9o', '64s', '75s', '85s', '95s', '96s', '98o', 'A2o', 'A3o', 'A4o', 'J3s', 'J4s', 'J5s', 'J8o', 'K6o', 'K7o', 'Q2s', 'Q3s', 'Q8o', 'T4s', 'T5s', 'T8o'],
+            /* 身后1人 CO   38.16% */ 1: ['55', '66', '77', '88', '99', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8s', 'A9s', 'AA', 'AJo', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'ATo', 'ATs', 'J9s', 'JJ', 'JTs', 'K8s', 'K9s', 'KJo', 'KJs', 'KK', 'KQo', 'KQs', 'KTs', 'Q9s', 'QJs', 'QQ', 'QTs', 'T8s', 'T9s', 'TT', '44', 'K6s', 'K7s', '98s', 'KTo', 'QJo', '22', 'A2s', '33', 'Q8s', 'J8s', '87s', 'JTo', '97s', 'A9o', 'K5s', '76s', 'QTo', '65s', 'A8o', 'J7s', 'K4s', 'K9o', 'Q7s', 'T7s', '86s', '54s', 'A5o', 'A6o', 'A7o', 'J6s', 'J9o', 'K2s', 'K3s', 'K8o', 'Q4s', 'Q5s', 'Q6s', 'Q9o', 'T6s', 'T9o'],
+            /* 身后2人 HJ   29.11% */ 2: ['55', '66', '77', '88', '99', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8s', 'A9s', 'AA', 'AJo', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'ATo', 'ATs', 'J9s', 'JJ', 'JTs', 'K8s', 'K9s', 'KJo', 'KJs', 'KK', 'KQo', 'KQs', 'KTs', 'Q9s', 'QJs', 'QQ', 'QTs', 'T8s', 'T9s', 'TT', '44', 'K6s', 'K7s', '98s', 'KTo', 'QJo', '22', 'A2s', '33', 'Q8s', 'J8s', '87s', 'JTo', '97s', 'A9o', 'K5s', '76s', 'QTo', '65s', 'A8o', 'J7s', 'K4s', 'K9o', 'Q7s', 'T7s'],
+            /* 身后3人 MP   24.89% */ 3: ['55', '66', '77', '88', '99', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8s', 'A9s', 'AA', 'AJo', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'ATo', 'ATs', 'J9s', 'JJ', 'JTs', 'K8s', 'K9s', 'KJo', 'KJs', 'KK', 'KQo', 'KQs', 'KTs', 'Q9s', 'QJs', 'QQ', 'QTs', 'T8s', 'T9s', 'TT', '44', 'K6s', 'K7s', '98s', 'KTo', 'QJo', '22', 'A2s', '33', 'Q8s', 'J8s', '87s', 'JTo', '97s', 'A9o', 'K5s', '76s'],
+            /* 身后4人 UTG1 23.08% */ 4: ['55', '66', '77', '88', '99', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8s', 'A9s', 'AA', 'AJo', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'ATo', 'ATs', 'J9s', 'JJ', 'JTs', 'K8s', 'K9s', 'KJo', 'KJs', 'KK', 'KQo', 'KQs', 'KTs', 'Q9s', 'QJs', 'QQ', 'QTs', 'T8s', 'T9s', 'TT', '44', 'K6s', 'K7s', '98s', 'KTo', 'QJo', '22', 'A2s', '33', 'Q8s', 'J8s', '87s', 'JTo'],
+            /* 身后5人 UTG  18.70% */ 5: ['55', '66', '77', '88', '99', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8s', 'A9s', 'AA', 'AJo', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'ATo', 'ATs', 'J9s', 'JJ', 'JTs', 'K8s', 'K9s', 'KJo', 'KJs', 'KK', 'KQo', 'KQs', 'KTs', 'Q9s', 'QJs', 'QQ', 'QTs', 'T8s', 'T9s', 'TT', '44', 'K6s', 'K7s', '98s', '22'],
+        };
+
+        (function normalizeRangeTables() {
+            const uni = (a, b) => Array.from(new Set([...(a || []), ...(b || [])]));
+            const uniEntry = (a, b) => ({ value: uni(a && a.value, b && b.value),
+                                          bluff: uni(a && a.bluff, b && b.bluff) });
+            ['9max', '8max', '6max'].forEach(sz => {
+                const T = THREBET_RANGES[sz];
+                // ① 【已撤销】原本这里做 SB.open ∪= BTN.open，理由是"SB 身后只剩 1 人，
+                //    比身后 2 人的 BTN 更该宽"。**这个理由是错的**（2026-09-08 查证后撤销）：
+                //    位置单调只适用于 UTG→BTN 这条链（他们对盲注全都有位置），而 SB 翻后
+                //    永远 OOP、面对一个有极好赔率且会防守 75-85% 的 BB，所以真实 solver 里
+                //    SB 开池**窄于** BTN。公开口径：40BB 含 ante 的 MTT，SB RFI 约 35-40%。
+                //    我们的原始数据 9max/8max 32.4%、6max 35.1%，且 SB ⊂ BTN——本就正确，
+                //    并集反而把 6max 推到 46.9% 越过上界。详见 range_invariants.mjs 的 I1。
+                if (!T) return;
+                // ② BTN 的 3-Bet ⊇ CO 的 3-Bet（同一个开池者）
+                Object.keys(T).forEach(k => {
+                    const m = k.match(/^CO_vs_(\w+)$/); if (!m) return;
+                    const bk = 'BTN_vs_' + m[1];
+                    if (T[bk]) T[bk] = uniEntry(T[bk], T[k]);
+                });
+            });
+            // ②b 跨桌型对齐（2026-09-08，用户授权动禁改区）
+            // ------------------------------------------------------------
+            // **RFI 只取决于三件事：身后还有几人、筹码深度、底池里的死钱。**
+            // 桌上坐 6 个还是 9 个人，对 BTN 来说面对的永远只是 SB+BB —— 是同一个决策问题。
+            // （大盲 ante 制下死钱也与人数无关；若是每人一份的 ante，人多反而死钱更多、
+            //   应当更宽，方向仍不支持"人多打得更紧"。）
+            // 所以按"身后人数"对齐后，三种桌型同一格的范围应当一致。实测原始数据不一致：
+            //   BTN   9max 39.67 / 8max 39.67 / 6max 46.91   ← 同一个决策问题差 7.2 点
+            //   身后5 9max 12.52 / 8max  6.79               ← 差了一倍
+            // 上一轮的 I5 只比了 9max vs 6max、而且是**按座位名**比的，所以整张 8max
+            // 偏紧一倍完全没被抓到。这里按身后人数取并集（并集只会补齐、不发明新牌）。
+            // 方向也有外部佐证：RangeConverter 免费的 8-max 40bb/1bb-ante MTT 图表
+            // （UTG 18.79% / CO 38.02% / BTN 50.99% / SB 31.70%）比我们两边都宽。
+            {
+                // 从 BTN 往前数，index = 身后还有几个非盲注玩家
+                const chain = {
+                    '9max': ['BTN', 'CO', 'HJ', 'LJ', 'MP', 'UTG1', 'UTG'],
+                    '8max': ['BTN', 'CO', 'HJ', 'LJ', 'MP', 'UTG'],
+                    '6max': ['BTN', 'CO', 'MP', 'UTG']
+                };
+                const maxLen = Math.max(...Object.values(chain).map(a => a.length));
+                for (let i = 0; i < maxLen; i++) {
+                    const cells = [];
+                    Object.keys(chain).forEach(sz => {
+                        const pos = chain[sz][i];
+                        if (pos && GTO_RANGES[sz] && GTO_RANGES[sz][pos] && GTO_RANGES[sz][pos].open)
+                            cells.push(GTO_RANGES[sz][pos]);
+                    });
+                    if (cells.length < 2) continue;
+                    const merged = cells.reduce((acc, c) => uni(acc, c.open), []);
+                    cells.forEach(c => { c.open = [...merged]; });
+                }
+                // SB 只面对 BB，同样与桌型无关
+                const sbs = ['9max', '8max', '6max']
+                    .map(sz => GTO_RANGES[sz] && GTO_RANGES[sz].SB).filter(x => x && x.open);
+                if (sbs.length > 1) {
+                    const m = sbs.reduce((acc, c) => uni(acc, c.open), []);
+                    sbs.forEach(c => { c.open = [...m]; });
+                }
+            }
+            // ②c 外部基准补齐 + 嵌套闭包（2026-09-08，用户授权动禁改区）
+            // ------------------------------------------------------------
+            // 基准：RangeConverter 自己免费发布的「8 max 40bb 1bb ante MTT GTO Ranges」RFI 页。
+            // **提取方式是按像素判色，不靠人眼转录**（PDF 内嵌原图 2048×1313，四种颜色
+            //   橙=加注/蓝=弃/绿=跛入/深色背景，逐格取中心区统计占比）。
+            // **校验**：算出的加权组合% 必须对上图例上印刷的百分比 ——
+            //   UTG 18.69 vs 18.79 · UTG1 21.85 vs 21.59 · HJ 29.20 vs 29.55 ·
+            //   CO 38.16 vs 38.02 · BTN 50.77 vs 50.99 · SB 31.61/50.75 vs 31.70/50.55
+            //   六个已知值全部对上（≤0.35 点），且 UTG 一张与人工逐格转录逐手一致。
+            //   记录：regression_tests/reference/rangeconverter_8max_40bb.md
+            // **基准自身完全嵌套**（UTG ⊂ UTG1 ⊂ MP ⊂ HJ ⊂ CO ⊂ BTN），故直接整格采用，
+            //   比"并集补几手"更自洽。二值化阈值取加注频率 ≥50%（实测这样二值化后的组合%
+            //   与加权值最多差 1.2 点，比只取纯加注段准得多）。
+            // **两处不动**：
+            //   · 9max UTG（身后 6 人）—— 基准是 8-max，最前位只到身后 5 人，没有对应格；
+            //   · SB —— 基准的 SB 是"加注 31.61% + 跛入 50.75%"三色图，我们不实现跛入，
+            //     按 ≥50% 二值化会把半跛入格算成加注（得 41%，虚高）。保留我方 SB。
+            {
+                const behindOf = {
+                    '9max': { BTN: 0, CO: 1, HJ: 2, LJ: 3, MP: 4, UTG1: 5 },
+                    '8max': { BTN: 0, CO: 1, HJ: 2, LJ: 3, MP: 4, UTG: 5 },
+                    '6max': { BTN: 0, CO: 1, MP: 2, UTG: 3 }
+                };
+                Object.keys(behindOf).forEach(sz => {
+                    Object.keys(behindOf[sz]).forEach(pos => {
+                        const ref = RC_40BB_RFI[behindOf[sz][pos]];
+                        if (ref && GTO_RANGES[sz] && GTO_RANGES[sz][pos]) GTO_RANGES[sz][pos].open = [...ref];
+                    });
+                });
+                // 对子族连续闭包：收了 NN 就必须收下所有更大的对子（I3）。
+                // 需要它是因为**二值化阈值的边界效应**——基准里 22 的加注频率 0.53、
+                // 33 是 0.42，正好骑在 50% 两侧，于是二值化后成了"开 22 却不开 33"。
+                // 这不是 solver 的真实结构（两者本是同一档混合），补齐即可。
+                const RKS = '23456789TJQKA';
+                const pairClose = arr => {
+                    const set = new Set(arr), add = [];
+                    const lows = arr.filter(h => h.length === 2).map(h => RKS.indexOf(h[0]));
+                    if (!lows.length) return arr;
+                    for (let v = Math.min(...lows) + 1; v < RKS.length; v++) {
+                        const h = RKS[v] + RKS[v];
+                        if (!set.has(h)) add.push(h);
+                    }
+                    return add.length ? arr.concat(add) : arr;
+                };
+                ['9max', '8max', '6max'].forEach(sz => {
+                    Object.keys(GTO_RANGES[sz] || {}).forEach(pos => {
+                        const c = GTO_RANGES[sz][pos];
+                        if (c && c.open) c.open = pairClose(c.open);
+                    });
+                });
+                // 嵌套闭包：前位开的牌，后位必须也开（I2，可证）。
+                // 基准本身已嵌套，这里主要是把未被基准覆盖的 9max UTG 并进 UTG1。
+                const fwd = {
+                    '9max': ['UTG', 'UTG1', 'MP', 'LJ', 'HJ', 'CO', 'BTN'],
+                    '8max': ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN'],
+                    '6max': ['UTG', 'MP', 'CO', 'BTN']
+                };
+                Object.keys(fwd).forEach(sz => {
+                    const seq = fwd[sz].filter(p => GTO_RANGES[sz] && GTO_RANGES[sz][p] && GTO_RANGES[sz][p].open);
+                    for (let i = 1; i < seq.length; i++) {
+                        const prev = GTO_RANGES[sz][seq[i - 1]].open, cur = GTO_RANGES[sz][seq[i]];
+                        cur.open = uni(cur.open, prev);
+                    }
+                    // SB 不在这条链上（翻后 OOP），不做闭包
+                });
+                // 闭包后再跑一次跨桌型对齐，保持"身后人数相同即同一格"
+                const chain2 = {
+                    '9max': ['BTN', 'CO', 'HJ', 'LJ', 'MP', 'UTG1', 'UTG'],
+                    '8max': ['BTN', 'CO', 'HJ', 'LJ', 'MP', 'UTG'],
+                    '6max': ['BTN', 'CO', 'MP', 'UTG']
+                };
+                for (let i = 0; i < 7; i++) {
+                    const cells = [];
+                    Object.keys(chain2).forEach(sz => {
+                        const pos = chain2[sz][i];
+                        if (pos && GTO_RANGES[sz] && GTO_RANGES[sz][pos] && GTO_RANGES[sz][pos].open)
+                            cells.push(GTO_RANGES[sz][pos]);
+                    });
+                    if (cells.length < 2) continue;
+                    const merged = cells.reduce((acc, c) => uni(acc, c.open), []);
+                    cells.forEach(c => { c.open = [...merged]; });
+                }
+            }
+            // ③ 缺键补齐：用**位置语义最接近**的已有键，且显式写出来（不再靠静默回退）
+            const fill = (sz, key, fromSz, fromKey, why) => {
+                const T = THREBET_RANGES[sz], F = THREBET_RANGES[fromSz];
+                if (!T || T[key] || !F || !F[fromKey]) return;
+                T[key] = { value: [...F[fromKey].value], bluff: [...F[fromKey].bluff], _derived: why };
+            };
+            // UTG1 对 UTG 3-Bet：9max 无此表，用邻位 MP_vs_UTG 近似（比回退到别的开池者更贴）
+            fill('9max', 'UTG1_vs_UTG', '9max', 'MP_vs_UTG', '9max 无 UTG1 自有表，按邻位 MP 近似');
+            // 8max 的 SB 对前位：用 9max 同名键（桌型差异小于开池者位置差异）
+            ['UTG', 'MP', 'LJ', 'HJ'].forEach(op =>
+                fill('8max', 'SB_vs_' + op, '9max', 'SB_vs_' + op, '8max 无此键，用 9max 同名键'));
+        })();
+
         // ============================================================
         // stageConfig 多维矩阵(替代原 icmPenalty 单一数字)
         // ============================================================
@@ -1910,9 +2212,74 @@
             return STAGE_CONFIG[gameConfig.gameType][gameConfig.stage];
         }
 
+        // ══════════════════════════════════════════════════════════════════
+        // Ante 实际大小(2026-09-08)：原全文写死"开 ante → 死钱 +1.0BB"
+        // ══════════════════════════════════════════════════════════════════
+        // 用户核实 GG 显示的 "80/160 (20)" 中的 20 是**全桌总额**（由各家平摊），
+        // 即 0.125BB，而不是我们假设的 1.0BB —— 差 8 倍，而死钱直接决定底池、
+        // 底池赔率、SPR 与所有承诺区判定。现改为按实际填入的 ante/BB 实时计算。
+        // anteMode：'total'=显示值即全桌总额（用户确认的 GG 口径，默认）
+        //           'perPlayer'=显示值是每人一份，总额 = 该值 × 在座人数
+        //           （行业标准的"10%/12.5% ante"是每人口径，两种读法差约 8 倍，
+        //            所以留开关；界面会把算出的死钱显示出来供一眼核对）
+        function getAnteBB() {
+            if (!gameConfig.ante) return 0;
+            const b = gameConfig.blinds || {};
+            // 没填盲注时的兜底：实测 GG 急速赛 ante 总额稳定在约 0.75BB（三手牌验证，
+            // 见 gameConfig.anteMode 注释），用它而不是旧的 1.0 假设
+            if (!(b.bb > 0) || !(b.ante > 0)) return 0.75;
+            const one = b.ante / b.bb;
+            if (gameConfig.anteMode === 'perPlayer') {
+                const seats = parseInt(gameConfig.tableSize) || 9;
+                return one * seats;
+            }
+            return one;
+        }
+
         // BB Ante 修正(开启时,所有位置开池阈值放宽约 2-3%)
         function getAnteMod() {
-            return gameConfig.ante ? -2.5 : 0;
+            // 按 ante 实际大小成比例(2026-09-08)：原为开关式固定 -2.5，
+            // 不管 ante 是 BB 的 10% 还是 100% 都一样放宽，没有依据。
+            // 公开资料口径：9 人桌 10%(每人) ante 使底池由 1.5BB 升到约 2.4BB，
+            // 范围随之放宽约 2-4 个百分点。据此按"死钱增量 / 1BB"线性缩放：
+            // 死钱 +1.0BB（标准 BB ante）→ -3.0；+0.125BB（小 ante）→ -0.4。
+            const a = getAnteBB();
+            if (!(a > 0)) return 0;
+            return -Math.min(3.0, a * 3.0);
+        }
+
+        // ============================================================
+        // 尺度可选（2026-09-08）
+        // ------------------------------------------------------------
+        // 开池尺度此前写死。它不只是一个显示数字——**尺度决定该开多宽**：
+        // 开池 3x 时你冒 3BB 去赢 1.5BB 死钱，需要的弃牌率明显高于 2.2x，范围必须更紧；
+        // 反之 2x 的小开池可以开得更宽。GTO_RANGES 是按 2.2x(有 ante)/2.5x(无 ante) 校准的，
+        // 所以偏离这个基准时要给开池阈值一个 floor 修正（与 getAnteMod / getStageOpenAdjust
+        // 同一个 rawEq 刻度，三者相加）。
+        // 力度取自既有先例：faceBet 的 sizeMod 认为 3.0x vs 2.2x 是「大尺度」并把防守频率
+        // 收 15-20%，折算到 rawEq 门槛约 2-3 点。这里取 **每偏离 1BB → 3 个 rawEq 点**，
+        // 上下各封顶 3 点（不让极端输入把范围推到失真）。
+        function getOpenBaselineBB() {
+            // 短码 <25BB 历史上一律用 2.0x（小开池保筹码），此时基准也是 2.0
+            if (globalHeroStack < 25) return 2.0;
+            return gameConfig.ante ? 2.2 : 2.5;
+        }
+        function getOpenSizeBB() {
+            const s = gameConfig.openSize;
+            return (s === 'auto' || !(s > 0)) ? getOpenBaselineBB() : s;
+        }
+        function getOpenSizeAdjust() {
+            const s = gameConfig.openSize;
+            if (s === 'auto' || !(s > 0)) return 0;
+            const d = s - getOpenBaselineBB();
+            if (Math.abs(d) < 0.05) return 0;
+            return Math.max(-3, Math.min(3, d * 3));   // 正=更紧
+        }
+        // 3-Bet 尺度：'auto' 保持历史的 IP 3.0x / OOP 4.0x
+        function getTbMult(isIP) {
+            const s = gameConfig.tbSize;
+            if (s === 'auto' || !(s > 0)) return isIP ? 3.0 : 4.0;
+            return s;
         }
 
         // ============================================================
@@ -2034,12 +2401,22 @@
         // 5-7BB 后位偏宽。本版由 HRC/SnapShove 含 ante 9max 基准（组合百分比矩阵）
         // 经 EQ_TABLE 全 169 手换算得出；校准脚本与基准矩阵见 CLAUDE.md 对应条目。
         // 修改本表前先理解伪百分位刻度，勿直填组合百分比。
+        // 单位改为**真实累计组合百分比**(2026-09-08)：
+        // 旧表存的是伪百分位阈值（UTG 10BB = 41），没人能一眼判断它对应多宽的范围，
+        // 也正因如此被误读过两次。下面填的是 2026-07-13 重校准时**换算之前的原始基准**
+        //（HRC/SnapShove 含 ante 9max 组合百分比矩阵）——等于把当初那层非线性换算整个删掉，
+        // 直接用来源数据。判定改为 getPushCombopct(hand) <= 阈值，两边同为组合百分比。
+        //
+        // 与公开免费图表（PokerCoaching 9-max BB-ante）的抽检对照，9BB 档：
+        //   UTG 我们插值 14.0% vs 图表 16.6% ｜ CO 33.3% vs 35.4% ｜ SB 60.0% vs 73.5%
+        // 前中位很接近；SB 明显更紧，与"本表按较小 ante 校准、该图表按 BB ante(=1BB)"
+        // 的差异方向一致（ante 越大范围越宽）。SB 档是后续最值得复核的一格。
         const NASH_PUSH = {
-            3:  { UTG:60,  UTG1:63,  MP:65,  LJ:68,  HJ:72,  CO:79,  BTN:87,  SB:100 },
-            5:  { UTG:51,  UTG1:52,  MP:55,  LJ:57,  HJ:61,  CO:64,  BTN:70,  SB:79  },
-            7:  { UTG:45,  UTG1:46,  MP:49,  LJ:50,  HJ:54,  CO:57,  BTN:64,  SB:71  },
-            10: { UTG:41,  UTG1:42,  MP:43,  LJ:46,  HJ:49,  CO:52,  BTN:58,  SB:66  },
-            15: { UTG:36,  UTG1:38,  MP:39,  LJ:41,  HJ:43,  CO:46,  BTN:52,  SB:59  }
+            3:  { UTG:45, UTG1:50, MP:55, LJ:60, HJ:68, CO:78, BTN:90, SB:100 },
+            5:  { UTG:28, UTG1:31, MP:35, LJ:40, HJ:46, CO:53, BTN:65, SB:80  },
+            7:  { UTG:18, UTG1:20, MP:23, LJ:27, HJ:33, CO:40, BTN:52, SB:66  },
+            10: { UTG:12, UTG1:13, MP:15, LJ:19, HJ:24, CO:30, BTN:43, SB:57  },
+            15: { UTG:7,  UTG1:8,  MP:10, LJ:12, HJ:15, CO:20, BTN:30, SB:44  }
         };
 
         function getNashPushRange(stack, pos) {
@@ -2074,6 +2451,7 @@
 
         // 状态记忆
         let globalHeroStack = 40, globalVillainStack = 40;
+        let globalFourBetSize = 22;   // 面对 4-Bet(2026-09-08)：对手 4-Bet 到多少 BB
         // O4(2026-07)：桌面平均码跨场景保留；未手动改过时仍跟随 globalHeroStack（保持原默认语义）
         let globalAvgStack = 40, avgStackTouched = false;
         let globalPosHero = 'BTN', globalPosVillain = 'UTG', globalPosCaller = 'CO';
@@ -2149,7 +2527,18 @@
             // 检查在前）；大码在泡沫期的额外侵略性由 pushMod（推注范围）承担。
             {
                 const adj = getStageOpenAdjust(stage, effStack, (typeof globalAvgStack !== 'undefined' ? globalAvgStack : 0));
-                if (adj.delta !== 0) {
+                // 尺度可选(2026-09-08)：把开池尺度偏离基准的修正并进同一个 floor。
+                // 两个要点（都是实测踩出来的）：
+                //  ① 必须**合并后再判**——原来 `if (adj.delta !== 0)` 会让常规期（stage
+                //     delta = 0）整段被跳过，尺度修正永远不生效。
+                //  ② 这段 floor 只会**削**范围、不会加宽（表本身就是天花板：上面
+                //     `range.includes` 已把表外的牌全挡掉）。所以当阶段没有收紧、只有一个
+                //     负的尺度修正时，**不能凭空加出一个原本不存在的 floor** ——否则选 2x
+                //     （本意是放宽）反而比自动档还紧（实测 28.96% → 28.05%）。负修正的真实
+                //     语义是"抵消阶段的收紧"，抵消到"完整范围表"就到顶了。
+                const _stageDelta = adj.delta, _sizeDelta = getOpenSizeAdjust();
+                adj.delta = _stageDelta + _sizeDelta;
+                if (_stageDelta !== 0 || _sizeDelta > 0) {
                     const rawEq    = getRawEquity(handStr);
                     const posThresh = OPEN_THRESHOLDS[position] || 50;
                     // scaleback：高 posThresh 位置（UTG 60 → scaleback 5），防 AKs 被误删
@@ -2158,16 +2547,13 @@
                     if (rawEq < stageFloor) return false;
                 }
             }
-            // 极速赛：截断尾端（阈值乘以 scale）
-            if (gameType === 'turbo') {
-                const cutoff = 0.85 * scale;
-                if (percentile > cutoff) {
-                    const rawEq = getRawEquity(handStr);
-                    const posThresh = OPEN_THRESHOLDS[position] || 50;
-                    if (rawEq < posThresh + 4 + getAnteMod()) return false;
-                    // 高权益手牌豁免
-                }
-            }
+            // 极速赛收紧已移除(2026-09-08，实测+资料双重否定)：
+            // 实测原逻辑让 UTG 11.9%→11.0%、MP 15.2%→14.5%，而 CO/BTN 一手牌都没变
+            //（即：只在最不需要的地方起作用，且方向是收紧）。
+            // 公开资料口径："推注范围主要取决于筹码相对盲注和 ante 的比例，盲注涨多快
+            // 关系不大"；急速赛范围之所以更宽，是因为其 **ante 相对更大**，而不是因为"快"。
+            // 所以盲注速度不应直接改范围——该起作用的是 ante 大小，已由 getAnteMod() 按
+            // 实际 ante/BB 比例承担。turbo 仅保留 ICM 压力 ×1.1 与 stageCfg 的 pushMod。
             return true;
         }
 
@@ -2473,6 +2859,9 @@
                 renderCfgGroup('grpStage', stageOpts, 'stage');
                 renderCfgGroup('grpPlayStyle', playStyleOpts, 'playStyle');
                 renderVillainModelGroup();
+                renderCfgGroup('grpOpenSize', openSizeOpts, 'openSize');   // 尺度可选(2026-09-08)
+                renderCfgGroup('grpTbSize', tbSizeOpts, 'tbSize');
+                renderSizingAdvice();
                 // switchMode 内的 saveCurrentInputs 会从"旧输入框"读值覆盖全局——先把恢复值写进现有输入框
                 [['stackHero', globalHeroStack], ['stackVillain', globalVillainStack], ['raiseSize', globalRaiseSize],
                  ['threeBetSize', globalThreeBetSize], ['avgStack', globalAvgStack]].forEach(([id, v]) => {
@@ -2524,6 +2913,43 @@
             if (/跟注|过牌|Cold Call|接全下|CALL|CHECK|平跟/i.test(s)) return 'passive';
             return 'neutral';
         }
+        // ══════════ 来源分级（2026-09-08）══════════
+        // 一条建议是"查校准过的表得来的"、"当场用你的具体底牌算出来的"，还是"经验档位"，
+        // 可信度差很多，但此前界面上完全看不出来。这里只做**显示层**标注，不改任何决策。
+        //   📖 基准表 = 决策由范围表决定（GTO_RANGES / THREBET / SQUEEZE / REJAM /
+        //               BB_DEFENSE / NASH_PUSH，均按公开基准校准并受结构不变量约束）
+        //   🧮 实算   = 决策由本机实时计算得出（蒙特卡洛胜率 / EV / 底池赔率），与表无关
+        //   🧭 启发式 = 决策来自经验规则或频率档位，没有数据基准（M4 已列为已知简化）
+        // 一个节点常常同时含两种成分，标注取**决定动作的那一层**，tooltip 写清全部构成。
+        function adviceSourceOf(boardN) {
+            if (boardN >= 3) {
+                return { k: '🧮 实算 + 🧭 启发式', c: 'mix',
+                         t: '胜率：翻牌/转牌用组合加权蒙特卡洛、河牌精确穷举 —— 实算。\n' +
+                            '对手范围：按行动线 + 下注尺度 + 牌面成手强度动态收窄，起点是校准过的翻前范围表。\n' +
+                            '下注频率档位（如 67%/33%）：启发式规则，不是 solver 的精确混合频率（已知简化 M4）。' };
+            }
+            const m = currentMode;
+            if (m === 'defend') return { k: '🧮 实算', c: 'calc',
+                t: '接全下是全下子博弈，没有翻后，收益函数是确定的。\n' +
+                   '所以这里用你的具体两张底牌对「对手的 Nash 推注范围」实时跑 6000-50000 次蒙特卡洛，\n' +
+                   '再和按位置算出的底池赔率红线比 —— 不查表。差距落在统计误差内时会直接判为硬币局。' };
+            if (m === 'face4b') return { k: '🧮 实算', c: 'calc',
+                t: '5-Bet 全下的 EV 是实算的：弃牌率 × (4-Bet 额 + 死钱) + 跟注段胜率项 − 风险。\n' +
+                   '跟注分支是启发式（翻后价值算不出来），已在理由里注明。\n' +
+                   '注意：弃牌率来自「对手 4-Bet 里有多少诈唬」这个假设，对手很紧时应偏弃牌。' };
+            if (m === 'coldCall' || m === 'face3b') return { k: '📖 基准表 + 🧮 价格闸门', c: 'mix',
+                t: '范围：3-Bet 范围表（THREBET_RANGES，受位置单调/嵌套等结构不变量约束）。\n' +
+                   '跟注与否还要过一道价格闸门：用你的具体底牌对该范围实时算胜率，与真实赔率比较。' };
+            if (globalHeroStack > 0 && globalHeroStack <= 12) return { k: '📖 基准表', c: 'ref',
+                t: '短码推/弃走 Nash 数表（NASH_PUSH，含 ante 的 HRC/SnapShove 组合百分比基准，\n' +
+                   '2026-07-13 重校准）+ 本地生成的推/弃强度排序（对跟注范围的组合加权胜率）。' };
+            return { k: '📖 基准表', c: 'ref',
+                t: '开池/3-Bet/挤压/Re-Jam 均为查表：范围表按公开 GTO 共识校准，\n' +
+                   '并由 regression_tests/range_invariants.mjs 的结构不变量（位置单调 / 嵌套 /\n' +
+                   '族内连续 / 对手数单调 / 跨桌型 / 键完整性）持续把关。\n' +
+                   '阶段、码量、ante、开池尺度的修正是启发式，作用在查表结果之上。' };
+        }
+
         function updateDecisionHUD() {
             const hud = document.getElementById('decisionHUD');
             if (!hud) return;
@@ -2586,6 +3012,14 @@
             freqEl.innerHTML = freqHTML; freqEl.style.display = freqHTML ? '' : 'none';
             whyEl.textContent = why; whyEl.style.display = why ? '' : 'none';
             badgeEl.textContent = badge; badgeEl.dataset.level = badge; badgeEl.style.display = badge ? '' : 'none';
+            // 来源分级(2026-09-08)：只在真出了建议时显示
+            const srcEl = document.getElementById('hudSrc');
+            if (srcEl) {
+                if (action && !/等待输入|计算中|悖论/.test(action)) {
+                    const s = adviceSourceOf(boardN);
+                    srcEl.textContent = s.k; srcEl.title = s.t; srcEl.dataset.src = s.c; srcEl.style.display = '';
+                } else srcEl.style.display = 'none';
+            }
         }
 
         // ══════════ 分层显示(2026-07-21)：默认只看牌局状态 + 决策 + 理由 ══════════
@@ -2961,7 +3395,7 @@
                 const id = 'tab' + t;
                 const el = document.getElementById(id);
                 if (el) {
-                    const modeMap = { Open:'open', VsLimp:'vsLimp', FaceBet:'faceBet', Squeeze:'squeeze', Face3b:'face3b', ColdCall:'coldCall', Defend:'defend' };
+                    const modeMap = { Open:'open', VsLimp:'vsLimp', FaceBet:'faceBet', Squeeze:'squeeze', Face3b:'face3b', Face4b:'face4b', ColdCall:'coldCall', Defend:'defend' };
                     el.className = modeMap[t] === mode ? 'tab-btn active' : 'tab-btn';
                 }
             });
@@ -3072,6 +3506,34 @@
                     <input type="number" id="stackHero" value="${globalHeroStack}" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
                 </div>`;
             }
+            else if (mode === 'face4b') {
+                // 面对 4-Bet(2026-09-08)：我已 3-Bet，对手再加注。需要两个尺度：我的 3-Bet 与他的 4-Bet
+                html = `
+                <div class="panel-bg p-1.5 rounded">
+                    <div class="text-[10px] text-green-400 mb-1">4-Bet 者位置</div>
+                    ${renderPosSelector('posVillain', globalPosVillain, ['UTG'])}
+                </div>
+                <div class="panel-bg p-1.5 rounded">
+                    <div class="text-[10px] text-red-400 mb-1">我 3-Bet 位</div>
+                    ${renderPosSelector('posHero', globalPosHero, [], true)}
+                </div>
+                <div class="panel-bg p-1.5 rounded border-yellow-700/50">
+                    <label class="text-[10px] text-yellow-500 block mb-1">我 3-Bet 到 (BB)</label>
+                    <input type="number" id="threeBetSize" value="${globalThreeBetSize}" step="0.5" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
+                </div>
+                <div class="panel-bg p-1.5 rounded border-yellow-700/50">
+                    <label class="text-[10px] text-yellow-500 block mb-1">他 4-Bet 到 (BB)</label>
+                    <input type="number" id="fourBetSize" value="${globalFourBetSize}" step="0.5" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
+                </div>
+                <div class="panel-bg p-1.5 rounded">
+                    <label class="text-[10px] text-green-400 block mb-1">4B者筹码 (BB)</label>
+                    <input type="number" id="stackVillain" value="${globalVillainStack}" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
+                </div>
+                <div class="panel-bg p-1.5 rounded border-red-900/50">
+                    <label class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
+                    <input type="number" id="stackHero" value="${globalHeroStack}" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
+                </div>`;
+            }
             else if (mode === 'face3b') {
                 html = `
                 <div class="panel-bg p-1.5 rounded">
@@ -3157,6 +3619,7 @@
             gameConfig.gameType = 'normal'; gameConfig.tableSize = '9max'; gameConfig.stage = 'normal'; gameConfig.ante = true;
             gameConfig.playStyle = 'normal'; // B1：彻底重置应包含打法风格
             gameConfig.villainModel = 'exploit'; // M5：对手模型复位为默认剥削
+            gameConfig.openSize = 'auto'; gameConfig.tbSize = 'auto'; // 尺度可选(2026-09-08)
             gameConfig.autoAdvancePos = true; gameConfig.chipUnit = 'bb'; gameConfig.blinds.running = false; // 2026-07-21
             try { tyClear(); } catch (e) {} // 赛事信息(2026-09-08)：彻底重置连同赛事信息一并清空
             chipVals = { hero: null, villain: null, avg: null }; try { blSave(); blRender(); } catch (e) {}
@@ -3169,7 +3632,10 @@
             renderCfgGroup('grpTableSize', tableSizeOpts, 'tableSize');
             renderCfgGroup('grpStage', stageOpts, 'stage');
             renderCfgGroup('grpPlayStyle', playStyleOpts, 'playStyle');
-            renderVillainModelGroup(); // M5：对手模型组同步复位渲染
+            renderVillainModelGroup();
+                renderCfgGroup('grpOpenSize', openSizeOpts, 'openSize');   // 尺度可选(2026-09-08)
+                renderCfgGroup('grpTbSize', tbSizeOpts, 'tbSize');
+                renderSizingAdvice(); // M5：对手模型组同步复位渲染
             const b = document.getElementById('anteToggle');
             b.innerText = '开启';
             b.className = 'bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded';
@@ -3393,6 +3859,65 @@
 
         // 手牌排名表(用于 Nash push:按胜率降序排,前 X% 是 push 范围)
         // 简化版:用 raw equity 直接排序
+        // ══════════════════════════════════════════════════════════════════
+        // 推/弃专用手牌排序（2026-09-08，本地计算生成，非人工填写）
+        // ══════════════════════════════════════════════════════════════════
+        // 取代原来的"伪百分位"刻度。旧刻度是把裸胜率线性映射到 0-100，再给同花打一个
+        // -8 的经验补丁——它既不是组合百分比、也没有理论依据，且已导致过两次误判
+        //（2026-07-10 的策略评估据此得出"中后位偏宽 1.5 倍"，换算后真相是前位过紧）。
+        //
+        // 本表的生成方式（可复现，脚本见 regression_tests 说明）：
+        //   跟注范围 := 按裸胜率排序的前 15% 组合（31 类，定义明确可复算）
+        //   每手牌强度 := 该手牌对上述跟注范围的组合加权 MC 胜率（4,000 次/手）
+        //   按强度降序排列，累加组合数 → 该手牌的**真实累计组合百分比**
+        // 这才是推/弃该用的排序：短码全下没有翻后，唯一重要的就是"被跟注时赢多少"。
+        //
+        // 与旧的裸胜率排序相比，位次变动最大的正是理论预期的那几类：
+        //   小对子大幅上移（33 +48 位、22 +63 位、44 +21 位）——它们对强范围是硬币局甚至
+        //     更好，而旧的"同花 -8"补丁完全没覆盖到这一类；
+        //   同花连张上移（76s +73、T8s +30、T9s +26）；
+        //   被压制的同花高张下移（KTs -16、K9s -16、A6s -10）。
+        // 数值单位 = 累计组合百分比（AA=0.45 表示 AA 处在最强的 0.45% 组合之内）。
+        const PUSH_COMBO_PCT = {
+            'AA':0.45, 'KK':0.9, 'QQ':1.36, 'JJ':1.81, 'AKs':2.11, 'AKo':3.02,
+            'TT':3.47, 'AQs':3.77, 'AQo':4.68, '99':5.13, 'AJs':5.43, 'AJo':6.33,
+            '88':6.79, 'ATs':7.09, '77':7.54, 'ATo':8.45, '66':8.9, 'A9s':9.2,
+            'KQs':9.5, '33':9.95, '55':10.41, 'A8s':10.71, 'KQo':11.61, '22':12.07,
+            'KJs':12.37, 'A9o':13.27, '44':13.73, 'A5s':14.03, 'A4s':14.33, 'A3s':14.63,
+            'A7s':14.93, 'A2s':15.23, 'A8o':16.14, 'QJs':16.44, 'KJo':17.35, 'QTs':17.65,
+            'JTs':17.95, 'KTs':18.25, 'A6s':18.55, 'T9s':18.85, 'A4o':19.76, 'A7o':20.66,
+            'T8s':20.97, 'K6s':21.27, '76s':21.57, 'K9s':21.87, 'Q9s':22.17, 'J9s':22.47,
+            'JTo':23.38, 'A5o':24.28, '98s':24.59, '97s':24.89, 'K3s':25.19, 'A3o':26.09,
+            'J8s':26.4, '54s':26.7, 'T9o':27.6, 'A2o':28.51, 'QTo':29.41, 'A6o':30.32,
+            'J7s':30.62, 'K8s':30.92, 'K4s':31.22, 'QJo':32.13, 'K2s':32.43, '75s':32.73,
+            '87s':33.03, 'T7s':33.33, '65s':33.63, '64s':33.94, 'Q8s':34.24, 'Q9o':35.14,
+            'Q4s':35.44, 'Q3s':35.75, 'KTo':36.65, 'K5s':36.95, '85s':37.25, 'T6s':37.56,
+            '86s':37.86, 'K7s':38.16, 'Q7s':38.46, 'Q6s':38.76, '96s':39.06, '63s':39.37,
+            '53s':39.67, 'K9o':40.57, 'Q5s':40.87, '87o':41.78, 'Q2s':42.08, '74s':42.38,
+            'T5s':42.68, 'J4s':42.99, '43s':43.29, 'Q8o':44.19, '95s':44.49, 'J9o':45.4,
+            '52s':45.7, '86o':46.61, 'J5s':46.91, 'J3s':47.21, '54o':48.11, '73s':48.42,
+            '94s':48.72, 'T2s':49.02, 'J2s':49.32, '98o':50.23, 'T3s':50.53, '65o':51.43,
+            'T8o':52.34, '32s':52.64, 'J6s':52.94, 'T7o':53.85, 'K6o':54.75, '75o':55.66,
+            '62s':55.96, 'J8o':56.86, '84s':57.16, 'K8o':58.07, '93s':58.37, '82s':58.67,
+            'K4o':59.58, '42s':59.88, '76o':60.78, 'T4s':61.09, '96o':61.99, '92s':62.29,
+            'K7o':63.2, '53o':64.1, '72s':64.4, 'T6o':65.31, 'Q4o':66.21, 'K2o':67.12,
+            'Q6o':68.02, '97o':68.93, 'Q7o':69.83, 'K5o':70.74, 'J6o':71.64, 'J7o':72.55,
+            '83s':72.85, 'K3o':73.76, 'T3o':74.66, 'J5o':75.57, 'J4o':76.47, 'Q5o':77.38,
+            '74o':78.28, 'Q2o':79.19, '64o':80.09, '95o':81, '85o':81.9, 'Q3o':82.81,
+            'J2o':83.71, 'T4o':84.62, '84o':85.52, '42o':86.43, '52o':87.33, '63o':88.24,
+            '73o':89.14, '94o':90.05, '32o':90.95, '43o':91.86, 'J3o':92.76, '62o':93.67,
+            '82o':94.57, '93o':95.48, 'T5o':96.38, '83o':97.29, 'T2o':98.19, '92o':99.1,
+            '72o':100
+        };
+        /** 手牌在推/弃排序中的累计组合百分比（0=最强，100=最弱）；未知手牌视为最弱 */
+        function getPushCombopct(hand) {
+            const v = PUSH_COMBO_PCT[hand];
+            return typeof v === 'number' ? v : 100;
+        }
+
+        // ⚠️ 已弃用(2026-09-08)：这是"裸胜率线性映射 + 同花 -8"的伪百分位，**不是组合百分比**，
+        // 两个刻度换算非线性（组合 12% ≈ 伪 41）。推/弃判定已全部改用 getPushCombopct()。
+        // 保留仅为兼容历史回归脚本，**新代码不要使用**。
         function getHandPercentile(hand) {
             // 169 种手牌从强到弱排名,返回 0-100 百分位(0=最强)
             const eq = getRawEquity(hand);
@@ -3471,6 +3996,155 @@
             return 'fold';
         }
 
+        // ══════════════════════════════════════════════════════════════════
+        // 面对 4-Bet（2026-09-08 新增：此前完全没有这个节点）
+        // ══════════════════════════════════════════════════════════════════
+        // 修复前的实际行为：我 3-Bet 到 8、对手 4-Bet 到 22 —— 系统**完全无视那个 4-Bet**，
+        // 回一句"🔴 主动 3-Bet，7.5BB 3-Bet"，在最贵的翻前节点上给出无意义但可执行的建议。
+        //
+        // 对手的 4-Bet 范围高度极化（价值 + 用 A 阻断张做的诈唬），按 4-Bet 者位置分两桶。
+        // 这是 HEURISTIC 级数据（无解算器来源），但**结构**是公认的：
+        // 4-Bet 范围窄且两极，价值段以 QQ+/AK 为核心，诈唬段用 Ax 同花阻断 AA/AK。
+        const FOURBET_RANGES = {
+            // 早/中位 4-Bet：他从前位开池又敢 4-Bet，范围最紧
+            tight: { value: ['AA','KK','QQ','AKs','AKo'],
+                     bluff: ['A5s','A4s'] },
+            // 后位/盲注 4-Bet：3-Bet 者范围更宽，他的 4-Bet 相应更宽也更多诈唬
+            wide:  { value: ['AA','KK','QQ','JJ','AKs','AKo','AQs'],
+                     bluff: ['A5s','A4s','A3s','A2s','KQs'] }
+        };
+
+        /**
+         * 面对 4-Bet 的应对：5-Bet 全下 / 跟注 / 弃牌
+         * 5-Bet 全下是**全下子博弈**，EV 可以精确算（弃牌率 + 对抗跟注范围的胜率），
+         * 所以这部分是真算的；跟注需要翻后价值无法精确计算，用价格 + SPR 闸门（启发式，已注明）。
+         */
+        function getFacing4BetAction(handStr, heroCards, effStack, threeBetSize, fourBetSize, posH, posV) {
+            const bucket = ['UTG','UTG1','MP','LJ'].includes(posV) ? 'tight' : 'wide';
+            const R = FOURBET_RANGES[bucket];
+            const comboOf = h => h.length === 2 ? 6 : h[2] === 's' ? 4 : 12;
+            const nVal = R.value.reduce((a, h) => a + comboOf(h), 0);
+            const nBlf = R.bluff.reduce((a, h) => a + comboOf(h), 0);
+            const pFold = nBlf / (nVal + nBlf);           // 他用诈唬段弃牌，用价值段跟
+
+            // 死钱：与 initPotTracker 同一判据（盲注位自己的盲注已在其投入里）
+            let dead = getAnteBB();
+            if (posH !== 'SB' && posV !== 'SB') dead += 0.5;
+            if (posH !== 'BB' && posV !== 'BB') dead += 1.0;
+
+            const S = effStack, t3 = threeBetSize, t4 = Math.min(fourBetSize, S);
+            const toCall = Math.max(0, t4 - t3);
+            const potAfterCall = t4 * 2 + dead;
+            const reqCall = toCall > 0 ? toCall / potAfterCall * 100 : 0;
+            const sprAfterCall = potAfterCall > 0 ? (S - t4) / potAfterCall : 0;
+
+            // ── 5-Bet 全下的 EV（相对"弃牌"基准，单位 BB）──
+            // 弃牌：−t3（已投入的 3-Bet 是沉没）
+            // 全下且他弃：+ t4 + dead
+            // 全下被跟：eq×(2S+dead) − S
+            //
+            // 关键：**他不会用整个价值段来跟我的 5-Bet 全下**。面对一个远大于 4-Bet 的全下，
+            // JJ/AQs/AKo 这类会弃掉；只有在他已被 4-Bet 打到承诺区（还需补的不多）时才全跟。
+            // 判据：还需补的钱 / 他已投入的 4-Bet ≤ 1.2 → 承诺，全价值段跟；否则只跟核心段。
+            const coreValue = R.value.filter(h => ['AA','KK','QQ','AKs'].includes(h));
+            const committed = t4 > 0 && (S - t4) / t4 <= 1.2;
+            const callRange = committed ? R.value : coreValue;
+            const nCall = callRange.reduce((a, h) => a + comboOf(h), 0);
+            const pFoldJam = 1 - nCall / (nVal + nBlf);   // 诈唬段 + 未进跟注段都会弃
+
+            // 两个决策要用两个不同的对手范围：
+            //   跟注 → 面对他**整个 4-Bet 范围**（含会继续打的诈唬段），范围弱得多
+            //   全下 → 只面对**会跟全下的那一段**（诈唬与边缘价值都弃了），范围强得多
+            // 原来两处都用后者，导致跟注的价格被严重低估（QQ 深码因此被误判成该推全下）。
+            let eqVsCall = null, eqVsFull = null, evJam = null;
+            if (typeof preflopEquityVsRange === 'function' && heroCards && heroCards.length === 2) {
+                eqVsCall = preflopEquityVsRange(heroCards, callRange, 6000);
+                eqVsFull = preflopEquityVsRange(heroCards, R.value.concat(R.bluff), 6000);
+            }
+            if (eqVsCall !== null) {
+                const e = eqVsCall / 100;
+                evJam = pFoldJam * (t4 + dead) + (1 - pFoldJam) * (e * (2 * S + dead) - S);
+            }
+            const evFold = -t3;
+
+            const out = { bucket, pFold: +(pFoldJam * 100).toFixed(0), reqCall: +reqCall.toFixed(1),
+                          sprAfterCall: +sprAfterCall.toFixed(2), eqVsValue: eqVsCall === null ? null : +eqVsCall.toFixed(1),
+                          eqVsFull: eqVsFull === null ? null : +eqVsFull.toFixed(1),
+                          evJam: evJam === null ? null : +evJam.toFixed(2), evFold: +evFold.toFixed(2),
+                          committed, callRangePct: +((nCall) / 1326 * 100).toFixed(1) };
+
+            // ── 决策顺序（深码先看跟注，浅码才是推/弃二选一）──
+            // 这个顺序很重要：原先只拿"全下 vs 弃牌"比较，于是 QQ 在 100BB 也被建议推全下 ——
+            // 而深码下正确的做法是跟注打翻后（有位置、SPR 还有 1.7）。
+            const deep = sprAfterCall >= 1.5;
+            const callable = ['QQ','JJ','TT','99','AKs','AKo','AQs','AJs','KQs'].includes(handStr) ||
+                             (handStr.length === 2 && '234567891TJQKA'.includes(handStr[0]));   // 任意口袋对可买 set
+
+            // ① 顶级牌力：无论深浅都全下取价值（对手的跟注段里我们领先）
+            if (['AA','KK'].includes(handStr)) {
+                out.action = 'jam'; out.freq = { jam: 100 };
+                out.logic = `${handStr} 是绝对价值：5-Bet 全下。他跟注段约 ${out.callRangePct}% 组合，` +
+                    `我方对其胜率 ${eqVsCall !== null ? eqVsCall.toFixed(1) + '%' : '—'}；` +
+                    `其余约 ${out.pFold}% 会弃牌。全下 EV ${evJam !== null ? evJam.toFixed(2) : '—'}BB。`;
+                return out;
+            }
+            // ② 深码 + 有翻后价值 + 价格划算 → 跟注（启发式：翻后价值无法精确计算）
+            if (deep && callable && eqVsFull !== null && eqVsFull >= reqCall + 2) {
+                out.action = 'call'; out.freq = { call: 70, fold: 30 };
+                out.logic = `跟注后 SPR ${sprAfterCall.toFixed(2)}（深码，还有完整翻后空间）：` +
+                    `需补 ${toCall.toFixed(1)}BB、所需胜率 ${reqCall.toFixed(1)}%，对其<b>整个 4-Bet 范围</b>实有 ${eqVsFull.toFixed(1)}% —— 跟注看翻牌，` +
+                    `比在这个深度推全下更好（推全下只会被更强的牌跟）。` +
+                    `<br><span class="text-gray-400 text-[10px]">跟注分支为启发式（翻后价值无法精确计算）；全下分支的 EV 是实算的。</span>`;
+                return out;
+            }
+            // ③ 不够深（跟了就是承诺）→ 推/弃二选一，按实算 EV
+            if (evJam !== null && evJam > evFold + 0.5) {
+                // 区分"价值全下"与"诈唬全下"：对他的跟注段还落后（<38%）时，这个 +EV
+                // **完全由弃牌率撑起来**，而弃牌率来自"他 4-Bet 里有多少诈唬"这个 HEURISTIC 假设。
+                // 这种情况下不给 100% 的确定建议——给混合频率并把假设写出来。
+                const isBluffJam = eqVsCall !== null && eqVsCall < 38;
+                // 诈唬性 5-Bet 必须有**阻断价值**才成立(2026-09-08 回归抓到)：
+                // 它靠的是"我手里这张 A/K 让他更难有 AA/KK/AK 来跟"，不是随便什么牌都能推。
+                // 实测 72o 的 EV 正好卡在盈亏平衡线（需 15.4%，实有约 13-15%），MC 噪声就能
+                // 把它翻成"建议全下"——而 72o 根本不会出现在我们的 3-Bet 范围里。
+                // 判据：含 A 或 K（阻断 AA/KK/AK），或同花大牌；否则直接弃牌。
+                const hasBlocker = handStr[0] === 'A' || handStr[0] === 'K' ||
+                                   (handStr.length === 3 && handStr[2] === 's' && 'AKQJT'.includes(handStr[1]));
+                if (isBluffJam && !hasBlocker) {
+                    out.action = 'fold'; out.freq = { fold: 100 };
+                    out.logic = `${handStr} 对他的跟注段只有 ${eqVsCall.toFixed(1)}%，而且<b>没有阻断价值</b>` +
+                        `（既不挡 AA/KK/AK，也不是同花大牌）—— 5-Bet 诈唬要靠阻断张成立，` +
+                        `这手牌推出去只是把筹码送给他的价值段。弃牌。` +
+                        `<br><span class="text-gray-400 text-[10px]">（顺带一提：这类牌本来就不该进 3-Bet 范围）</span>`;
+                    return out;
+                }
+                const jamFreq = isBluffJam ? 55 : 100;
+                out.action = 'jam'; out.freq = jamFreq === 100 ? { jam: 100 } : { jam: jamFreq, fold: 100 - jamFreq };
+                // 走到这一步有两种原因，说清楚是哪一种（原来一律写"SPR 低"，而 A5s 其实是深码）
+                const why = !deep
+                    ? `跟注后 SPR 仅 ${sprAfterCall.toFixed(2)}（跟了等于承诺，没有翻后空间）`
+                    : `${handStr} 没有翻后价值（它是我们用来做 3-Bet 诈唬的牌），跟注只是白付钱`;
+                out.logic = `${why}，故只在推/弃之间选：` +
+                    `5-Bet 全下 EV ${evJam.toFixed(2)}BB > 弃牌 ${evFold.toFixed(2)}BB。` +
+                    `他跟注段约 ${out.callRangePct}% 组合（我方胜率 ${eqVsCall.toFixed(1)}%），约 ${out.pFold}% 会弃牌。`;
+                if (isBluffJam) {
+                    out.logic += `<br><span style="color:#e0a83a">⚠️ 这是<b>诈唬性 5-Bet</b>：被跟时我方只有 ${eqVsCall.toFixed(1)}%，` +
+                        `正 EV 全靠 ${out.pFold}% 的弃牌率撑着 —— 而弃牌率取决于"他 4-Bet 里有多少诈唬"这个假设（本模型设为 ${out.pFold}%）。` +
+                        `对手若是很紧的 4-Bet（几乎不诈唬），应直接弃牌。故给 ${jamFreq}% 混合频率而非确定建议。</span>`;
+                }
+                out.isBluffJam = isBluffJam;
+                return out;
+            }
+            // ④ 其余一律弃牌
+            out.action = 'fold'; out.freq = { fold: 100 };
+            out.logic = evJam !== null
+                ? `全下 EV ${evJam.toFixed(2)}BB 不及弃牌的 ${evFold.toFixed(2)}BB；` +
+                  `跟注则${deep ? '' : `SPR 仅 ${sprAfterCall.toFixed(2)}（跟了等于承诺）、`}` +
+                  `所需胜率 ${reqCall.toFixed(1)}% 而实有 ${eqVsFull !== null ? eqVsFull.toFixed(1) : '—'}%。弃牌。`
+                : `不在面对 4-Bet 的继续范围，弃牌。`;
+            return out;
+        }
+
         // 判断面对 3-Bet 的应对（查 FACING_3BET_RANGES，含筹码深度分层）
         /**
          * 审计修复#5(2026-09-08)：面对 3-Bet 的 call/fold **必须看价格**。
@@ -3490,7 +4164,7 @@
             if (!range || !range.length) return null;
             const toCall = Math.max(0, threeBetSize - invested);
             // 死钱：Hero/对手本身是盲注位时其盲注已在各自投入里，不重复计（同 initPotTracker 口径）
-            let dead = gameConfig.ante ? 1.0 : 0;
+            let dead = getAnteBB();   // 2026-09-08：按实际 ante/BB，不再写死 1.0
             if (heroPos !== 'SB' && threeBetterPos !== 'SB') dead += 0.5;
             if (heroPos !== 'BB' && threeBetterPos !== 'BB') dead += 1.0;
             const pot = threeBetSize * 2 + dead + (extraDead || 0);
@@ -3549,18 +4223,26 @@
         }
 
         // 查询 Squeeze 范围表（含阶段修正 + 筹码深度过滤 + 打法风格缩放）
-        function getSqueezeAction(handStr, heroPos, tableSize, stage, effStack) {
+        function getSqueezeAction(handStr, heroPos, tableSize, stage, effStack, numCallers) {
             const tableRanges = SQUEEZE_RANGES[tableSize];
             if (!tableRanges) return 'fold';
             const posRanges = tableRanges[heroPos] || tableRanges['CO'];
             if (!posRanges) return 'fold';
             const scale = getPlayStyleScale();
-            // 价值 Squeeze：无筹码限制，但受打法风格截断
+            // 跟注人数收窄(2026-09-08，全表审计发现缺此维度)：
+            // 挤压靠的是把开池者和所有跟注者一次性打跑。每多一个跟注者，所需的总弃牌率
+            // 就要再乘一次——2 个跟注者时诈唬段基本不成立，3 个以上只剩纯价值。
+            // 与 isHandInIsoRange 的跛入人数收窄同一思路（那边早就有，这边一直缺）。
+            const nC = Math.max(1, numCallers || 1);
+            const valueMul = nC >= 3 ? 0.70 : nC === 2 ? 0.85 : 1.0;
+            // 价值 Squeeze：无筹码限制，但受打法风格 + 跟注人数截断
             if (posRanges.value.includes(handStr)) {
                 const p = posRanges.value.indexOf(handStr) / posRanges.value.length;
-                if (p > scale) return 'fold';
+                if (p > scale * valueMul) return 'fold';
                 return 'squeeze_value';
             }
+            // 跟注者 ≥2 时放弃诈唬段：要让 3 家以上同时弃牌，弃牌率是单挑的 N 次方
+            if (nC >= 2) return 'fold';
             // 短码（<20BB）放弃诈唬
             if (effStack < 20) return 'fold';
             if (posRanges.bluff.includes(handStr)) {
@@ -3591,129 +4273,267 @@
         let _tlApplying = false;    // 时间线驱动 switchMode 时防反向同步回环
         let _tlTimer = null;
         const TL_MODE_LABEL = { open: 'Open 开池', vsLimp: 'vs Limp 隔离', faceBet: 'vs Raise', squeeze: 'Squeeze',
-                                face3b: 'vs 3-Bet', coldCall: 'Cold Call', defend: 'All-in 接注' };
-        function tlOpenDefault() { return globalHeroStack < 25 ? 2.0 : (gameConfig.ante ? 2.2 : 2.5); }
-        function tlThreeBetDefault(openAmt) { return Math.max(openAmt + 2, Math.round(openAmt * 3.4 * 2) / 2); }
+                                face3b: 'vs 3-Bet', face4b: 'vs 4-Bet', coldCall: 'Cold Call', defend: 'All-in 接注' };
+        function tlOpenDefault() { return getOpenSizeBB(); }   // 尺度可选(2026-09-08)
+        function tlThreeBetDefault(openAmt) {
+            // 尺度可选(2026-09-08)：'auto' 保持历史的 3.4x；选定值时按该倍数
+            const m = gameConfig.tbSize === 'auto' ? 3.4 : gameConfig.tbSize;
+            return Math.max(openAmt + 2, Math.round(openAmt * m * 2) / 2);
+        }
         function tlReset() { tlEvents = {}; tlHero = null; }
         const tlLbl = p => p === 'UTG1' ? 'U+1' : (POS_LABEL[p] || p);
 
-        /** 由座位带推出场景与引擎输入 */
+        /**
+         * 由座位带推出场景与引擎输入。
+         *
+         * 2026-09-08 重写：原实现是一串"命中哪个形状就返回哪个模式"的 if 链，
+         * **任何没被枚举到的组合不会报错，而是悄悄掉进一个错误的分支并给出自信的建议**。
+         * 用户实测到的四个问题全部源于此：
+         *   · 我之前有人加注、我却标了"开池" → 返回 open「无人再加注」（从不检查 rBefore）
+         *   · 两个加注都在我之前、我标"已跟注" → 掉进 faceBet，**完全无视第二个加注**，
+         *     理由还写着"面对 UTG+1 开池"
+         *   · 面对"开池+跟注"与面对"3-Bet"给出方向相反的结论
+         *
+         * 现在改为**先把行动序归一化，再分类**，并且**穷尽所有分支**：
+         * 任何无法归类的组合返回 unsupported 而不是猜一个模式。
+         */
         function deriveScenario() {
             const seats = getPositions();
             const hero = globalPosHero;
             const hi = seats.indexOf(hero);
             const before = seats.slice(0, Math.max(0, hi)), after = hi >= 0 ? seats.slice(hi + 1) : [];
             const ev = p => tlEvents[p] || { action: 'fold' };
-            const has = (arr, a) => arr.filter(p => ev(p).action === a);
-            const allins = seats.filter(p => p !== hero && ev(p).action === 'allin');
             const openAmt = tlOpenDefault();
             const out = { mode: 'open', posV: null, posC: null, raiseSize: openAmt, threeBetSize: globalThreeBetSize,
+                          fourBetSize: globalFourBetSize,
                           limpers: [], callers: 0, vStack: null, note: '', blocked: false, label: '' };
-            const rBefore = has(before, 'raise'), lBefore = has(before, 'limp'), cBefore = has(before, 'call');
-            const rAfter = has(after, 'raise'), cAfter = has(after, 'call');
-            if (allins.length) {
-                const shover = allins.reduce((a, b) => (ev(a).amount || 0) >= (ev(b).amount || 0) ? a : b);
-                out.mode = 'defend'; out.posV = shover; out.vStack = ev(shover).amount || globalVillainStack;
-                out.label = `${tlLbl(shover)} 全下 ${out.vStack}BB`;
-                if (allins.length > 1) out.note = `另有 ${allins.length - 1} 人全下，按最大者估算`;
+
+            // ── 归一化：把座位带整理成"谁做了什么"的清单 ──
+            const act = p => ({ pos: p, a: ev(p).action, amt: ev(p).amount || 0 });
+            const listBefore = before.map(act).filter(x => x.a !== 'fold');
+            const listAfter  = after.map(act).filter(x => x.a !== 'fold');
+            const raisesBefore = listBefore.filter(x => x.a === 'raise');
+            const raisesAfter  = listAfter.filter(x => x.a === 'raise');
+            const limpsBefore  = listBefore.filter(x => x.a === 'limp');
+            const callsBefore  = listBefore.filter(x => x.a === 'call');
+            const callsAfter   = listAfter.filter(x => x.a === 'call');
+            const allinsAll    = listBefore.concat(listAfter).filter(x => x.a === 'allin');
+            // 加注序列（按座位顺序）：第 1 个 = 开池，第 2 个 = 3-Bet，第 3 个 = 4-Bet…
+            const raiseSeq = listBefore.concat(listAfter).filter(x => x.a === 'raise');
+            const lastRaiseBefore = raisesBefore.length ? raisesBefore[raisesBefore.length - 1] : null;
+
+            // ══ 情形 0：有人全下 —— 不论我做过什么，这是接注决策 ══
+            if (allinsAll.length) {
+                const shover = allinsAll.reduce((a, b) => (a.amt >= b.amt ? a : b));
+                out.mode = 'defend'; out.posV = shover.pos; out.vStack = shover.amt || globalVillainStack;
+                out.label = `${tlLbl(shover.pos)} 全下 ${out.vStack}BB`;
+                if (allinsAll.length > 1) out.note = `另有 ${allinsAll.length - 1} 人全下，按最大者估算`;
+                if (raisesBefore.length) out.note += (out.note ? '；' : '') +
+                    `前方另有 ${raisesBefore.map(x => tlLbl(x.pos)).join('/')} 加注（其投入计为死钱）`;
                 return out;
             }
-            // 我方新状态(2026-09-08)：弃牌 → 本手结束，不出决策；跛入 → 已入池，按跛入池记账
-            if (tlHero && tlHero.action === 'fold') {
+
+            // ══ 情形 1：我还没行动（tlHero == null）—— 计算我此刻该怎么打 ══
+            if (!tlHero) {
+                if (raisesBefore.length === 0) {
+                    if (limpsBefore.length) {
+                        out.mode = 'vsLimp'; out.limpers = limpsBefore.map(x => x.pos); out.posV = limpsBefore[0].pos;
+                        out.label = `${out.limpers.map(tlLbl).join('/')} 跛入`;
+                        return out;
+                    }
+                    out.mode = 'open'; out.label = '前方全部弃牌';
+                    if (hero === 'BB') { out.blocked = true; out.note = 'BB 无人入池 = 免费拿走盲注（walk），无需决策'; }
+                    return out;
+                }
+                if (raisesBefore.length === 1) {
+                    const r0 = raisesBefore[0];
+                    out.raiseSize = r0.amt || openAmt;
+                    // 该加注之后有没有人跟 → 有则是 Squeeze 位，没有则是单纯面对加注
+                    const callersAfterRaise = callsBefore.filter(x => seats.indexOf(x.pos) > seats.indexOf(r0.pos));
+                    if (callersAfterRaise.length) {
+                        out.mode = 'squeeze'; out.posV = r0.pos; out.posC = callersAfterRaise[0].pos;
+                        out.callers = callersAfterRaise.length;
+                        out.label = `${tlLbl(r0.pos)} 开池 ${out.raiseSize} → ${callersAfterRaise.map(x => tlLbl(x.pos)).join('/')} 跟注`;
+                        return out;
+                    }
+                    out.mode = 'faceBet'; out.posV = r0.pos;
+                    out.label = `${tlLbl(r0.pos)} 开池 ${out.raiseSize}BB`;
+                    if (limpsBefore.length) out.note = `另有 ${limpsBefore.map(x => tlLbl(x.pos)).join('/')} 跛入（其投入计为死钱）`;
+                    return out;
+                }
+                // ≥2 个加注在我之前 = 已经被 3-Bet（或更多），我是冷跟/4-Bet 的一方
+                {
+                    const rOpen = raisesBefore[0], rLast = raisesBefore[raisesBefore.length - 1];
+                    out.mode = 'coldCall'; out.posV = rOpen.pos; out.posC = rLast.pos;
+                    out.raiseSize = rOpen.amt || openAmt;
+                    out.threeBetSize = rLast.amt || tlThreeBetDefault(out.raiseSize);
+                    out.label = `${tlLbl(rOpen.pos)} 开池 ${out.raiseSize} → ${tlLbl(rLast.pos)} ${raisesBefore.length >= 3 ? '4-Bet' : '3-Bet'} 到 ${out.threeBetSize}BB`;
+                    if (raisesBefore.length >= 3) out.note = `前方已到 ${raisesBefore.length} 次加注，按面对 3-Bet 的冷跟决策近似`;
+                    return out;
+                }
+            }
+
+            // ══ 情形 2：我已弃牌 ══
+            if (tlHero.action === 'fold') {
                 out.blocked = true;
                 out.label = '我已弃牌';
                 out.note = '本手已弃牌，无需决策。点我的座位可切回"轮到我"重新推演。';
                 return out;
             }
-            if (tlHero && tlHero.action === 'limp') {
-                out.mode = 'vsLimp';
-                out.limpers = lBefore.concat(has(after, 'limp'));
-                out.posV = lBefore[0] || has(after, 'limp')[0] || null;
-                out.label = `${lBefore.map(tlLbl).join('/') || '前位'} 跛入 → 我跟着跛入`;
-                out.note = '你已跛入（over-limp）：下方为该决策的复核；翻后按跛入池记账';
-                if (rAfter.length) {
-                    out.mode = 'faceBet'; out.posV = rAfter[0];
-                    out.raiseSize = ev(rAfter[0]).amount || openAmt;
-                    out.label = `我跛入 → ${tlLbl(rAfter[0])} 加注到 ${out.raiseSize}BB`;
-                    out.note = '跛入后被后位 Iso-raise，按面对加注决策';
-                }
-                return out;
-            }
-            if (tlHero && tlHero.action === 'open') {
-                out.raiseSize = tlHero.amount || openAmt;
-                if (rAfter.length) {
-                    out.mode = 'face3b'; out.posV = rAfter[0]; out.threeBetSize = ev(rAfter[0]).amount || tlThreeBetDefault(out.raiseSize);
-                    out.label = `我开池 ${out.raiseSize}BB → ${tlLbl(rAfter[0])} 3-Bet 到 ${out.threeBetSize}BB`;
-                    if (rAfter.length > 1) out.note = `多人再加注，按第一位 3-Bet 者估算`;
-                    if (cAfter.length) out.note += (out.note ? '；' : '') + `另有 ${cAfter.map(tlLbl).join('/')} 跟注`;
-                } else if (cAfter.length) {
-                    // 多人底池(2026-09-08)：我开池被跟 —— 主对手取**翻后最先行动**的那位
-                    //（3 人池里他最常发起行动），其余自动进"多人+"额外对手。
-                    // 原来这里只留一句提示，posV 仍是上一手残留的位置，翻后主对手会指向没入池的人。
-                    const byPost = [...cAfter].sort((a, b) => (POSTFLOP_ORDER[a] || 0) - (POSTFLOP_ORDER[b] || 0));
-                    out.mode = 'open'; out.posV = byPost[0];
-                    out.label = `我开池 ${out.raiseSize}BB → ${cAfter.map(tlLbl).join('/')} 跟注`;
-                    out.note = cAfter.length > 1
-                        ? `${cAfter.length + 1} 人底池：主对手 ${tlLbl(byPost[0])}（翻后最先行动），其余已自动加入"多人+"`
-                        : `${tlLbl(byPost[0])} 跟注，翻后单挑`;
-                } else {
-                    out.mode = 'open'; out.label = `我开池 ${out.raiseSize}BB，无人再加注`;
-                    out.note = '你已开池且无人再加注——下方为开池决策复核；对手行动后在座位带补录即可';
-                }
-                return out;
-            }
-            // 审计修复#6：我已 3-Bet —— 翻前决策已完成，场景仍按 faceBet 编译
-            // （引擎复核该 3-Bet 是否正确），底池/SPR 与侵略者归属另由 tlHero.action 判定
-            if (tlHero && tlHero.action === '3bet') {
-                const r0 = rBefore[0] || rAfter[0];
-                if (r0) {
-                    out.mode = 'faceBet'; out.posV = r0;
-                    out.raiseSize = ev(r0).amount || openAmt;
-                    out.label = `${tlLbl(r0)} 开池 ${out.raiseSize} → 我 3-Bet 到 ${tlHero.amount}BB`;
-                    out.note = '已按你的 3-Bet 记账：翻后底池/SPR 与范围优势均按"我是翻前侵略者"计算';
+
+            // ══ 情形 3：我已行动 —— 看我之后有没有人再加注 ══
+            let heroAct = tlHero.action;            // open / 3bet / call / limp
+            const heroAmt = tlHero.amount || 0;
+            // 语义归一(2026-09-08)：我标了"开池"但我之前已经有人加注 —— 那实际上是再加注。
+            // 原来它落进 faceBet 分支，于是"我加注到 6"却被建议"平跟"，自相矛盾。
+            if (heroAct === 'open' && raisesBefore.length) heroAct = raisesBefore.length >= 2 ? '4bet' : '3bet';
+
+            if (raisesAfter.length) {
+                const rAfterFirst = raisesAfter[0];
+                // 我开池 → 后位加注 = 3-Bet；再有一次 = 4-Bet
+                if (heroAct === 'open') {
+                    out.raiseSize = heroAmt || openAmt;
+                    if (raisesAfter.length >= 2) {
+                        out.mode = 'face4b'; out.posV = raisesAfter[1].pos;
+                        out.threeBetSize = rAfterFirst.amt || tlThreeBetDefault(out.raiseSize);
+                        out.fourBetSize = raisesAfter[1].amt || Math.round(out.threeBetSize * 2.3 * 2) / 2;
+                        out.label = `我开池 ${out.raiseSize} → ${tlLbl(rAfterFirst.pos)} 3-Bet ${out.threeBetSize} → ${tlLbl(raisesAfter[1].pos)} 4-Bet 到 ${out.fourBetSize}BB`;
+                        return out;
+                    }
+                    out.mode = 'face3b'; out.posV = rAfterFirst.pos;
+                    out.threeBetSize = rAfterFirst.amt || tlThreeBetDefault(out.raiseSize);
+                    out.label = `我开池 ${out.raiseSize}BB → ${tlLbl(rAfterFirst.pos)} 3-Bet 到 ${out.threeBetSize}BB`;
+                    if (callsAfter.length) out.note = `另有 ${callsAfter.map(x => tlLbl(x.pos)).join('/')} 跟注`;
                     return out;
                 }
-            }
-            if (tlHero && tlHero.action === 'call') {
-                if (rBefore.length && rAfter.length) {
-                    out.mode = 'coldCall'; out.posV = rBefore[0]; out.posC = rAfter[0];
-                    out.raiseSize = ev(rBefore[0]).amount || openAmt; out.threeBetSize = ev(rAfter[0]).amount || tlThreeBetDefault(out.raiseSize);
-                    out.label = `${tlLbl(out.posV)} 开池 ${out.raiseSize} → 我跟注 → ${tlLbl(out.posC)} Squeeze 到 ${out.threeBetSize}BB`;
+                // 我 3-Bet → 后位再加注 = 4-Bet
+                if (heroAct === '3bet') {
+                    out.mode = 'face4b'; out.posV = rAfterFirst.pos;
+                    out.threeBetSize = heroAmt || globalThreeBetSize;
+                    out.fourBetSize = rAfterFirst.amt || Math.round(out.threeBetSize * 2.3 * 2) / 2;
+                    out.raiseSize = lastRaiseBefore ? (lastRaiseBefore.amt || openAmt) : openAmt;
+                    out.label = `我 3-Bet 到 ${out.threeBetSize}BB → ${tlLbl(rAfterFirst.pos)} 4-Bet 到 ${out.fourBetSize}BB`;
+                    out.note = '面对 4-Bet：5-Bet 全下的 EV 是实算的（含他的弃牌率），跟注分支为启发式';
+                    return out;
+                }
+                // 我跟注 → 后位加注 = 对我 Squeeze。用 coldCall 建模而不是 faceBet：
+                // coldCall 会把**开池者已投入的那份算作死钱**，而 faceBet 会把挤压额当成开池，
+                // 丢掉开池者的投入、把底池算小。（回归套件锁定了这个映射。）
+                if (heroAct === 'call' && lastRaiseBefore) {
+                    out.mode = 'coldCall'; out.posV = lastRaiseBefore.pos; out.posC = rAfterFirst.pos;
+                    out.raiseSize = lastRaiseBefore.amt || openAmt;
+                    out.threeBetSize = rAfterFirst.amt || tlThreeBetDefault(out.raiseSize);
+                    out.label = `${tlLbl(lastRaiseBefore.pos)} 开池 ${out.raiseSize} → 我跟注 → ${tlLbl(rAfterFirst.pos)} Squeeze 到 ${out.threeBetSize}BB`;
                     out.note = '面对 Squeeze，按 Cold Call（面对 3-Bet 的跟注决策）近似';
                     return out;
                 }
-                out.mode = rBefore.length ? 'faceBet' : 'open';
-                if (rBefore.length) { out.posV = rBefore[0]; out.raiseSize = ev(rBefore[0]).amount || openAmt; }
-                out.label = `我已跟注，等待后位行动`; out.note = '记录后位的 Squeeze/全下后再看决策';
+                // 我跛入被 Iso-raise，或跟注但前方无加注 → 按面对该加注处理
+                out.mode = 'faceBet'; out.posV = rAfterFirst.pos;
+                out.raiseSize = rAfterFirst.amt || tlThreeBetDefault(lastRaiseBefore ? lastRaiseBefore.amt : openAmt);
+                out.label = heroAct === 'call'
+                    ? `我已跟注 → ${tlLbl(rAfterFirst.pos)} 加注到 ${out.raiseSize}BB`
+                    : `我跛入 → ${tlLbl(rAfterFirst.pos)} 加注到 ${out.raiseSize}BB（Iso-raise）`;
                 return out;
             }
-            if (rBefore.length >= 2) {
-                out.mode = 'coldCall'; out.posV = rBefore[0]; out.posC = rBefore[1];
-                out.raiseSize = ev(rBefore[0]).amount || openAmt; out.threeBetSize = ev(rBefore[1]).amount || tlThreeBetDefault(out.raiseSize);
-                out.label = `${tlLbl(out.posV)} 开池 ${out.raiseSize} → ${tlLbl(out.posC)} 3-Bet 到 ${out.threeBetSize}BB`;
-                if (rBefore.length > 2) out.note = '前方多次再加注，按开池者 + 首位 3-Bet 者估算';
-                return out;
-            }
-            if (rBefore.length === 1) {
-                const raiser = rBefore[0];
-                out.posV = raiser; out.raiseSize = ev(raiser).amount || openAmt;
-                const callers = cBefore.filter(p => seats.indexOf(p) > seats.indexOf(raiser));
-                if (callers.length) {
-                    out.mode = 'squeeze'; out.posC = callers[0]; out.callers = callers.length;
-                    out.label = `${tlLbl(raiser)} 开池 ${out.raiseSize} → ${callers.map(tlLbl).join('/')} 跟注`;
+
+            // ── 第二轮应对(2026-09-08)：我加注后，前方已行动者的再次表态 ──
+            // 若有人"再加注"，那就是对我的 3-Bet/4-Bet，优先级高于下面的复核分支。
+            const respRaise = listBefore.filter(x => (ev(x.pos).resp || {}).action === 'raise');
+            if (respRaise.length && (heroAct === 'open' || heroAct === '3bet')) {
+                const rr = respRaise[respRaise.length - 1];
+                const rrAmt = (ev(rr.pos).resp || {}).amount || Math.round(heroAmt * 2.3 * 2) / 2;
+                if (heroAct === 'open') {
+                    out.mode = 'face3b'; out.posV = rr.pos;
+                    out.raiseSize = heroAmt || openAmt; out.threeBetSize = rrAmt;
+                    out.label = `我开池 ${out.raiseSize} → ${tlLbl(rr.pos)} 再加注到 ${rrAmt}BB（3-Bet）`;
                 } else {
-                    out.mode = 'faceBet'; out.label = `${tlLbl(raiser)} 开池 ${out.raiseSize}BB`;
+                    out.mode = 'face4b'; out.posV = rr.pos;
+                    out.threeBetSize = heroAmt; out.fourBetSize = rrAmt;
+                    out.raiseSize = lastRaiseBefore ? (lastRaiseBefore.amt || openAmt) : openAmt;
+                    out.label = `我 3-Bet 到 ${heroAmt} → ${tlLbl(rr.pos)} 再加注到 ${rrAmt}BB（4-Bet）`;
                 }
-                if (lBefore.length) out.note = `另有 ${lBefore.map(tlLbl).join('/')} 跛入（作死钱，不参与范围估算）`;
                 return out;
             }
-            if (lBefore.length) {
-                out.mode = 'vsLimp'; out.limpers = lBefore; out.posV = lBefore[0];
-                out.label = `${lBefore.map(tlLbl).join('/')} 跛入`;
+            const respCall = listBefore.filter(x => (ev(x.pos).resp || {}).action === 'call');
+
+            // ── 我已行动、后方无人再加注：复核我这个决策 ──
+            if (heroAct === 'open') {
+                out.raiseSize = heroAmt || openAmt;
+                const inPot = callsAfter.concat(respCall);   // 后位跟注 + 前方对我加注的应对跟注
+                if (inPot.length) {
+                    const byPost = [...inPot].sort((a, b) => (POSTFLOP_ORDER[a.pos] || 0) - (POSTFLOP_ORDER[b.pos] || 0));
+                    out.mode = 'open'; out.posV = byPost[0].pos;
+                    out.label = `我开池 ${out.raiseSize}BB → ${inPot.map(x => tlLbl(x.pos)).join('/')} 跟注`;
+                    out.note = inPot.length > 1
+                        ? `${inPot.length + 1} 人底池：主对手 ${tlLbl(byPost[0].pos)}（翻后最先行动），其余已自动加入"多人+"`
+                        : `${tlLbl(byPost[0].pos)} 跟注，翻后单挑`;
+                    return out;
+                }
+                out.mode = 'open'; out.label = `我开池 ${out.raiseSize}BB，无人再加注`;
+                out.note = '你已开池且无人再加注——下方为开池决策复核；对手行动后在座位带补录即可';
                 return out;
             }
-            out.mode = 'open'; out.label = '前方全部弃牌';
-            if (hero === 'BB') { out.blocked = true; out.note = 'BB 无人入池 = 免费拿走盲注（walk），无需决策'; }
+
+            if (heroAct === '3bet' || heroAct === '4bet') {
+                const isFour = heroAct === '4bet';
+                const rOpen = raisesBefore[0], rLast = raisesBefore[raisesBefore.length - 1];
+                out.raiseSize = rOpen ? (rOpen.amt || openAmt) : openAmt;
+                if (isFour) { out.threeBetSize = rLast ? rLast.amt : globalThreeBetSize; out.fourBetSize = heroAmt; }
+                else out.threeBetSize = heroAmt || globalThreeBetSize;
+                out.mode = 'faceBet'; out.posV = rLast ? rLast.pos : globalPosVillain;
+                out.label = rOpen
+                    ? `${tlLbl(rOpen.pos)} 开池 ${out.raiseSize} → 我${isFour ? ' 4-Bet' : ' 3-Bet'} 到 ${heroAmt}BB`
+                    : `我${isFour ? ' 4-Bet' : ' 3-Bet'} 到 ${heroAmt}BB`;
+                const contin = respCall.concat(callsAfter);
+                out.note = `已按你的${isFour ? ' 4-Bet' : ' 3-Bet'} 记账：翻后底池/SPR 与范围优势均按"我是翻前侵略者"计算` +
+                    (contin.length ? `；${contin.map(x => tlLbl(x.pos)).join('/')} 跟注（${contin.length + 1} 人底池）` : '');
+                return out;
+            }
+
+            if (heroAct === 'call') {
+                // ★ 关键修复：主对手取**我之前最后一次加注**的那位，尺度也用它。
+                //   原实现只看 rBefore[0]，于是"U+1 开 2.2 → LJ 3-Bet 7.5 → 我跟注"
+                //   会当成"面对 U+1 的 2.2 开池"，第二个加注被整个丢掉。
+                if (raisesBefore.length >= 2) {
+                    const rOpen = raisesBefore[0], rLast = raisesBefore[raisesBefore.length - 1];
+                    out.mode = 'coldCall'; out.posV = rOpen.pos; out.posC = rLast.pos;
+                    out.raiseSize = rOpen.amt || openAmt;
+                    out.threeBetSize = rLast.amt || tlThreeBetDefault(out.raiseSize);
+                    out.label = `${tlLbl(rOpen.pos)} 开池 ${out.raiseSize} → ${tlLbl(rLast.pos)} 3-Bet 到 ${out.threeBetSize} → 我跟注`;
+                    out.note = '我已冷跟这个 3-Bet：下方为该决策的复核，翻后底池按 3-Bet 额记账';
+                    return out;
+                }
+                if (raisesBefore.length === 1) {
+                    const r0 = raisesBefore[0];
+                    out.mode = 'faceBet'; out.posV = r0.pos; out.raiseSize = r0.amt || openAmt;
+                    out.label = `${tlLbl(r0.pos)} 开池 ${out.raiseSize} → 我跟注`;
+                    out.note = '下方为该跟注决策的复核；后位若有行动，在座位带补录';
+                    return out;
+                }
+                // 前方无人加注却标了"跟注" = 其实是跛入
+                out.mode = 'vsLimp'; out.limpers = limpsBefore.map(x => x.pos);
+                out.posV = limpsBefore.length ? limpsBefore[0].pos : null;
+                out.label = limpsBefore.length ? `${out.limpers.map(tlLbl).join('/')} 跛入 → 我跟着跛入` : '我跛入';
+                out.note = '前方没有加注，"跟注"在此等同于跛入（over-limp）';
+                return out;
+            }
+
+            if (heroAct === 'limp') {
+                out.mode = 'vsLimp';
+                out.limpers = limpsBefore.map(x => x.pos).concat(listAfter.filter(x => x.a === 'limp').map(x => x.pos));
+                out.posV = out.limpers[0] || null;
+                out.label = `${limpsBefore.map(x => tlLbl(x.pos)).join('/') || '前位'} 跛入 → 我跟着跛入`;
+                out.note = '你已跛入（over-limp）：下方为该决策的复核；翻后按跛入池记账';
+                return out;
+            }
+
+            // ── 兜底：走到这里说明出现了未枚举的组合。**不猜模式**，明确说不支持。──
+            out.blocked = true;
+            out.mode = 'open';
+            out.label = '无法识别的行动序';
+            out.note = `座位带上的行动组合超出当前支持范围（我方=${heroAct}，前方 ${raisesBefore.length} 次加注、` +
+                       `后方 ${raisesAfter.length} 次加注）。请用「传统场景标签」手动指定场景，` +
+                       `或调整座位带。**系统不会在这种情况下猜一个建议给你。**`;
             return out;
         }
 
@@ -3730,7 +4550,11 @@
             if (d.posC) globalPosCaller = d.posC;
             if (d.mode === 'vsLimp') selectedLimperPositions = [...d.limpers];
             globalRaiseSize = d.raiseSize;
-            if (['face3b', 'coldCall'].includes(d.mode)) globalThreeBetSize = d.threeBetSize;
+            if (['face3b', 'coldCall', 'face4b'].includes(d.mode)) globalThreeBetSize = d.threeBetSize;
+            if (d.mode === 'face4b' && d.fourBetSize > 0) {
+                globalFourBetSize = d.fourBetSize;
+                const e4 = document.getElementById('fourBetSize'); if (e4) e4.value = d.fourBetSize;
+            }
             if (d.mode === 'defend' && d.vStack) globalVillainStack = d.vStack;
             const heroKeep = globalPosHero; // switchMode 的排除规则可能改动 posHero（open 排除 BB）——以座位带为准
             _tlApplying = true;
@@ -3778,6 +4602,7 @@
             if (m === 'faceBet')       { ev[globalPosVillain] = { action: 'raise', amount: globalRaiseSize }; }
             else if (m === 'squeeze')  { ev[globalPosVillain] = { action: 'raise', amount: globalRaiseSize }; ev[globalPosCaller] = { action: 'call' }; }
             else if (m === 'face3b')   { hero = { action: 'open', amount: openAmt }; ev[globalPosVillain] = { action: 'raise', amount: globalThreeBetSize }; }
+            else if (m === 'face4b')   { hero = { action: '3bet', amount: globalThreeBetSize }; ev[globalPosVillain] = { action: 'raise', amount: globalFourBetSize }; }
             else if (m === 'coldCall') { ev[globalPosVillain] = { action: 'raise', amount: openAmt }; ev[globalPosCaller] = { action: 'raise', amount: globalThreeBetSize }; }
             else if (m === 'vsLimp')   { (selectedLimperPositions || []).forEach(p => { ev[p] = { action: 'limp' }; }); }
             else if (m === 'defend')   { ev[globalPosVillain] = { action: 'allin', amount: globalVillainStack }; }
@@ -3839,9 +4664,37 @@
                 else if (isHero && tlHero && tlHero.action === '3bet') act = `我 3-Bet ${amtInput(p, tlHero.amount)}`;   // 审计修复#6
                 else if (!isHero && e && e.action === 'raise') act = `加注 ${amtInput(p, e.amount)}`;
                 else if (!isHero && e && e.action === 'allin') act = `全下 ${amtInput(p, e.amount)}`;
+                // 第二轮应对(2026-09-08，用户："我 4-Bet 之后，最开始 open 的那个人没有跟注选项")：
+                // 我加注（开池/3-Bet）之后，我**之前**已经行动过的人还要再表态一次。
+                // 原来每个座位只能存一个动作，所以他们的应对根本无处可记。
+                const heroRaised = tlHero && (tlHero.action === 'open' || tlHero.action === '3bet');
+                const needResp = !isHero && i < hi && heroRaised && e && e.action !== 'fold' && e.action !== 'allin';
+                const respLbl = { fold: '弃', call: '跟注', raise: '再加注' };
+                const respTxt = needResp ? (respLbl[(e.resp && e.resp.action) || 'pending'] || '？待表态') : '';
+                const respAmt = needResp && e.resp && e.resp.action === 'raise' && e.resp.amount ? ` ${e.resp.amount}` : '';
                 return `<div class="tl-seat ${cls}${disabled ? ' disabled' : ''}" data-tlseat="${p}" title="${disabled ? '我先行动；先点我的座位记录"我开池/我已跟注"，后位才能行动' : '单击循环 弃→加注→跟注→全下 · 右键/长按选择'}">
-                    <div class="tl-pos">${isHero ? '我 · ' : ''}${tlLbl(p)}</div><div class="tl-act">${act}</div></div>`;
+                    <div class="tl-pos">${isHero ? '我 · ' : ''}${tlLbl(p)}</div><div class="tl-act">${act}</div>` +
+                    (needResp ? `<button class="tl-resp${e.resp ? ' set' : ''}" data-tlresp="${p}" title="我加注后，他的应对：单击循环 待表态→弃→跟注→再加注">→ ${respTxt}${respAmt}</button>` : '') +
+                    `</div>`;
             }).join('');
+            // 第二轮应对按钮：单击循环 待表态 → 弃 → 跟注 → 再加注
+            ribbon.querySelectorAll('[data-tlresp]').forEach(btn => {
+                btn.addEventListener('click', (ev2) => {
+                    ev2.stopPropagation();          // 不要触发座位本身的循环
+                    const pos = btn.dataset.tlresp;
+                    const cur = (tlEvents[pos] && tlEvents[pos].resp && tlEvents[pos].resp.action) || 'pending';
+                    const seq = ['pending', 'fold', 'call', 'raise'];
+                    const next = seq[(seq.indexOf(cur) + 1) % seq.length];
+                    pushUndo(`时间线：${tlLbl(pos)} 应对 → ${{ pending: '待表态', fold: '弃牌', call: '跟注', raise: '再加注' }[next]}`);
+                    if (!tlEvents[pos]) return;
+                    if (next === 'pending') delete tlEvents[pos].resp;
+                    else if (next === 'raise') {
+                        const heroAmt = (tlHero && tlHero.amount) || globalThreeBetSize;
+                        tlEvents[pos].resp = { action: 'raise', amount: Math.round(heroAmt * 2.3 * 2) / 2 };
+                    } else tlEvents[pos].resp = { action: next };
+                    tlScheduleApply();
+                });
+            });
             ribbon.querySelectorAll('[data-tlseat]').forEach(el => {
                 const pos = el.dataset.tlseat;
                 let pressTimer = null, longPressed = false;
@@ -4009,6 +4862,7 @@
             if (ap) { ap.innerText = gameConfig.autoAdvancePos ? '开启' : '关闭';
                 ap.className = (gameConfig.autoAdvancePos ? 'bg-green-600' : 'bg-gray-600') + ' text-white text-[10px] font-bold px-3 py-0.5 rounded'; }
             blRenderUnitLabels();
+            try { renderAnteInfo(); } catch (e) {}   // 大盲/ante 变了 → 死钱显示同步
         }
         function blRenderUnitLabels() {
             const chips = gameConfig.chipUnit === 'chips';
@@ -4134,7 +4988,7 @@
             }
 
             // 需要对手筹码的模式
-            const needsV = ['faceBet','face3b','squeeze','coldCall','defend'].includes(currentMode);
+            const needsV = ['faceBet','face3b','face4b','squeeze','coldCall','defend'].includes(currentMode);
             if (needsV && elV) {
                 if (!(sV > 0)) { markErr(elV); showToast('请输入有效筹码（对手筹码 > 0）', 'error'); return false; }
                 else clearErr(elV);
@@ -4150,6 +5004,17 @@
             if (currentMode === 'face3b' && el3) {
                 const ts = parseFloat(el3.value);
                 if (ts > effStack) { el3.value = effStack.toFixed(1); showToast(`对手 3-Bet 超出有效筹码，按全下 ${effStack.toFixed(1)}BB 计算`, 'warn'); }
+            }
+            // 面对 4-Bet(2026-09-08)：4-Bet 额必须大于我的 3-Bet 额，且不超过有效筹码
+            if (currentMode === 'face4b') {
+                const el4 = document.getElementById('fourBetSize');
+                if (el4) {
+                    let fs = parseFloat(el4.value);
+                    const ts = el3 ? parseFloat(el3.value) : 0;
+                    if (!(fs > 0)) { showToast('请填写对手的 4-Bet 额', 'error'); return false; }
+                    if (ts > 0 && fs <= ts) { showToast(`4-Bet 额（${fs}）必须大于我的 3-Bet 额（${ts}）`, 'error'); return false; }
+                    if (fs > effStack) { el4.value = effStack.toFixed(1); showToast(`对手 4-Bet 超出有效筹码，按全下 ${effStack.toFixed(1)}BB 计算`, 'warn'); }
+                }
             }
 
             return true;
@@ -4225,6 +5090,8 @@
             const sV = elStackV && elStackV.value ? parseFloat(elStackV.value) : 0;
             const raiseSize = elRaise && elRaise.value ? parseFloat(elRaise.value) : 2.5;
             const threeBetSize = el3B && el3B.value ? parseFloat(el3B.value) : 9;
+            const el4B = document.getElementById('fourBetSize');
+            const fourBetSize = el4B && el4B.value ? parseFloat(el4B.value) : globalFourBetSize;
             const limpCount = currentMode === 'vsLimp'
                 ? Math.max(1, selectedLimperPositions.length)
                 : (elLimp && elLimp.value ? parseInt(elLimp.value) : 1);
@@ -4248,6 +5115,60 @@
                     showParadoxError(box, vText, logicText, `位置时间轴错误:你 [${POS_LABEL[posH]}] 必须在 [${POS_LABEL[posV]}] 之后行动。若你想分析的是"翻后被过牌加注"的局面，请改用你翻前的真实场景（如开池）解析后进入翻后，在行动区录入过牌/下注/加注。`); return;
                 }
             }
+            // ════════════════════════════════════════════════════
+            // 模式 8: 面对 4-Bet（2026-09-08 新增）
+            // ════════════════════════════════════════════════════
+            if (currentMode === 'face4b') {
+                if (sH <= 0 || sV <= 0) { alert("筹码须大于 0。"); return; }
+                globalFourBetSize = fourBetSize;
+                const res = getFacing4BetAction(handStr, [heroCard1, heroCard2], effStack,
+                                                threeBetSize, fourBetSize, posH, posV);
+                let b = 0, c = 0, f = 0, postSizing = '';
+                if (res.action === 'jam')      { b = res.freq.jam || 100; f = res.freq.fold || 0;
+                                                  postSizing = `All-in ${effStack.toFixed(1)}BB (5-Bet)`; }
+                else if (res.action === 'call') { c = res.freq.call; f = res.freq.fold; }
+                else                            { f = 100; }
+
+                if (b > 0) {
+                    box.style.borderColor = res.isBluffJam ? '#e0a83a' : '#e5484d';
+                    box.style.backgroundColor = res.isBluffJam ? 'rgba(224,168,58,0.1)' : 'rgba(214,57,64,0.1)';
+                    vText.style.color = res.isBluffJam ? '#e0a83a' : '#ff7a7d';
+                    vText.innerText = res.isBluffJam ? `🟡 5-Bet 诈唬全下 ${b}%` : '🔥 5-Bet 全下';
+                } else if (c > 0) {
+                    box.style.borderColor = '#e0a83a'; box.style.backgroundColor = 'rgba(224,168,58,0.1)';
+                    vText.style.color = '#e0a83a'; vText.innerText = '🟡 跟注 4-Bet';
+                } else {
+                    box.style.borderColor = '#5c667f'; box.style.backgroundColor = 'rgba(92,102,127,0.12)';
+                    vText.style.color = '#8b95ab'; vText.innerText = '⚪ 弃牌 (Fold)';
+                }
+                logicText.innerHTML = res.logic;
+
+                if (postSizing) { sizingBox.classList.remove('hidden'); document.getElementById('sizingContent').innerText = postSizing; }
+                freqBox.classList.remove('hidden');
+                document.getElementById('freqBar').innerHTML =
+                    (b > 0 ? `<div class="freq-fill bg-open" style="width:${b}%">${b}%</div>` : '') +
+                    (c > 0 ? `<div class="freq-fill bg-call" style="width:${c}%">${c}%</div>` : '') +
+                    (f > 0 ? `<div class="freq-fill bg-fold" style="width:${f}%">${f}%</div>` : '');
+                document.getElementById('freqLabels').innerHTML =
+                    (b > 0 ? `<span class="text-red-400">5-Bet 全下 ${b}%</span>` : '') +
+                    (c > 0 ? `<span class="text-yellow-500">Call ${c}%</span>` : '') +
+                    (f > 0 ? `<span class="text-gray-400">Fold ${f}%</span>` : '');
+
+                document.getElementById('lblBox1').innerText = "跟注所需胜率"; document.getElementById('mathBox1').innerText = res.reqCall + '%';
+                document.getElementById('lblBox2').innerText = "跟后 SPR";    document.getElementById('mathBox2').innerText = res.sprAfterCall;
+                document.getElementById('lblBox3').innerText = "他弃牌率";    document.getElementById('mathBox3').innerText = res.pFold + '%';
+                document.getElementById('lblBar1').innerText = `对其价值段胜率（4-Bet 范围：${res.bucket === 'tight' ? '前位·紧' : '后位·宽'}）`;
+                const eqShow = res.eqVsValue === null ? 0 : res.eqVsValue;
+                document.getElementById('mathBar1Text').innerText = eqShow + '%';
+                document.getElementById('mathBar1Fill').style.width = eqShow + '%';
+                document.getElementById('mathBar2Text').innerText = res.reqCall + '%';
+                document.getElementById('mathBar2Line').style.left = res.reqCall + '%';
+                proofPanel.classList.remove('hidden');
+                document.getElementById('resultPanel').classList.remove('invisible');
+                updateCfgSummary();
+                return;
+            }
+
             if (currentMode === 'face3b') {
                 if (POS_ORDER[posV] <= POS_ORDER[posH]) {
                     showParadoxError(box, vText, logicText, `位置时间轴错误:3-Bet 者 [${POS_LABEL[posV]}] 必须在你 Open 位 [${POS_LABEL[posH]}] 之后行动。`); return;
@@ -4297,7 +5218,7 @@
                 // 短码 Nash Push
                 if (sH <= 12) {
                     const pushRange = getNashPushRange(sH, posH) + stageCfg.pushMod;
-                    const handPct = getHandPercentile(handStr);
+                    const handPct = getPushCombopct(handStr);   // 2026-09-08：真实组合百分比
                     isPushMode = true;
                     
                     // 审计修复#2(2026-09-08，P0)：原来 ≤3BB **无条件 ATC 全推**，
@@ -4310,7 +5231,7 @@
                     if (sH <= 3 && handPct <= pushRange) {
                         box.style.borderColor = '#e5484d'; box.style.backgroundColor = 'rgba(214,57,64,0.1)';
                         vText.style.color = '#ff7a7d'; vText.innerText = '🔥 全下 (极短码)';
-                        logicText.innerText = `筹码 ≤3BB，${POS_LABEL[posH] || posH} 位 Nash 推注范围 ${pushRange.toFixed(0)}%（伪百分位），本手 ${handPct.toFixed(0)} 命中，全推。`;
+                        logicText.innerText = `筹码 ≤3BB，${POS_LABEL[posH] || posH} 位 Nash 推注范围 ${pushRange.toFixed(0)}%（组合百分比），本手排在最强的 ${handPct.toFixed(1)}% 之内，全推。`;
                         freqBox.classList.remove('hidden');
                         document.getElementById('freqBar').innerHTML = `<div class="freq-fill bg-open" style="width:100%">100%</div>`;
                         document.getElementById('freqLabels').innerHTML = `<span class="text-blue-400">Push 100%</span>`;
@@ -4646,7 +5567,7 @@
                     // 下限为最小合法加注（3-Bet 额 + 上次加注增量），≥85% 有效筹码改全押。
                     // 原 effStack×0.4 完全无视 3-Bet 额：30BB 时算出 12BB 低于最小合法加注
                     //（面对 9BB 3-Bet 最少 15.5），100BB 时又达 40BB 过大。
-                    const _openAmt4 = gameConfig.ante ? 2.2 : 2.5;
+                    const _openAmt4 = getOpenSizeBB();   // 尺度可选(2026-09-08)
                     const _isIP4 = POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV];
                     const _minLegal4 = threeBetSize + Math.max(0, threeBetSize - _openAmt4);
                     const fourBetSize = () => {
@@ -4743,7 +5664,14 @@
                 
                 let color = f >= 80 ? "red" : b >= 50 ? "green" : "yellow";
                 let btnName = currentMode === 'face3b' ? "4-Bet" : "3-Bet";
-                let verdict = f >= 80 ? "⚪ 弃牌 (Fold)" : b >= 50 ? `🔴 主动 ${btnName}` : "🟡 混合策略 / 平跟";
+                // 标签自洽(2026-09-08)：原来只要不满足前两个条件就一律叫"混合策略"，
+                // 于是 Call 100% 也被标成"混合策略"——用户实测到这个自相矛盾。
+                // 现在只有真的存在两个以上非零频率时才叫混合。
+                const _nz = [b, c, f].filter(x => x > 0).length;
+                let verdict = f >= 80 ? "⚪ 弃牌 (Fold)"
+                            : b >= 50 ? `🔴 主动 ${btnName}`
+                            : (_nz <= 1 ? (c >= 100 ? "🟢 平跟 (Call)" : b > 0 ? `🔴 主动 ${btnName}` : "⚪ 弃牌 (Fold)")
+                                        : "🟡 混合策略 / 平跟");
                 // Re-Jam(2026-07-13)：全推决策专用措辞（b=35 降频档仍属混合，但需标明是全推）
                 if (rejamChosen && b >= 50)      { verdict = '🔥 全下 (Re-Jam)'; color = 'green'; }
                 else if (rejamChosen && b >= 35) { verdict = '🟡 Re-Jam 混合（35% 全推）'; }
@@ -4762,7 +5690,7 @@
                     if (currentMode === 'faceBet') {
                         // 3-Bet IP: ~3x raise, OOP: ~4x raise
                         const isIP = POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV];
-                        const suggAmt = raiseSize * (isIP ? 3 : 4);
+                        const suggAmt = raiseSize * getTbMult(isIP);   // 尺度可选(2026-09-08)
                         // P1-2：All-in 上限与显示用有效筹码 effStack=min(hero,villain)，非 Hero 总筹码 sH
                         // Re-Jam(2026-07-13)：全推决策直接显示 All-in，不走 3x/4x 计算
                         suggSize = rejamChosen
@@ -4806,7 +5734,10 @@
 
                 let sq = 0, c = 0, f = 100, logic = "";
 
-                const sqAction = getSqueezeAction(handStr, posH, gameConfig.tableSize, gameConfig.stage, effStack);
+                // 跟注人数：注意 numCallers 在本块更下方才用 const 声明，这里直接取源头值，
+                // 否则会踩 TDZ（"Cannot access 'numCallers' before initialization"，回归实测抓到）
+                const sqCallers = Math.max(1, limpCount || 1);
+                const sqAction = getSqueezeAction(handStr, posH, gameConfig.tableSize, gameConfig.stage, effStack, sqCallers);
 
                 switch (sqAction) {
                     case 'squeeze_value':
@@ -4823,7 +5754,16 @@
                         break;
                     default:
                         f = 100;
-                        logic = '该手牌在当前位置/筹码深度不适合 squeeze。';
+                        // 说清楚"为什么不适合"(2026-09-08，用户实测："弃牌 100% 背后的逻辑是什么")
+                        logic = (() => {
+                            const _sq = SQUEEZE_RANGES[gameConfig.tableSize]?.[posH] || SQUEEZE_RANGES['9max']?.[posH];
+                            if (!_sq) return '该手牌在当前位置/筹码深度不适合 squeeze。';
+                            const _co = h => h.length === 2 ? 6 : h[2] === 's' ? 4 : 12;
+                            const _w = (_sq.value.concat(_sq.bluff).reduce((a, h) => a + _co(h), 0) / 1326 * 100).toFixed(1);
+                            return `${handStr} 不在 ${POS_LABEL[posH] || posH} 的挤压范围内（该范围仅约 ${_w}%：` +
+                                   `价值 ${_sq.value.join('/')}；诈唬 ${_sq.bluff.join('/')}）。` +
+                                   `挤压要同时把开池者和跟注者打跑，范围必须很窄——被跟住时你面对的是两家的强端。弃牌。`;
+                        })();
                 }
 
                 // 多人底池：诈唬成功率下降，超过 3 人时放弃诈唬（补充5）
@@ -4915,10 +5855,26 @@
                     c = 60; b = 0; f = 40;
                     logic = `${handStr} 是标准 Cold Call 牌（买 Set，翻后中对以上可玩），60% 跟注 / 40% 弃牌。`;
                 }
-                // AQo：4-Bet 或弃牌
+                // 冷 4-Bet 改为按实算胜率判定(2026-09-08，用户实测质疑)：
+                // 原来按牌型硬给"4-Bet 50% / 弃牌 50%"。实算：AQo 对 LJ_vs_UTG1 的 3-Bet 范围
+                // 只有 39.7%，对其中**会继续的价值段只有 28.5%** —— 拿这个胜率去冷 4-Bet
+                // 是明显亏钱的（能被打跑的只有他那一小撮诈唬）。
+                // 现在统一走价格闸门：对价值段有优势才 4-Bet，否则弃牌。
                 else if (cat === "OffsuitBroadA" && v2 >= 12) {
-                    b = 50; c = 0; f = 50;
-                    logic = `AQo 面对 3-Bet 选择 4-Bet 或弃牌，跟注位置劣势过大。`;
+                    const _tb = THREBET_RANGES[gameConfig.tableSize]?.[`${globalPosCaller}_vs_${posV}`]
+                             || THREBET_RANGES['9max']?.[`${globalPosCaller}_vs_${posV}`];
+                    const _eqV = (_tb && typeof preflopEquityVsRange === 'function')
+                        ? preflopEquityVsRange([heroCard1, heroCard2], _tb.value, 6000) : null;
+                    if (_eqV !== null && _eqV >= 45) {
+                        b = 50; c = 0; f = 50;
+                        logic = `${handStr} 对该 3-Bet 者的价值段有 ${_eqV.toFixed(1)}%（≥45%），冷 4-Bet 与弃牌各半。`;
+                    } else {
+                        b = 0; c = 0; f = 100;
+                        logic = _eqV !== null
+                            ? `${handStr} 对该 3-Bet 者的<b>价值段只有 ${_eqV.toFixed(1)}%</b> —— 冷 4-Bet 只能打跑他的诈唬段，` +
+                              `被继续的部分我们大幅落后；跟注又位置劣势且被夹在开池者中间。弃牌。`
+                            : `${handStr} 面对 3-Bet：冷 4-Bet 会被更强的范围继续，跟注位置劣势，弃牌。`;
+                    }
                 }
                 // AQs：混合（4-Bet + Cold Call）
                 else if (cat === "SuitedBroadA" && v2 === 12) {
@@ -5036,8 +5992,12 @@
                 // 显示成 37.7% 并建议弃牌。深码收紧本身没错，只是喂错了输入。
                 const pushEff = Math.min(sH, sV);
                 let villainPushRange = getNashPushRange(pushEff, posV) + stageCfg.pushMod;
-                if (pushEff > 15) villainPushRange = Math.max(36, villainPushRange - (pushEff - 15) * 1.2);
-                const handPct = getHandPercentile(handStr);
+                // 刻度改组合%后重标(2026-09-08)：原参数 -1.2/BB、下限 36 是按**伪百分位**定的，
+                // 换成真实组合百分比后下限 36% 反而比 15BB 的基准（BTN 30%）还宽 ——
+                // 会得出"25BB 推得比 15BB 还宽"的反向结论（实测 12BB 38% / 16BB 36% / 25BB 36%）。
+                // 现按组合%重标：每深 1BB 收紧 1.8 个组合点，下限 8%（深码直接全推者范围高度极化）。
+                if (pushEff > 15) villainPushRange = Math.max(8, villainPushRange - (pushEff - 15) * 1.8);
+                const handPct = getPushCombopct(handStr);   // 2026-09-08：真实组合百分比
                 const cat = getStrictCategory(v1, v2, isSuited);
                 
                 // 底池赔率：跟注额 = 有效筹码 min(sH,sV)——Hero 更短时只需跟 sH，
@@ -5048,7 +6008,7 @@
                 // 死钱按位置算(2026-07-21)：原固定 1.5(SB+BB) —— 但 Hero/对手本身是盲注位时，
                 // 那份盲注已计入其投入(effAllin)，再放进死钱就是重复计算，底池被高估、
                 // 所需胜率虚高。与 initPotTracker 用同一套判据。
-                let deadPre = gameConfig.ante ? 1.0 : 0;
+                let deadPre = getAnteBB();   // 2026-09-08：按实际 ante/BB，不再写死 1.0
                 if (posH !== 'SB' && posV !== 'SB') deadPre += 0.5;
                 if (posH !== 'BB' && posV !== 'BB') deadPre += 1.0;
                 // 已投盲注修正：在 BB/SB 时我已投入的盲注是沉没成本，实际只需补差额 →
@@ -5078,7 +6038,7 @@
                 // 真实 19%，A9o vs 宽范围表 38%/真实 61%。改为实时 MC：Hero 具体底牌 vs
                 // "伪百分位 ≤ villainPushRange 的 Nash 推注范围"（与 Nash 表 inRange 判据
                 // 同一刻度），组合加权采样 2000 次预翻 runout（±1.1 点，浏览器内 <100ms）。
-                const pushHands = ALL_169_HANDS.filter(h => getHandPercentile(h) <= villainPushRange);
+                const pushHands = ALL_169_HANDS.filter(h => getPushCombopct(h) <= villainPushRange);
                 // 自适应采样(2026-07-21)：接全下是 MTT 最贵的决策，而 MC 噪声已在二项分布
                 // 理论下限上（√(p(1-p)/n)，6000 次实测 sd=0.60，与理论 0.63 吻合）——试过
                 // 按对手组合分层抽样，sd 仅 0.599→0.557，因为单次结果是 0/1，组合层差异
@@ -5174,7 +6134,10 @@
         renderCfgGroup('grpTableSize', tableSizeOpts, 'tableSize');
         renderCfgGroup('grpStage', stageOpts, 'stage');
         renderCfgGroup('grpPlayStyle', playStyleOpts, 'playStyle');
-        renderVillainModelGroup(); // M5：对手模型组初始化渲染
+        renderVillainModelGroup();
+                renderCfgGroup('grpOpenSize', openSizeOpts, 'openSize');   // 尺度可选(2026-09-08)
+                renderCfgGroup('grpTbSize', tbSizeOpts, 'tbSize');
+                renderSizingAdvice(); // M5：对手模型组初始化渲染
         // 分层显示 + 撤回栈 + HUD (2026-07-21) 初始化
         applyDetailsPref(); applyProofPref(); initVisionBarCollapse(); _updateUndoBtn();
         renderHeroPicker();
@@ -5325,10 +6288,10 @@
             // ④ 新增 effStackBase = 翻前投入后的剩余有效筹码，并由 recalculatePot 逐街扣减——
             //    原直接用总筹码且从不扣除任何投入，转牌/河牌的 SPR、承诺区、全押阈值系统性偏高。
             const heroPos = globalPosHero, villPos = globalPosVillain;
-            let dead = gameConfig.ante ? 1.0 : 0;
+            let dead = getAnteBB();   // 2026-09-08：按实际 ante/BB，不再写死 1.0
             if (heroPos !== 'SB' && villPos !== 'SB') dead += 0.5;
             if (heroPos !== 'BB' && villPos !== 'BB') dead += 1.0;
-            const openAmt = globalHeroStack < 25 ? 2.0 : (gameConfig.ante ? 2.2 : 2.5);
+            const openAmt = getOpenSizeBB();   // 尺度可选(2026-09-08)
             const nCallers = (() => { const el = document.getElementById('limpCount'); const n = el ? parseInt(el.value) : 1; return n > 0 ? n : 1; })();
             let each = 0, extraDead = 0;
             if (currentMode === 'open') {
@@ -5344,6 +6307,9 @@
                 const n = Math.max(1, (selectedLimperPositions || []).length);
                 each = 1;                               // 跛入池：主对手跛 1BB，我在 BB 已有 1BB
                 extraDead = Math.max(0, n - 1) * 1.0;   // 其余跛入者的 1BB 作死钱
+            } else if (currentMode === 'face4b') {
+                // 面对 4-Bet(2026-09-08)：若我跟注继续，双方投入即 4-Bet 额
+                each = (typeof globalFourBetSize === 'number' && globalFourBetSize > 0) ? globalFourBetSize : globalThreeBetSize;
             } else if (currentMode === 'faceBet') {
                 // 审计修复#6(2026-09-08)：Hero 若已标记 3-Bet，双方投入是 3-Bet 额而非开池额
                 each = (typeof tlHero !== 'undefined' && tlHero && tlHero.action === '3bet' && tlHero.amount > 0)
@@ -6077,8 +7043,10 @@
                 // 判据：tlEvents 里 action 非 fold 的座位即在池；Hero 与主对手自动排除。
                 if (typeof tlEvents === 'object' && tlEvents) {
                     Object.keys(tlEvents).forEach(pos => {
-                        const a = (tlEvents[pos] || {}).action;
-                        if (a && a !== 'fold') _addExtra(pos);
+                        const en = tlEvents[pos] || {};
+                        // 第二轮应对为弃牌者不入池(2026-09-08)
+                        if (en.resp && en.resp.action === 'fold') return;
+                        if (en.action && en.action !== 'fold') _addExtra(pos);
                     });
                 }
                 // 传统场景标签路径（未走时间线时）仍按原逻辑补充
@@ -6711,6 +7679,17 @@
             return `<div class="st-timeline mb-2">${rows.join('')}</div>`;
         }
 
+        /** 额外对手弃牌：从多人底池移除并立即重算（2026-09-08） */
+        window.dropExtraVillain = function(pos) {
+            if (!Array.isArray(postState.extraVillains)) return;
+            if (typeof pushUndo === 'function') pushUndo(`多人底池：${POS_LABEL[pos] || pos} 弃牌`);
+            postState.extraVillains = postState.extraVillains.filter(x => x !== pos);
+            try { renderPostVillainPosSelector(); } catch (e) {}
+            renderBettingPanel();
+            try { if (postState.board.filter(c => c !== null).length >= 3) checkStreetAnalysis(); } catch (e) {}
+            if (typeof showToast === 'function') showToast(`${POS_LABEL[pos] || pos} 已弃牌，现为 ${(postState.extraVillains.length) + 2} 人底池`, 'info');
+        };
+
         function renderBettingPanel() {
             const area = document.getElementById('postBettingArea');
             if (!area) return;
@@ -6799,6 +7778,24 @@
                     行动顺序：我 <b style="color:#ff7a7d">${hp}</b> · 对手 <b style="color:#45d68a">${vp}</b>
                     → <b style="color:${heroIsOOP ? '#7cc0ff' : '#45d68a'}">${heroIsOOP ? '我先行动（OOP）' : '对手先行动（我 IP）'}</b>
                     <span style="color:#6b7280;">· 位置不对可点下方按钮改</span></div>`;
+            }
+            // 多人底池在行动区可见(2026-09-08，用户反复提出)：原来无论几人进池，
+            // 这里永远只显示"我 + 对手"两个人，中间跟注进来的第三家在翻后完全不可见
+            //（他只影响胜率与门槛，界面上没有任何痕迹）。现在把在池的每一位都列出来，
+            // 并给一个「弃牌」快捷键——他一弃，人数立刻变回去，门槛与诈唬开关同步跟着变。
+            {
+                const _ex = (postState.extraVillains || []).filter(x => x && x !== globalPosHero && x !== globalPosVillain);
+                if (_ex.length) {
+                    html += `<div class="text-[10px] mb-1.5 px-1 py-1 rounded" style="background:rgba(224,168,58,.10);border:1px dashed rgba(224,168,58,.45);">
+                        <span style="color:#e0a83a;font-weight:700;">${_ex.length + 2} 人底池</span>
+                        <span class="text-gray-400"> · 我 <b style="color:#ff7a7d">${POS_LABEL[globalPosHero] || globalPosHero}</b>
+                        · 主对手 <b style="color:#45d68a">${POS_LABEL[globalPosVillain] || globalPosVillain}</b>（行动线归属）</span>
+                        ${_ex.map(x => `<span class="ml-1" style="color:#e0a83a;">· ${POS_LABEL[x] || x}
+                            <button onclick="dropExtraVillain('${x}')" title="他弃牌了：从底池移除，人数与门槛立即重算"
+                                style="border:1px solid rgba(224,168,58,.5);border-radius:3px;padding:0 4px;margin-left:2px;cursor:pointer;background:transparent;color:#e0a83a;">弃牌</button></span>`).join('')}
+                        <br><span class="text-gray-500">额外对手只影响胜率与门槛，不单独记行动线（其下注请记在主对手上）</span>
+                    </div>`;
+                }
             }
             html += `<div class="flex gap-1 mb-2">
                 <button onclick="overrideFirstActor('OOP')"
