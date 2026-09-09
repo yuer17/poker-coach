@@ -1875,6 +1875,23 @@
         // ============================================================
         // 面对 3-Bet 的应对范围（4-Bet / Call / Fold）
         // ============================================================
+        // 面对盲位 3-Bet 的应对（2026-09-09，MPT MTT 章 24 张图逐格实测；
+        // 提取器 regression_tests/reference/mpt_face3b.py，记录 mpt_face3b.md）。
+        // 校验：图题印刷的 All-in% / Call% —— 23/24 张对上（全下 ±3.5、跟注 ±4.5）。
+        // **本章图题的百分比是相对开池者的开池范围**，不是相对 1326 组合（MPT 正文
+        // 自己点明过），且调色板与 BB 防守那批不同（白=不在开池范围/灰=弃/黑=跟/
+        // 鲑红=全下），不先把白格排除在分母外，24 张全部对不上。
+        //
+        // **本表推翻了旧 FACING_3BET_RANGES 的方向**：旧表 fourbet_value 是
+        // AA/KK/QQ/AKs/AKo，而 25-40bb 的 4-Bet 尺度必然 ≥85% 筹码 = 全下，
+        // 于是我们在拿 AA/KK/QQ 全下。实测恰恰相反 —— BTN 40bb 面对 BB 的 3-Bet，
+        // 全下段是 AKo/AQo/A2s/33/A5s/66/KTs/AJo（阻断牌与翻后难打的牌），
+        // **AA/KK/QQ 全在跟注段**（留住对手的诈唬段，翻后再拿钱）。
+        // 这是本项目第四次撞见同一个形状：**全下的是范围的中段，不是顶端。**
+        // 注意方向随开池位反转：UTG 40bb 的全下段只有 AKo/KK/QQ 三手——
+        // 因为 UTG 范围强、盲位的 3-Bet 更偏价值，此时顶端反而该全下。
+        const MPT_F3B = {'BTN':{'BB':{'25':{'jam':['AJo','AKo','AQo','A2s','A4s','A5s','AKs','33','ATo','A3s'],'call':['KJo','KQo','QJo','AA','JJ','KK','QQ','A6s','A7s','A8s','A9s','AJs','ATs','J9s','JTs','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KTs','Q8s','Q9s','QJs','QTs','TT','99','88','T8s','T9s','87s','A8o','98s','66','A7o','76s','KTo','55','A5o','77','AQs','A9o','KQs','QTo','A4o'],'mix':['44']},'40':{'jam':['AKo','AQo','A2s','33','A5s','66','KTs','AKs','JJ'],'call':['KJo','KQo','QJo','AA','KK','QQ','A4s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','Q8s','Q9s','QJs','ATo','T8s','T9s','KTo','A8o','A9o','98s','99','88','44','97s','76s','87s','54s','77','65s','QTo','55','Q7s','A3s','K3s','QTs','Q6s','A5o','JTo','TT'],'mix':['AJo']},'60':{'jam':['AKo','TT','AKs','44','KK','99'],'call':['AJo','KQo','QJo','QTo','AA','JJ','QQ','A2s','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J7s','J8s','J9s','JTs','K2s','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q5s','Q6s','Q7s','Q8s','Q9s','QJs','QTs','A9o','96s','98s','88','86s','T9s','ATo','JTo','T8s','KTo','87s','97s','76s','64s','T7s','54s','75s','77','66','53s','65s','55','KJo','Q4s','33','K9o'],'mix':['AQo','22']}},'SB':{'25':{'jam':['AJo','AKo','AQo','QQ','A2s','A3s','A4s','A5s','AKs','AQs','A9o','33','ATo','A8o','55','88'],'call':['KJo','QJo','AA','JJ','A6s','A7s','A8s','AJs','ATs','J9s','JTs','K6s','K7s','K8s','K9s','KJs','KTs','Q8s','Q9s','QJs','QTs','T8s','T9s','98s','87s','TT','A7o','66','76s','A9s','77','KQo','K3s','44','99','KK','97s','K4s'],'mix':['A5o','KQs']},'40':{'jam':['AKo','AQo','JJ','A4s','A5s','TT','22','AKs','QQ'],'call':['KJo','KQo','QJo','QTo','AA','KK','A2s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K2s','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q4s','Q5s','Q6s','Q7s','Q8s','Q9s','QJs','QTs','T7s','JTo','T8s','KTo','T9s','ATo','A8o','96s','99','98s','A9o','97s','88','86s','44','A3s','76s','64s','87s','75s','54s','77','65s','53s','55','A5o','AJo'],'mix':['A6s','33','66']},'60':{'jam':['AKo','KK','TT','AKs','QJs','Q2s','AQs','22','K9o'],'call':['AJo','AQo','KJo','KQo','QJo','QTo','AA','A2s','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','ATs','J7s','J8s','J9s','JTs','K2s','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q3s','Q4s','Q5s','Q6s','Q7s','Q8s','Q9s','QTs','A9o','99','96s','98s','88','86s','44','T6s','85s','T8s','T9s','43s','ATo','KTo','97s','87s','76s','64s','T7s','54s','75s','66','77','53s','33','65s','55','JTo','JJ','A5o','QQ'],'mix':['A8o']}}},'CO':{'BB':{'25':{'jam':['AJo','AKo','AQo','A2s','A4s','AKs'],'call':['KJo','KQo','AA','JJ','KK','QQ','A7s','A8s','A9s','AJs','AQs','ATs','J9s','JTs','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q9s','QJs','QTs','98s','T8s','88','87s','99','TT','A9o','T9s','ATo','76s','55','77','66','K5s','A6s','54s','A8o','44','KTo'],'mix':['A5s','A3s']},'40':{'jam':['AKo','JJ','AKs','AQo','KJs'],'call':['KJo','KQo','AA','KK','QQ','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J9s','JTs','K6s','K7s','K8s','K9s','KQs','KTs','Q8s','Q9s','QTs','T8s','ATo','T9s','99','98s','88','76s','QJs','77','66','55','54s','AJo','87s','44','K5s','A4s','KTo','QJo'],'mix':['A3s','A2s','TT']},'60':{'jam':['AKo','ATo','KK','AKs','K5s'],'call':['AJo','AQo','KJo','KQo','AA','A2s','A3s','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q9s','QJs','QTs','76s','77','99','88','54s','98s','44','55','T8s','T9s','65s','97s','JTo','87s','66','33','Q8s','QQ','A4s','TT','KTo'],'mix':['JJ']}},'SB':{'25':{'jam':['AJo','AKo','AQo','QQ','A4s','AKs','AQs','66','55','A6s','77','A3s'],'call':['KJo','KQo','AA','JJ','KK','A7s','A8s','A9s','AJs','ATs','J9s','JTs','K6s','K7s','K9s','KJs','KTs','Q9s','QJs','QTs','88','TT','A9o','T9s','44','98s','54s','87s','65s','76s','A5s','99','KQs','K4s'],'mix':['ATo','A2s']},'40':{'jam':['AKo','AQo','JJ','AKs','A7s','33','QQ','TT'],'call':['AJo','KJo','KQo','AA','KK','A2s','A3s','A6s','A8s','A9s','AJs','AQs','ATs','J9s','JTs','K5s','K6s','K7s','K9s','KQs','KTs','Q9s','QJs','QTs','ATo','87s','T8s','T9s','88','98s','44','54s','66','76s','65s','97s','55','KJs','K8s','A4s','Q8s','QJo'],'mix':['A5s','99','77']},'60':{'jam':['AKo','KK','QQ','AKs','A9o'],'call':['AJo','AQo','KJo','KQo','JJ','A2s','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q8s','Q9s','QJs','QTs','75s','77','76s','86s','54s','96s','98s','44','65s','87s','55','97s','T8s','T9s','66','TT','99','33','22','88','AA','ATo'],'mix':['QJo']}}},'LJ':{'BB':{'25':{'jam':['AKo','AQo','QQ','AKs'],'call':['AJo','KQo','AA','JJ','KK','A3s','A4s','A8s','A9s','AJs','AQs','ATs','JTs','K8s','K9s','KJs','KQs','KTs','QJs','QTs','TT','ATo','99','77','66','98s','T9s','A5s','A2s','K6s'],'mix':['88','A6s','A7s']},'40':{'jam':['AKo'],'call':['AJo','AQo','AA','JJ','KK','A5s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','JTs','K8s','K9s','KJs','KTs','QJs','QTs','T9s','TT','99','88','76s','KQo','77','54s','66','65s','K6s','KQs','A3s','J9s','KJo','87s'],'mix':['QQ','A4s']},'60':{'jam':['KK','KQo'],'call':['AQo','JJ','QQ','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','J9s','JTs','K9s','KJs','KQs','KTs','QJs','QTs','76s','88','99','44','65s','87s','T9s','66','TT','33','AKo','77','AJo'],'mix':['AA']}},'SB':{'25':{'jam':['AKo','AQo','QQ','A6s','A7s','AKs','88'],'call':['KQo','AA','A3s','A4s','A8s','A9s','AJs','ATs','JTs','K9s','KJs','KQs','KTs','QJs','QTs','ATo','99','77','66','65s','AJo','K7s','KK','A2s','JJ','98s','TT','76s'],'mix':['A5s','AQs']},'40':{'jam':['AKo','QQ','A5s'],'call':['AJo','AQo','KQo','AA','KK','A2s','A3s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','J9s','JTs','K9s','KJs','KQs','KTs','QJs','QTs','T9s','99','44','88','76s','87s','77','54s','66','65s','55','98s','Q9s','T8s','A4s','A6s','K6s','K5s'],'mix':['JJ','TT']},'60':{'jam':['JJ','KK','AKo'],'call':['AJo','AQo','KQo','QQ','A3s','A4s','A5s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','J9s','JTs','K9s','KJs','KQs','KTs','QJs','QTs','99','88','98s','44','T8s','T9s','76s','87s','A6s','A2s','TT','77','66','33','65s','55','K6s'],'mix':['AA']}}},'UTG':{'BB':{'25':{'jam':['AKo','QQ','TT','KK','A9s','A4s'],'call':['AA','JJ','A8s','AJs','AQs','ATs','K9s','KJs','KQs','KTs','QJs','99','88','76s','66','A7s','AQo','QTs','A5s','AJo'],'mix':['AKs']},'40':{'jam':['AKo','KK'],'call':['AQo','AA','JJ','A5s','A9s','AJs','AQs','ATs','KJs','KQs','KTs','QJs','QTs','TT','99','88','76s','66','65s','55','AKs','A4s','A8s','JTs'],'mix':['QQ']},'60':{'jam':['K6s'],'call':['JJ','QQ','A3s','A4s','A5s','A8s','A9s','AJs','AKs','AQs','ATs','KQs','QJs','QTs','76s','44','T9s','65s','87s','TT','KK','KJs','AA','AQo','66','99'],'mix':['AKo']}},'SB':{'25':{'jam':['KK','99','TT','A5s','AQs','QJs','A8s','QQ','T9s'],'call':['KQo','A4s','AJs','ATs','K9s','KJs','KTs','QTs','86s','98s','87s','88','JJ','AKs','76s','77','K8s','75s','66','JTs','A7s','AJo','AA','KJo'],'mix':['KQs','A9s']},'40':{'jam':['AKo','QQ','KK'],'call':['AQo','AA','A4s','AJs','AKs','AQs','ATs','JTs','K6s','KJs','KQs','KTs','QJs','QTs','TT','99','88','76s','66','65s','55','A9s','K9s','77'],'mix':['JJ','A5s']},'60':{'jam':['K6s','AA','AKo'],'call':['AQo','JJ','QQ','A3s','A4s','A5s','A6s','A9s','AJs','AKs','AQs','ATs','JTs','KJs','KQs','KTs','QJs','QTs','99','44','T9s','87s','76s','TT','66','65s','A8s','55','88','77','KK']}}}};
+
         const FACING_3BET_RANGES = {
         '9max': {
             fourbet_value: ['AA','KK','QQ','AKs','AKo'],
@@ -4771,15 +4788,41 @@
          * 这里统一算出：所需胜率（真实赔率）与我方对 3-Bet 者范围的实时 MC 胜率。
          * @returns {{req:number, eq:number, toCall:number, pot:number}|null} 数据不足时 null
          */
-        function threeBetCallPrice(heroCards, threeBetterPos, heroPos, invested, threeBetSize, extraDead) {
+        function threeBetCallPrice(heroCards, threeBetterPos, heroPos, invested, threeBetSize, extraDead, effStackForPrice) {
             if (!(threeBetSize > 0) || typeof Hand === 'undefined') return null;
-            const key = `${threeBetterPos}_vs_${heroPos}`;
-            const tbl = THREBET_RANGES[gameConfig.tableSize] || THREBET_RANGES['9max'] || {};
-            const entry = tbl[key] || (THREBET_RANGES['9max'] || {})[key];
-            // THREBET_RANGES 的值是 { value:[...], bluff:[...] } 而非裸数组——
-            // 3-Bet 者的真实范围是两者之和（价值 + 诈唬），只取其一会严重偏估。
-            const range = entry ? [...(entry.value || []), ...(entry.bluff || [])] : null;
+            let range = null;
+            // 一致性（2026-09-09）：3-Bet 者是盲位时，用与 getThreeBetAction / rangeEstimator
+            // 同一张 MPT 实测表估他的范围——否则同一个模型里会出现三套宽度。
+            if (threeBetterPos === 'BB' || threeBetterPos === 'SB') {
+                const r3 = bbSb3betSet(threeBetterPos, heroPos, Math.max(0, effStackForPrice || 0));
+                if (r3 && r3.set.size >= 8) range = [...r3.set];
+            }
+            if (!range) {
+                const key = `${threeBetterPos}_vs_${heroPos}`;
+                const tbl = THREBET_RANGES[gameConfig.tableSize] || THREBET_RANGES['9max'] || {};
+                const entry = tbl[key] || (THREBET_RANGES['9max'] || {})[key];
+                // THREBET_RANGES 的值是 { value:[...], bluff:[...] } 而非裸数组——
+                // 3-Bet 者的真实范围是两者之和（价值 + 诈唬），只取其一会严重偏估。
+                range = entry ? [...(entry.value || []), ...(entry.bluff || [])] : null;
+            }
             if (!range || !range.length) return null;
+            // 尺度感知（2026-09-09）：**3-Bet 尺度必须进范围估计**。
+            // 之前 range 只按位置查表、与 3-Bet 额无关 —— 一个把 100BB 里的 80BB 推出去的人
+            // 不可能还是那个 16.8% 的常规 3-Bet 范围。这个缺陷此前被"表本身太窄"掩盖着
+            //（旧 BB 表 7.4%，窄得恰好让离谱尺度也得出弃牌的正确结论）；换成实测宽度后
+            // 就暴露出来了：99 面对 80BB 的 3-Bet 被算成 55.7% 胜率、建议跟注。
+            // 处理：以"常规 3-Bet ≈ 开池额 ×3.3"为基准，尺度越大按牌力序截得越短
+            //（下限保留 25%，避免退化成只剩 AA）。翻后早就有同名的尺度感知修正，
+            // 翻前这一处一直缺。
+            {
+                const norm3b = Math.max(1, getOpenSizeBB() * 3.3);
+                const ratio = threeBetSize / norm3b;
+                if (ratio > 1.5 && range.length > 8) {
+                    const keep = Math.max(0.25, Math.pow(ratio, -0.6));
+                    const sorted = [...range].sort((x, y) => getPushCombopct(x) - getPushCombopct(y));
+                    range = sorted.slice(0, Math.max(8, Math.round(sorted.length * keep)));
+                }
+            }
             const toCall = Math.max(0, threeBetSize - invested);
             // 死钱：Hero/对手本身是盲注位时其盲注已在各自投入里，不重复计（同 initPotTracker 口径）
             let dead = getAnteBB();   // 2026-09-08：按实际 ante/BB，不再写死 1.0
@@ -4792,7 +4835,33 @@
             return { req: toCall / pot * 100, eq, toCall, pot };
         }
 
-        function getFacing3BetAction(handStr, heroPos, tableSize, effStack) {
+        /** 面对盲位 3-Bet 时查 MPT 实测表；返回 {jam:bool, call:bool} 或 null（无覆盖） */
+        function mptF3bSet(heroPos, tbPos, effStack) {
+            if (tbPos !== 'BB' && tbPos !== 'SB') return null;
+            // MPT 只解了 BN/CO/LJ/UTG 四个开池位，其余按"身后人数"就近映射
+            const BEH = { BTN: 0, CO: 1, HJ: 2, LJ: 3, MP: 4, UTG1: 5, UTG: 6 };
+            const NEAR = { BTN: 'BTN', CO: 'CO', HJ: 'LJ', LJ: 'LJ', MP: 'LJ', UTG1: 'UTG', UTG: 'UTG' };
+            if (BEH[heroPos] == null) return null;
+            const d = effStack > 0 ? effStack : 40;
+            const tier = d <= 32 ? '25' : (d <= 50 ? '40' : '60');
+            const node = ((MPT_F3B[NEAR[heroPos]] || {})[tbPos] || {})[tier];
+            return node || null;
+        }
+        function getFacing3BetAction(handStr, heroPos, tableSize, effStack, tbPos) {
+            // 盲位 3-Bet 走实测表（2026-09-09）。旧表既无深度维度、也不分 3-Bet 者位置，
+            // 而实测显示两者都是一级变量：同是 BTN 面对 3-Bet，25bb 全下 12.4%、
+            // 40bb 8.8%；3-Bet 者是 SB 时全下 21.1%（对 BB 时 12.4%）。
+            {
+                const n = mptF3bSet(heroPos, tbPos, effStack);
+                if (n) {
+                    // mix = 图里该格被竖向切开、两个动作频率都 ≥25% 的真混合牌，
+                    // 不替 solver 二选一，直接输出混合频率
+                    if (n.mix && n.mix.includes(handStr)) return 'fivebet_mix';
+                    if (n.jam.includes(handStr))  return 'fivebet_jam';
+                    if (n.call.includes(handStr)) return 'call';
+                    return 'fold';
+                }
+            }
             // 硬伤修复H1(2026-07-10)：FACING_3BET_RANGES 只有 9max 表，8max/6max 查表
             // undefined 导致任何手牌（含AA）面对3-Bet一律返回fold。兜底用9max表近似。
             const ranges = FACING_3BET_RANGES[tableSize] || FACING_3BET_RANGES['9max'];
@@ -6236,7 +6305,7 @@
                         else { b += Math.floor(c * 0.3); f += Math.ceil(c * 0.7); c = 0; } 
                     }
                 } else {
-                    const action = getFacing3BetAction(handStr, posH, gameConfig.tableSize, effStack);
+                    const action = getFacing3BetAction(handStr, posH, gameConfig.tableSize, effStack, posV);
                     // 全盘审计修复(2026-07-21)：4-Bet 尺度改按 3-Bet 额定档（IP 2.2x / OOP 2.5x），
                     // 下限为最小合法加注（3-Bet 额 + 上次加注增量），≥85% 有效筹码改全押。
                     // 原 effStack×0.4 完全无视 3-Bet 额：30BB 时算出 12BB 低于最小合法加注
@@ -6251,6 +6320,29 @@
                             : amt.toFixed(1) + 'BB 4-Bet';
                     };
                     switch (action) {
+                        case 'fivebet_jam':
+                            b = 100; c = 0; f = 0;
+                            // >50BB：MPT 60bb 那批把 4-Bet(4-9%) 与 All-in(1.5-3.5%) 画成同一个
+                            // 鲑红、无法分色，而该深度里**占多数的是 4-Bet 而非全下**。
+                            // 分不出来就不假装分得出：深码这一段按 4-Bet 出，尺度走既有分档。
+                            if (effStack > 50) {
+                                logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的进攻段` +
+                                        `（60BB 深度该节点 4-Bet 约 4-9% + 全下 1.5-3.5%；原图两者同色无法分开，` +
+                                        `按占多数的 4-Bet 出）。`;
+                                postSizing = fourBetSize();
+                            } else {
+                                logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的全下段` +
+                                        `（${effStack}BB 深度，该节点全下约 ${effStack <= 32 ? '12-21' : '9-13'}%）。` +
+                                        `注意全下段是范围的**中段**——阻断牌与翻后难打的牌；AA/KK/QQ 在跟注段留住对手诈唬。`;
+                                postSizing = `${effStack.toFixed(1)}BB All-in`;
+                            }
+                            break;
+                        case 'fivebet_mix':
+                            b = 50; c = 50; f = 0;
+                            logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测里是**真混合牌**` +
+                                    `（全下与跟注频率都不低），两条线 EV 接近，按混合执行即可。`;
+                            postSizing = `${effStack.toFixed(1)}BB All-in`;
+                            break;
                         case 'fourbet':
                             b=100; c=0; f=0;
                             logic='顶级牌力，4-Bet 价值。';
@@ -6272,7 +6364,10 @@
                             break;
                         case 'call':
                             c=100; b=0; f=0;
-                            logic='中等牌力，深码平跟控池，翻牌后根据牌面决策。';
+                            logic = ['AA','KK','QQ','AKs','AKo'].includes(handStr) && mptF3bSet(posH, posV, effStack)
+                                ? `${handStr} 面对 3-Bet **跟注而非全下**（MPT 实测）：全下只会赶走对手的诈唬段、` +
+                                  `留下打得过我们的那部分；跟注把他整个 3-Bet 范围留在池里，翻后再拿钱。`
+                                : '中等牌力，深码平跟控池，翻牌后根据牌面决策。';
                             break;
                         case 'call_shallow':
                             b=30; f=70; c=0;
@@ -6288,7 +6383,7 @@
                     // 审计修复#5(2026-09-08)：跟注前过价格闸门 —— 3-Bet 越大，跟注所需胜率越高。
                     // 留 3 点容差给隐含赔率/翻后位置优势；差距超过它就把跟注改为弃牌。
                     if (c > 0) {
-                        const pr = threeBetCallPrice([heroCard1, heroCard2], posV, posH, raiseSize, threeBetSize, 0);
+                        const pr = threeBetCallPrice([heroCard1, heroCard2], posV, posH, raiseSize, threeBetSize, 0, effStack);
                         if (pr && pr.eq < pr.req - 3) {
                             logic = `面对 ${threeBetSize}BB 3-Bet 需补 ${pr.toCall.toFixed(1)}BB，所需胜率 ${pr.req.toFixed(1)}%，` +
                                     `而 ${handStr} 对 ${POS_LABEL[posV]} 的 3-Bet 范围仅 ${pr.eq.toFixed(1)}% —— 价格不划算，弃牌。`;
@@ -6349,6 +6444,12 @@
                 // Re-Jam(2026-07-13)：全推决策专用措辞（b=35 降频档仍属混合，但需标明是全推）
                 if (rejamChosen && b >= 50)      { verdict = '🔥 全下 (Re-Jam)'; color = 'green'; }
                 else if (rejamChosen && b >= 35) { verdict = '🟡 Re-Jam 混合（35% 全推）'; }
+                // 面对 3-Bet 的实测全下段（2026-09-09）：措辞要说"全下"而不是"4-Bet"，
+                // 25-40BB 的 4-Bet 本来就 ≥85% 筹码，写 4-Bet 会让人以为还能弃
+                if (currentMode === 'face3b' && /All-in/.test(postSizing || '')) {
+                    if (b >= 50)      { verdict = '🔥 全下 (5-Bet All-in)'; color = 'green'; }
+                    else if (b > 0)   { verdict = `🟡 混合：${b}% 全下 / ${c}% 跟注`; color = 'yellow'; }
+                }
 
                 // 解算器语义色：green(3/4-Bet)=进攻红 / yellow(混合)=琥珀 / red(Fold)=灰蓝
                 box.style.borderColor = color==='green'?'#e5484d':color==='yellow'?'#e0a83a':'#5c667f';
@@ -6612,7 +6713,7 @@
                 // 开池者那份加注是死钱。跟注后剩余筹码不足 ~10BB 时也没有买 Set 的隐含赔率。
                 if (c > 0) {
                     const pr = threeBetCallPrice([heroCard1, heroCard2], globalPosCaller || posV, posH,
-                                                 0, threeBetSize, raiseSize);
+                                                 0, threeBetSize, raiseSize, effStack);
                     const leftAfter = effStack - threeBetSize;
                     if (pr && pr.eq < pr.req - 3) {
                         logic = `面对 ${threeBetSize}BB 3-Bet 需补全额，所需胜率 ${pr.req.toFixed(1)}%，` +
