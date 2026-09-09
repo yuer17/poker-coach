@@ -2107,6 +2107,25 @@
                         if (ref && GTO_RANGES[sz] && GTO_RANGES[sz][pos]) GTO_RANGES[sz][pos].open = [...ref];
                     });
                 });
+                // 9max UTG（身后 6 人）：RangeConverter 是 8-max，最前位只到身后 5 人，
+                // **这一格此前从来没有基准**，我方值 11.92% 是历史校准的产物。
+                // Modern Poker Theory 是 9-handed，给出 UTG 40bb RFI = **15.8%**
+                //（同书 15/25/60bb 为 14.1/16.8/15.2，全程 14-17，几乎不随深度变）。
+                // 我们偏紧 3.9 点。补法不凭空发明：嵌套不变量说 UTG ⊂ UTG1，而 UTG1
+                //（身后 5 人）已是基准数据且按强度序排列，故**取它最强的 15.8%**。
+                {
+                    const src = RC_40BB_RFI[5];
+                    const cb = h => h.length === 2 ? 6 : (h[2] === 's' ? 4 : 12);
+                    const target = 15.8 / 100 * 1326;
+                    let acc = 0, cut = src.length;
+                    for (let i = 0; i < src.length; i++) {
+                        acc += cb(src[i]);
+                        if (acc >= target) { cut = i + 1; break; }
+                    }
+                    const utg = GTO_RANGES['9max'] && GTO_RANGES['9max'].UTG;
+                    // 与原表取并集：即便旧表有基准前缀之外的牌也不丢（实测是真子集，并集即前缀）
+                    if (utg && utg.open) utg.open = uni(src.slice(0, cut), utg.open);
+                }
                 // 对子族连续闭包：收了 NN 就必须收下所有更大的对子（I3）。
                 // 需要它是因为**二值化阈值的边界效应**——基准里 22 的加注频率 0.53、
                 // 33 是 0.42，正好骑在 50% 两侧，于是二值化后成了"开 22 却不开 33"。
@@ -2382,6 +2401,152 @@
             return 1.0;
         }
 
+        // ============================================================
+        // 配对式风险溢价（2026-09-09，依据 Modern Poker Theory / Acevedo，Table 41）
+        // ------------------------------------------------------------
+        // 风险溢价 = "在锦标赛里，一手牌要成为 +$EV 所需的、超出 chipEV 盈亏平衡点的
+        // 那部分额外胜率"。来源于筹码边际价值递减：赢的筹码不如已有的筹码值钱。
+        //
+        // **我们原来的模型形状就是错的**：只看我方码量的单一标量
+        //   （riskPrem = (icmPressure-1)*8 + defMod，再加两条针对对手筹码的补丁）。
+        // 而风险溢价本质是**配对**的——同时取决于双方的码量档。MPT Table 41 实测均值：
+        //
+        //            对手大码   对手中码   对手短码
+        //   我方大码   18-25%     6-8%      2-4%
+        //   我方中码   13-15%    10-12%     5-7%
+        //   我方短码    9-12%     8-10%     7-10%
+        //
+        // 两个立刻能看出的旧模型错误：
+        //  ① 泡沫期中码接中码全下，我们原本只加约 5.6 点，MPT 是 10-12 —— **低一半**。
+        //  ② 泡沫期大码接短码全下，我们原本给 −7.2（比 chipEV 还松），
+        //     而 MPT 是 **+2~4**（仍需高于底池赔率）。**方向都反了**——
+        //     大码确实可以欺负短码，但那体现在"他推得更紧"，不是"我可以亏着接"。
+        //
+        // 两个标定锚点（都取自书里的原文）：
+        //  · 全下接注（风险=全部筹码）→ 取表中值；
+        //  · "calling small bets such as min-raises, risk premium can be less than 2%"
+        //    → 40BB 面对 min-raise 风险占比 1.5/40=3.75%，中码/中码泡沫期要落到 <2。
+        //    实测 √ 缩放正好吻合：11 × √0.0375 = 2.1。故按 **√(风险占筹码比例)** 缩放。
+        // 阶段在场系数：Table 41 是"平均 MTT 值"（钱圈附近），常规期离钱远时 ICM 很小。
+        const RP_MATRIX = {                     // 中值，百分点
+            big:   { big: 21.5, mid: 7.0,  short: 3.0  },
+            mid:   { big: 14.0, mid: 11.0, short: 6.0  },
+            short: { big: 10.5, mid: 9.0,  short: 8.5  }
+        };
+        // 阶段在场系数。**常规期取 0**：ICM/FGS 按书里原话「are both limited to situations
+        // where players are already in the money, or very close to it」，早期阶段书中另用
+        // Gambler's Ruin 讨论，结论是有技术优势时反而应当略微冒险——方向与"加溢价"相反。
+        // 所以常规期给 0.15 是我自己的外推，没有原文支持，已撤回为 0（＝早期按 chipEV 打）。
+        const RP_STAGE = { normal: 0, prebubble: 0.55, bubble: 1.0,
+                           postbubble: 0.35, final: 0.9, headsup: 0.15 };
+        // 码量分档：以桌面平均码为基准（与 getStageOpenAdjust 同口径），
+        // 另加绝对下限——10BB 以下无论比例如何都是短码（已进推/弃区）。
+        function rpClass(stackBB, avgBB) {
+            if (stackBB > 0 && stackBB <= 10) return 'short';
+            const r = stackBB / (avgBB || stackBB || 1);
+            if (r >= 1.4) return 'big';
+            if (r < 0.7)  return 'short';
+            return 'mid';
+        }
+        /**
+         * @param atRisk 本次决策会置于风险中的筹码 / 我方筹码，∈(0,1]；全下=1
+         * @returns {premium, villainPremium, heroClass, villainClass, note}
+         *   premium        我方所需的额外胜率（百分点，≥0）
+         *   villainPremium 对手对我方的风险溢价——**他越高越不敢连续开火**，
+         *                  MPT：「the BB should defend wider against players who have a
+         *                  high risk premium against them as they will struggle to
+         *                  barrel off」。这是原模型完全没有的一个方向。
+         */
+        function getRiskPremium(heroBB, villainBB, avgBB, stage, atRisk) {
+            const st = RP_STAGE[stage] != null ? RP_STAGE[stage] : 0.15;
+            const hc = rpClass(heroBB, avgBB), vc = rpClass(villainBB, avgBB);
+            const f = Math.sqrt(Math.max(0, Math.min(1, atRisk || 1)));
+            const base = (RP_MATRIX[hc] && RP_MATRIX[hc][vc]) || 8;
+            const vbase = (RP_MATRIX[vc] && RP_MATRIX[vc][hc]) || 8;
+            const CN = { big: '大码', mid: '中码', short: '短码' };
+            return {
+                premium: +(base * st * f).toFixed(2),
+                villainPremium: +(vbase * st).toFixed(2),   // 对手侧按全下口径，用于"他不敢开火"
+                heroClass: hc, villainClass: vc,
+                note: `${CN[hc]}对${CN[vc]}：基准 ${base}% × 阶段 ${st} × √风险占比 ${f.toFixed(2)}`
+            };
+        }
+
+        // ============================================================
+        // 筹码深度维度（2026-09-09，依据 Modern Poker Theory / Acevedo，第 7 章）
+        // ------------------------------------------------------------
+        // MPT 是 **9-handed MTT**，逐位置 × 逐深度给出 RFI 频率（每张图的频率印在标题里）：
+        //   位置      15bb   25bb   40bb   60bb
+        //   BTN       39.3   46.3   50.9   54.4     ← 15→60bb 差 15 点
+        //   CO        30.1   34.3   36.4   37.1
+        //   HJ        23.8   27.8   28.6   28.0
+        //   LJ        20.2   24.1   23.6   23.0
+        //   MP        17.5   21.3   20.6   19.0     （MPT 的 UTG+2）
+        //   UTG1      15.6   18.6   17.6   16.5
+        //   UTG       14.1   16.8   15.8   15.2     ← 基本持平
+        // （15bb 一列是 All-in% + Raise% 之和，那个深度本就是推/弃混合。）
+        //
+        // **关键形态：深度效应几乎全集中在后位。** BTN 从 15bb 到 60bb 宽 15 个点，
+        // 而 UTG 全程只在 14-17 之间晃。所以"一套表通吃 40/20bb"的损失不是均匀的——
+        // 它几乎全部发生在 BTN/CO，前位一套通吃完全没问题。
+        //
+        // 实现方式：**不另做四套表**，而是按"相对 40bb 的比例"在既有强度序数组上截断。
+        // 这样 40bb 处比例恒为 1.0 → **与已部署并验证过的状态零差异**，只增加深度效应。
+        // 加不宽（比例 >1 时封顶 1.0）：范围表本身就是天花板，这是既有的架构限制。
+        const MPT_RFI_BY_DEPTH = {   // 键 = 身后还有几个非盲注玩家
+            0: { 15: 39.3, 25: 46.3, 40: 50.9, 60: 54.4 },   // BTN
+            1: { 15: 30.1, 25: 34.3, 40: 36.4, 60: 37.1 },   // CO
+            2: { 15: 23.8, 25: 27.8, 40: 28.6, 60: 28.0 },   // HJ
+            3: { 15: 20.2, 25: 24.1, 40: 23.6, 60: 23.0 },   // LJ
+            4: { 15: 17.5, 25: 21.3, 40: 20.6, 60: 19.0 },   // MP  (MPT UTG+2)
+            5: { 15: 15.6, 25: 18.6, 40: 17.6, 60: 16.5 },   // UTG1
+            6: { 15: 14.1, 25: 16.8, 40: 15.8, 60: 15.2 }    // UTG
+        };
+        const BEHIND_OF = {
+            '9max': { BTN: 0, CO: 1, HJ: 2, LJ: 3, MP: 4, UTG1: 5, UTG: 6 },
+            '8max': { BTN: 0, CO: 1, HJ: 2, LJ: 3, MP: 4, UTG: 5 },
+            '6max': { BTN: 0, CO: 1, MP: 2, UTG: 3 }
+        };
+        // SB 不参与深度缩放：MPT 的 SB 是"加注 + 跛入"混合策略（40bb 加注 26.4% / 跛入 54.4%，
+        // 60bb 加注 15.1% / 跛入 69.9%），加注档随深度**变窄**是因为更多牌转去跛入。
+        // 我们不实现跛入，直接套那条曲线会得出"越深开得越窄"的错误结论。
+        function getDepthScale(behindIdx, effStack) {
+            const row = MPT_RFI_BY_DEPTH[behindIdx];
+            if (!row || !(effStack > 0)) return 1;
+            const d = Math.max(15, Math.min(60, effStack));
+            const ks = [15, 25, 40, 60];
+            let v;
+            if (d <= 15) v = row[15];
+            else if (d >= 60) v = row[60];
+            else {
+                for (let i = 1; i < ks.length; i++) {
+                    if (d <= ks[i]) {
+                        const a = ks[i - 1], b = ks[i];
+                        v = row[a] + (row[b] - row[a]) * (d - a) / (b - a);
+                        break;
+                    }
+                }
+            }
+            return Math.min(1, v / row[40]);   // 加不宽：表本身是天花板
+        }
+        // 按组合% 在强度序数组上截断：返回允许的最大下标（不含）
+        function getDepthCutIndex(range, position, tableSize, effStack) {
+            const map = BEHIND_OF[tableSize || '9max'] || BEHIND_OF['9max'];
+            const bi = map[position];
+            if (bi == null) return range.length;              // SB/BB 不参与
+            const sc = getDepthScale(bi, effStack);
+            if (sc >= 0.999) return range.length;
+            const cb = h => h.length === 2 ? 6 : (h[2] === 's' ? 4 : 12);
+            const total = range.reduce((s, h) => s + cb(h), 0);
+            const target = total * sc;
+            let acc = 0;
+            for (let i = 0; i < range.length; i++) {
+                acc += cb(range[i]);
+                if (acc > target) return i;                   // 第 i 手起被截掉
+            }
+            return range.length;
+        }
+
         // 多人底池范围收紧量（每多一个对手需要更强牌力）
         function getMultiwayAdjustment(numPlayers) {
             if (numPlayers <= 1) return 0;
@@ -2512,6 +2677,14 @@
 
             // 打法风格基础截断：tight 削减尾端手牌，loose/normal 不额外过滤
             if (percentile > scale) return false;
+
+            // 筹码深度截断（2026-09-09，MPT 第 7 章）：按"相对 40bb 的比例"在强度序数组上
+            // 截断。40bb 处比例恒为 1.0 → 与已验证的 40bb 状态零差异。
+            // 实测 BTN：40bb 49.9% → 20bb 约 42%；UTG 几乎不动（MPT 数据本身就几乎持平）。
+            {
+                const dcut = getDepthCutIndex(range, mappedPos, sizeKey, effStack);
+                if (range.indexOf(handStr) >= dcut) return false;
+            }
 
             // 深码（>60BB）：有足够翻后操作空间，绕过阶段/赛制截断
             if (effStack > 60) {
@@ -6017,17 +6190,25 @@
                 const toCallAllin = Math.max(0, effAllin - posted);
                 const baseOdds = (toCallAllin / (effAllin + effAllin + deadPre)) * 100;
                 
-                // ICM 风险溢价（使用动态 icmPressure）
-                let riskPrem = (icmPressure - 1) * 8 + stageCfg.defMod;
-                if (sV >= sH * 1.5) riskPrem += 5; // 对手覆盖我方更多筹码
-
-                // 大码 vs 短码泡沫期接注放宽（补充4）
-                const heroToVillainRatio = sH / (sV || 1);
-                let stackAdjustment = 0;
+                // 配对式风险溢价（2026-09-09 改写，依据 MPT Table 41）
+                // 原模型：riskPrem = (icmPressure-1)*8 + defMod，再打两个针对对手筹码的补丁
+                //   （对手覆盖我方 +5、大码对短码泡沫期 −8）。**形状是错的**：
+                //   风险溢价同时取决于双方码量档，而不是我方码量的单一标量；
+                //   而且那个 −8 让"大码泡沫期接短码全下"变成比 chipEV 还松，
+                //   MPT 实测是 **+2~4**（仍高于底池赔率）——方向反了。
+                // 接全下＝全部筹码进池，故 atRisk 取有效筹码占我方筹码之比（通常为 1）。
+                const _rp = getRiskPremium(sH, sV, avgStack, gameConfig.stage,
+                                           Math.min(1, (Math.min(sH, sV) || sH) / (sH || 1)));
+                let riskPrem = _rp.premium;
                 const warnings = [];
-                if (heroToVillainRatio >= 3 && gameConfig.stage === 'bubble') {
-                    stackAdjustment = -8;
-                    warnings.push(`✓ 你的筹码是对手 ${heroToVillainRatio.toFixed(1)} 倍，接注不影响晋级，范围放宽。`);
+                const heroToVillainRatio = sH / (sV || 1);
+                const stackAdjustment = 0;   // 旧的 −8 补丁已被配对矩阵取代
+                if (_rp.heroClass === 'big' && _rp.villainClass === 'short') {
+                    warnings.push(`✓ 大码接短码：风险溢价仅 ${riskPrem.toFixed(1)} 点（MPT 基准 2-4%），` +
+                                  `是全场最敢接的位置——但仍需高于底池赔率，不是可以亏着接。`);
+                } else if (_rp.heroClass === 'big' && _rp.villainClass === 'big') {
+                    warnings.push(`⚠️ 大码对大码是全场风险溢价最高的对撞（MPT 基准 18-25%）：` +
+                                  `输了直接从领先掉到中游，需要比 chipEV 多 ${riskPrem.toFixed(1)} 点胜率才划算。`);
                 }
                 const reqEq = baseOdds + riskPrem;
                 const adjustedReqEq = reqEq + stackAdjustment;
@@ -6095,7 +6276,10 @@
 
                 document.getElementById('lblBox1').innerText = "底池赔率";
                 document.getElementById('mathBox1').innerText = baseOdds.toFixed(1) + "%";
-                document.getElementById('lblBox2').innerText = stackAdjustment < 0 ? `ICM溢价(大码放宽${Math.abs(stackAdjustment)}%)` : "ICM 风险溢价";
+                // 把配对档位写进标签，用户一眼看到这个数是怎么来的（2026-09-09）
+                document.getElementById('lblBox2').innerText =
+                    `风险溢价 ${({big:'大码',mid:'中码',short:'短码'})[_rp.heroClass]}对${({big:'大码',mid:'中码',short:'短码'})[_rp.villainClass]}`;
+                document.getElementById('lblBox2').title = _rp.note + '（Modern Poker Theory, Table 41）';
                 document.getElementById('mathBox2').innerText = (riskPrem >= 0 ? "+" : "") + riskPrem.toFixed(1) + "%";
                 document.getElementById('lblBox3').innerText = "最终红线（调整后）";
                 document.getElementById('mathBox3').innerText = adjustedReqEq.toFixed(1) + "%";
@@ -9945,6 +10129,32 @@
             if (blk && Math.abs(blk.edge) >= 4) sc.callMargin = Math.max(2, sc.callMargin + blkMargin);
 
             const warnings = [];
+            // 风险溢价接入翻后（2026-09-09，MPT）：书里明确写了溢价**不只作用于全下**——
+            //   "risk premium ... does not only apply to calling bets, but also to making them"
+            // 我们此前只在接全下那一处加了 ICM 溢价，翻后跟注完全没有。
+            // 两个方向都实现（MPT 同一段里两条都讲了）：
+            //  ① 我方溢价 → 抬高抓诈唬门槛（按本次要跟的钱占我方筹码的比例 √ 缩放）；
+            //  ② **对手对我方的溢价高 → 他不敢连续开火，我们反而该打得更宽**
+            //     （原文：the BB should defend wider against players who have a high risk
+            //      premium against them as they will struggle to barrel off）——
+            //     这是原模型完全没有的方向，我们的 ICM 以前只会单向收紧。
+            // 幅度保守：两侧各封顶 ±4，与 blocker 同一量级，避免单一信号主导决策。
+            {
+                const _hs = globalHeroStack || 0, _vs = globalVillainStack || 0;
+                const _avg = (typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : _hs;
+                const _toCall = toCall;   // 与 potOdds 同一口径（E3：对手下注 − 我方本街已投入）
+                if (_hs > 0 && _toCall > 0) {
+                    const _rp = getRiskPremium(_hs, _vs, _avg, gameConfig.stage, Math.min(1, _toCall / _hs));
+                    const up = Math.min(4, _rp.premium);
+                    const down = Math.min(4, _rp.villainPremium * 0.25);
+                    if (up - down !== 0) sc.callMargin = Math.max(2, sc.callMargin + up - down);
+                    if (up >= 2 || down >= 2) warnings.push(
+                        `🎲 风险溢价 ${_rp.heroClass === 'big' ? '大码' : _rp.heroClass === 'mid' ? '中码' : '短码'}` +
+                        `对${_rp.villainClass === 'big' ? '大码' : _rp.villainClass === 'mid' ? '中码' : '短码'}：` +
+                        `我方门槛 +${up.toFixed(1)}` + (down >= 0.5 ? `，但他对我方的溢价 ${_rp.villainPremium.toFixed(1)} 点使他难以连续开火 → 回调 −${down.toFixed(1)}` : '') +
+                        `（净 ${(up - down >= 0 ? '+' : '') + (up - down).toFixed(1)}）`);
+                }
+            }
             if (blk && Math.abs(blk.edge) >= 4) warnings.push(`🎯 ${blk.note}`);
             if (_mwN > 0) {
                 warnings.push(`⚠ 多人底池：${_mwN + 1} 名对手在局 —— 胜率按多人计算，价值门槛已收紧，<b>纯诈唬一律关闭</b>（有真实进张的半诈唬仍保留）`);
