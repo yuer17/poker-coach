@@ -3927,6 +3927,13 @@
                     btn.className = btn.dataset.val === val ? `${base} active` : base;
                 });
             }
+            // 位置同步(2026-09-09)：传统位置按钮改「我的位置」后，座位带此前不刷新。
+            // 以前只是显示不同步；现在 **SB 的可选动作与其他位置不同**（多一个跛入），
+            // 座位带过期就会给出错误的动作循环，必须重渲。
+            if (id === 'posHero') {
+                try { if (typeof renderTimeline === 'function') renderTimeline(); }
+                catch (e) { /* 时间线尚未初始化（TDZ）时静默跳过 */ }
+            }
             // 翻前↔翻后同步(2026-07-14b)：已进翻后时，翻前改对手位置即时刷新
             // 翻后主对手选择器；已有胜率结果则重跑分析（对手范围随位置变化）
             if (id === 'posVillain') {
