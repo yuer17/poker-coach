@@ -2017,6 +2017,25 @@
             /* 身后5人 UTG  18.70% */ 5: ['55', '66', '77', '88', '99', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8s', 'A9s', 'AA', 'AJo', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'ATo', 'ATs', 'J9s', 'JJ', 'JTs', 'K8s', 'K9s', 'KJo', 'KJs', 'KK', 'KQo', 'KQs', 'KTs', 'Q9s', 'QJs', 'QQ', 'QTs', 'T8s', 'T9s', 'TT', '44', 'K6s', 'K7s', '98s', '22'],
         };
 
+        // 由《Modern Poker Theory》第 8 章 BB 防守图按像素判色提取（9-handed MTT）。
+        // 每张图的 Fold% 印在图题里作校验和，16 张全部对上（±0.81 点内）。
+        // 键 = **开池者**身后还有几个非盲注玩家；数组顺序 = 强度序
+        //（跨 16 张图的"非弃牌"占比之和降序）—— 顺序有语义，勿按字母重排。
+        // 列表取四个深度的并集，实际宽度由 MPT_BB_DEF_PCT 按深度截断。
+        const MPT_BB_DEFEND = {
+            /* 开池者身后0人 = BN   并集 84.62% */ 0: ['72s', '73s', '74s', '75s', '76s', '77', '82s', '83s', '84s', '85s', '86s', '87o', '87s', '88', '92s', '93s', '94s', '95s', '96s', '97s', '98o', '98s', '99', 'A2s', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8o', 'A8s', 'A9o', 'A9s', 'AA', 'AJo', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'ATo', 'ATs', 'J2s', 'J3s', 'J4s', 'J5s', 'J6s', 'J7s', 'J8s', 'J9o', 'J9s', 'JJ', 'JTo', 'JTs', 'K2s', 'K3s', 'K4s', 'K5s', 'K6s', 'K7s', 'K8s', 'K9o', 'K9s', 'KJo', 'KJs', 'KK', 'KQo', 'KQs', 'KTo', 'KTs', 'Q2s', 'Q3s', 'Q4s', 'Q5s', 'Q6s', 'Q7s', 'Q8s', 'Q9o', 'Q9s', 'QJo', 'QJs', 'QQ', 'QTo', 'QTs', 'T2s', 'T3s', 'T4s', 'T5s', 'T6s', 'T7s', 'T8s', 'T9o', 'T9s', 'TT', '64s', '66', '86o', '62s', 'K6o', '63s', '65s', '42s', '43s', '55', '54s', '76o', 'A5o', '53s', '52s', '32s', '65o', '54o', '44', 'T8o', 'K8o', '22', 'A6o', 'A4o', 'A7o', '97o', '33', 'Q8o', 'K7o', 'A3o', 'J8o', 'A2o', 'K5o', '53o', 'Q6o', 'K4o', 'Q7o', 'T7o', '75o', 'K3o', 'Q5o', '64o', 'J7o', 'Q4o', 'K2o', '96o', '43o', 'Q3o', 'J6o', 'J5o', 'Q2o', '85o', 'T6o', 'J4o', '74o', 'T5o', 'J3o', 'J2o'],
+            /* 开池者身后1人 = CO   并集 81.00% */ 1: ['72s', '73s', '74s', '75s', '76s', '77', '82s', '83s', '84s', '85s', '86s', '87o', '87s', '88', '92s', '93s', '94s', '95s', '96s', '97s', '98o', '98s', '99', 'A2s', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8o', 'A8s', 'A9o', 'A9s', 'AA', 'AJo', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'ATo', 'ATs', 'J2s', 'J3s', 'J4s', 'J5s', 'J6s', 'J7s', 'J8s', 'J9o', 'J9s', 'JJ', 'JTo', 'JTs', 'K2s', 'K3s', 'K4s', 'K5s', 'K6s', 'K7s', 'K8s', 'K9o', 'K9s', 'KJo', 'KJs', 'KK', 'KQo', 'KQs', 'KTo', 'KTs', 'Q2s', 'Q3s', 'Q4s', 'Q5s', 'Q6s', 'Q7s', 'Q8s', 'Q9o', 'Q9s', 'QJo', 'QJs', 'QQ', 'QTo', 'QTs', 'T2s', 'T3s', 'T4s', 'T5s', 'T6s', 'T7s', 'T8s', 'T9o', 'T9s', 'TT', '64s', '66', '86o', '62s', 'K6o', '63s', '65s', '42s', '43s', '55', '54s', '76o', 'A5o', '53s', '52s', '32s', '65o', '54o', '44', 'T8o', 'K8o', '22', 'A6o', 'A4o', 'A7o', '97o', '33', 'Q8o', 'K7o', 'A3o', 'J8o', 'A2o', 'K5o', '53o', 'Q6o', 'K4o', 'Q7o', 'T7o', '75o', 'K3o', 'Q5o', '64o', 'J7o', 'Q4o', 'K2o', '96o', '43o', 'Q3o', 'J6o', 'J5o', 'Q2o', '85o', 'T6o', 'J4o'],
+            /* 开池者身后3人 = LJ   并集 79.19% */ 3: ['72s', '73s', '74s', '75s', '76s', '77', '82s', '83s', '84s', '85s', '86s', '87o', '87s', '88', '92s', '93s', '94s', '95s', '96s', '97s', '98o', '98s', '99', 'A2s', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8o', 'A8s', 'A9o', 'A9s', 'AA', 'AJo', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'ATo', 'ATs', 'J2s', 'J3s', 'J4s', 'J5s', 'J6s', 'J7s', 'J8s', 'J9o', 'J9s', 'JJ', 'JTo', 'JTs', 'K2s', 'K3s', 'K4s', 'K5s', 'K6s', 'K7s', 'K8s', 'K9o', 'K9s', 'KJo', 'KJs', 'KK', 'KQo', 'KQs', 'KTo', 'KTs', 'Q2s', 'Q3s', 'Q4s', 'Q5s', 'Q6s', 'Q7s', 'Q8s', 'Q9o', 'Q9s', 'QJo', 'QJs', 'QQ', 'QTo', 'QTs', 'T2s', 'T3s', 'T4s', 'T5s', 'T6s', 'T7s', 'T8s', 'T9o', 'T9s', 'TT', '64s', '66', '86o', '62s', 'K6o', '63s', '65s', '42s', '43s', '55', '54s', '76o', 'A5o', '53s', '52s', '32s', '65o', '54o', '44', 'T8o', 'K8o', '22', 'A6o', 'A4o', 'A7o', '97o', '33', 'Q8o', 'K7o', 'A3o', 'J8o', 'A2o', 'K5o', '53o', 'Q6o', 'K4o', 'Q7o', 'T7o', '75o', 'K3o', 'Q5o', '64o', 'J7o', 'Q4o', 'K2o', '96o', '43o', 'Q3o', 'J6o', 'J5o', 'Q2o', '85o'],
+            /* 开池者身后6人 = UTG  并集 78.28% */ 6: ['72s', '73s', '74s', '75s', '76s', '77', '82s', '83s', '84s', '85s', '86s', '87o', '87s', '88', '92s', '93s', '94s', '95s', '96s', '97s', '98o', '98s', '99', 'A2s', 'A3s', 'A4s', 'A5s', 'A6s', 'A7s', 'A8o', 'A8s', 'A9o', 'A9s', 'AA', 'AJo', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'ATo', 'ATs', 'J2s', 'J3s', 'J4s', 'J5s', 'J6s', 'J7s', 'J8s', 'J9o', 'J9s', 'JJ', 'JTo', 'JTs', 'K2s', 'K3s', 'K4s', 'K5s', 'K6s', 'K7s', 'K8s', 'K9o', 'K9s', 'KJo', 'KJs', 'KK', 'KQo', 'KQs', 'KTo', 'KTs', 'Q2s', 'Q3s', 'Q4s', 'Q5s', 'Q6s', 'Q7s', 'Q8s', 'Q9o', 'Q9s', 'QJo', 'QJs', 'QQ', 'QTo', 'QTs', 'T2s', 'T3s', 'T4s', 'T5s', 'T6s', 'T7s', 'T8s', 'T9o', 'T9s', 'TT', '64s', '66', '86o', '62s', 'K6o', '63s', '65s', '42s', '43s', '55', '54s', '76o', 'A5o', '53s', '52s', '32s', '65o', '54o', '44', 'T8o', 'K8o', '22', 'A6o', 'A4o', 'A7o', '97o', '33', 'Q8o', 'K7o', 'A3o', 'J8o', 'A2o', 'K5o', '53o', 'Q6o', 'K4o', 'Q7o', 'T7o', '75o', 'K3o', 'Q5o', '64o', 'J7o', 'Q4o', 'K2o', '96o', '43o', 'Q3o', '85o', '74o', '63o'],
+        };
+        // 各深度的总防守目标%（100 − 印刷 Fold%）
+        const MPT_BB_DEF_PCT = {
+            0: { 15: 76.14, 25: 84.59, 40: 75.87, 60: 81.25 },   // BN
+            1: { 15: 76.83, 25: 81.06, 40: 69.21, 60: 74.6 },   // CO
+            3: { 15: 77.49, 25: 76.34, 40: 62.55, 60: 64.27 },   // LJ
+            6: { 15: 77.67, 25: 73.14, 40: 55.46, 60: 56.45 },   // UTG
+        };
+
         (function normalizeRangeTables() {
             const uni = (a, b) => Array.from(new Set([...(a || []), ...(b || [])]));
             const uniEntry = (a, b) => ({ value: uni(a && a.value, b && b.value),
@@ -2279,9 +2298,18 @@
         // 收 15-20%，折算到 rawEq 门槛约 2-3 点。这里取 **每偏离 1BB → 3 个 rawEq 点**，
         // 上下各封顶 3 点（不让极端输入把范围推到失真）。
         function getOpenBaselineBB() {
-            // 短码 <25BB 历史上一律用 2.0x（小开池保筹码），此时基准也是 2.0
+            // 按深度分档（2026-09-09 用两个独立来源核对）：
+            //  · **<25BB → 2.0x**：GTO Wizard 免费版截图 10/20/30BB 全部是 2.0BB；
+            //    MPT 第 7 章 15/25bb 也写 "Raise 2x"。原有规则**被双源确认，不改**。
+            //    MPT 另给了理由：短码 raise-fold 很贵，且大尺度会让对手 rejam 拿到更好价格。
+            //  · **25-60BB 有 ante → 2.2x**：GTOW 40BB 是 UTG 2.0 / BTN 2.1，
+            //    MPT 40bb 后位是 2.3x —— 我们的 2.2 正好落在两者之间，**不改**。
+            //  · **≥60BB → 2.3x**（本次新增）：MPT 60bb 明确用 "Raise 2.3x"。
+            //  · 无 ante 的 2.5x **不动**：两个来源都是含 ante 的 MTT 解，
+            //    没有无 ante 的基准，不凭空改。
             if (globalHeroStack < 25) return 2.0;
-            return gameConfig.ante ? 2.2 : 2.5;
+            if (gameConfig.ante) return globalHeroStack >= 60 ? 2.3 : 2.2;
+            return 2.5;
         }
         function getOpenSizeBB() {
             const s = gameConfig.openSize;
@@ -2547,6 +2575,70 @@
             return range.length;
         }
 
+        // ============================================================
+        // 开池的 jam 档（2026-09-09）：RFI 不是一个动作，是 {弃 / 加注 / 全下} 三个
+        // ------------------------------------------------------------
+        // GTO Wizard 免费版截图（8-handed MTT ChipEV）暴露的结构问题：
+        //   BTN 20bb：全下 4.3% + 加注 2x 37.2% = 入池 41.5%
+        //   BTN 10bb：全下 33.5% + 加注 2x 5.6% = 入池 39.1%
+        // 我们此前：>12BB 只输出"开池"（**完全没有 jam 档**），≤12BB 纯 Nash 推/弃。
+        // 于是 13-25BB 这一段——正是急速赛后半段最常待的区间——缺一整个动作。
+        //
+        // **jam 范围不是"最强的 X%"**。GTOW 20bb BTN 的全下格子是
+        //   A5s A4s A3s A2s · 44 33 22 · A8o A7o · K2s —— 翻后不好打但有阻断和弃牌率的牌；
+        // 强牌反而选小尺度（10bb 的小加注段里含 KK/QQ/JJ）。所以选择判据不能是强度排序，
+        // 而是"**这手牌在推/弃刻度上的位次，比它在开池强度序上的位次好多少**"。
+        //
+        // 数据来源与覆盖（只在有数据的地方建模，不外推）：
+        //  · 15bb 各位置 jam%：MPT 第 7 章（7 个位置全覆盖，频率印在图题上）
+        //  · 衰减形状：GTOW 的 BTN 三点 (15bb 20.8 / 20bb 4.3 / 25bb 0) 拟合，
+        //    是**凸的**不是线性的（线性会在 20bb 给出 10.4%，实测 4.3%）
+        //  · 25bb 起 jam = 0：MPT 25bb 各位置图题里都没有 All-in 项
+        //  · ≤12BB 不动：走既有的 NASH_PUSH 推/弃路径
+        // 15bb 各位置的 jam 集，由 MPT 第 7 章图按像素判色提取。
+        // 图题印的 All-in% 作校验和，7 张全部对上（±0.5 点）。
+        // **顺序 = 该手牌的 jam 频率降序**（核心 jam 在前），浅预算时按此截断。
+        // 形态注记：jam 的是范围的**中段**——小对子 + 中小 A + 非同花 broadway；
+        // 顶端（AA/KK/AKs）反而走小加注做陷阱，底端直接弃。按强度排序永远选不出这个形状。
+        const MPT_JAM15 = {
+            /* 身后0人  21.87% */ 0: ['98s', 'A2s', 'A3s', 'A4s', 'A7o', 'A9o', 'AJo', 'ATo', 'J9s', 'JTo', 'JTs', 'K9s', 'KJo', 'KQo', 'KTo', 'Q9s', 'QJo', 'T8s', 'T9s', 'A8o', '55', '66', 'A5o', 'A6o', 'A3o', '22', 'A4o', '44', '33', 'A6s', 'A5s', 'QTo', 'A2o', 'A9s', 'A7s', 'AQo'],
+            /* 身后1人  13.12% */ 1: ['55', '66', 'A2s', 'A3s', 'A4s', 'A5s', 'A6s', 'A8o', 'A9o', 'AJo', 'ATo', 'J9s', 'JTs', 'K9s', 'KQo', 'KTs', 'QJs', 'QTs', 'T9s', '22', 'A7o', '44', 'KJo', 'AQo', '33'],
+            /* 身后2人   8.75% */ 2: ['A5s', 'AQo', 'JTs', 'KJs', 'KTs', 'QJs', 'QTs', 'AJo', '55', '44', 'A4s', 'KQo', '66', 'ATo', 'T9s', 'A9o', '33'],
+            /* 身后3人   5.43% */ 3: ['AQo', 'JTs', 'KJs', 'KTs', 'QJs', 'QTs', 'AJo', '55', 'KQo', '66', 'A9s'],
+            /* 身后4人   0.90% */ 4: ['KTs', 'KJs', 'JTs'],
+            /* 身后5人   0.00% */ 5: [],
+            /* 身后6人   0.00% */ 6: [],
+        };
+        const OPEN_JAM15 = { 0: 20.8, 1: 13.6, 2: 7.7, 3: 4.9, 4: 2.2, 5: 0.5, 6: 0.0 };
+        function openJamPct(behindIdx, effStack) {
+            const base = OPEN_JAM15[behindIdx];
+            if (base == null || !(effStack > 0)) return 0;
+            if (effStack >= 25) return 0;          // 25bb 起无 jam（MPT 25bb 图题里没有 All-in 项）
+            if (effStack <= 15) return base;       // ≤15bb 取 MPT 实测值；≤12BB 另走 NASH_PUSH
+            // 15→25bb 的衰减：拟合 GTOW 的 BTN 三点 (15bb 20.8 / 20bb 4.3 / 25bb 0)。
+            // **是凸的不是线性的**——线性会在 20bb 给出 10.4%，实测 4.3%。
+            // 取 f(x)=x^2.27（x=(25−d)/10），f(1)=1、f(.5)=0.207、f(0)=0，三点精确通过。
+            const x = Math.max(0, Math.min(1, (25 - effStack) / 10));
+            return +(base * Math.pow(x, 2.27)).toFixed(2);
+        }
+        /**
+         * 取该位置/深度的 jam 集：从 MPT 15bb 实测集按 jam 频率降序截断到预算。
+         * **不是"最强的 X%"**——按强度排序永远选不出 A5s-A2s/小对子这个真实形状。
+         */
+        function getOpenJamSet(behindIdx, effStack) {
+            const out = new Set();
+            const budget = openJamPct(behindIdx, effStack);
+            const src = MPT_JAM15[behindIdx];
+            if (!(budget > 0) || !src || !src.length) return out;
+            const cb = h => h.length === 2 ? 6 : (h[2] === 's' ? 4 : 12);
+            let acc = 0;
+            for (const h of src) {
+                if (acc / 1326 * 100 >= budget) break;
+                out.add(h); acc += cb(h);
+            }
+            return out;
+        }
+
         // 多人底池范围收紧量（每多一个对手需要更强牌力）
         function getMultiwayAdjustment(numPlayers) {
             if (numPlayers <= 1) return 0;
@@ -2730,17 +2822,77 @@
             return true;
         }
 
-        // 查询手牌是否在 BB GTO 防守范围内（含打法风格缩放）
-        function isHandInBBDefense(handStr, villainPos, tableSize) {
-            // 注意：key 格式为 'vs_BTN'（大写），不可 toLowerCase
-            const posKey = 'vs_' + (villainPos || '');
-            const range = BB_DEFENSE_RANGES[tableSize || '9max']?.[posKey];
-            if (!range) return false;
-            if (!range.includes(handStr)) return false;
+        // ============================================================
+        // BB 防守（2026-09-09 按 MPT 第 8 章重建）
+        // ------------------------------------------------------------
+        // **原表是全项目唯一一张从未被任何基准校准过的核心表**，实测偏紧极多：
+        //   我方 vs_BTN 65.91% / vs_CO 55.35% / vs_LJ 38.76% / vs_UTG 23.98%
+        //   MPT 40bb  vs BN 75.87% / vs CO 69.21% / vs LJ 62.55% / vs UTG 55.46%
+        //   → 分别偏紧 9.9 / 13.9 / 23.8 / **31.5** 点。
+        // 而且此前判断反了：range_compare 用代理基准比对时得出"我方 BB 防守更宽"，
+        // 判定为代理基准 artifact。现在真实基准说是**窄了**，那次判断是错的。
+        // GTO Wizard 免费版截图（8-handed，BTN 开 2.1x、40bb）另给出 BB 防守 88.1%，
+        // 比 MPT 的 75.87% 更宽——差异主要来自开池尺度（2.1x vs 2.3x）。
+        // 我们采用 MPT（9-handed，与主表同口径，且四个深度都有校验和）。
+        //
+        // 键 = **开池者**身后还有几个非盲注玩家。MPT 只给了 BN(0)/CO(1)/LJ(3)/UTG(6)
+        // 四个锚点，中间位置（HJ=2 / MP=4 / UTG1=5）按 behind 线性插值目标%，
+        // 并从**下一个更靠后的锚点列表**里按强度序截断 —— 这样嵌套自动成立
+        //（越前位开池，BB 防守越窄，且窄的一定是宽的子集）。
+        function bbDefendTargetPct(openerBehind, effStack) {
+            const KEYS = [0, 1, 3, 6];
+            const at = (bi, d) => {
+                const row = MPT_BB_DEF_PCT[bi]; if (!row) return null;
+                const ks = [15, 25, 40, 60];
+                const x = Math.max(15, Math.min(60, effStack > 0 ? effStack : 40));
+                if (x <= 15) return row[15];
+                if (x >= 60) return row[60];
+                for (let i = 1; i < ks.length; i++)
+                    if (x <= ks[i]) { const a = ks[i-1], b = ks[i];
+                                      return row[a] + (row[b] - row[a]) * (x - a) / (b - a); }
+                return row[40];
+            };
+            if (MPT_BB_DEF_PCT[openerBehind]) return at(openerBehind, effStack);
+            // 中间位置：在相邻两个锚点之间按 behind 线性插值
+            let lo = KEYS[0], hi = KEYS[KEYS.length - 1];
+            for (const k of KEYS) { if (k <= openerBehind) lo = k; }
+            for (let i = KEYS.length - 1; i >= 0; i--) { if (KEYS[i] >= openerBehind) hi = KEYS[i]; }
+            if (lo === hi) return at(lo, effStack);
+            const a = at(lo, effStack), b = at(hi, effStack);
+            return a + (b - a) * (openerBehind - lo) / (hi - lo);
+        }
+        // 取该开池位置对应的基准列表：锚点用自己的，中间位置借**下一个更靠后**的锚点
+        //（它更宽，截断后自然是子集）
+        function bbDefendBaseList(openerBehind) {
+            const KEYS = [0, 1, 3, 6];
+            if (MPT_BB_DEFEND[openerBehind]) return MPT_BB_DEFEND[openerBehind];
+            for (const k of KEYS) if (k < openerBehind) var lower = k;   // 更靠后＝behind 更小
+            return MPT_BB_DEFEND[typeof lower === 'number' ? lower : 0];
+        }
+        // 查询手牌是否在 BB GTO 防守范围内（含筹码深度截断 + 打法风格缩放）
+        function isHandInBBDefense(handStr, villainPos, tableSize, effStack) {
+            const map = (BEHIND_OF[tableSize || '9max'] || BEHIND_OF['9max']);
+            const bi = map[villainPos];
+            if (bi == null) {
+                // SB 开池（盲对盲）不在 MPT 这组图里，保留原表
+                const posKey = 'vs_' + (villainPos || '');
+                const legacy = BB_DEFENSE_RANGES[tableSize || '9max']?.[posKey];
+                if (!legacy || !legacy.includes(handStr)) return false;
+                const sc0 = getPlayStyleScale();
+                return legacy.indexOf(handStr) / legacy.length <= sc0;
+            }
+            const base = bbDefendBaseList(bi);
+            if (!base || !base.includes(handStr)) return false;
+            const target = bbDefendTargetPct(bi, effStack);
+            const cb = h => h.length === 2 ? 6 : (h[2] === 's' ? 4 : 12);
+            let acc = 0, cut = base.length;
+            for (let i = 0; i < base.length; i++) {
+                acc += cb(base[i]);
+                if (acc / 1326 * 100 > target) { cut = i; break; }
+            }
+            if (base.indexOf(handStr) >= cut) return false;
             const scale = getPlayStyleScale();
-            const percentile = range.indexOf(handStr) / range.length;
-            if (percentile > scale) return false;
-            return true;
+            return base.indexOf(handStr) / Math.max(1, cut) <= scale;
         }
 
         // 查询手牌是否在 Iso-raise 范围内（含多人跛入收窄 + 打法风格缩放）
@@ -5489,13 +5641,35 @@
                     sizingBox.classList.remove('hidden');
                     document.getElementById('sizingContent').innerText = openSize;
                 } else {
-                    box.style.borderColor = '#e5484d'; box.style.backgroundColor = 'rgba(214,57,64,0.1)';
-                    vText.style.color = '#ff7a7d'; vText.innerText = '🔴 标准开池';
-                    logicText.innerText = isHuSbMixed
-                        ? `${handStr} 单挑SB rawEq=${rawEq.toFixed(1)}%，100% 开池。`
-                        : `${handStr} 在 ${POS_LABEL[posH]} 位 GTO 开池范围内，100% 入池。`;
-                    sizingBox.classList.remove('hidden');
-                    document.getElementById('sizingContent').innerText = openSize;
+                    // jam 档（2026-09-09）：13-25BB 的开池不是一个动作，而是 {加注, 全下} 两个。
+                    // 原来这一段只输出"开池"，于是急速赛后半段最常待的区间缺一整个动作。
+                    const _jbi = (BEHIND_OF[gameConfig.tableSize || '9max'] || BEHIND_OF['9max'])[posH];
+                    const _jset = (_jbi != null && sH > 12 && sH < 25) ? getOpenJamSet(_jbi, sH) : new Set();
+                    if (_jset.has(handStr)) {
+                        const _jp = openJamPct(_jbi, sH);
+                        box.style.borderColor = '#e5484d'; box.style.backgroundColor = 'rgba(214,57,64,0.16)';
+                        vText.style.color = '#ff7a7d'; vText.innerText = '🔥 全下 (Open Jam)';
+                        logicText.innerHTML =
+                            `${handStr} 在 ${POS_LABEL[posH]} 位 ${sH}BB 的 <b>开池全下段</b>内` +
+                            `（该位置该深度约 ${_jp.toFixed(1)}% 的组合直接全下）。<br>` +
+                            `<span class="text-[10px] text-gray-400">这个深度的开池是「加注 / 全下 / 弃牌」三个动作。` +
+                            `全下的是范围的<b>中段</b>——小对子、中小 A、非同花 broadway：` +
+                            `翻后不好打但有阻断和弃牌率。顶端（AA/KK/AKs）反而走小加注，因为要留住对手。` +
+                            `数据取自 Modern Poker Theory 第 7 章 15BB 图（频率经图题校验），` +
+                            `衰减曲线拟合 GTO Wizard 的 20BB 实测点。</span>`;
+                        sizingBox.classList.remove('hidden');
+                        document.getElementById('sizingContent').innerText = `${sH.toFixed(1)}BB All-in`;
+                    } else {
+                        box.style.borderColor = '#e5484d'; box.style.backgroundColor = 'rgba(214,57,64,0.1)';
+                        vText.style.color = '#ff7a7d'; vText.innerText = '🔴 标准开池';
+                        logicText.innerHTML = (isHuSbMixed
+                            ? `${handStr} 单挑SB rawEq=${rawEq.toFixed(1)}%，100% 开池。`
+                            : `${handStr} 在 ${POS_LABEL[posH]} 位 GTO 开池范围内，100% 入池。`)
+                            + (_jset.size ? `<br><span class="text-[10px] text-gray-400">` +
+                               `本深度该位置另有约 ${openJamPct(_jbi, sH).toFixed(1)}% 的组合走开池全下，本手不在其中。</span>` : '');
+                        sizingBox.classList.remove('hidden');
+                        document.getElementById('sizingContent').innerText = openSize;
+                    }
                 }
 
                 freqBox.classList.remove('hidden');
@@ -5641,7 +5815,7 @@
                         //（八张表此前存在但从未被读取——原硬编码只有 QQ+/AK 才 3-Bet，
                         // JJ/TT/AQs/A5s 面对后位开池永远只跟不 3-Bet）。诈唬 3-Bet 牌若同在
                         // 防守表内，未 3-Bet 的部分改为跟注而非弃牌。
-                        const shouldDefend = isHandInBBDefense(handStr, posV, gameConfig.tableSize);
+                        const shouldDefend = isHandInBBDefense(handStr, posV, gameConfig.tableSize, effStack);
                         const bb3b = getThreeBetAction(handStr, 'BB', posV, gameConfig.tableSize);
                         if (bb3b === 'threebet_value') {
                             b = 100; action3bValue = true;
@@ -6809,7 +6983,29 @@
             } else if (currentMode === 'faceBet' || currentMode === 'defend' || currentMode === 'coldCall') {
                 // 对手开池/加注：直查 GTO_RANGES 开池范围
                 baseHands = GTO_RANGES[tableSize]?.[villainPos]?.open || [];
-                vActionLabel = `开池 (${villainPos} Open)`;
+                // 按**他实际选了哪个动作**条件化（2026-09-09）：
+                // 在 13-25BB，开池是 {加注, 全下} 两个动作。`P(手牌 | 他 RFI)` 与
+                // `P(手牌 | 他选了小加注而不是全下)` 是两个不同的分布——后者已经被强烈筛选过。
+                // 原来无论他小加注还是全下，都套同一张完整 RFI 范围，那在这个深度是错的。
+                // faceBet/coldCall = 他选了**非全下**加注 → 减掉 jam 段；
+                // defend = 他**全下** → 只留 jam 段（若该深度确有 jam 段）。
+                {
+                    const _bi = (BEHIND_OF[tableSize] || BEHIND_OF['9max'])[villainPos];
+                    const _vs = globalVillainStack || 0;
+                    const _js = (_bi != null && _vs > 12 && _vs < 25) ? getOpenJamSet(_bi, _vs) : new Set();
+                    if (_js.size) {
+                        if (currentMode === 'defend') {
+                            const only = baseHands.filter(h => _js.has(h));
+                            if (only.length >= 5) { baseHands = only;
+                                vActionLabel = `开池全下段 (${villainPos} ${_vs}BB Open Jam)`; }
+                        } else {
+                            const minus = baseHands.filter(h => !_js.has(h));
+                            if (minus.length >= 5) { baseHands = minus;
+                                vActionLabel = `开池但**非全下**段 (${villainPos} ${_vs}BB，已剔除全下段 ${openJamPct(_bi, _vs).toFixed(1)}%)`; }
+                        }
+                    }
+                }
+                if (!vActionLabel) vActionLabel = `开池 (${villainPos} Open)`;
 
             } else if (currentMode === 'face3b') {
                 // 对手 3-Bet：查 THREBET_RANGES[villainPos_vs_heroPos]
