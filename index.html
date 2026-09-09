@@ -2224,6 +2224,38 @@
         // 越深越宽，因为有翻后空间、且全下档消失。15bb 为 0：那个深度只有全下或跟注。
         // 手牌池顺序 = 该手牌在 RYE 各 F3B 节点里被当作 3-Bet 的**次数**降序
         //（对越前位开池还 3-Bet 的＝越强），同频次按推/弃刻度破平。
+        // ============================================================
+        // 盲对盲：SB 自身策略（含**跛入**）与 BB 面对 SB 跛入的应对
+        // （2026-09-09，MPT MTT 章 8 张图逐格实测；提取器 mpt_blinds.py 同族的
+        //  regression_tests/reference/mpt_bvb.py，记录 mpt_blinds.md 末节）
+        //
+        // **这是本项目此前最大的一块已知缺口**：两个独立解算源（MPT 与 RangeConverter）
+        // 都显示 SB 在 15-60bb **全程跛入 50-70%**，而我们只有"加注或弃牌"，
+        // 等于在 1/9 的手牌里抹掉了 SB 的主策略。
+        //
+        // 调色板与前几批又不同（对着导出 PNG 逐格核对）：亮红=加注 · 近黑=跛入/过牌 ·
+        // 浅灰=弃牌 · 鲑红=全下；**15bb 的全下画成亮红**（该深度没有小加注这个动作）。
+        // 校验：图题印刷频率，**8 张全部对上**（把混合牌按实测频率折算回去后，
+        //  最大偏差是 SB 60bb 的加注 12.1 / 印刷 15.1——该张的红条最细）。
+        //  踩坑：本节混合格是**竖向细条**且低频动作的红条紧贴格子左右边缘，
+        //  x 内缩 12% 会整条切掉（60bb 的加注一度只读出 9.2%）；收到 4% 才读全。
+        //  截断按**期望组合数**（combos × 实测频率）累加到印刷值——纯二值截断
+        //  会把混合牌整手计入或整手丢掉，折算回去必然对不上。
+        //
+        // 结构：limp 是**余数**（既不全下、也不加注、也不弃），这样三张精确的
+        // 截断表加起来就锁住了跛入段，不必再单独对账一次。
+        // `mix` = 进攻频率落在 30-70% 的真混合牌，存 [进攻%, 跛入%] 两个实测频率，
+        // **不替 solver 二选一**。盲对盲是全书混合最重的节点（SB 40bb 有 73 类是混合），
+        // 硬二值化会在 50% 边界造出"32o 加注而 K8o 过牌"这种看着荒谬、其实只是
+        // 47% vs 39% 的假对立——报混合频率才是对数据诚实。
+        // **形态再次是"全下的是中段"**：SB 15bb 的全下段是小对子 + 同花连张 +
+        // 离手 Ax/离手大牌，**AA/KK/QQ 走跛入做陷阱**——本项目第五次遇到这个形状。
+        // 40bb 的加注段则是极化的（溢价 + 43s/54s/64s 这类同花小连张 + K5o/J7o
+        // 这类离手大牌），中间牌全部跛入。
+        // ============================================================
+        const MPT_SB_BVB = {'15':{'jam':['22','33','44','55','66','76s','86s','87s','97s','A2o','A3o','A4o','A5o','A6o','A7o','A8o','A9o','AJo','AKo','AQo','ATo','K6o','K7o'],'fold':['32o','42o','43o','52o','62o','63o','72o','73o','82o','83o','84o','92o','93o','94o','T2o'],'limp':['32s','42s','43s','52s','53o','53s','54o','62s','63s','64o','64s','65o','72s','73s','74o','74s','75o','82s','83s','84s','85o','86o','88','92s','93s','94s','95o','96o','97o','98o','99','A3s','A4s','A5s','A6s','AA','AJs','AKs','AQs','ATs','J2o','J2s','J3o','J3s','J4o','J4s','J5o','J6o','J7o','J8o','J9o','J9s','JJ','JTo','JTs','K2o','K2s','K3o','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KK','KQo','KQs','KTs','Q2o','Q2s','Q3o','Q3s','Q4o','Q4s','Q5o','Q7o','Q7s','Q8o','Q8s','Q9o','Q9s','QJs','QQ','QTs','T2s','T3o','T3s','T4o','T4s','T5o','T5s','T6o','T7o','T9o','T9s','TT'],'mix':{'54s':[30,68],'65s':[69,29],'75s':[64,34],'76o':[14,83],'77':[61,37],'85s':[46,53],'87o':[58,40],'95s':[21,78],'96s':[45,55],'98s':[66,33],'A2s':[20,80],'A7s':[42,58],'A8s':[60,40],'A9s':[63,37],'J5s':[49,51],'J6s':[23,77],'J7s':[59,41],'J8s':[39,61],'K4o':[50,48],'K5o':[61,37],'K8o':[39,60],'K9o':[59,41],'KJo':[69,31],'KTo':[48,51],'Q5s':[48,52],'Q6o':[48,50],'Q6s':[51,49],'QJo':[62,38],'QTo':[30,70],'T6s':[36,63],'T7s':[69,29],'T8o':[17,82],'T8s':[54,45]}},'25':{'jam':['22','33'],'raise':['88','94s','99','A7o','A7s','A8s','A9s','AA','AJs','AKo','AKs','AQs','ATs','J4s','JJ','K9o','KK','KQs','QQ','T3s','T4s','TT'],'fold':['32o','42o','43o','52o','53o','62o','63o','64o','72o','73o','74o','82o','83o','84o','92o','93o','94o','T2o','T3o'],'limp':['54o','55','65o','72s','75o','76o','82s','83s','85o','86o','87s','92s','95o','96o','97s','98s','A2s','A3s','A4s','J2o','J3o','J4o','J5o','J6o','J7s','J8s','J9s','JTs','K2o','K2s','K3s','K4s','K5s','K6s','K7s','K8s','K9s','Q2o','Q3o','Q6s','Q7s','Q8s','Q9s','QJs','QTs','T4o','T5o','T6o','T7s','T8s','T9s'],'mix':{'32s':[38,52],'42s':[51,47],'43s':[61,33],'44':[63,32],'52s':[58,40],'53s':[54,44],'54s':[52,46],'62s':[20,78],'63s':[58,40],'64s':[59,40],'65s':[40,59],'66':[28,71],'73s':[29,68],'74s':[59,39],'75s':[43,55],'76s':[23,74],'77':[61,37],'84s':[64,36],'85s':[53,46],'86s':[31,68],'87o':[24,73],'93s':[51,48],'95s':[66,34],'96s':[45,54],'97o':[31,67],'98o':[43,56],'A2o':[38,57],'A3o':[53,44],'A4o':[46,53],'A5o':[46,53],'A5s':[40,60],'A6o':[70,28],'A6s':[56,44],'A8o':[42,12],'A9o':[24,49],'AJo':[26,74],'AQo':[27,73],'ATo':[43,56],'J2s':[70,30],'J3s':[69,31],'J5s':[56,44],'J6s':[44,56],'J7o':[54,45],'J8o':[65,35],'J9o':[65,35],'JTo':[40,59],'K3o':[28,68],'K4o':[54,45],'K5o':[63,35],'K6o':[62,36],'K7o':[63,35],'K8o':[66,33],'KJo':[49,51],'KJs':[66,34],'KQo':[67,33],'KTo':[55,45],'KTs':[51,49],'Q2s':[43,57],'Q3s':[45,55],'Q4o':[21,78],'Q4s':[40,60],'Q5o':[39,59],'Q5s':[21,79],'Q6o':[50,48],'Q7o':[55,42],'Q8o':[69,30],'Q9o':[64,35],'QJo':[55,45],'QTo':[44,56],'T2s':[66,34],'T5s':[62,38],'T6s':[55,45],'T7o':[37,59],'T8o':[56,43],'T9o':[52,47]}},'40':{'raise':['A9s','AA','ATs','KJs','KK','KQs','QJs','QQ'],'fold':['32o','42o','43o','52o','53o','62o','63o','64o','72o','73o','74o','82o','83o','84o','92o','93o','94o','J2o','T2o','T3o'],'limp':['22','32s','42s','54o','62s','65o','66','72s','73s','75o','76o','82s','83s','85o','86o','92s','95o','96o','J3o','J4o','J5o','J6o','J7s','K2o','K2s','K3o','K3s','K4o','Q2o','Q3o','Q4o','Q4s','Q5s','Q6s','Q7s','T4o','T5o','T6o','T7s'],'mix':{'33':[27,65],'43s':[63,35],'44':[45,52],'52s':[30,67],'53s':[44,54],'54s':[52,46],'55':[42,55],'63s':[44,54],'64s':[56,43],'65s':[54,44],'74s':[50,48],'75s':[37,62],'76s':[36,63],'77':[26,72],'84s':[37,63],'85s':[54,45],'86s':[41,58],'87o':[24,74],'87s':[26,73],'88':[32,67],'93s':[29,70],'94s':[35,64],'95s':[57,42],'96s':[37,62],'97o':[28,70],'97s':[25,74],'98o':[49,50],'98s':[40,59],'99':[43,56],'A2o':[33,60],'A2s':[29,71],'A3o':[28,70],'A3s':[37,63],'A4o':[25,73],'A4s':[47,53],'A5o':[28,70],'A5s':[59,41],'A6o':[42,56],'A6s':[52,48],'A7o':[46,52],'A7s':[65,35],'A8o':[49,51],'A8s':[69,31],'A9o':[55,45],'AJo':[29,71],'AJs':[63,37],'AKo':[63,37],'AKs':[66,34],'AQo':[29,71],'AQs':[63,37],'ATo':[64,36],'J2s':[61,39],'J3s':[53,47],'J4s':[51,49],'J5s':[45,55],'J6s':[43,57],'J7o':[54,45],'J8o':[56,43],'J8s':[36,64],'J9o':[38,61],'J9s':[53,47],'JJ':[69,31],'JTo':[34,66],'JTs':[65,35],'K4s':[18,82],'K5o':[48,50],'K5s':[22,78],'K6o':[51,48],'K6s':[34,66],'K7o':[48,50],'K7s':[43,57],'K8o':[48,51],'K8s':[48,52],'K9o':[43,56],'K9s':[65,35],'KJo':[49,51],'KQo':[68,32],'KTo':[41,58],'KTs':[68,32],'Q2s':[22,78],'Q3s':[27,73],'Q5o':[30,67],'Q6o':[37,61],'Q7o':[56,42],'Q8o':[62,37],'Q8s':[19,81],'Q9o':[47,52],'Q9s':[51,49],'QJo':[43,57],'QTo':[35,64],'QTs':[62,38],'T2s':[54,45],'T3s':[58,41],'T4s':[66,34],'T5s':[55,43],'T6s':[42,57],'T7o':[44,53],'T8o':[48,51],'T8s':[38,61],'T9o':[28,71],'T9s':[62,37],'TT':[58,41]}},'60':{'raise':['KQs'],'fold':['32o','42o','43o','52o','53o','62o','63o','72o','73o','74o','82o','83o','84o','92o','93o','94o','T2o'],'limp':['22','32s','33','42s','44','54o','55','62s','64o','65o','66','72s','73s','75o','75s','76o','82s','83s','85o','86o','87o','87s','92s','95o','96o','96s','97s','98s','A2o','A2s','A3o','A4o','A5o','J2o','J3o','J4o','J5o','J5s','J6o','J6s','J7s','JTo','K2o','K2s','K3o','K3s','K4o','K4s','K5s','KTo','Q2o','Q2s','Q3o','Q3s','Q4o','Q4s','Q5s','Q6s','Q7s','QTo','T3o','T4o','T5o','T6o','T7s','T9o'],'mix':{'43s':[23,76],'52s':[39,57],'53s':[18,81],'54s':[29,70],'63s':[32,67],'64s':[18,81],'65s':[25,74],'74s':[16,84],'76s':[18,82],'77':[14,86],'84s':[36,64],'85s':[16,83],'86s':[28,72],'88':[23,76],'93s':[13,87],'94s':[26,74],'95s':[34,66],'97o':[16,84],'98o':[28,72],'99':[32,68],'A3s':[16,84],'A4s':[30,70],'A5s':[48,52],'A6o':[20,80],'A6s':[30,70],'A7o':[21,78],'A7s':[51,49],'A8o':[19,80],'A8s':[59,41],'A9o':[25,75],'A9s':[58,42],'AA':[46,54],'AJo':[25,75],'AJs':[57,43],'AKo':[40,60],'AKs':[39,61],'AQo':[38,62],'AQs':[37,63],'ATo':[25,75],'ATs':[64,36],'J2s':[20,78],'J3s':[21,79],'J4s':[29,71],'J7o':[15,85],'J8o':[27,73],'J8s':[16,84],'J9o':[14,86],'J9s':[44,56],'JJ':[29,71],'JTs':[40,60],'K5o':[26,73],'K6o':[22,77],'K6s':[22,78],'K7o':[19,80],'K7s':[18,82],'K8o':[21,79],'K8s':[30,70],'K9o':[23,77],'K9s':[40,60],'KJo':[19,81],'KJs':[56,44],'KK':[40,60],'KQo':[27,73],'KTs':[48,52],'Q5o':[15,85],'Q6o':[23,76],'Q7o':[30,70],'Q8o':[25,75],'Q8s':[19,81],'Q9o':[18,82],'Q9s':[31,69],'QJo':[18,82],'QJs':[55,45],'QQ':[42,58],'QTs':[48,52],'T2s':[30,68],'T3s':[32,68],'T4s':[29,71],'T5s':[32,68],'T6s':[14,86],'T7o':[16,83],'T8o':[23,76],'T8s':[28,72],'T9s':[38,62],'TT':[33,67]}}};
+        const MPT_BB_VS_LIMP = {'15':{'jam':['22','33','44','55','A2o','A3o','A6o','A7o','K2o'],'raise':['77','88','99','A7s','A8s','A9s','AA','AJo','AJs','AKo','AKs','AQo','AQs','ATo','ATs','JJ','KJo','KJs','KK','KQo','KQs','KTs','QQ','TT'],'mix':{'32o':[26,67],'42o':[18,76],'52o':[17,77],'62o':[42,52],'63o':[40,58],'64o':[24,75],'65o':[22,77],'66':[62,37],'72o':[45,50],'73o':[54,43],'74o':[44,54],'75o':[29,69],'76o':[14,83],'82o':[54,40],'83o':[59,38],'84o':[60,39],'85o':[47,52],'86o':[34,64],'87o':[16,82],'92o':[49,44],'93o':[58,39],'94o':[60,38],'95o':[56,42],'96o':[45,53],'97o':[33,65],'98o':[22,77],'A4o':[66,33],'A5o':[34,62],'A5s':[16,84],'A6s':[20,80],'A8o':[48,0],'A9o':[23,0],'J2o':[61,35],'J3o':[51,47],'J4o':[47,52],'J5o':[31,67],'J6o':[24,75],'J7o':[38,60],'J8o':[30,70],'J9o':[16,84],'JTs':[35,65],'K3o':[30,32],'K4o':[34,64],'K5o':[16,83],'K6o':[21,77],'K7o':[45,53],'K8o':[57,42],'K8s':[15,85],'K9o':[52,47],'K9s':[67,33],'KTo':[48,51],'Q2o':[35,21],'Q3o':[60,36],'Q4o':[51,47],'Q5o':[29,69],'Q6o':[15,83],'Q7o':[43,55],'Q8o':[42,56],'Q9o':[27,72],'QJs':[35,65],'QTs':[35,65],'T2o':[53,41],'T3o':[55,42],'T4o':[52,47],'T5o':[41,56],'T6o':[44,53],'T7o':[34,63],'T8o':[28,70]}},'25':{'jam':['22','33','44','55','66','A2o','A8o'],'raise':['77','88','99','A7s','A8s','A9s','AA','AJo','AJs','AKo','AKs','AQo','AQs','ATo','ATs','JJ','K9o','KJs','KK','KQs','KTs','QQ','TT'],'mix':{'32o':[39,54],'32s':[15,73],'42o':[33,60],'43o':[28,69],'52o':[34,58],'53o':[25,72],'54o':[21,76],'54s':[12,83],'62o':[43,50],'62s':[27,71],'63o':[38,58],'63s':[27,71],'64o':[29,69],'64s':[22,76],'65o':[31,66],'65s':[16,78],'72o':[46,46],'72s':[29,68],'73o':[46,51],'73s':[26,72],'74o':[41,56],'74s':[26,72],'75o':[34,63],'76o':[24,74],'82o':[49,44],'82s':[26,74],'83o':[52,45],'83s':[18,82],'84o':[56,42],'84s':[20,80],'85o':[45,52],'85s':[18,82],'86o':[28,69],'92o':[57,36],'92s':[26,74],'93o':[53,43],'93s':[22,78],'94o':[53,45],'94s':[25,74],'95o':[51,46],'95s':[18,82],'96o':[44,54],'97o':[31,66],'98o':[19,81],'A3o':[27,64],'A4o':[28,70],'A5o':[27,71],'A6o':[30,68],'A7o':[35,61],'A9o':[49,0],'J2o':[60,35],'J2s':[18,82],'J3o':[55,42],'J3s':[22,78],'J4o':[56,43],'J4s':[18,82],'J5o':[45,53],'J6o':[33,66],'J7o':[36,62],'J8o':[29,70],'J9o':[33,66],'JTo':[18,82],'JTs':[14,86],'K2o':[34,58],'K3o':[38,57],'K4o':[34,64],'K5o':[20,77],'K6o':[19,79],'K7o':[39,59],'K8o':[68,32],'KJo':[48,52],'KQo':[55,45],'KTo':[38,62],'Q2o':[49,44],'Q3o':[48,48],'Q4o':[48,49],'Q5o':[32,66],'Q6o':[19,78],'Q7o':[33,64],'Q8o':[46,54],'Q9o':[45,55],'QJo':[34,66],'QJs':[17,83],'QTo':[32,68],'T2o':[61,32],'T2s':[25,74],'T3o':[56,41],'T3s':[21,78],'T4o':[65,32],'T4s':[23,76],'T5o':[53,44],'T5s':[15,84],'T6o':[48,49],'T7o':[36,60],'T8o':[25,74],'T9o':[29,70]}},'40':{'raise':['65s','66','76s','77','88','99','A7s','A8o','A8s','A9o','A9s','AA','AJo','AJs','AKo','AKs','AQo','AQs','ATo','ATs','JJ','KJo','KJs','KK','KQo','KQs','KTs','QJs','QQ','T4o','TT'],'mix':{'32o':[49,43],'32s':[19,79],'42o':[26,67],'43o':[34,64],'43s':[24,74],'52o':[38,55],'52s':[16,81],'53o':[26,71],'53s':[36,61],'54o':[18,80],'54s':[61,37],'55':[52,45],'62o':[37,55],'62s':[30,68],'63o':[45,52],'63s':[27,71],'64o':[36,62],'64s':[47,51],'65o':[22,75],'72o':[53,40],'72s':[27,72],'73o':[48,49],'73s':[32,67],'74o':[52,45],'75o':[38,59],'75s':[55,44],'76o':[26,71],'82o':[59,33],'82s':[17,82],'83o':[58,39],'83s':[14,85],'84o':[62,36],'85o':[45,53],'85s':[20,79],'86o':[42,56],'86s':[51,48],'87o':[28,70],'87s':[44,55],'92o':[52,40],'92s':[18,82],'93o':[63,34],'93s':[21,78],'94o':[69,30],'94s':[14,86],'95o':[61,36],'96o':[56,42],'97o':[46,53],'97s':[37,61],'98o':[18,81],'98s':[18,81],'A2o':[16,77],'A2s':[32,68],'A3s':[47,53],'A4s':[37,63],'A5o':[22,76],'A5s':[60,40],'A6o':[17,82],'A6s':[52,48],'A7o':[35,64],'J2o':[47,46],'J2s':[14,86],'J3o':[58,40],'J3s':[23,77],'J4o':[62,37],'J5o':[42,56],'J5s':[17,83],'J6o':[36,62],'J7o':[34,65],'J7s':[29,71],'J8o':[31,68],'J8s':[51,49],'J9o':[18,82],'J9s':[67,33],'JTo':[29,70],'JTs':[61,39],'K2o':[36,57],'K3o':[30,67],'K3s':[16,84],'K4o':[31,68],'K4s':[27,73],'K5o':[12,85],'K5s':[31,69],'K6s':[44,56],'K7o':[20,79],'K7s':[42,58],'K8o':[40,59],'K8s':[45,55],'K9o':[43,56],'K9s':[53,47],'KTo':[31,68],'Q2o':[40,52],'Q2s':[33,67],'Q3o':[44,53],'Q3s':[41,59],'Q4o':[38,60],'Q4s':[32,68],'Q5o':[28,69],'Q5s':[27,73],'Q6o':[23,75],'Q6s':[17,83],'Q7o':[25,73],'Q7s':[20,80],'Q8o':[23,76],'Q8s':[48,52],'Q9o':[25,74],'Q9s':[55,45],'QJo':[56,44],'QTo':[35,65],'QTs':[60,40],'T2o':[52,39],'T3o':[63,33],'T5o':[62,34],'T6o':[55,43],'T6s':[15,84],'T7o':[44,55],'T7s':[27,72],'T8o':[26,73],'T8s':[30,68],'T9s':[48,51]}},'60':{'raise':['54s','65s','66','76s','77','87s','88','98s','99','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AA','AJo','AJs','AKo','AKs','AQo','AQs','ATo','ATs','J9s','JJ','JTs','K6s','K7s','K8s','K9s','KJs','KK','KQo','KQs','KTs','Q9s','QJs','QQ','QTs','T9s','TT'],'mix':{'32o':[38,55],'32s':[25,71],'33':[24,72],'42o':[19,75],'42s':[29,70],'43o':[26,71],'43s':[35,63],'44':[32,67],'52o':[27,66],'52s':[28,69],'53o':[29,69],'53s':[43,54],'54o':[18,80],'55':[60,37],'62o':[26,67],'62s':[46,51],'63o':[38,58],'63s':[43,55],'64o':[36,62],'64s':[43,56],'65o':[27,70],'72o':[21,71],'72s':[27,71],'73o':[44,53],'73s':[25,73],'74o':[41,57],'74s':[30,68],'75o':[43,54],'75s':[37,60],'76o':[33,65],'82o':[35,58],'82s':[38,61],'83o':[38,58],'83s':[27,73],'84o':[47,51],'85o':[56,42],'86o':[39,59],'86s':[65,34],'87o':[28,69],'92o':[44,49],'92s':[14,86],'93o':[55,42],'93s':[31,69],'94o':[55,43],'95o':[55,42],'95s':[20,80],'96o':[56,42],'97o':[46,51],'97s':[63,36],'98o':[25,74],'A2s':[66,34],'A5o':[14,84],'A7o':[32,66],'A8o':[52,47],'A9o':[60,39],'J2o':[51,43],'J3o':[52,45],'J4o':[60,39],'J5o':[51,47],'J6o':[45,53],'J7o':[45,53],'J8o':[35,64],'J8s':[49,51],'K2o':[35,58],'K2s':[17,83],'K3o':[31,65],'K3s':[28,72],'K4o':[22,76],'K4s':[41,59],'K5o':[14,83],'K5s':[49,51],'K6o':[15,83],'K7o':[16,82],'K8o':[37,62],'K9o':[33,66],'KJo':[53,47],'KTo':[42,57],'Q2o':[49,43],'Q3o':[52,44],'Q4o':[44,54],'Q4s':[21,79],'Q5o':[39,58],'Q6o':[26,71],'Q6s':[20,80],'Q7o':[31,66],'Q8o':[39,61],'Q8s':[62,38],'Q9o':[25,75],'QJo':[26,74],'QTo':[13,87],'T2o':[43,50],'T2s':[23,77],'T3o':[54,43],'T3s':[27,72],'T4o':[62,34],'T5o':[51,46],'T6o':[57,40],'T7o':[51,46],'T7s':[31,68],'T8o':[24,75],'T8s':[67,32],'T9o':[14,85]}}};
+
         const MPT_3BET_PCT = {
             BB: { UTG: {15: 0.0, 25: 4.7, 40: 5.8, 60: 5.3}, LJ: {15: 0.0, 25: 5.0, 40: 7.8, 60: 7.4}, CO: {15: 0.0, 25: 5.5, 40: 11.5, 60: 11.7}, BTN: {15: 0.0, 25: 8.2, 40: 14.1, 60: 16.8} },
             SB: { UTG: {15: 0.0, 25: 4.8, 40: 6.6, 60: 5.6}, LJ: {15: 0.0, 25: 5.3, 40: 8.0, 60: 8.1}, CO: {15: 0.0, 25: 5.5, 40: 12.1, 60: 12.3}, BTN: {15: 0.0, 25: 6.5, 40: 14.1, 60: 16.2} },
@@ -4503,6 +4535,37 @@
         // 各引擎实现
         // ============================================================
         // 判断是否应该 3-Bet（查 THREBET_RANGES）
+        /** 盲对盲深度分档（MPT 只解了 15/25/40/60bb 四档） */
+        function bvbTier(effStack) {
+            const d = effStack > 0 ? effStack : 40;
+            return d <= 20 ? '15' : (d <= 32 ? '25' : (d <= 50 ? '40' : '60'));
+        }
+        /** 全弃到 SB 时 SB 自己该怎么打：jam / raise / limp / fold（MPT 实测） */
+        function sbBvbAction(handStr, effStack) {
+            const n = MPT_SB_BVB[bvbTier(effStack)]; if (!n) return null;
+            const m = n.mix && n.mix[handStr];
+            // jamIsAgg：只有 15bb 那档没有小加注这个动作，混合的另一头才是全下
+            if (m) return { act: 'mix', agg: m[0], limp: m[1], jamIsAgg: !n.raise };
+            if ((n.jam   || []).includes(handStr)) return 'jam';
+            if ((n.raise || []).includes(handStr)) return 'raise';
+            if ((n.fold  || []).includes(handStr)) return 'fold';
+            return (n.limp || []).includes(handStr) ? 'limp' : 'fold';
+        }
+        /** BB 面对 SB 跛入：jam / raise / check（BB 面对跛入不可能弃牌） */
+        function bbVsLimpAction(handStr, effStack) {
+            const n = MPT_BB_VS_LIMP[bvbTier(effStack)]; if (!n) return null;
+            const m = n.mix && n.mix[handStr];
+            if (m) return { act: 'mix', agg: m[0], check: 100 - m[0] };
+            if ((n.jam   || []).includes(handStr)) return 'jam';
+            if ((n.raise || []).includes(handStr)) return 'raise';
+            return 'check';
+        }
+        /** 盲对盲的加注尺度比常规开池大——BB 赔率太好，2x 打不动他
+         *  （MPT 图题：25bb "Raise 3.3x" · 40/60bb "Raise 3.5x"） */
+        function sbBvbRaiseX(effStack) {
+            const t = bvbTier(effStack);
+            return t === '25' ? 3.3 : (t === '15' ? 3.0 : 3.5);
+        }
         /** 盲位 3-Bet 集合：MPT 实测手牌序（按深度分档取表）截断到目标宽度 */
         function bbSb3betSet(heroPos, villainPos, effStack) {
             const row = MPT_3BET_PCT[heroPos]; if (!row) return null;
@@ -5232,6 +5295,16 @@
             }
 
             if (heroAct === 'limp') {
+                // 盲对盲（2026-09-09）：全弃到我(SB) 而我跛入——这不是 over-limp，
+                // 是 SB 在该节点的**主策略**。路由回 open 模式，让 SB 盲对盲分支
+                // 复核这手牌该跛/该加/该弃；底池由 initPotTracker 按跛入池记账。
+                if (globalPosHero === 'SB' && !limpsBefore.length && !raisesBefore.length) {
+                    out.mode = 'open'; out.posV = 'BB'; out.limpers = [];
+                    out.label = '全弃到我（SB）→ 我跛入';
+                    out.note = 'SB 跛入是该节点的主策略（MPT 实测 15-60bb 跛入 50-70%）；' +
+                               '下方复核这手牌该跛入/加注/弃牌，翻后按跛入池（各 1BB）记账';
+                    return out;
+                }
                 out.mode = 'vsLimp';
                 out.limpers = limpsBefore.map(x => x.pos).concat(listAfter.filter(x => x.a === 'limp').map(x => x.pos));
                 out.posV = out.limpers[0] || null;
@@ -5638,14 +5711,20 @@
                 //   · 任何情况下都**没有弃牌**——而弃牌恰恰是最常见的动作。
                 // 现按"前方发生了什么"给出真实可选项，末位一律接弃牌再回到轮到我。
                 const limpAhead = seats.slice(0, hi).some(p => (tlEvents[p] || {}).action === 'limp');
+                // 盲对盲（2026-09-09）：全弃到 SB 时**跛入是 SB 的主策略**
+                // （MPT 实测 15-60bb 跛入 50-70%），必须能表达，否则这个高频节点
+                // 在界面上根本走不到。其他位置首个进池者跛入是非标打法，不给。
+                const sbFirstIn = globalPosHero === 'SB' && !raiseAhead && !limpAhead;
                 const seq = raiseAhead ? ['none', 'call', '3bet', 'fold']
                           : limpAhead  ? ['none', 'limp', 'open', 'fold']
+                          : sbFirstIn  ? ['none', 'open', 'limp', 'fold']
                                        : ['none', 'open', 'fold'];
                 const cur = tlHero ? tlHero.action : 'none';
                 const idxCur = seq.indexOf(cur);
                 const next = seq[(idxCur < 0 ? 0 : idxCur + 1) % seq.length];
                 const lbl3 = { none: '轮到我', open: limpAhead ? '已加注(Iso)' : '已开池',
-                               call: '已跟注', '3bet': '已 3-Bet', limp: '已跛入', fold: '已弃牌' };
+                               call: '已跟注', '3bet': '已 3-Bet',
+                               limp: sbFirstIn ? '已跛入(SB)' : '已跛入', fold: '已弃牌' };
                 pushUndo(`时间线：我 → ${lbl3[next]}`);
                 if (next === 'none') { tlHero = null; seats.slice(hi + 1).forEach(p => delete tlEvents[p]); }
                 else if (next === 'open') tlHero = { action: 'open', amount: tlOpenDefault() };
@@ -5996,6 +6075,111 @@
                     return;
                 }
 
+                // ── 盲对盲：全弃到 SB（2026-09-09，MPT 实测）────────────────
+                // SB 身后只剩 BB 一人，这不是普通开池节点：BB 有极好的赔率、防守
+                // 75-85%，所以真实解里 SB **主策略是跛入**（15-60bb 全程 50-70%），
+                // 加注段窄而极化、尺度也更大（3.3-3.5x 而非 2.2x）。
+                // 我们此前只有"加注或弃牌"，等于在 1/9 的手牌里抹掉了主策略。
+                // 边界说明：≤12BB 仍走上面的 Nash 推/弃（本分支在其后），
+                // 而 MPT 15bb 那档显示 SB 跛入 61.5%——两者不矛盾：Nash 表建模的是
+                // "只有推或弃"的子博弈，浅到 8-10bb 时那确实近似最优；MPT 的解里
+                // 同一批牌改用跛入实现。**没有 15bb 以下的实测数据就不外推**。
+                if (posH === 'SB') {
+                    const _r = sbBvbAction(handStr, sH);
+                    const act = (_r && _r.act === 'mix') ? 'mix' : _r;
+                    if (act) {
+                        const tier = bvbTier(sH), rx = sbBvbRaiseX(sH);
+                        const N = MPT_SB_BVB[tier];
+                        // 混合牌按实测频率折算计入，否则显示的几项加不到 100
+                        const aggKey = N.raise ? 'raise' : 'jam';
+                        const pct = a => {
+                            let n = 0;
+                            for (const h of (N[a] || [])) n += _cbOf(h);
+                            for (const [h, vv] of Object.entries(N.mix || {}))
+                                n += _cbOf(h) * (a === 'limp' ? vv[1] : a === aggKey ? vv[0] : 0) / 100;
+                            return (n / 1326 * 100).toFixed(1);
+                        };
+                        const share = `该深度实测：${N.jam ? `全下 ${pct('jam')}% · ` : ''}` +
+                                      `${N.raise ? `加注 ${pct('raise')}% · ` : ''}跛入 ${pct('limp')}% · 弃牌 ${pct('fold')}%`;
+                        let vd, col, lg, sz = '';
+                        if (act === 'jam') {
+                            vd = '🔥 全下'; col = 'attack';
+                            lg = `${tier}BB 盲对盲，${handStr} 在实测的全下段。` +
+                                 `<b>注意全下的是范围的中段</b>——小对子 / 同花连张 / 离手 Ax，` +
+                                 `AA/KK/QQ 反而走跛入做陷阱。<br><span class="text-gray-400">${share}</span>`;
+                            sz = `${sH.toFixed(1)}BB All-in`;
+                        } else if (act === 'raise') {
+                            vd = '🔴 加注'; col = 'attack';
+                            lg = `${tier}BB 盲对盲加注段。<b>尺度用 ${rx}x（约 ${(rx).toFixed(1)}BB）而不是常规的 2.2x</b>` +
+                                 `——BB 的赔率太好，小尺度打不动他。加注段是极化的：溢价 + 同花小连张 + 离手大牌，` +
+                                 `中间强度的牌走跛入。<br><span class="text-gray-400">${share}</span>`;
+                            sz = `${rx.toFixed(1)}BB 加注（${rx}x）`;
+                        } else if (act === 'limp') {
+                            vd = '🟢 跛入 (Limp)'; col = 'passive';
+                            lg = `${tier}BB 盲对盲，${handStr} 在<b>跛入段</b>（该深度 SB 的主策略）。` +
+                                 `SB 翻后恒 OOP 而 BB 赔率极好，把中间强度的牌全部加注只会被防守；` +
+                                 `跛入用最低成本保住整个范围。<br>` +
+                                 `<b>跛入后要有计划</b>：BB 会 iso-加注约 ${(() => { const b = MPT_BB_VS_LIMP[tier];
+                                    let n = 0; for (const h of (b && b.raise) || []) n += _cbOf(h);
+                                    for (const [h, vv] of Object.entries((b && b.mix) || {})) n += _cbOf(h) * vv[0] / 100;
+                                    return (n / 1326 * 100).toFixed(0); })()}%，` +
+                                 `其余过牌看翻牌。<br><span class="text-gray-400">${share}</span>`;
+                            sz = '跛入 1.0BB（补齐大盲）';
+                        } else if (act === 'mix') {
+                            const aggName = _r.jamIsAgg ? '全下' : `加注 ${rx}x`;
+                            vd = `🟡 混合：${aggName} ${_r.agg}% / 跛入 ${_r.limp}%`; col = 'mix';
+                            lg = `${tier}BB 盲对盲，${handStr} 是<b>真混合牌</b>（实测 ${aggName} ${_r.agg}% ·` +
+                                 ` 跛入 ${_r.limp}%${100 - _r.agg - _r.limp >= 3 ? ` · 弃牌 ${100 - _r.agg - _r.limp}%` : ''}）。` +
+                                 `盲对盲是全书混合最重的节点，不替解算器二选一；两条线 EV 接近，` +
+                                 `按频率随手选一条即可，别固定只打一种。<br>` +
+                                 `<b>走跛入这条线要有计划</b>：BB 会 iso-加注约 ${(() => { const b = MPT_BB_VS_LIMP[tier];
+                                    let n = 0; for (const h of (b && b.raise) || []) n += _cbOf(h);
+                                    for (const [h, vv] of Object.entries((b && b.mix) || {})) n += _cbOf(h) * vv[0] / 100;
+                                    return (n / 1326 * 100).toFixed(0); })()}%，其余过牌看翻牌。` +
+                                 `<br><span class="text-gray-400">${share}</span>`;
+                            sz = _r.jamIsAgg ? `${sH.toFixed(1)}BB All-in（${_r.agg}% 的频率）`
+                                             : `${rx.toFixed(1)}BB 加注（${_r.agg}% 的频率）`;
+                        } else {
+                            vd = '⚪ 弃牌 (Fold)'; col = 'fold';
+                            lg = `${tier}BB 盲对盲，${handStr} 在弃牌段。SB 弃牌段只有最差的离手牌` +
+                                 `（约 ${pct('fold')}%）——OOP 且要补 0.5BB，其余都跛入。` +
+                                 `<br><span class="text-gray-400">${share}</span>`;
+                        }
+                        box.style.borderColor = col === 'attack' ? '#e5484d' : col === 'passive' ? '#2ea86a'
+                            : col === 'mix' ? '#e0a83a' : '#5c667f';
+                        box.style.backgroundColor = col === 'attack' ? 'rgba(214,57,64,0.1)'
+                            : col === 'passive' ? 'rgba(46,168,106,0.1)'
+                            : col === 'mix' ? 'rgba(224,168,58,0.1)' : 'rgba(92,102,127,0.12)';
+                        vText.style.color = col === 'attack' ? '#ff7a7d' : col === 'passive' ? '#45d68a'
+                            : col === 'mix' ? '#e0a83a' : '#8b95ab';
+                        vText.innerText = vd;
+                        logicText.innerHTML = lg;
+                        const sBox = document.getElementById('sizingBox');
+                        if (sz) { document.getElementById('sizingContent').innerText = sz; sBox.classList.remove('hidden'); }
+                        else sBox.classList.add('hidden');
+                        freqBox.classList.remove('hidden');
+                        if (act === 'mix') {
+                            const rest = 100 - _r.agg;
+                            document.getElementById('freqBar').innerHTML =
+                                `<div class="freq-fill bg-open" style="width:${_r.agg}%">${_r.agg}%</div>` +
+                                `<div class="freq-fill bg-call" style="width:${rest}%">${rest}%</div>`;
+                            document.getElementById('freqLabels').innerHTML =
+                                `<span class="text-blue-400">${_r.jamIsAgg ? '全下' : '加注'} ${_r.agg}%</span>` +
+                                `<span class="text-green-400">跛入 ${_r.limp}%</span>` +
+                                (100 - _r.agg - _r.limp >= 3 ? `<span class="text-gray-400">弃牌 ${100 - _r.agg - _r.limp}%</span>` : '');
+                        } else {
+                        const fc = act === 'fold' ? 'bg-fold' : act === 'limp' ? 'bg-call' : 'bg-open';
+                        document.getElementById('freqBar').innerHTML = `<div class="freq-fill ${fc}" style="width:100%">100%</div>`;
+                        document.getElementById('freqLabels').innerHTML =
+                            `<span class="${act === 'fold' ? 'text-gray-400' : act === 'limp' ? 'text-green-400' : 'text-blue-400'}">` +
+                            `${act === 'jam' ? '全下' : act === 'raise' ? '加注' : act === 'limp' ? '跛入' : '弃牌'} 100%</span>`;
+                        }
+                        proofPanel.classList.add('hidden');
+                        document.getElementById('resultPanel').classList.remove('invisible');
+                        updateCfgSummary();
+                        return;
+                    }
+                }
                 // 常规筹码深度(>12BB)：使用 GTO 范围表直接查表（深码 >60BB 放宽）
                 const inRange = isHandInOpenRange(handStr, posH, gameConfig.tableSize, gameConfig.stage, gameConfig.gameType, effStack);
 
@@ -6101,7 +6285,51 @@
                 let isoPct = 0, foldPct = 100, callPct = 0, checkPct = 0;
                 let logic = '';
 
-                if (inIsoRange) {
+                // ── BB 面对 SB 跛入（2026-09-09，MPT 实测）────────────────
+                // 这是盲对盲跛入池的另一半，与 SB 的跛入策略成对出现，频率极高。
+                // 旧逻辑走通用 Iso 表 + "不在 Iso 范围就 Check"，与实测差很多：
+                // 实测 BB 对 SB 的跛入 **加注 44%**（15bb 还另有 8.2% 直接全下），
+                // 而通用 Iso 表窄得多——BB 在这里是**有位置**的（SB 翻后先说话），
+                // 且对手跛入范围极宽，该狠狠 iso。
+                const _bvbLimp = (posH === 'BB' && posV === 'SB' && limpCount <= 1)
+                    ? bbVsLimpAction(handStr, effStack) : null;
+                if (_bvbLimp) {
+                    const _bl = (_bvbLimp && _bvbLimp.act === 'mix') ? _bvbLimp : null;
+                    const _blAct = _bl ? 'mix' : _bvbLimp;
+                    const tier = bvbTier(effStack);
+                    const N = MPT_BB_VS_LIMP[tier];
+                    const pct = a => {
+                        let n = 0;
+                        for (const h of (N[a] || [])) n += _cbOf(h);
+                        for (const [h, vv] of Object.entries(N.mix || {}))
+                            n += _cbOf(h) * (a === 'raise' ? vv[0] : 0) / 100;
+                        return (n / 1326 * 100).toFixed(1);
+                    };
+                    const share = `该深度实测：${N.jam ? `全下 ${pct('jam')}% · ` : ''}加注 ${pct('raise')}% · ` +
+                                  `过牌 ${(100 - (+pct('raise')) - (N.jam ? +pct('jam') : 0)).toFixed(1)}%`;
+                    if (_blAct === 'mix') {
+                        isoPct = _bl.agg; checkPct = 100 - _bl.agg; foldPct = 0;
+                        logic = `${tier}BB 盲对盲，SB 跛入 → ${handStr} 是<b>真混合牌</b>` +
+                                `（实测 iso 加注 ${_bl.agg}% · 过牌 ${_bl.check}%）。` +
+                                `盲对盲是全书混合最重的节点，硬二值化会在 50% 边界造出` +
+                                `"32o 加注而 K8o 过牌"这类看着荒谬、实则只是 47% vs 39% 的假对立` +
+                                `——报频率才是对数据诚实。<br><span class="text-gray-400">${share}</span>`;
+                    } else if (_blAct === 'jam') {
+                        isoPct = 100; foldPct = 0;
+                        logic = `${tier}BB 盲对盲，SB 跛入 → ${handStr} 在实测的<b>全下段</b>` +
+                                `（浅码时直接全下比小 iso 更有效，SB 的跛入范围极宽、弃牌率高）。` +
+                                `<br><span class="text-gray-400">${share}</span>`;
+                    } else if (_blAct === 'raise') {
+                        isoPct = 100; foldPct = 0;
+                        logic = `${tier}BB 盲对盲，SB 跛入 → <b>加注隔离</b>。BB 在这里是<b>有位置</b>的` +
+                                `（翻后 SB 先说话），且对方跛入范围极宽，实测 BB 会 iso 掉 ${pct('raise')}%，` +
+                                `远宽于通用 Iso 表。<br><span class="text-gray-400">${share}</span>`;
+                    } else {
+                        checkPct = 100; foldPct = 0;
+                        logic = `${tier}BB 盲对盲，SB 跛入 → <b>过牌看翻牌</b>（免费）。` +
+                                `不在实测的 iso 段，无需投入。<br><span class="text-gray-400">${share}</span>`;
+                    }
+                } else if (inIsoRange) {
                     isoPct = 100; foldPct = 0;
                     logic = `${limpCount} 名跛入者，${POS_LABEL[posH]} 位在 Iso 范围内，剥削弱范围主动加注。`;
                 } else if ((cat === 'LowPair' || cat === 'SuitedConn') && effStack >= 15) {
@@ -6117,18 +6345,24 @@
                 }
 
                 // Iso 尺度：3BB + 每个 limper 1BB（含上限检查）
-                const isoAmt = 3 + limpCount;
+                // 盲对盲另计：MPT 图题 15bb "Raise 3x" · 25bb "3.3x" · 40/60bb "3.5x"
+                const isoAmt = _bvbLimp
+                    ? (_bvbLimp === 'jam' ? sH : sbBvbRaiseX(effStack))   /* mix/raise 同用盲对盲尺度 */
+                    : 3 + limpCount;   // 盲对盲：MPT 图题 15bb 3x · 25bb 3.3x · 40/60bb 3.5x
                 const isoSize = (sH > 0 && isoAmt >= sH * 0.85)
                     ? `${sH.toFixed(1)}BB All-in`
                     : isoAmt.toFixed(1) + 'BB Iso-raise';
 
-                let color = isoPct > 0 ? 'green' : checkPct > 0 ? 'blue' : callPct > 0 ? 'yellow' : 'red';
-                let verdict = isoPct > 0 ? '🔴 加注隔离 (Iso)' : checkPct > 0 ? '🟢 过牌 (Check)' : callPct > 0 ? '🟢 平跟博底池' : '⚪ 弃牌';
+                // 盲对盲混合牌：isoPct 与 checkPct 同时 >0，措辞与配色都要走混合档
+                const _blMix = _bvbLimp && _bvbLimp.act === 'mix';
+                let color = _blMix ? 'mix' : isoPct > 0 ? 'green' : checkPct > 0 ? 'blue' : callPct > 0 ? 'yellow' : 'red';
+                let verdict = _blMix ? `🟡 混合：加注 ${isoPct}% / 过牌 ${checkPct}%`
+                            : isoPct > 0 ? '🔴 加注隔离 (Iso)' : checkPct > 0 ? '🟢 过牌 (Check)' : callPct > 0 ? '🟢 平跟博底池' : '⚪ 弃牌';
 
                 // 解算器语义色：green(Iso)=进攻红 / blue(Check)+yellow(Call)=被动绿 / red(Fold)=灰蓝
-                box.style.borderColor = color==='green'?'#e5484d':color==='blue'?'#2ea86a':color==='yellow'?'#2ea86a':'#5c667f';
-                box.style.backgroundColor = color==='green'?'rgba(214,57,64,0.1)':color==='blue'?'rgba(46,168,106,0.1)':color==='yellow'?'rgba(46,168,106,0.1)':'rgba(92,102,127,0.12)';
-                vText.style.color = color==='green'?'#ff7a7d':color==='blue'?'#45d68a':color==='yellow'?'#45d68a':'#8b95ab';
+                box.style.borderColor = color==='mix'?'#e0a83a':color==='green'?'#e5484d':color==='blue'?'#2ea86a':color==='yellow'?'#2ea86a':'#5c667f';
+                box.style.backgroundColor = color==='mix'?'rgba(224,168,58,0.1)':color==='green'?'rgba(214,57,64,0.1)':color==='blue'?'rgba(46,168,106,0.1)':color==='yellow'?'rgba(46,168,106,0.1)':'rgba(92,102,127,0.12)';
+                vText.style.color = color==='mix'?'#e0a83a':color==='green'?'#ff7a7d':color==='blue'?'#45d68a':color==='yellow'?'#45d68a':'#8b95ab';
                 vText.innerText = verdict;
                 logicText.innerHTML = logic;
 
@@ -7134,8 +7368,11 @@
             let each = 0, extraDead = 0;
             if (currentMode === 'open') {
                 // 用时间线里我的真实开池额（iso-raise 到 5BB 时 pot 应按 5 算，而非默认 2.2）
-                each = (typeof tlHero !== 'undefined' && tlHero && tlHero.action === 'open' && tlHero.amount > 0)
-                    ? tlHero.amount : openAmt;
+                // 盲对盲跛入（2026-09-09）：SB 补齐到 1BB、BB 过牌 → 双方各 1BB，
+                // 不能按开池额算（否则 SB 跛入池被算成 2.2BB 池、SPR 差一倍）
+                each = (typeof tlHero !== 'undefined' && tlHero && tlHero.action === 'limp') ? 1
+                     : (typeof tlHero !== 'undefined' && tlHero && tlHero.action === 'open' && tlHero.amount > 0)
+                       ? tlHero.amount : openAmt;
             } else if (currentMode === 'vsLimp') {
                 // 底池修复(2026-07-21，用户 T6 明三条 @ 7-T-T 实战暴露)：原本一律按"我 iso-raise
                 // 到 3+n 且有一人跟注"算 → 两人跛入时底池 12.5BB，而真实跛入池只有约 4BB。
