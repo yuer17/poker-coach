@@ -2198,6 +2198,40 @@
             return { set: new Set(hs), pct: hs.reduce((a, h) => a + _cbOf(h), 0) / 1326 * 100 };
         }
 
+        // ============================================================
+        // BB/SB 的 3-Bet 范围（2026-09-09）：宽度基准 = MPT 第 8 章，手牌池 = RYE F3B
+        // ------------------------------------------------------------
+        // 旧 THREBET_RANGES 的 BB/SB 行**从未被任何基准校准过，也没有深度维度**。
+        // 实测偏窄一半：我方 BB_vs_BTN 7.39%，MPT 40bb 的 BB vs BN 3-bet 是 **14.1%**。
+        // 且深度影响显著（25bb 8.2% → 40bb 14.1% → 60bb 16.8%）——
+        // 越深越宽，因为有翻后空间、且全下档消失。15bb 为 0：那个深度只有全下或跟注。
+        // 手牌池顺序 = 该手牌在 RYE 各 F3B 节点里被当作 3-Bet 的**次数**降序
+        //（对越前位开池还 3-Bet 的＝越强），同频次按推/弃刻度破平。
+        const MPT_3BET_PCT = {
+            BB: { UTG: {15: 0.0, 25: 4.7, 40: 5.8, 60: 5.3}, LJ: {15: 0.0, 25: 5.0, 40: 7.8, 60: 7.4}, CO: {15: 0.0, 25: 5.5, 40: 11.5, 60: 11.7}, BTN: {15: 0.0, 25: 8.2, 40: 14.1, 60: 16.8} },
+            SB: { UTG: {15: 0.0, 25: 4.8, 40: 6.6, 60: 5.6}, LJ: {15: 0.0, 25: 5.3, 40: 8.0, 60: 8.1}, CO: {15: 0.0, 25: 5.5, 40: 12.1, 60: 12.3}, BTN: {15: 0.0, 25: 6.5, 40: 14.1, 60: 16.2} },
+            // 盲对盲：BB 面对 SB 开池（MPT Hand Range 142/143/145；25bb 那张是
+            // "All-in 10.6% / Call 53.8%"——该深度盲对盲没有小 3-Bet 档，故记 0）
+            BB_vs_SB: {15: 0.0, 25: 0.0, 40: 12.3, 60: 12.1},
+        };
+        // 手牌池（93 类，合计 47.5% 组合）
+        // 盲位 3-Bet / SB 跟注的**实测**手牌序（2026-09-09，MPT 第 9 章 MTT 章节
+        // 「Defending the SB / Defending the BB」共 35 张图，逐格按像素判色读出
+        // 弃/跟/3-Bet/全下四色频率，**图题里印的四个百分比就是每张图自带的校验和**
+        // ——34/35 张对上 ±2.2 点以内（BB vs SB 60bb 的 3-Bet 差 2.1 点，已标注）。
+        // 提取器 regression_tests/reference/mpt_blinds.py。
+        //
+        // **为什么要换掉上一版的"RYE 节点计数"排序**：那个排序把 20BB 的 Jam 节点
+        // 和 40BB 的 3-Bet 节点混在一起数，于是 74o/85o/J2o 这类短码全推垃圾牌
+        // 排进了中段，而 A5s/A4s 只出现 2 次被压到第 55-58 位——排序本身没有意义。
+        // 实测结果的结构完全不同、也更可解释：**盲位 40bb 的 3-Bet 诈唬是打不了跟注的牌**
+        //（A9o/QJo/KQo/KJo/QTo/K6s 这类离手同花张与离手大牌），而 **A5s/A4s/A2s
+        // 这些同花轮子 A 反而在跟注段**——它们闭合行动、赔率好、翻后好打，
+        // 拿去当诈唬 3-Bet 反而浪费。两个来源（MPT 与 RYE）在这点上一致。
+        // 每档已按印刷宽度的 1.45 倍截断，留给相邻深度插值的余量。
+        const MPT_BLIND_3BET = {'SB':{'BTN':{'25':['JJ','QQ','AJs','AKs','AA','KK','ATs','AQs','A6o','A9s','A8s','KJo','A5o','QJo','A7o','KTo','TT'],'40':['AKo','AA','JJ','KK','QQ','TT','AJs','AKs','AQs','ATs','99','A9o','K6s','QJo','KQo','KJo','QTo','A7o','AJo','A8o','K7s','88','T9s','98s','55','KQs','K5s','KTo','A6s','A2s','Q6s','T8s','QJs','A4s','ATo','JTo','A7s','66','JTs','J8s'],'60':['A9o','AKo','ATo','KJo','99','AA','JJ','KK','QQ','TT','98s','A4s','A5s','A6s','AJs','AKs','AQs','J8s','JTs','K6s','K7s','T8s','T9s','KTs','AQo','K9s','76s','A7s','KQo','AJo','QJo','A3s','77','88','T7s','87s','ATs','QTo','J9s','A8s','KJs','Q8s','97s','A9s','QJs','A5o','86s','KTo','KQs','52o']},'CO':{'25':['KK','QQ','AJs','AKs','AA','ATs','AQs','A8o','A9o','44','JJ','A7o','A5o','K6s','KJo'],'40':['A8o','AKo','ATo','99','AA','JJ','KK','QQ','TT','AJs','AKs','AQs','KQo','A9o','Q9s','77','AJo','KJo','AQo','K7s','A3s','J8s','88','T8s','K8s','Q8s','A5s','A7s','J9s','QJo','A6s','QTo','KTo'],'60':['AJo','AKo','KQo','88','AA','JJ','KK','QQ','TT','98s','A5s','A8s','AKs','AQs','ATs','JTs','K9s','KTs','Q9s','T9s','A7s','A6s','QJs','T8s','ATo','A4s','KJs','J9s','QTs','K8s','AQo','KTo','QTo','99','KQs','KJo','J8s','32o']},'LJ':{'25':['AA','KK','QQ','AKs','AJs','AQs','A9o','A7s','JJ','K7s','QJo','ATo','A3s','A2s','KQo','K6s'],'40':['AA','JJ','KK','QQ','AKs','AQs','KTs','AJo','K9s','AKo','TT','99','A9s','A8s','88','JTs','ATo','AQo','A7s','A5s','T9s','KQo','ATs','QTs','QJs'],'60':['AKo','AA','KK','QQ','TT','A5s','A8s','AJs','AKs','AQs','ATs','JTs','KJs','KQs','KTs','QTs','T9s','AQo','QJs','K9s','88','99','A9s','87s','A6s','JJ','T2o','T4o']},'UTG':{'25':['AA','KK','QQ','AKs','AQs','ATo','JJ','AJo','K9s','A4s','A5s','A7s','KQo','A2s','K8s','TT'],'40':['AKo','AA','JJ','KK','QQ','AKs','KJs','KTs','AQo','A5s','ATo','TT','QJs','AJo','A8s','J9s','A7s','A9s','98s','99','KQs'],'60':['AA','KK','QQ','A5s','AKs','AQs','ATs','KQs','KJs','AKo','AJs','JJ','TT','KTs','76s','T9s','87s','A8s','QTs','A9s','QJs','AQo']}},'BB':{'BTN':{'25':['AKo','AA','KK','QQ','AJs','AKs','AQs','ATs','JJ','T9s','JTs','98s','T8s','A6o','K3o','A3o','87s','K4o','Q4o','A5o','A2o','A7o'],'40':['AKo','99','AA','JJ','KK','QQ','TT','AJs','AKs','AQs','ATs','KQs','AQo','55','KQo','ATo','A5o','AJo','K5o','88','T6s','KJo','A6o','A9o','A2o','Q6s','Q6o','K6o','A3o','K3o','A7o','44'],'60':['AJo','AKo','AQo','KQo','88','99','AA','JJ','KK','QQ','TT','76s','86s','87s','96s','97s','98s','A5s','AJs','AKs','AQs','ATs','J8s','K6s','KQs','KTs','T9s','ATo','T7s','T8s','T6s','A4s','J9o','KJs','K5s','Q7s','A9o','Q9o','65s','J8o','KTo','A5o','QTo','Q6s','77','K7s','KJo','QJo','T2o']},'CO':{'25':['AA','KK','QQ','AJs','AKs','AQs','JTs','T9s','A2o','55','A8o','A5o','ATo','K5o','K9o'],'40':['AKo','AA','JJ','KK','QQ','TT','AJs','AKs','AQs','AQo','A8o','99','AJo','KQo','98s','J7s','Q9o','JTo','J8s','77','K8o','Q8s','A5o','K4o','Q7s','88','T7s','Q6s','A2o','KJo'],'60':['AKo','AQo','KQo','99','AA','JJ','KK','QQ','TT','98s','A4s','A5s','AJs','AKs','AQs','K8s','KQs','T7s','T8s','T9s','87s','65s','J9s','KTo','J8s','K7s','KJs','A8o','KJo','A5o','88','AJo','T6s','53o','43o']},'LJ':{'25':['AA','KK','QQ','AKs','AQs','JTs','66','JJ','Q9o','K4o','77','55','K9o','A7o'],'40':['AA','JJ','KK','QQ','AKs','AKo','K9s','TT','AQo','JTs','99','AQs','K6s','T9s','J9s','QTs','76s','88','A9o','J8s','A6s','87s','AJo','A4o'],'60':['AKo','AQo','AA','JJ','KK','QQ','A8s','AKs','J9s','JTs','K9s','KTs','QTs','T9s','KJs','A5s','TT','A9s','A6s','AQs','T8s','ATo','K6s','52o','T2o']},'UTG':{'25':['AA','KK','QQ','AKs','99','55','JJ','QJo','A4o','KTo','AKo','AQo'],'40':['AKo','AA','KK','QQ','AKs','KTs','KJs','JJ','ATo','K9s','T9s','65s','AQo','TT','A5o','A8s','K6s','QJo'],'60':['AA','KK','QQ','A5s','AKs','ATs','KJs','AKo','KQs','QTs','J9s','KTs','A4s','JJ','T9s','A8s','A9s','AQo','65s','AJo']},'SB':{'40':['AKo','AQo','AA','JJ','KK','QQ','AKs','AQs','AJo','A2o','TT','T7o','K4o','J7o','Q6o','K3o','Q5o','A3o','K5o','J8o','A6o','T2s','77','T8o','AJs','94s','93s'],'60':['AKo','AA','JJ','KK','QQ','AKs','AQs','AQo','TT','A2o','Q6o','J8o','K4o','J9o','J7o','K6o','T7o','K3o','66','A3o','AJo','AJs','87s','A6o','Q5o','K5o']}}};
+        const MPT_SB_CALL = {'BTN':{'15':[],'25':['K9s','Q9s','K8s','KTo','QTo','J9s','KJo','Q8s','QJo','A8s','K7s','JTo'],'40':['A8s','A9s','K8s','K9s','Q8s','22','33','Q9s','J9s','A5s','J8s','44','A7s','JTo','KJs','KTs','ATo','QJs','T8s','A4s','Q6s','K4s','A2s','A6s','KTo','A3s','K5s','Q7s','66','KQs','98s'],'60':['A7o','A8o','JTo','K9o','A2s','J7s','K3s','K4s','K5s','K8s','Q5s','Q6s','Q7s','Q9s','QTs','66','54s','65s','55','KTo','KQs','A6o','22','44','33','86s','QJs','A9s','97s','Q8s','KJs','A8s','A5o','T9o','J9s','QTo','ATs']},'CO':{'15':[],'25':['A6s','A9s','K8s','K9s','Q8s','Q9s','T8s','K7s','KTo','98s','J8s','87s','QJo','QTo','KJo','K6s','J9s','A3s','A2s','A4s','K5s','JTo','76s'],'40':['87s','A8s','A9s','ATs','K5s','K6s','KQs','QJs','QTs','55','22','A4s','44','33','A2s','T9s','66','JTs','98s','K9s','KTs','KTo','A6s','QJo','J9s','A7s','A5s','K8s','Q8s','T8s','J8s','A3s','QTo','K7s'],'60':['A9o','JTo','QJo','77','76s','86s','87s','97s','A2s','A3s','A9s','AJs','K3s','K4s','K5s','K6s','K7s','Q8s','T7s','66','54s','65s','44','55','J8s','22','33','KJo','KQs','99','QTo','KTo','AQo','K8s','QTs']},'LJ':{'15':['A6s','K9s','Q9s','T9s','KJo','87s','QJo','KTs','A2s','J9s','A9o','T8s'],'25':['KJo','76s','87s','98s','A5s','A8s','A9s','ATs','J9s','K8s','K9s','Q9s','T8s','T9s','65s','54s','A6s','22','Q8s','97s','J8s','33','66','K6s','KQo','KTo','A2s','A3s','ATo','QJo','A4s'],'40':['A2s','A3s','AJs','J9s','K7s','Q9s','66','44','55','22','KJo','T8s','33','76s','KQs','77','A6s','K8s','A4s','98s','K6s','54s','QTs','87s','ATs','KQo','T9s','A5s','A7s','65s','ATo','K5s'],'60':['AJo','ATo','KJo','KQo','77','76s','86s','97s','98s','A2s','A3s','A4s','A7s','J9s','K6s','K8s','Q8s','Q9s','T8s','66','65s','54s','55','JJ','44','22','33','A6s','87s','A9s','QJo','99','K7s']},'UTG':{'15':['ATo','KJo','KQo','76s','87s','98s','A2s','A3s','A4s','A5s','A6s','A7s','A8s','A9s','J9s','K8s','K9s','Q9s','T8s','T9s','66','65s','54s','22','ATs','QJs','JTs','QTs','J8s','97s','K7s','Q8s'],'25':['77','88','76s','87s','97s','A6s','A8s','A9s','AJs','ATs','J8s','J9s','JTs','K6s','K7s','KQs','Q8s','Q9s','QTs','T8s','T9s','66','54s','65s','98s','44','55','KJo','22','33','A3s','K8s','A2s','KQo','K5s','A7s','A5s','A4s','QJo'],'40':['KQo','77','88','76s','87s','A3s','A6s','AJs','AQs','ATs','K6s','K9s','Q9s','T8s','66','65s','54s','55','A4s','22','JTs','44','33','T9s','QTs','KQs','99','98s','A9s','K8s','A7s','J9s','A8s','AJo','QJs'],'60':['AJo','KQo','77','88','99','98s','A3s','A4s','A6s','A7s','J9s','K6s','K8s','K9s','Q9s','T8s','66','54s','JTs','44','55','22','65s','33','A2s','AQo','QJs','A9s','QTs','86s','A8s','87s','T9s','76s','K7s','53s']}};
+
         (function normalizeRangeTables() {
             const uni = (a, b) => Array.from(new Set([...(a || []), ...(b || [])]));
             const uniEntry = (a, b) => ({ value: uni(a && a.value, b && b.value),
@@ -4452,7 +4486,104 @@
         // 各引擎实现
         // ============================================================
         // 判断是否应该 3-Bet（查 THREBET_RANGES）
-        function getThreeBetAction(handStr, heroPos, villainPos, tableSize) {
+        /** 盲位 3-Bet 集合：MPT 实测手牌序（按深度分档取表）截断到目标宽度 */
+        function bbSb3betSet(heroPos, villainPos, effStack) {
+            const row = MPT_3BET_PCT[heroPos]; if (!row) return null;
+            // MPT 只给 UTG/LJ/CO/BTN 四个开池位，中间位置按 behind 线性插值宽度，
+            // 手牌序取**更靠后（更松）那个锚点**的实测序再截断 → 嵌套自动成立。
+            const BEH = { BTN: 0, CO: 1, HJ: 2, LJ: 3, MP: 4, UTG1: 5, UTG: 6 };
+            // 盲对盲单列一格：SB 不在"身后人数"这条链上（BB 面对 SB 开池是完全
+            // 不同的博弈——BB 闭合行动、赔率最好），不能按 BTN 那格近似。
+            if (heroPos === 'BB' && villainPos === 'SB') {
+                const r = MPT_3BET_PCT.BB_vs_SB;
+                const ks = [15, 25, 40, 60], x = Math.max(15, Math.min(60, effStack > 0 ? effStack : 40));
+                let tg = r[40];
+                if (x <= 15) tg = r[15]; else if (x >= 60) tg = r[60];
+                else for (let i = 1; i < ks.length; i++)
+                    if (x <= ks[i]) { const a = ks[i-1], b = ks[i];
+                                      tg = r[a] + (r[b] - r[a]) * (x - a) / (b - a); break; }
+                if (!(tg > 0)) return { set: new Set(), pct: 0, target: 0 };
+                const ord = (MPT_BLIND_3BET.BB || {}).SB || {};
+                const list = ord[x <= 50 ? 40 : 60] || ord[40] || [];
+                const st = new Set(); let ac = 0;
+                for (const h of list) { if (ac / 1326 * 100 >= tg) break; st.add(h); ac += _cbOf(h); }
+                return { set: st, pct: ac / 1326 * 100, target: tg };
+            }
+            const bi = BEH[villainPos]; if (bi == null) return null;
+            const at = (op, d) => {
+                const r = row[op]; if (!r) return null;
+                const ks = [15, 25, 40, 60], x = Math.max(15, Math.min(60, d > 0 ? d : 40));
+                if (x <= 15) return r[15];
+                if (x >= 60) return r[60];
+                for (let i = 1; i < ks.length; i++)
+                    if (x <= ks[i]) { const a = ks[i-1], b = ks[i];
+                                      return r[a] + (r[b] - r[a]) * (x - a) / (b - a); }
+                return r[40];
+            };
+            const KEYS = [['BTN',0],['CO',1],['LJ',3],['UTG',6]];
+            let target = null, srcOp = null;
+            for (const [op, k] of KEYS) if (k === bi) { target = at(op, effStack); srcOp = op; }
+            if (target == null) {
+                let lo = KEYS[0], hi = KEYS[KEYS.length-1];
+                for (const kk of KEYS) if (kk[1] <= bi) lo = kk;
+                for (let i = KEYS.length-1; i >= 0; i--) if (KEYS[i][1] >= bi) hi = KEYS[i];
+                const a = at(lo[0], effStack), b = at(hi[0], effStack);
+                target = (lo[1] === hi[1]) ? a : a + (b - a) * (bi - lo[1]) / (hi[1] - lo[1]);
+                srcOp = lo[0];   // 更松的那个锚点，其序足够长可截断
+            }
+            if (!(target > 0)) return { set: new Set(), pct: 0, target: 0 };   // 15bb：无小 3-Bet 档
+            // 深度分档取实测序（15bb 无 3-Bet 档，故最浅取 25bb 那张）
+            const d = effStack > 0 ? effStack : 40;
+            const tier = d <= 32 ? 25 : (d <= 50 ? 40 : 60);
+            const byOp = (MPT_BLIND_3BET[heroPos] || {})[srcOp] || {};
+            const order = byOp[tier] || byOp[40] || byOp[60] || byOp[25];
+            if (!order) return { set: new Set(), pct: 0, target };
+            const out = new Set(); let acc = 0;
+            for (const h of order) {
+                if (acc / 1326 * 100 >= target) break;
+                out.add(h); acc += _cbOf(h);
+            }
+            return { set: out, pct: acc / 1326 * 100, target };
+        }
+        /** SB 面对开池的**跟注**段（MPT 实测）。SB 此前完全没有跟注范围：
+         *  ≤25BB 被 Re-Jam 闸门屏蔽小 3-Bet 后直接落进弃牌，深码又因 OOP 拿不到
+         *  set-mining / IP 平跟两条路 —— 等于"不 3-Bet 就弃"。MPT 的 MTT 数据是
+         *  SB 25bb 跟 6-15%、40bb 跟 12-13%、60bb 跟 14-17%，确实有一段跟注范围。
+         *  （注意这与第 5 章 100bb **现金局** "SB 不跟注" 的结论不冲突：那里明确
+         *   把原因归给抽水与 BB 的挤压，MTT 无抽水且有 ante 死钱，结论不同。） */
+        function isHandInSBDefense(handStr, villainPos, effStack) {
+            const BEH = { BTN: 0, CO: 1, HJ: 2, LJ: 3, MP: 4, UTG1: 5, UTG: 6 };
+            const bi = BEH[villainPos]; if (bi == null) return false;
+            const KEYS = [['BTN',0],['CO',1],['LJ',3],['UTG',6]];
+            let src = KEYS[0];
+            for (const kk of KEYS) if (kk[1] <= bi) src = kk;
+            const d = effStack > 0 ? effStack : 40;
+            const tier = d <= 20 ? 15 : (d <= 32 ? 25 : (d <= 50 ? 40 : 60));
+            // 四个深度都显式建了键（可能是空数组）——**不跨深度回退**：
+            // SB vs BTN 15bb 的跟注段真值就是 0%（纯全下或弃），回退到 25bb 的表
+            // 会凭空造出一段不存在的跟注范围。
+            const list = (MPT_SB_CALL[src[0]] || {})[tier] || [];
+            return list.includes(handStr);
+        }
+        function getThreeBetAction(handStr, heroPos, villainPos, tableSize, effStack) {
+            // BB/SB 深度分档（2026-09-09）：旧表这两行从未校准且无深度维度，
+            // 实测偏窄一半（我方 BB_vs_BTN 7.39% vs MPT 40bb 的 14.1%）。
+            // 深度影响显著：25bb 8.2% → 40bb 14.1% → 60bb 16.8%；15bb 为 0（只有全下或跟注）。
+            if ((heroPos === 'BB' || heroPos === 'SB') && effStack > 0) {
+                const r = bbSb3betSet(heroPos, villainPos, effStack);
+                if (r) {
+                    if (!r.set.has(handStr)) return 'fold';
+                    const arr = [...r.set];
+                    const p = arr.indexOf(handStr) / Math.max(1, arr.length);
+                    if (p > getPlayStyleScale()) return 'fold';
+                    // 池的前 55% 记为价值段，其后为诈唬段（受阶段 bluffMult 约束）
+                    if (p <= 0.55) return 'threebet_value';
+                    const sm = THREBET_RANGES[tableSize]?.stageModifiers?.[gameConfig.stage] || { bluffMult: 1.0 };
+                    if (sm.bluffMult >= 0.8) return 'threebet_bluff';
+                    if (sm.bluffMult >= 0.5) return 'threebet_bluff_reduced';
+                    return 'fold';
+                }
+            }
             const key = heroPos + '_vs_' + villainPos;
             // Codex交叉测试修复②(2026-07-13)：缺键时先查 9max 同名键（语义正确的近似，
             // 修复 8max 盲注位 vs 前中位开池落到 BTN_vs_UTG 的 IP/OOP 范围错配）；
@@ -6004,7 +6135,7 @@
                         // JJ/TT/AQs/A5s 面对后位开池永远只跟不 3-Bet）。诈唬 3-Bet 牌若同在
                         // 防守表内，未 3-Bet 的部分改为跟注而非弃牌。
                         const shouldDefend = isHandInBBDefense(handStr, posV, gameConfig.tableSize, effStack);
-                        const bb3b = getThreeBetAction(handStr, 'BB', posV, gameConfig.tableSize);
+                        const bb3b = getThreeBetAction(handStr, 'BB', posV, gameConfig.tableSize, effStack);
                         if (bb3b === 'threebet_value') {
                             b = 100; action3bValue = true;
                             logic = 'BB 强牌，价值 3-Bet（BB 3-Bet 表）。';
@@ -6026,7 +6157,7 @@
                     // （'fold' 使流程落入下方 set-mining / IP 平跟 / 弃牌分支）
                     const action3b = effStack <= 25
                         ? 'fold'
-                        : getThreeBetAction(handStr, posH, posV, gameConfig.tableSize);
+                        : getThreeBetAction(handStr, posH, posV, gameConfig.tableSize, effStack);
                     if (action3b === 'threebet_value') {
                         b = 100; c = 0; f = 0; action3bValue = true;
                         logic = '价值 3-Bet，强牌榨取。';
@@ -6037,7 +6168,15 @@
                         b = 35; f = 65; c = 0;
                         logic = 'ICM 阶段修正：泡沫/决赛圈降低 3-Bet 诈唬频率（35%↓）。';
                     } else {
-                        if ((cat === 'LowPair' || cat === 'MidPair') &&
+                        // SB 跟注段（2026-09-09，MPT 实测）：SB 翻后恒 OOP，
+                        // 下面的 set-mining / IP 平跟两条路都要求 Hero 在位置上，
+                        // 所以在此之前 SB 只要没 3-Bet 就必然弃牌——等于没有跟注范围。
+                        if (posH === 'SB' && isHandInSBDefense(handStr, posV, effStack)) {
+                            c = 100; b = 0; f = 0;
+                            logic = `SB 跟注段（MPT ${effStack}BB 实测：SB vs ${POS_LABEL[posV] || posV} 跟注约 ` +
+                                    `${effStack <= 32 ? '6-15' : effStack <= 50 ? '12-13' : '14-17'}%）。` +
+                                    `OOP 且身后还有 BB 可挤压，跟注段窄于 BB，翻后需谨慎控池。`;
+                        } else if ((cat === 'LowPair' || cat === 'MidPair') &&
                             POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV]) {
                             const setMineRatio = raiseSize / effStack;
                             if (setMineRatio > 0.07) {
@@ -6228,11 +6367,28 @@
                         const suggAmt = raiseSize * getTbMult(isIP);   // 尺度可选(2026-09-08)
                         // P1-2：All-in 上限与显示用有效筹码 effStack=min(hero,villain)，非 Hero 总筹码 sH
                         // Re-Jam(2026-07-13)：全推决策直接显示 All-in，不走 3x/4x 计算
+                        // 3-Bet 后剩余 SPR 过低 → 直接全下（2026-09-09）
+                        // 原来只有"尺度 ≥ 有效筹码 85%"一条线。实测 15BB 面对 2.2x 开池，
+                        // OOP 3-Bet 到 8.8BB 只占 59%，不触发 → 显示"3-Bet 到 8.8BB"，
+                        // 被跟后只剩 6.2BB、底池约 19BB，**SPR 0.32** —— 正是 Re-Jam 功能
+                        // 当初要解决的"留 0.3 SPR"问题，只是 AA/KK 走的是 3-Bet 表分支、
+                        // 绕过了 Re-Jam 闸门。
+                        // 依据：MPT 第 8 章 BB vs BN **15bb 只有 All-in 18%，没有小 3-Bet 档**；
+                        // 25bb 才是 All-in 11.4% + 3-bet 8.2% 并存。按被跟后 SPR 定阈值：
+                        //   SPR = (S − T) / (2T + 死钱)；T=8.8 时 15BB→0.32 · 20BB→0.58 ·
+                        //   25BB→0.84 · 40BB→1.61。取 **SPR < 0.75 即全下**，
+                        //   正好复现"15/20bb 无小 3-Bet、25bb 起有"。
+                        const _dead3b = 1.5 + getAnteBB();
+                        const _sprAfter3b = (effStack > suggAmt)
+                            ? (effStack - suggAmt) / (2 * suggAmt + _dead3b) : 0;
+                        const _commit3b = effStack > 0 && suggAmt < effStack && _sprAfter3b < 0.75;
                         suggSize = rejamChosen
                             ? `${effStack.toFixed(1)}BB All-in (Re-Jam)`
                             : (effStack > 0 && suggAmt >= effStack * 0.85)
                                 ? `${effStack.toFixed(1)}BB All-in`
-                                : suggAmt.toFixed(1) + "BB " + btnName;
+                                : _commit3b
+                                    ? `${effStack.toFixed(1)}BB All-in（3-Bet 到 ${suggAmt.toFixed(1)} 只剩 SPR ${_sprAfter3b.toFixed(2)}，等于承诺）`
+                                    : suggAmt.toFixed(1) + "BB " + btnName;
                     } else if (postSizing) {
                         // face3b：使用 switch 预设尺度字符串
                         suggSize = postSizing;
@@ -7239,22 +7395,42 @@
                 const fallback = `${villainPos}_vs_MP`; // 常见兜底
                 const aliasKey = villainPos === 'UTG1' ? `MP_vs_${heroPos}` : null;
                 let approx3b = false;
-                let tbl = THREBET_RANGES[tableSize]?.[key];
-                if (!tbl) {
+                // 一致性（2026-09-09）：翻前 getThreeBetAction 对 BB/SB 已改用
+                // MPT 校准 + 深度分档的宽度（vs BTN 40bb 14.3%），而这里若仍读旧表（7.4%）
+                // 就会出现"我方按 14% 打、却按 7% 估对手"的同模型两套宽度——
+                // 方向是**高估对手强度、过度弃牌**，与 Re-Jam 那处同一类错误。
+                if (villainPos === 'BB' || villainPos === 'SB') {
+                    const r3 = bbSb3betSet(villainPos, heroPos,
+                                 (typeof globalVillainStack !== 'undefined' && globalVillainStack > 0)
+                                   ? globalVillainStack : 40);
+                    if (r3 && r3.set.size >= 8) {
+                        const arr = [...r3.set];
+                        // 诈唬段按阶段 bluffMult 截断（与下方旧路径同语义）
+                        const vCut = Math.ceil(arr.length * 0.55);
+                        const keep = arr.slice(0, vCut).concat(
+                            arr.slice(vCut, vCut + Math.round((arr.length - vCut) * bluffMult)));
+                        baseHands = keep;
+                        vActionLabel = `3-Bet 极化 (${villainPos} vs ${heroPos}，${r3.pct.toFixed(1)}%，MPT 校准 + 深度分档)`;
+                    }
+                }
+                let tbl = baseHands.length ? null : THREBET_RANGES[tableSize]?.[key];
+                if (!tbl && !baseHands.length) {
                     tbl = THREBET_RANGES['9max']?.[key] ||
                           (aliasKey && (THREBET_RANGES[tableSize]?.[aliasKey] || THREBET_RANGES['9max']?.[aliasKey])) ||
                           THREBET_RANGES[tableSize]?.[fallback] ||
                           THREBET_RANGES['9max']?.[fallback];
                     approx3b = true;
                 }
-                if (tbl) {
-                    const bluffSlice = Math.round((tbl.bluff || []).length * bluffMult);
-                    baseHands = [...(tbl.value || []), ...(tbl.bluff || []).slice(0, bluffSlice)];
-                } else {
-                    // 极端兜底：价值 3-Bet 范围（AA/KK/QQ/AKs/AKo）
-                    baseHands = ['AA','KK','QQ','AKs','AKo','A5s','A4s'];
+                if (!baseHands.length) {
+                    if (tbl) {
+                        const bluffSlice = Math.round((tbl.bluff || []).length * bluffMult);
+                        baseHands = [...(tbl.value || []), ...(tbl.bluff || []).slice(0, bluffSlice)];
+                    } else {
+                        // 极端兜底：价值 3-Bet 范围（AA/KK/QQ/AKs/AKo）
+                        baseHands = ['AA','KK','QQ','AKs','AKo','A5s','A4s'];
+                    }
+                    vActionLabel = `3-Bet 极化 (${villainPos} vs ${heroPos})${approx3b ? '（近似范围）' : ''}`;
                 }
-                vActionLabel = `3-Bet 极化 (${villainPos} vs ${heroPos})${approx3b ? '（近似范围）' : ''}`;
 
             } else if (currentMode === 'squeeze') {
                 // 英雄 Squeeze，对手是原开池者
