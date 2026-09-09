@@ -2036,6 +2036,168 @@
             6: { 15: 77.67, 25: 73.14, 40: 55.46, 60: 56.45 },   // UTG
         };
 
+        // ============================================================
+        // Re-Jam / 面对 Re-Jam（2026-09-09，源：RYE Rangeviewer 2021 静态库）
+        // ------------------------------------------------------------
+        // 提取方式：范围以 HTML 文本存在 DOM 里（`<td id="cid_AA" class="cell p mdl-color--X">`），
+        // 颜色即档位、图例印着精确组合数。**49 个节点逐格加总全部对上印刷值**。
+        // 这套是 2021 的材料，所以与更新的 Modern Poker Theory 第 8 章做了交叉验证：
+        // 16 个可比节点，15bb 平均偏差 -0.0 点、绝对中位 2.6 点，25bb 更接近。
+        // **短码 Re-Jam 是没有翻后的全下子博弈，最接近纯 Nash，随年份漂移最小**——
+        // 这是 2021 数据在此节点仍可用的理由；深码翻后就不能这么假设。
+        //
+        // 编码：RYE 用**深度阈值**而非动作分色，一张表即整条深度曲线。
+        // 值 = 该手牌全下的**最大有效筹码**（≤ 该值才推）。
+        // **顶端强牌不在表里**——AA/KK/QQ/JJ/AK 走小 3-Bet + 跟 4-Bet，永不全下，
+        // 单列在 RYE_REJAM_3BC。这正是我们旧模型最大的形状错误（见下）。
+        const RYE_REJAM = {
+            BB: {
+                BTN: {'22':30, '33':30, '44':30, '55':30, '66':30, '77':30, '88':30, '99':30, 'AJo':30, 'AJs':30, 'AQo':29, 'AQs':29, 'A5s':25, 'A6s':25, 'A7s':25, 'A8s':25, 'A9s':25, 'ATo':25, 'ATs':25, 'KJs':25, 'KQo':25, 'KQs':25, '87s':20, '97s':20, '98s':20, 'A2s':20, 'A3s':20, 'A4s':20, 'A5o':20, 'A6o':20, 'A7o':20, 'A8o':20, 'A9o':20, 'J8s':20, 'J9s':20, 'JTs':20, 'K5s':20, 'K6s':20, 'K7s':20, 'K8s':20, 'K9s':20, 'KJo':20, 'KTo':20, 'KTs':20, 'Q8s':20, 'Q9s':20, 'QJo':20, 'QJs':20, 'QTs':20, 'T8s':20, 'T9s':20, 'TT':19, 'A2o':15, 'A3o':15, 'A4o':15, 'K3s':15, 'K4s':15, 'K9o':15},
+                CO: {'22':30, '33':30, '44':30, '55':30, '66':30, '77':30, '88':30, '99':30, 'AQo':29, 'AQs':29, 'TT':29, 'A6s':25, 'A7s':25, 'A8s':25, 'A9s':25, 'AJo':25, 'AJs':25, 'ATo':25, 'ATs':25, 'KJs':25, 'KQo':25, 'KQs':25, '98s':20, 'A2s':20, 'A3s':20, 'A4s':20, 'A5s':20, 'A8o':20, 'A9o':20, 'J8s':20, 'J9s':20, 'JTs':20, 'K5s':20, 'K6s':20, 'K7s':20, 'K8s':20, 'K9s':20, 'KJo':20, 'KTs':20, 'Q8s':20, 'Q9s':20, 'QJs':20, 'QTs':20, 'T8s':20, 'T9s':20, 'A2o':19, 'A3o':19, 'A4o':19, 'A5o':19, 'A6o':19, 'A7o':19, 'K4s':15},
+                HJ: {'44':30, '55':30, '66':30, '77':30, '88':30, '99':30, 'AJs':30, 'AKo':30, 'AKs':29, 'AQo':29, 'AQs':29, 'TT':29, '22':25, '33':25, 'A8s':25, 'A9s':25, 'AJo':25, 'ATo':25, 'ATs':25, 'KJs':25, 'KQs':25, '98s':20, 'A4s':20, 'A5s':20, 'A6s':20, 'A7s':20, 'A9o':20, 'J9s':20, 'JTs':20, 'K7s':20, 'K8s':20, 'K9s':20, 'KQo':20, 'KTs':20, 'Q8s':20, 'Q9s':20, 'QJs':20, 'QTs':20, 'T9s':20, 'A2s':15, 'A3s':15, 'KJo':15},
+                LJ: {'77':30, '88':30, '99':30, 'AKo':30, 'AQo':30, 'AQs':30, 'TT':30, '55':25, '66':25, 'AJo':25, 'AJs':25, 'ATs':25, 'KQs':25, '22':20, '33':20, '44':20, 'A5s':20, 'A6s':20, 'A7s':20, 'A8s':20, 'A9s':20, 'J9s':20, 'JTs':20, 'K9s':20, 'KJs':20, 'KQo':20, 'KTs':20, 'Q9s':20, 'QJs':20, 'QTs':20, 'T9s':20, 'A4s':15, 'ATo':15},
+                MP: {'88':30, '99':30, 'AQo':30, 'AQs':30, 'TT':30, '77':25, 'AJs':25, 'ATs':25, 'KQs':25, '22':20, '33':20, '44':20, '55':20, '66':20, 'A5s':20, 'A8s':20, 'A9s':20, 'AJo':20, 'ATo':20, 'JTs':20, 'KJs':20, 'KTs':20, 'QJs':20, 'QTs':20, 'A6s':15, 'A7s':15, 'KQo':15},
+                UTG: {'99':30, 'AQo':30, 'AQs':30, 'TT':30, '88':25, '22':20, '33':20, '44':20, '55':20, '66':20, '77':20, 'A9s':20, 'AJo':20, 'AJs':20, 'ATs':20, 'KJs':20, 'KQs':20, 'KTs':20, 'QJs':20, 'A8s':15, 'ATo':15, 'KQo':15},
+                UTG1: {'99':30, 'AQo':30, 'AQs':30, 'TT':30, '77':25, '88':25, 'KQs':25, '22':20, '33':20, '44':20, '55':20, '66':20, 'A9s':20, 'AJo':20, 'AJs':20, 'ATo':20, 'ATs':20, 'KJs':20, 'KQo':20, 'KTs':20, 'QJs':20, 'QTs':20, 'A7s':15, 'A8s':15},
+            },
+            BTN: {
+                CO: {'77':30, '88':30, '99':30, 'A9s':30, 'AJo':30, 'ATs':30, 'TT':30, '22':25, '33':25, '44':25, '55':25, '66':25, 'A5s':25, 'A7s':25, 'A8s':25, 'KJs':25, 'KQo':25, 'KQs':25, '87s':20, '98s':20, 'A3s':20, 'A4s':20, 'A6s':20, 'ATo':20, 'J8s':20, 'J9s':20, 'JTs':20, 'K8s':20, 'K9s':20, 'KJo':20, 'KTs':20, 'Q8s':20, 'Q9s':20, 'QJs':20, 'QTs':20, 'T8s':20, 'T9s':20, 'A2s':15, 'A9o':15, 'QJo':15},
+                HJ: {'77':30, '88':30, '99':30, 'TT':30, '22':25, '33':25, '44':25, '55':25, '66':25, 'AJo':25, 'AJs':25, 'ATs':25, '87s':20, '98s':20, 'A4s':20, 'A5s':20, 'A7s':20, 'A8s':20, 'A9s':20, 'J9s':20, 'JTs':20, 'K9s':20, 'KJs':20, 'KQo':20, 'KQs':20, 'KTs':20, 'Q9s':20, 'QJs':20, 'QTs':20, 'T9s':20, 'ATo':15, 'KJo':15},
+                LJ: {'77':30, '88':30, '99':30, 'AQo':30, 'TT':30, 'AJo':25, 'AJs':25, '22':20, '33':20, '44':20, '55':20, '66':20, 'A9s':20, 'ATs':20, 'JTs':20, 'KJs':20, 'KQo':20, 'KQs':20, 'KTs':20, 'QJs':20, 'QTs':20, 'T9s':20, 'A8s':15, 'ATo':15},
+                MP: {'99':30, 'AQo':30, 'TT':30, '88':25, 'AJo':25, 'AJs':25, '66':20, '77':20, 'ATs':20, 'JTs':20, 'KJs':20, 'KQs':20, 'KTs':20, 'QJs':20, 'QTs':20, '55':15, 'A9s':15, 'ATo':15, 'KQo':15, 'T9s':15},
+                UTG: {'99':30, 'AQo':30, 'AQs':30, 'TT':30, '77':20, '88':20, 'AJs':20, 'ATs':20, 'KJs':20, 'KQs':20, 'QJs':20, '55':15, '66':15, 'AJo':15, 'KQo':15},
+                UTG1: {'99':30, 'AQo':30, 'TT':30, '88':25, '66':20, '77':20, 'AJo':20, 'AJs':20, 'ATs':20, 'KJs':20, 'KQs':20, 'KTs':20, 'QJs':20, 'A9s':15, 'ATo':15, 'JTs':15, 'KQo':15, 'QTs':15},
+            },
+            CO: {
+                HJ: {'77':30, '88':30, '99':30, 'AQo':30, 'AQs':30, 'TT':30, '55':25, '66':25, 'AJo':25, 'AJs':25, '22':20, '33':20, '44':20, 'A2s':20, 'A3s':20, 'A4s':20, 'A5s':20, 'A8s':20, 'A9s':20, 'ATs':20, 'JTs':20, 'KJs':20, 'KQo':20, 'KQs':20, 'KTs':20, 'QJs':20, 'QTs':20, 'A6s':15, 'A7s':15, 'J9s':15, 'K9s':15, 'Q9s':15, 'T9s':15},
+                LJ: {'99':30, 'AQo':30, 'AQs':30, 'TT':30, '77':25, '88':25, 'AJo':25, 'AJs':25, '44':20, '55':20, '66':20, 'A9s':20, 'ATs':20, 'JTs':20, 'KJs':20, 'KQo':20, 'KQs':20, 'KTs':20, 'QJs':20, 'QTs':20, '22':15, '33':15, 'A2s':15, 'A3s':15, 'A4s':15, 'A5s':15, 'A8s':15, 'T9s':15},
+                MP: {'99':30, 'AQo':30, 'AQs':30, 'TT':30, '88':25, 'AJs':25, '77':20, 'ATs':20, 'KJs':20, 'KQs':20, 'KTs':20, 'QJs':20, 'QTs':20, '66':15, 'A9s':15, 'AJo':15, 'KQo':15},
+                UTG: {'99':30, 'AQo':30, 'AQs':30, 'TT':30, '88':20, 'AJs':20, 'KJs':20, 'KQs':20, 'ATs':15},
+                UTG1: {'99':30, 'AQo':30, 'AQs':30, 'TT':30, '88':25, 'AJs':20, 'KJs':20, 'KQs':20, 'AJo':15, 'ATs':15},
+            },
+            HJ: {
+                LJ: {'99':30, 'AJs':30, 'AQs':30, 'TT':30, 'AQo':25, 'KQs':25, '66':20, '77':20, '88':20, 'AJo':20, 'ATs':20, 'KJs':20, 'KTs':20, 'QJs':20, 'QTs':20, '44':15, '55':15, 'A4s':15, 'A5s':15, 'A8s':15, 'A9s':15, 'JTs':15, 'KQo':15},
+                MP: {'99':30, 'AJs':30, 'AQs':30, 'TT':30, 'AQo':25, 'KQs':25, '77':20, '88':20, 'ATs':20, 'KJs':20, 'KTs':20, 'QJs':20, '66':15, 'AJo':15},
+                UTG: {'TT':30, 'AQo':25, 'AQs':25, '99':20, 'KJs':20, 'KQs':20, 'AJs':15},
+                UTG1: {'TT':30, '99':25, 'AQo':25, 'AQs':25, '88':20, 'AJs':20, 'KJs':20, 'KQs':20, 'QJs':20, 'AJo':15, 'ATs':15},
+            },
+            LJ: {
+                MP: {'AQo':25, 'AQs':25, 'TT':25, '88':20, '99':20, 'AJs':20, 'KQs':20, '77':15, 'ATs':15, 'KJs':15},
+                UTG: {'AQs':25, 'TT':25, '99':20, 'AQo':20, '88':15, 'AJs':15, 'KQs':15},
+                UTG1: {'AQo':25, 'AQs':25, 'TT':25, '99':20, 'AJs':20, 'KQs':20, '88':15},
+            },
+            SB: {
+                BTN: {'22':30, '33':30, '44':30, '55':30, '66':30, '77':30, '88':30, '99':30, 'A9s':30, 'AJo':30, 'AJs':30, 'ATo':30, 'ATs':30, 'JTs':30, 'KJs':30, 'KQo':30, 'KQs':30, 'KTs':30, 'QJs':30, 'QTs':30, 'TT':30, 'AQo':29, 'AQs':29, 'A6s':25, 'A7s':25, 'A8s':25, 'J9s':25, 'K9s':25, 'KJo':25, 'Q9s':25, 'T9s':25, '76s':20, '87s':20, '98s':20, 'A2s':20, 'A3s':20, 'A4s':20, 'A5o':20, 'A5s':20, 'A6o':20, 'A7o':20, 'A8o':20, 'A9o':20, 'J8s':20, 'K5s':20, 'K6s':20, 'K7s':20, 'K8s':20, 'Q8s':20, 'QJo':20, 'T8s':20, 'A2o':15, 'A3o':15, 'A4o':15, 'KTo':15},
+                CO: {'22':30, '33':30, '44':30, '55':30, '66':30, '77':30, '88':30, '99':30, 'JTs':30, 'KJs':30, 'KQo':30, 'KTs':30, 'QJs':30, 'QTs':30, 'AQo':29, 'AQs':29, 'A5s':25, 'A7s':25, 'A8s':25, 'A9s':25, 'AJo':25, 'AJs':25, 'ATs':25, 'J9s':25, 'K9s':25, 'KJo':25, 'KQs':25, 'Q9s':25, 'T9s':25, '87s':20, '98s':20, 'A2s':20, 'A3s':20, 'A4s':20, 'A6s':20, 'A7o':20, 'A8o':20, 'A9o':20, 'ATo':20, 'J8s':20, 'K7s':20, 'K8s':20, 'Q8s':20, 'QJo':20, 'T8s':20, 'TT':19, 'A5o':15, 'A6o':15, 'KTo':15},
+                HJ: {'55':30, '66':30, '77':30, '88':30, '99':30, 'JTs':30, 'KJs':30, 'KQs':30, 'KTs':30, 'QJs':30, 'AQo':29, 'AQs':29, '22':25, '33':25, '44':25, 'A9s':25, 'AJo':25, 'AJs':25, 'ATs':25, 'KQo':25, '98s':20, 'A2s':20, 'A3s':20, 'A4s':20, 'A5s':20, 'A6s':20, 'A7s':20, 'A8o':20, 'A8s':20, 'A9o':20, 'ATo':20, 'J9s':20, 'K8s':20, 'K9s':20, 'Q9s':20, 'QTs':20, 'T9s':20, 'TT':19, 'A7o':15, 'KJo':15},
+                LJ: {'66':30, '77':30, '88':30, '99':30, 'JTs':30, 'KJs':30, 'KQs':30, 'KTs':30, 'QJs':30, 'AQo':29, 'AQs':29, '22':25, '33':25, '44':25, '55':25, 'AJs':25, 'ATs':25, '98s':20, 'A3s':20, 'A4s':20, 'A5s':20, 'A6s':20, 'A7s':20, 'A8s':20, 'A9s':20, 'AJo':20, 'ATo':20, 'J9s':20, 'K9s':20, 'KQo':20, 'Q9s':20, 'QTs':20, 'T9s':20, 'TT':19, 'KJo':15},
+                MP: {'99':30, 'AQo':30, 'AQs':30, 'JTs':30, 'KJs':30, 'KQs':30, 'QJs':30, 'TT':30, '66':25, '77':25, '88':25, 'AJo':25, 'AJs':25, 'ATs':25, '22':20, '33':20, '44':20, '55':20, 'A5s':20, 'A7s':20, 'A8s':20, 'A9s':20, 'K9s':20, 'KQo':20, 'KTs':20, 'QTs':20, 'T9s':20, 'ATo':15, 'J9s':15, 'Q9s':15},
+                UTG: {'99':30, 'AQo':30, 'AQs':30, 'JTs':30, 'KJs':30, 'KQs':30, 'QJs':30, 'TT':30, '77':25, '88':25, 'AJs':25, '55':20, '66':20, 'A9s':20, 'AJo':20, 'ATs':20, 'KQo':20, 'KTs':20, 'QTs':20, 'T9s':20, '22':15, '33':15, '44':15, 'A8s':15, 'ATo':15, 'K9s':15},
+                UTG1: {'99':30, 'AQo':30, 'AQs':30, 'JTs':30, 'KJs':30, 'KQs':30, 'QJs':30, 'TT':30, '77':25, '88':25, 'AJo':25, 'AJs':25, '55':20, '66':20, 'A8s':20, 'A9s':20, 'ATs':20, 'KQo':20, 'KTs':20, 'QTs':20, 'T9s':20, '22':15, '33':15, '44':15, 'A7s':15, 'ATo':15, 'K9s':15},
+            },
+        };
+        // 永不全下（顶端强牌走小 3-Bet + 跟 4-Bet）
+        const RYE_REJAM_3BC = {
+            BB: { BTN: ['AA', 'AKo', 'AKs', 'AQo', 'AQs', 'JJ', 'KK', 'QQ', 'TT'], CO: ['A2o', 'A3o', 'A4o', 'A5o', 'A6o', 'A7o', 'AA', 'AKo', 'AKs', 'AQo', 'AQs', 'JJ', 'KK', 'QQ', 'TT'], HJ: ['AA', 'AKs', 'AQo', 'AQs', 'JJ', 'KK', 'QQ', 'TT'], LJ: ['AA', 'AKs', 'JJ', 'KK', 'QQ'], MP: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], UTG: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], UTG1: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'] },
+            BTN: { CO: ['AA', 'AJs', 'AKo', 'AKs', 'AQo', 'AQs', 'JJ', 'KK', 'QQ'], HJ: ['AA', 'AKo', 'AKs', 'AQo', 'AQs', 'JJ', 'KK', 'QQ'], LJ: ['AA', 'AKo', 'AKs', 'AQs', 'JJ', 'KK', 'QQ'], MP: ['AA', 'AKo', 'AKs', 'AQs', 'JJ', 'KK', 'QQ'], UTG: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], UTG1: ['AA', 'AKo', 'AKs', 'AQs', 'JJ', 'KK', 'QQ'] },
+            CO: { HJ: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], LJ: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], MP: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], UTG: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], UTG1: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'] },
+            HJ: { LJ: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], MP: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], UTG: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], UTG1: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'] },
+            LJ: { MP: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], UTG: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], UTG1: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'] },
+            SB: { BTN: ['AA', 'AKo', 'AKs', 'AQo', 'AQs', 'JJ', 'KK', 'QQ'], CO: ['AA', 'AKo', 'AKs', 'AQo', 'AQs', 'JJ', 'KK', 'QQ', 'TT'], HJ: ['AA', 'AKo', 'AKs', 'AQo', 'AQs', 'JJ', 'KK', 'QQ', 'TT'], LJ: ['AA', 'AKo', 'AKs', 'AQo', 'AQs', 'JJ', 'KK', 'QQ', 'TT'], MP: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], UTG: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'], UTG1: ['AA', 'AKo', 'AKs', 'JJ', 'KK', 'QQ'] },
+        };
+        // 面对 Re-Jam 的跟注：值 = 该手牌跟全下的**最大有效筹码**（越深越紧）
+        // 这是我们**此前完全没有的节点**：开池后被全下，跟不跟。
+        const RYE_CALLRE = {
+            BTN: {
+                BB: {'77':30, '88':30, '99':30, 'AA':30, 'AJs':30, 'AKo':30, 'AKs':30, 'AQo':30, 'AQs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':30, '66':25, 'AJo':25, 'ATs':25, '55':20, 'A9s':20, 'ATo':20, 'KJs':20, 'KQo':20, 'KQs':20, '22':15, '33':15, '44':15, 'A6s':15, 'A7s':15, 'A8s':15, 'A9o':15, 'KJo':15, 'KTs':15, 'QJs':15},
+                SB: {'77':30, '88':30, '99':30, 'AA':30, 'AJs':30, 'AKo':30, 'AKs':30, 'AQo':30, 'AQs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':30, '55':25, '66':25, 'AJo':25, 'ATs':25, '44':20, 'A8s':20, 'A9s':20, 'ATo':20, 'KJs':20, 'KQo':20, 'KQs':20, '22':15, '33':15, 'A5s':15, 'A6s':15, 'A7s':15, 'A9o':15, 'KJo':15, 'KTs':15, 'QJs':15},
+            },
+            CO: {
+                BB: {'77':30, '88':30, '99':30, 'AA':30, 'AKo':30, 'AKs':30, 'AQo':30, 'AQs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':30, '55':25, '66':25, 'AJs':25, '44':20, 'AJo':20, 'ATs':20, 'KQs':20, '22':15, '33':15, 'A9s':15, 'ATo':15, 'KJs':15, 'KQo':15},
+                BTN: {'77':30, '88':30, '99':30, 'AA':30, 'AKo':30, 'AKs':30, 'AQo':30, 'AQs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':30, '55':25, '66':25, 'AJs':25, '44':20, 'AJo':20, 'ATs':20, 'KQs':20, '22':15, '33':15, 'A9s':15, 'ATo':15, 'KJs':15, 'KQo':15},
+                SB: {'77':30, '88':30, '99':30, 'AA':30, 'AKo':30, 'AKs':30, 'AQo':30, 'AQs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':30, '55':25, '66':25, 'AJs':25, '44':20, 'AJo':20, 'ATs':20, 'KQs':20, '22':15, '33':15, 'A9s':15, 'ATo':15, 'KJo':15, 'KJs':15, 'KQo':15, 'KTs':15},
+            },
+            LJ: {
+                BB: {'AA':30, 'AKo':30, 'AKs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':30, '88':25, '99':25, 'AQs':25, '77':20, 'AJs':20, 'AQo':20, '55':15, '66':15, 'AJo':15, 'ATs':15, 'KQs':15},
+                BTN: {'AA':30, 'AKo':30, 'AKs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':30, '99':25, '77':20, '88':20, 'AJs':20, 'AQo':20, 'AQs':20, '55':15, '66':15, 'AJo':15, 'ATs':15, 'KQs':15},
+                CO: {'AA':30, 'AKo':30, 'AKs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':25, '88':20, '99':20, 'AJs':20, 'AQo':20, 'AQs':20, '55':15, '66':15, '77':15, 'AJo':15, 'ATs':15},
+                SB: {'AA':30, 'AKo':30, 'AKs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':30, '88':25, '99':25, 'AQs':25, '77':20, 'AJs':20, 'AQo':20, '55':15, '66':15, 'AJo':15, 'ATs':15, 'KQs':15},
+            },
+            SB: {
+                BB: {'77':30, '88':30, '99':30, 'AA':30, 'AJs':30, 'AKo':30, 'AKs':30, 'AQo':30, 'AQs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':30, '55':25, '66':25, 'A9s':25, 'AJo':25, 'ATs':25, 'KQs':25, '44':20, 'A8s':20, 'ATo':20, 'KJs':20, 'KQo':20, '22':15, '33':15, 'A6s':15, 'A7o':15, 'A7s':15, 'A8o':15, 'A9o':15, 'KJo':15, 'KTs':15, 'QJs':15},
+            },
+            UTG: {
+                BB: {'AA':30, 'AKo':30, 'AKs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':30, '99':20, 'AQo':20, 'AQs':20, '66':15, '77':15, '88':15, 'AJo':15, 'AJs':15, 'ATs':15},
+                CO: {'AA':30, 'AKo':30, 'AKs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':25, '99':20, 'AQo':20, 'AQs':20, '66':15, '77':15, '88':15, 'AJo':15, 'AJs':15, 'ATs':15},
+                HJ: {'AA':30, 'AKo':30, 'AKs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':25, '99':20, 'AQs':20, '77':15, '88':15, 'AJs':15, 'AQo':15},
+                LJ: {'AA':30, 'AKo':30, 'AKs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':25, '99':20, 'AQs':20, '77':15, '88':15, 'AJs':15, 'AQo':15},
+                MP: {'AA':30, 'AKo':30, 'AKs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':25, 'AQs':20, '77':15, '88':15, '99':15, 'AJs':15, 'AQo':15},
+                UTG1: {'AA':30, 'AKo':30, 'AKs':30, 'JJ':30, 'KK':30, 'QQ':30, 'TT':25, 'AQs':20, '77':15, '88':15, '99':15, 'AJs':15, 'AQo':15},
+            },
+        };
+        // MPT 第 8 章的全下频率（更新的源），用于把 RYE 的宽度校到 2x 开池口径
+        const MPT_REJAM_PCT = {
+            BB: { BTN: {15: 18.0, 25: 11.4}, CO: {15: 16.4, 25: 8.8}, LJ: {15: 11.0, 25: 5.1}, UTG: {15: 7.4, 25: 2.1} },
+            BTN: { CO: {15: 14.3, 25: 5.9}, LJ: {15: 10.6, 25: 3.5}, UTG: {15: 10.6, 25: 1.2} },
+            CO: { LJ: {15: 11.7, 25: 2.8}, UTG: {15: 8.3, 25: 1.2} },
+            HJ: { LJ: {15: 10.4, 25: 1.8}, UTG: {15: 8.5, 25: 1.1} },
+            SB: { BTN: {15: 28.2, 25: 14.2}, CO: {15: 22.5, 25: 11.2}, LJ: {15: 14.7, 25: 6.4}, UTG: {15: 9.4, 25: 3.5} },
+            UTG1: { UTG: {15: 7.1, 25: 0.0} },
+        };
+
+        // 深度阈值表 → 该深度的手牌集合；宽度按 MPT（更新的源、2x 开池口径）校准后截断。
+        // RYE 假设 3x 开池，我们与 MPT 都是 2-2.3x，故以 MPT 为准；MPT 未覆盖的格子用 RYE 自身宽度。
+        function _cbOf(h) { return h.length === 2 ? 6 : (h[2] === 's' ? 4 : 12); }
+        function rejamTargetPct(jammer, opener, effStack, ryeOwn) {
+            const m = MPT_REJAM_PCT[jammer] && MPT_REJAM_PCT[jammer][opener];
+            if (!m || m[15] == null || m[25] == null) return ryeOwn;
+            const d = Math.max(10, Math.min(30, effStack));
+            if (d <= 15) return m[15];
+            // 25BB 以上 MPT 没有数据点：按"越深越窄"外推，但**不归零**——
+            // 26-35BB 的重推确实存在（我们自己的 Re-Jam 闸门也开到 25BB）。
+            if (d >= 25) return m[25] * Math.max(0.35, 1 - (d - 25) * 0.09);
+            return m[15] + (m[25] - m[15]) * (d - 15) / 10;
+        }
+        /** 取 (推注位, 开池位, 深度) 的实际全下集合 */
+        function ryeJamSet(jammer, opener, effStack) {
+            // 节点家族补全（2026-09-09）：RYE 的推注位只有 BB/SB/BTN/CO/HJ/LJ。
+            // MP/UTG1/UTG 作为重推位时回退到 **LJ**——它们比 LJ 更前位，
+            // 而 LJ 已是表里最紧的一档，用它是**保守方向**（宁可推窄不推宽，
+            // 短码过度全下是最贵的错误）。开池位缺格同理按相邻位置回退。
+            const byJ = RYE_REJAM[jammer] || RYE_REJAM[{ MP: 'LJ', UTG1: 'LJ', UTG: 'LJ' }[jammer]] || null;
+            if (!byJ) return null;
+            const OF = { UTG2: 'MP', MP: 'LJ', LJ: 'MP', HJ: 'CO' };
+            const thr = byJ[opener] || byJ[OF[opener]];
+            if (!thr) return null;
+            const cand = Object.keys(thr).filter(h => effStack <= thr[h]);
+            if (!cand.length) return { set: new Set(), pct: 0, raw: 0 };
+            const raw = cand.reduce((a, h) => a + _cbOf(h), 0) / 1326 * 100;
+            const target = rejamTargetPct(jammer, opener, effStack, raw);
+            // 按阈值降序（阈值越高＝越深还推＝越强）截断到目标宽度
+            cand.sort((a, b) => (thr[b] - thr[a]) || (getPushCombopct(a) - getPushCombopct(b)));
+            const out = new Set(); let acc = 0;
+            for (const h of cand) {
+                if (acc / 1326 * 100 >= target) break;
+                out.add(h); acc += _cbOf(h);
+            }
+            return { set: out, pct: acc / 1326 * 100, raw, target };
+        }
+        /** 面对 Re-Jam 的跟注集合（RYE CALLRE，作为实算 EV 之外的第二信号） */
+        function ryeCallReSet(opener, jammer, effStack) {
+            // 节点家族补全（2026-09-09）：RYE 只给了部分格子，缺的按**位置语义最接近**回退，
+            // 并保持"越前位越紧"的方向——不凭空发明范围，只复用相邻位置的解。
+            //   开池位：HJ→CO（同为后位）· MP→LJ · UTG1→UTG（同为前位）
+            //   推注位：SB→BB（同为盲注）· HJ/LJ→CO
+            const OF = { HJ: 'CO', MP: 'LJ', UTG1: 'UTG' };
+            const JF = { SB: 'BB', HJ: 'CO', LJ: 'CO', UTG1: 'CO', MP: 'CO' };
+            const byO = RYE_CALLRE[opener] || RYE_CALLRE[OF[opener]];
+            if (!byO) return null;
+            const thr = byO[jammer] || byO[JF[jammer]] || Object.values(byO)[0];
+            if (!thr) return null;
+            const hs = Object.keys(thr).filter(h => effStack <= thr[h]);
+            return { set: new Set(hs), pct: hs.reduce((a, h) => a + _cbOf(h), 0) / 1326 * 100 };
+        }
+
         (function normalizeRangeTables() {
             const uni = (a, b) => Array.from(new Set([...(a || []), ...(b || [])]));
             const uniEntry = (a, b) => ({ value: uni(a && a.value, b && b.value),
@@ -4525,6 +4687,32 @@
         // 阶段修正复用 THREBET stageModifiers.bluffMult（bubble 0.5→降频 / final 0.7→降频）
         function getRejamAction(handStr, heroPos, villainPos, effStack, stage) {
             if (!(effStack > 0) || effStack > 25) return 'none';
+            // ── RYE 双维度表优先（2026-09-09）────────────────────────────
+            // 旧实现**接收 heroPos 却从未使用**，只按开池者分四个桶（EP/MID/LATE/SB）
+            // + 两档深度。实测推注位的影响是 3 倍量级：同样面对 UTG 开池、同样 15BB，
+            // BB 重推 10.4% 而 LJ 只有 3.2%，一个桶必然对两边都错。
+            // 另外旧表把 AA/KK/QQ/JJ/AK 放在 value 段当"最该推的牌"——**方向反了**：
+            // 真实解里顶端强牌走小 3-Bet + 跟 4-Bet（留住对手），全下的是中段的
+            // 阻断牌（K5s/K7s/Q8s/QJo/A2o 这类）。见 RYE_REJAM_3BC。
+            {
+                const js = ryeJamSet(heroPos, villainPos, effStack);
+                if (js && js.set.size) {
+                    if (js.set.has(handStr)) {
+                        // 深度阈值靠前的是核心段，靠后的是边缘段（对应旧的 value/bluff）
+                        const thr = (RYE_REJAM[heroPos] || RYE_REJAM['LJ'] || {})[villainPos] || {};
+                        const core = (thr[handStr] || 0) >= 25;
+                        if (core) return 'jam_value';
+                        const stageMod = THREBET_RANGES[gameConfig.tableSize]?.stageModifiers?.[stage] || { bluffMult: 1.0 };
+                        if (stageMod.bluffMult >= 0.8) return 'jam_bluff';
+                        if (stageMod.bluffMult >= 0.5) return 'jam_bluff_reduced';
+                        return 'none';
+                    }
+                    // 明确"永不全下"的顶端强牌：不落回旧表，避免又被判成 jam_value
+                    const nj = (RYE_REJAM_3BC[heroPos] || RYE_REJAM_3BC['LJ'] || {})[villainPos] || [];
+                    if (nj.includes(handStr)) return 'none';
+                    return 'none';
+                }
+            }
             const bucket = ['UTG','UTG1','MP'].includes(villainPos) ? 'EP'
                          : ['LJ','HJ'].includes(villainPos)         ? 'MID'
                          : villainPos === 'SB'                      ? 'SB' : 'LATE';
@@ -6393,7 +6581,38 @@
                 // 真实 19%，A9o vs 宽范围表 38%/真实 61%。改为实时 MC：Hero 具体底牌 vs
                 // "伪百分位 ≤ villainPushRange 的 Nash 推注范围"（与 Nash 表 inRange 判据
                 // 同一刻度），组合加权采样 2000 次预翻 runout（±1.1 点，浏览器内 <100ms）。
-                const pushHands = ALL_169_HANDS.filter(h => getPushCombopct(h) <= villainPushRange);
+                // 对手范围（2026-09-09 修）：**Re-Jam 不能用开池全下的线性截断**。
+                // 原来一律 `getPushCombopct(h) <= villainPushRange` —— 一条按推/弃强度的
+                // 线性 top-X%。但对手是在**我方开池之后**全下时，他的范围形状完全不同：
+                // 实测同宽度下与真实 Re-Jam 范围只有 50-66% 重合，而且错得有方向——
+                // 线性截断把 AA/KK/QQ/JJ/AKs/AKo 算作在推（真实解里这些走小 3-Bet 留住对手），
+                // 却漏掉 K5s/K7s/K8s/Q8s/QJo/KTo/A2o 这些真正的阻断推注牌。
+                // 净效果是**系统性高估对手强度 → 系统性过弃**。
+                // 判据：RYE_REJAM[对手位][我方位] 存在即说明对手在我之后行动＝这是 Re-Jam。
+                let pushHands, pushSrc = 'nash';
+                {
+                    const rj = ryeJamSet(posV, posH, pushEff);
+                    if (rj && rj.set.size >= 8) {
+                        pushHands = [...rj.set]; pushSrc = 'rejam';
+                        villainPushRange = rj.pct;
+                    } else {
+                        pushHands = ALL_169_HANDS.filter(h => getPushCombopct(h) <= villainPushRange);
+                    }
+                }
+                // 面对 Re-Jam 时，把 RYE 的跟注基准作为**第二信号**并列（实算 EV 仍是主判据）
+                if (pushSrc === 'rejam') {
+                    const cr = ryeCallReSet(posH, posV, pushEff);
+                    if (cr && cr.set.size) {
+                        const inRef = cr.set.has(handStr);
+                        warnings.push(
+                            `📖 对手范围已按「对我方开池的 Re-Jam」取（不是开池全下范围）——` +
+                            `两者同宽度下只有约 60% 重合，线性截断会把 AA/KK/AK 算进去而漏掉阻断牌，` +
+                            `方向是高估对手、过度弃牌。<br>` +
+                            `基准对照：RYE 在 ${POS_LABEL[posH]} ${pushEff.toFixed(0)}BB 面对 ${POS_LABEL[posV]} 全下的跟注范围约 ` +
+                            `<b>${cr.pct.toFixed(1)}%</b>，本手<b>${inRef ? '在' : '不在'}</b>其中。`);
+                    }
+                }
+
                 // 自适应采样(2026-07-21)：接全下是 MTT 最贵的决策，而 MC 噪声已在二项分布
                 // 理论下限上（√(p(1-p)/n)，6000 次实测 sd=0.60，与理论 0.63 吻合）——试过
                 // 按对手组合分层抽样，sd 仅 0.599→0.557，因为单次结果是 0/1，组合层差异
@@ -6457,7 +6676,11 @@
                 document.getElementById('mathBox2').innerText = (riskPrem >= 0 ? "+" : "") + riskPrem.toFixed(1) + "%";
                 document.getElementById('lblBox3').innerText = "最终红线（调整后）";
                 document.getElementById('mathBox3').innerText = adjustedReqEq.toFixed(1) + "%";
-                document.getElementById('lblBar1').innerText = `vs ${villainPushRange.toFixed(0)}% push range 胜率${eqIsMC ? '（MC×6000）' : '（兜底估算）'}`;
+                document.getElementById('lblBar1').innerText =
+                    (pushSrc === 'rejam'
+                        ? `vs ${POS_LABEL[posV]} 对我方开池的 Re-Jam 范围 ${villainPushRange.toFixed(0)}%`
+                        : `vs ${villainPushRange.toFixed(0)}% push range`)
+                    + ` 胜率${eqIsMC ? '（MC×6000）' : '（兜底估算）'}`;
                 document.getElementById('mathBar1Text').innerText = actEq.toFixed(1) + "%";
                 document.getElementById('mathBar1Fill').style.width = actEq + "%";
                 document.getElementById('mathBar2Text').innerText = adjustedReqEq.toFixed(1) + "%";
