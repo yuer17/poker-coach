@@ -4542,6 +4542,33 @@
         // 各引擎实现
         // ============================================================
         // 判断是否应该 3-Bet（查 THREBET_RANGES）
+        /** 盲对盲某个动作段 → **宽度正确的扁平手牌表**。
+         *  rangeEstimator/MC 只吃扁平列表（采样按组合数加权，表达不了"43% 加注"），
+         *  所以不能简单按 ≥50% 二分——那会让加注段偏窄 6 点、跛入段偏宽 7 点。
+         *  做法：纯段先进，再把混合牌按该动作的频率从高到低补进来，
+         *  补到累计组合% 等于**实测期望宽度**为止。宽度对了，选中的也正是最可能
+         *  走这条线的那批牌。 */
+        function bvbSegment(N, which) {
+            if (!N) return [];
+            const aggKey = N.raise ? 'raise' : 'jam';
+            const mixIdx = (which === 'limp') ? 1 : 0;
+            const pure = (which === 'limp') ? (N.limp || [])
+                       : (which === aggKey) ? (N[which] || []) : (N[which] || []);
+            // 实测期望宽度（组合%）
+            let target = 0;
+            for (const h of pure) target += _cbOf(h);
+            const mixArr = Object.entries(N.mix || {});
+            if (which === 'limp' || which === aggKey)
+                for (const [h, v] of mixArr) target += _cbOf(h) * v[mixIdx] / 100;
+            const out = [...pure];
+            let acc = 0; for (const h of out) acc += _cbOf(h);
+            if (which === 'limp' || which === aggKey) {
+                const cand = mixArr.filter(([h]) => !out.includes(h))
+                                   .sort((a, b) => b[1][mixIdx] - a[1][mixIdx]);
+                for (const [h] of cand) { if (acc >= target) break; out.push(h); acc += _cbOf(h); }
+            }
+            return out;
+        }
         /** 盲对盲深度分档（MPT 只解了 15/25/40/60bb 四档） */
         function bvbTier(effStack) {
             const d = effStack > 0 ? effStack : 40;
@@ -6092,8 +6119,58 @@
                 // "只有推或弃"的子博弈，浅到 8-10bb 时那确实近似最优；MPT 的解里
                 // 同一批牌改用跛入实现。**没有 15bb 以下的实测数据就不外推**。
                 if (posH === 'SB') {
-                    const _r = sbBvbAction(handStr, sH);
-                    const act = (_r && _r.act === 'mix') ? 'mix' : _r;
+                    let _r = sbBvbAction(handStr, sH);
+                    let act = (_r && _r.act === 'mix') ? 'mix' : _r;
+                    // ── 阶段/ICM/打法风格叠加（2026-09-09 二轮修复）──────────────
+                    // 这个分支原来是**早退**的：一进来就按实测表出结论，于是
+                    // 阶段收紧、ICM、打法风格对 SB 全部失效——实测 CO 中码在泡沫期
+                    // 由 36.0% 收到 28.5%，而 SB 在 normal/bubble/final/tight 下
+                    // 输出完全一样。实测表是 **chipEV** 解，ICM 必须另外叠加。
+                    let _sbAdj = null, _aggMult = 1.0;
+                    if (act && act !== 'fold') {
+                        const _avg = (globalAvgStack > 0) ? globalAvgStack : sH;
+                        // ① 阶段 floor：与 isHandInOpenRange 用**同一条公式**，
+                        //    保证 SB 与其他位置口径一致（负 delta 同样无法超出表本身：
+                        //    这里"表"的天花板就是实测的进池段，弃牌段不会被拉回来）。
+                        const _adj = getStageOpenAdjust(gameConfig.stage, sH, _avg);
+                        const _sd = _adj.delta, _zd = getOpenSizeAdjust();
+                        if (_sd !== 0 || _zd > 0) {
+                            const _pt = OPEN_THRESHOLDS['SB'] || 50;
+                            const _sb = Math.max(0, (_pt - 50) * 0.5);
+                            const _floor = _pt + (_sd + _zd) - _sb + getAnteMod();
+                            if (getRawEquity(handStr) < _floor) {
+                                act = 'fold'; _r = 'fold';
+                                _sbAdj = { kind: 'stage', tier: _adj.tier, note: _adj.note, delta: _sd + _zd };
+                            }
+                        }
+                        // ② 打法风格：进池段按 rawEq 降序取前 scale 比例
+                        //    （与其他位置的 percentile 截断同惯例；loose 无法超出表本身）
+                        if (act !== 'fold') {
+                            const _sc = getPlayStyleScale();
+                            if (_sc < 1.0) {
+                                const _N2 = MPT_SB_BVB[bvbTier(sH)] || {};
+                                const _entry = [...(_N2.jam || []), ...(_N2.raise || []),
+                                                ...(_N2.limp || []), ...Object.keys(_N2.mix || {})]
+                                                .sort((x, y) => getRawEquity(y) - getRawEquity(x));
+                                const _pos = _entry.indexOf(handStr);
+                                if (_pos >= 0 && _pos / _entry.length > _sc) {
+                                    act = 'fold'; _r = 'fold';
+                                    _sbAdj = { kind: 'style' };
+                                }
+                            }
+                        }
+                        // ③ ICM 调进攻频率（不是调宽度）：盲对盲的 ICM 表现是
+                        //    **趋向纯跛入或弃牌**（大码反向，更该施压）。
+                        //    用引擎既有的 ICM 标量当唯一旋钮：常规期恒为 1.0 → 零改动。
+                        // **只作用于非顶端价值牌**：ICM 让盲对盲趋向纯跛入/弃牌，说的是
+                        // 范围的边缘部分；把 AA/KK/AKs 的加注频率也压下去没有依据
+                        // （进池了就该拿价值，OOP 控池不是靠少加注实现的）。
+                        if (act !== 'fold' && gameConfig.stage !== 'normal'
+                            && getRawEquity(handStr) < 66) {
+                            const _icm = getICMPressure(sH, _avg, gameConfig.stage);
+                            _aggMult = Math.max(0.45, Math.min(1.4, 1 / (_icm || 1)));
+                        }
+                    }
                     if (act) {
                         const tier = bvbTier(sH), rx = sbBvbRaiseX(sH);
                         const N = MPT_SB_BVB[tier];
@@ -6108,13 +6185,23 @@
                         };
                         const share = `该深度实测：${N.jam ? `全下 ${pct('jam')}% · ` : ''}` +
                                       `${N.raise ? `加注 ${pct('raise')}% · ` : ''}跛入 ${pct('limp')}% · 弃牌 ${pct('fold')}%`;
-                        let vd, col, lg, sz = '';
+                        let vd, col, lg, sz = '', icmNote = '';
                         if (act === 'jam') {
                             vd = '🔥 全下'; col = 'attack';
                             lg = `${tier}BB 盲对盲，${handStr} 在实测的全下段。` +
                                  `<b>注意全下的是范围的中段</b>——小对子 / 同花连张 / 离手 Ax，` +
                                  `AA/KK/QQ 反而走跛入做陷阱。<br><span class="text-gray-400">${share}</span>`;
                             sz = `${sH.toFixed(1)}BB All-in`;
+                        } else if (act === 'raise' && _aggMult < 1.0) {
+                            const f = Math.round(100 * _aggMult);
+                            act = 'mix';
+                            _r = { act: 'mix', agg: f, limp: 100 - f, jamIsAgg: false };
+                            vd = `🟡 混合：加注 ${rx}x ${f}% / 跛入 ${100 - f}%`; col = 'mix';
+                            lg = `${tier}BB 盲对盲，chipEV 下这手是纯加注段；` +
+                                 `<b>${((stageOpts.find(o => o.val === gameConfig.stage) || {}).label || gameConfig.stage)}的 ICM 压力把进攻频率压到 ${f}%</b>` +
+                                 `——盲对盲在 ICM 下趋向纯跛入或弃牌，其余走跛入。` +
+                                 `<br><span class="text-gray-400">${share}</span>`;
+                            sz = `${rx.toFixed(1)}BB 加注（${f}% 的频率）`;
                         } else if (act === 'raise') {
                             vd = '🔴 加注'; col = 'attack';
                             lg = `${tier}BB 盲对盲加注段。<b>尺度用 ${rx}x（约 ${(rx).toFixed(1)}BB）而不是常规的 2.2x</b>` +
@@ -6134,6 +6221,14 @@
                             sz = '跛入 1.0BB（补齐大盲）';
                         } else if (act === 'mix') {
                             const aggName = _r.jamIsAgg ? '全下' : `加注 ${rx}x`;
+                            if (_aggMult !== 1.0) {
+                                const a0 = _r.agg;
+                                _r = Object.assign({}, _r, { agg: Math.round(Math.min(100, a0 * _aggMult)) });
+                                _r.limp = Math.max(0, 100 - _r.agg);
+                                icmNote = `<br><span class="text-[10px]" style="color:#e0a83a">` +
+                                          `【${((stageOpts.find(o => o.val === gameConfig.stage) || {}).label || gameConfig.stage)} ICM】进攻频率 ` +
+                                          `${a0}% → ${_r.agg}%（盲对盲的 ICM 表现是趋向纯跛入/弃牌；大码反向更该施压）</span>`;
+                            }
                             vd = `🟡 混合：${aggName} ${_r.agg}% / 跛入 ${_r.limp}%`; col = 'mix';
                             lg = `${tier}BB 盲对盲，${handStr} 是<b>真混合牌</b>（实测 ${aggName} ${_r.agg}% ·` +
                                  ` 跛入 ${_r.limp}%${100 - _r.agg - _r.limp >= 3 ? ` · 弃牌 ${100 - _r.agg - _r.limp}%` : ''}）。` +
@@ -6146,6 +6241,18 @@
                                  `<br><span class="text-gray-400">${share}</span>`;
                             sz = _r.jamIsAgg ? `${sH.toFixed(1)}BB All-in（${_r.agg}% 的频率）`
                                              : `${rx.toFixed(1)}BB 加注（${_r.agg}% 的频率）`;
+                        } else if (_sbAdj && _sbAdj.kind === 'stage') {
+                            vd = '⚪ 弃牌 (Fold)'; col = 'fold';
+                            lg = `${tier}BB 盲对盲的 <b>chipEV</b> 解里这手牌本可进池，` +
+                                 `但 <b>${_sbAdj.tier || ((stageOpts.find(o => o.val === gameConfig.stage) || {}).label || gameConfig.stage)}</b> 的收紧` +
+                                 `（+${_sbAdj.delta} 个胜率点的下限）把它挡在门外。` +
+                                 (_sbAdj.note ? `<br>${_sbAdj.note}` : '') +
+                                 `<br><span class="text-gray-400">${share}</span>`;
+                        } else if (_sbAdj && _sbAdj.kind === 'style') {
+                            vd = '⚪ 弃牌 (Fold)'; col = 'fold';
+                            lg = `${tier}BB 盲对盲的 chipEV 解里这手牌本可进池，` +
+                                 `但你把打法风格设成了<b>紧</b>（只打进池段最强的 ${(getPlayStyleScale()*100).toFixed(0)}%）。` +
+                                 `<br><span class="text-gray-400">${share}</span>`;
                         } else {
                             vd = '⚪ 弃牌 (Fold)'; col = 'fold';
                             lg = `${tier}BB 盲对盲，${handStr} 在弃牌段。SB 弃牌段只有最差的离手牌` +
@@ -6160,7 +6267,7 @@
                         vText.style.color = col === 'attack' ? '#ff7a7d' : col === 'passive' ? '#45d68a'
                             : col === 'mix' ? '#e0a83a' : '#8b95ab';
                         vText.innerText = vd;
-                        logicText.innerHTML = lg;
+                        logicText.innerHTML = lg + icmNote;
                         const sBox = document.getElementById('sizingBox');
                         if (sz) { document.getElementById('sizingContent').innerText = sz; sBox.classList.remove('hidden'); }
                         else sBox.classList.add('hidden');
@@ -6636,7 +6743,13 @@
                     // ICM 修正：泡沫期/决赛桌收紧 bluff 频率
                     // Fix-3: 直接按 stage 判断，泡沫期削减 55%（原 40% 效果不足）
                     const icmSuppStage = gameConfig.stage === 'bubble' || gameConfig.stage === 'final';
-                    if ((icmPressure > 1.5 || icmSuppStage) && action.includes('bluff')) {
+                    // 2026-09-09 二轮修复：`fivebet_jam` 不含 "bluff" 字样，于是**实测的
+                    // 全下段完全绕过了 ICM 抑制**——泡沫期拿 A5s/33/A2s 推 40BB 与常规期
+                    // 输出一模一样。而这一段恰恰是"范围的中段"（阻断牌），正是 ICM 最该压的部分。
+                    // 顶端价值牌（AA/KK/QQ/AKs，出现在前位节点的全下段里）不压。
+                    const _jamIsEdge = (action === 'fivebet_jam' || action === 'fivebet_mix')
+                                       && getRawEquity(handStr) < 66;
+                    if ((icmPressure > 1.5 || icmSuppStage) && (action.includes('bluff') || _jamIsEdge)) {
                         const suppMult = gameConfig.stage === 'bubble' ? 0.55 : gameConfig.stage === 'final' ? 0.45 : 0.4;
                         const icmShift = Math.ceil(b * suppMult);
                         b = Math.max(0, b - icmShift); f += icmShift;
@@ -6673,7 +6786,9 @@
                 f = Math.max(0, 100 - c - b);
                 
                 let color = f >= 80 ? "red" : b >= 50 ? "green" : "yellow";
-                let btnName = currentMode === 'face3b' ? "4-Bet" : "3-Bet";
+                // face3b 走实测全下段时，措辞统一成"全下"（写 4-Bet 会让人以为还能弃）
+                let btnName = currentMode === 'face3b'
+                    ? (/All-in/.test(postSizing || '') ? "全下" : "4-Bet") : "3-Bet";
                 // 标签自洽(2026-09-08)：原来只要不满足前两个条件就一律叫"混合策略"，
                 // 于是 Call 100% 也被标成"混合策略"——用户实测到这个自相矛盾。
                 // 现在只有真的存在两个以上非零频率时才叫混合。
@@ -6689,7 +6804,9 @@
                 // 25-40BB 的 4-Bet 本来就 ≥85% 筹码，写 4-Bet 会让人以为还能弃
                 if (currentMode === 'face3b' && /All-in/.test(postSizing || '')) {
                     if (b >= 50)      { verdict = '🔥 全下 (5-Bet All-in)'; color = 'green'; }
-                    else if (b > 0)   { verdict = `🟡 混合：${b}% 全下 / ${c}% 跟注`; color = 'yellow'; }
+                    else if (b > 0)   { // 另一头是跟注还是弃牌，看哪个频率非零（ICM 抑制后是弃牌）
+                                        verdict = `🟡 混合：${b}% 全下 / ${c > 0 ? `${c}% 跟注` : `${f}% 弃牌`}`;
+                                        color = 'yellow'; }
                 }
 
                 // 解算器语义色：green(3/4-Bet)=进攻红 / yellow(混合)=琥珀 / red(Fold)=灰蓝
@@ -7729,6 +7846,23 @@
                         }
                     }
                 }
+                // 盲对盲一致性（2026-09-09 二轮）：对手是 SB 时，他的"开池"不是
+                // GTO_RANGES.SB（36%）——我们本轮刚教会引擎 **SB 只加注 26.9%、跛入 54.4%**，
+                // 却仍按 36% 估他，同一个模型两套宽度，方向是**高估他的开池范围 → 我们防守过宽**。
+                // 这与本轮在 3-Bet 上修过的是同一类错误（只改了 hero 侧、没改 villain 侧）。
+                if (villainPos === 'SB' && typeof MPT_SB_BVB !== 'undefined') {
+                    const _t = bvbTier(globalVillainStack || 40);
+                    const _N = MPT_SB_BVB[_t] || {};
+                    const _key = (currentMode === 'defend' && _N.jam) ? 'jam' : (_N.raise ? 'raise' : 'jam');
+                    const _seg = bvbSegment(_N, _key);
+                    if (_seg.length >= 8) {
+                        baseHands = _seg;
+                        let _cb = 0; for (const h of baseHands) _cb += _cbOf(h);
+                        vActionLabel = `SB 盲对盲${_key === 'jam' ? '全下' : '加注'}段 ` +
+                                       `(${(_cb / 1326 * 100).toFixed(1)}%，MPT ${_t}BB 实测；` +
+                                       `他其余的牌走跛入而不是弃牌)`;
+                    }
+                }
                 if (!vActionLabel) vActionLabel = `开池 (${villainPos} Open)`;
 
             } else if (currentMode === 'face3b') {
@@ -7828,12 +7962,31 @@
                 }
 
             } else if (currentMode === 'vsLimp') {
-                // 对手跛入：被动宽泛范围，无专属表，保留原逻辑
-                baseHands = ALL_169_HANDS.filter(h => {
-                    const eq = getRawEquity(h);
-                    return eq >= 45.0 && eq < 58.0 && !h.match(/^[AKQ].o$/);
-                });
-                vActionLabel = `跛入范围 (Limp)`;
+                // 盲对盲一致性（2026-09-09 二轮）：跛入者是 SB 时有实测表可用。
+                // 原来的裸胜率带（45-58% 且排除 Ax/Kx/Qx 离手）只有 27%，而实测
+                // SB 跛入 54.4% —— **偏窄一半**，且结构也不同：实测跛入段里有
+                // AA/KK（15bb 做陷阱）也有离手垃圾，裸胜率带两头都切掉了。
+                // 净效果是把跛入者的范围当得太强 → 我们系统性过弃。
+                let _sbLimp = null;
+                if (villainPos === 'SB' && typeof MPT_SB_BVB !== 'undefined') {
+                    const _t = bvbTier(globalVillainStack || 40);
+                    const _N = MPT_SB_BVB[_t] || {};
+                    const _seg = bvbSegment(_N, 'limp');
+                    if (_seg.length >= 20) _sbLimp = _seg;
+                }
+                if (_sbLimp) {
+                    baseHands = _sbLimp;
+                    let _cb = 0; for (const h of baseHands) _cb += _cbOf(h);
+                    vActionLabel = `SB 跛入段 (${(_cb / 1326 * 100).toFixed(1)}%，MPT ` +
+                                   `${bvbTier(globalVillainStack || 40)}BB 实测)`;
+                } else {
+                    // 其他位置跛入：无专属表，保留原被动宽泛范围
+                    baseHands = ALL_169_HANDS.filter(h => {
+                        const eq = getRawEquity(h);
+                        return eq >= 45.0 && eq < 58.0 && !h.match(/^[AKQ].o$/);
+                    });
+                    vActionLabel = `跛入范围 (Limp)`;
+                }
 
             } else {
                 // 默认兜底：按位置阈值筛
