@@ -11422,6 +11422,34 @@
             return (sh - sv) * 100;
         }
 
+        /** 翻牌"空气桶"（胜率不足 + 进张不足）的均衡持续下注频率。
+         *  返回 {freq, sd, paired}，算不出驱动量时返回 null（调用方保持原行为）。
+         *  2026-09-10 环节 4：由常规区的局部代码抽成共用函数 —— **承诺区必须用同一套判断**。
+         *  原来承诺区自己写死"胜率≤50% → 过牌 100%"，与常规区各答各的，
+         *  SPR 过渡带把两边一混合，实测把 71% 的下注频率压成 10%（发现 C）。
+         *  拟合式（六节点 80 张翻牌最小二乘，SPR 覆盖 1.08 / 1.86 / 2.10 / 3.43 / 6.69）：
+         *      下注% = 48.2 + 1.95×范围强度差% + 25.0/max(SPR, 1.08) − 9.6×成对面
+         *  **SPR 钳到 1.08** = 实测下界：有数据的区间用拟合形状，没数据的区间不外推。
+         *  上一版（只有 SPR 1.86-6.87 四个节点）的 59.3/SPR 在 SPR 1.08 上给出 100%，
+         *  而实测是 67% —— 把两个低 SPR 节点纳入后该系数自动降到 25.0。 */
+        function flopAirBetFreq(spr, mwN) {
+            try {
+                const bd = (postState.board || []).slice(0, 3).filter(c => c);
+                if (bd.length < 3 || !(spr > 0)) return null;
+                const hr = heroPreflopRangeForPost(globalPosHero, globalPosVillain, preflopDepthBB());
+                const vh = (postState.villainRange && postState.villainRange.hands) || null;
+                const sd = (hr && vh) ? boardStrengthDiff(bd, hr, vh) : null;
+                if (sd === null) return null;
+                const paired = new Set(bd.map(c => c[0])).size < 3 ? 1 : 0;
+                let freq = Math.round(Math.max(10, Math.min(100,
+                    48.2 + 1.95 * sd + 25.0 / Math.max(spr, 1.08) - 9.6 * paired)));
+                // 多人底池禁纯诈唬（沿用 2026-09-08 既有规则）：
+                // 要让 N 家全弃，所需弃牌率是单挑的 N 次方
+                if (mwN > 0) freq = 0;
+                return { freq, sd, paired };
+            } catch (e) { return null; }
+        }
+
         function postEngine() {
             const eq = postState.equityResult;
             if (!eq) return null;
@@ -11717,16 +11745,45 @@
                 // 引擎修复(2026-07)：承诺区主动线补半诈唬全押——低 SPR 下强听牌
                 // （outs 达标且 equity≥40%）推进全押是标准打法（弃牌率+成牌率双路盈利），
                 // 旧逻辑只看 equity>50 漏掉强听牌施压。
-                const commitStrat = (equity > 50 || (outs >= sc.semiBluffOuts && equity >= 40))
-                    ? { action: 'BET',   sizing: sc.sizes.push, freq: { bet: 95, check: 5 } }
-                    : { action: 'CHECK', sizing: '',            freq: { check: 100 } };
+                // ── 承诺区重建（2026-09-10 环节 4，TexasSolver 三个低 SPR 节点实测）──
+                // 原来这一档写死：`胜率>50 → 全押 / 否则 → 过牌 100%`。两半都被实测否掉：
+                //  ① **频率**：空气牌的持续下注频率实测
+                //     57.7%(SPR 1.08 · N6c) / 78.8%(1.86 · N2) / 65.5%(2.10 · N7)，不是 0；
+                //  ② **尺度**：**小注才是主力**——「33%底池 : 全押」实测
+                //     46.6:23.5(1.08) · 82.9:1.9(1.86) · 58.8:0.1(2.10)，
+                //     顶对+ 那一桶在 SPR 1.08 上也是 63.6:16.2。
+                //     原来"承诺区只会全押"把**要不要打**与**要不要押上全部筹码**当成了同一个问题
+                //     ——33% 底池的注在这个分支里根本表达不出来。
+                // 作用面限定在**翻牌**（solver 的 dump 只到翻牌，转牌/河牌没有实测），
+                // 且 SPR<1.0 仍回到全押（那一档没有数据，保守保留原行为）。
+                const _cAir = (street === 'flop') ? flopAirBetFreq(spr, _mwN) : null;
+                const _cVal  = equity > 50;
+                const _cDraw = !_cVal && outs >= sc.semiBluffOuts && equity >= 40;
+                const commitStrat = (_cVal || _cDraw)
+                    ? { action: 'BET',
+                        // **成手价值牌**改小注：实测顶对+ 在 SPR 1.08 上「小注 63.6% : 全押 16.2%」。
+                        // **强听牌仍走全押**：无对那一桶（本身就含听牌）的下注里全押占 43.3%
+                        //   —— 弃牌率 + 兑现权益双路盈利是低 SPR 听牌的标准打法，这一支不动。
+                        sizing: (_cVal && street === 'flop' && spr >= 1.0) ? sc.sizes.medium : sc.sizes.push,
+                        freq: { bet: 95, check: 5 } }
+                    : (_cAir && _cAir.freq >= 10
+                        ? { action: _cAir.freq >= 50 ? 'BET' : 'CHECK',
+                            sizing: _cAir.freq >= 50 ? sc.sizes.probe : '',
+                            freq: { bet: _cAir.freq, check: 100 - _cAir.freq } }
+                        : { action: 'CHECK', sizing: '', freq: { check: 100 } });
 
                 // ── SPR 承诺区（纯 commit：spr ≤ 1.8）──
                 if (commitWeight >= 1) {
                     primaryAction = commitStrat.action; sizing = commitStrat.sizing;
                     frequencies = { ...commitStrat.freq };
                     reasoning = commitStrat.action === 'BET'
-                        ? `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%${equity <= 50 ? `+${outs}张进张半诈唬` : ''}，全押建底池`
+                        ? (_cAir && equity <= 50 && outs < sc.semiBluffOuts
+                            ? `SPR=${spr.toFixed(1)}（承诺区）：翻牌胜率${equity.toFixed(0)}%、进张${outs}张都不足，` +
+                              `但**范围强度差 ${_cAir.sd >= 0 ? '+' : ''}${_cAir.sd.toFixed(1)} 点**` +
+                              `${_cAir.paired ? '、成对面' : ''} → ${_cAir.freq}% 频率小注施压（TexasSolver 校准：` +
+                              `低 SPR 上小注才是主力，全押占比只有 0.1-23.5%）`
+                            : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%` +
+                              `${equity <= 50 ? `+${outs}张进张半诈唬` : ''}，${commitStrat.sizing}`)
                         : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%不足，过牌`;
                 }
 
@@ -11895,19 +11952,10 @@
                         //  方向是反的。修正后 r 由 0.677 升到 0.712、R² 0.652→0.689）
                         // **算不出强度差时保持原行为（过牌 100%）**，把作用面限制在
                         // 能算清驱动量的场景，避免把一个拟合式外推到没验证过的地方。
-                        const _hr = heroPreflopRangeForPost(globalPosHero, globalPosVillain, preflopDepthBB());
-                        const _vh = (postState.villainRange && postState.villainRange.hands) || null;
-                        const _sd = (_hr && _vh) ? boardStrengthDiff(postState.board.slice(0, 3), _hr, _vh) : null;
-                        const _brk = postState.board.slice(0, 3).map(c => c[0]);
-                        const _paired = new Set(_brk).size < 3 ? 1 : 0;
-                        let _airFreq = null;
-                        if (_sd !== null && spr > 0) {
-                            _airFreq = Math.round(Math.max(10, Math.min(100,
-                                39.7 + 2.23 * _sd + 59.3 / spr - 11.8 * _paired)));
-                            // 多人底池禁纯诈唬（沿用 2026-09-08 既有规则）：
-                            // 要让 N 家全弃，所需弃牌率是单挑的 N 次方
-                            if (_mwN > 0) _airFreq = 0;
-                        }
+                        const _air = flopAirBetFreq(spr, _mwN);
+                        const _sd = _air ? _air.sd : null;
+                        const _paired = _air ? _air.paired : 0;
+                        const _airFreq = _air ? _air.freq : null;
                         if (_airFreq && _airFreq >= 10) {
                             primaryAction = _airFreq >= 50 ? 'BET' : 'CHECK';
                             sizing = _airFreq >= 50 ? sc.sizes.probe : '';
@@ -11941,7 +11989,10 @@
                     // 混合之后那个数已经不是实际输出了 —— 实测 3-Bet 底池 SPR 1.9 上
                     // 拟合式给"下注 71%"，混合后实际是"过牌 90 / 下注 10"，
                     // 同一屏两个口径。把混合结果写出来，不让理由自说自话。
-                    if (/\d+% 频率/.test(reasoning) && frequencies && typeof frequencies.bet === 'number') {
+                    // 只在混合**确实压低了**频率时才补这句（环节 4 之后两侧多数情况下已经一致，
+                    // 再无脑加一句"压到 61%"而原文就写着 61%，是另一种自说自话）
+                    if (/\d+% 频率/.test(reasoning) && frequencies && typeof frequencies.bet === 'number'
+                        && typeof flexFreq.bet === 'number' && frequencies.bet <= flexFreq.bet - 5) {
                         reasoning += `；但承诺区权重 ${(commitWeight * 100).toFixed(0)}% 把它压到实际下注 ${frequencies.bet}%`;
                     }
                     if (commitStrat.action !== flexAction) {
