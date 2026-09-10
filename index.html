@@ -128,6 +128,9 @@
             .col-left::-webkit-scrollbar-thumb, .col-right::-webkit-scrollbar-thumb {
                 background: rgba(255,255,255,.12); border-radius: 4px; }
             #postRightContent { overflow: visible; }
+            /* 翻前：右列还没有翻后分析，隐藏那个空标题；决策卡保持自然高度——
+               试过让它撑满可用高度，但 actionBox 内容会贴到卡片下缘（空框更难看），故不拉伸 */
+            .col-right.pre-stage > #postAnalysisHead { display: none; }
         }
 
         @media (min-width: 768px) {
@@ -235,14 +238,12 @@
            录一手牌眼睛要跨列来回跳。现在两者合成左列一条竖向流程轴，节点圆点标出当前阶段；
            进翻后后**翻前区自动折叠成一行摘要**（用户："打到翻牌阶段没必要再保留翻前窗口"），
            点摘要行随时展开改位置/筹码。 */
-        .flow-track { position: relative; display: flex; flex-direction: column; gap: 0.5rem; padding-left: 16px; }
-        .flow-track::before { content: ''; position: absolute; left: 5px; top: 14px; bottom: 14px; width: 2px;
-            background: linear-gradient(180deg, var(--border-primary) 0%, rgba(87,169,255,.28) 100%); border-radius: 1px; }
-        .flow-node { position: relative; }
-        .flow-node::before { content: ''; position: absolute; left: -15px; top: 15px; width: 10px; height: 10px;
-            border-radius: 50%; background: var(--bg-body); border: 2px solid var(--border-primary); box-sizing: border-box; z-index: 1; }
-        .flow-node.active::before { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 0 3px rgba(87,169,255,.18); }
-        .flow-node.done::before { border-color: rgba(46,168,106,.75); background: rgba(46,168,106,.75); }
+        /* 2026-09-11：原来左侧有一条竖线 + 节点圆点，用户反馈"看不懂、占地方、没作用"——
+           已整条移除（连同 16px 的 padding）。阶段仍然分得清：当前那块用 3px 内嵌色条标记，
+           inset box-shadow 不占任何布局宽度。 */
+        .flow-track { display: flex; flex-direction: column; gap: 0.5rem; }
+        .flow-node.active { box-shadow: inset 3px 0 0 var(--accent); }
+        .flow-node.done { box-shadow: inset 3px 0 0 rgba(46,168,106,.45); }
         /* 折叠态：只留摘要行 */
         .flow-node.zone-collapsed > *:not(.flow-summary) { display: none !important; }
         .flow-node.zone-collapsed { padding: 5px 8px !important; }
@@ -686,18 +687,37 @@
         .act-row .act-btn { width: 100%; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .act-btn.act-allin { color: #ff7a7d; border-color: rgba(229,72,77,.4); background: rgba(214,57,64,.10); }
         .act-btn.act-allin:hover { background: rgba(214,57,64,.22); }
-        .size-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: 720px; margin-bottom: 8px; }
+        /* 尺度行与动作行同宽、一起撑满(2026-09-11，用户第6点"按钮没排满")：
+           快捷键均分剩余宽度；对手一侧没有快捷键，就让金额框自己撑开 */
+        .size-row { display: flex; align-items: center; gap: 6px; max-width: 720px; margin-bottom: 8px; }
         .size-lbl { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 700; flex: 0 0 auto; letter-spacing: .04em; }
-        .qc-btn.qc-size { flex: 0 0 auto; min-width: 54px; padding: 5px 8px; }
+        .qc-btn.qc-size { flex: 1 1 0; min-width: 0; padding: 6px 4px; }
         .amt-box { display: flex; align-items: stretch; border: 1px solid var(--border-primary); border-radius: var(--radius-sm);
                    overflow: hidden; background: rgba(0,0,0,.3); flex: 0 0 auto; }
+        .size-row-villain .amt-box { flex: 1 1 auto; }
         .amt-box input[type="number"] { width: 78px; border: none; background: transparent; text-align: center;
                    font-family: var(--font-mono); font-size: var(--fs-body); color: var(--text-primary); height: 30px; padding: 0; border-radius: 0; }
+        .size-row-villain .amt-box input[type="number"] { width: 100%; }
         .amt-box input[type="number"]:focus { outline: none; box-shadow: none; }
         .amt-box .step-btn { width: 28px; border: none; background: rgba(255,255,255,.06); color: var(--text-secondary);
                    cursor: pointer; font-size: var(--fs-title); line-height: 1; font-weight: 700; }
         .amt-box .step-btn:hover { background: rgba(255,255,255,.18); color: var(--text-primary); }
-        .pct-hint { font-size: var(--fs-micro); color: var(--text-muted); font-family: var(--font-mono); flex: 0 0 auto; min-width: 62px; }
+        .pct-hint { font-size: var(--fs-micro); color: var(--text-muted); font-family: var(--font-mono); flex: 0 0 auto;
+                    min-width: 72px; text-align: right; }
+        /* 位置切换收成分段控件（2026-09-10）：原来是整行两个大按钮，在流程视图里过度抢戏，
+           而它只是个"判定不对时才点"的覆盖开关——依据文字已写在同一行 */
+        .seg-ctl { display: inline-flex; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); overflow: hidden; flex: 0 0 auto; }
+        .seg-ctl button { font-size: var(--fs-micro); padding: 2px 8px; background: transparent; color: var(--text-muted);
+            border: none; cursor: pointer; white-space: nowrap; min-height: 22px; }
+        .seg-ctl button:hover { background: rgba(255,255,255,.08); color: var(--text-secondary); }
+        .seg-ctl button.on { background: rgba(87,169,255,.18); color: #9fd0ff; font-weight: 700; }
+        /* 底池/有效筹码：从两个撑满半宽的大框收成紧凑字段（2026-09-10） */
+        .pot-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .pot-fld { display: flex; align-items: center; gap: 6px; }
+        .pot-fld label { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 700; white-space: nowrap; }
+        .pot-fld input[type="number"] { width: 92px; height: 28px; text-align: center; font-family: var(--font-mono);
+            font-size: var(--fs-body); font-weight: 700; padding: 0 4px; }
+        #actionSummaryArea { display: none; }   /* 与跨街行动线重复（2026-09-10 去重） */
         .act-btn kbd, .qc-btn kbd { font-family: var(--font-mono); font-size: 10px; opacity: .55; margin-left: 5px; font-weight: 600; }
         .act-star { background: var(--accent) !important; color: #082744 !important; border-color: transparent !important;
                     box-shadow: 0 0 0 3px rgba(87,169,255,.30); }
@@ -887,8 +907,8 @@
                     <button onclick="toggleHelp()" class="nav-phase-btn" style="padding:4px 10px;">✕ 关闭</button>
                 </div>
                 <ol style="margin:0;padding-left:1.2em;color:var(--text-secondary);font-size:14px;line-height:1.85;">
-                    <li><b style="color:var(--text-primary);">选底牌</b>：点 52 张牌网格选两张（红/蓝/绿/灰即花色）。选错了按 <b>Z</b> 撤回，<b>H</b> 清底牌。</li>
-                    <li><b style="color:var(--text-primary);">录时间线</b>：选我的位置，<b>单击</b>座位循环 弃→加注→跟注→全下（加注额就地可改），<b>右键/长按</b>选完整动作；场景自动识别并实时出决策；推导不准时展开「传统场景标签」手动指定。<b>下一手</b>时我的位置自动往前退一格（配置可关）。</li>
+                    <li><b style="color:var(--text-primary);">选底牌</b>：点 52 张牌网格选两张（红/蓝/绿/灰即花色），选满后网格<b>自动收起</b>把空间让给决策——要改牌就点上方牌槽（或「✛ 选牌」）叫它回来。选错了按 <b>Z</b> 撤回，<b>H</b> 清底牌。</li>
+                    <li><b style="color:var(--text-primary);">录时间线</b>：选我的位置，<b>单击</b>座位循环 弃→加注→跟注→全下（加注额就地可改），<b>右键/长按</b>选完整动作；<b>后位加注后，我的座位上会出现「→ 我的应对」</b>，点它循环 弃牌/跟注/再加注（跟注后即可进翻后）；场景自动识别并实时出决策；推导不准时展开「传统场景标签」手动指定。<b>下一手</b>时我的位置自动往前退一格（配置可关）。</li>
                     <li><b style="color:var(--text-primary);">赛事信息 · 什么时候截图</b>（决定 ICM 与阶段，全程只有 4 个时点）：
                         <ol style="margin:4px 0 0;padding-left:1.1em;font-size:13px;line-height:1.7;">
                             <li><b>坐下时</b>：截大厅「比赛信息」页 → 起始筹码 / 盲注间隔 / 奖金分配% / 桌型 一次全填。</li>
@@ -898,11 +918,12 @@
                         </ol>
                         平均筹码由「总参赛 × 起始筹码 ÷ 剩余 ÷ 当前大盲」自动推算，不用管。筹码单位可切「筹码数」按牌桌真实筹码输入，自动换算 BB。</li>
                     <li><b style="color:var(--text-primary);">比赛阶段怎么选</b>：填了赛事信息后系统会算出「距钱圈还需淘汰几人」并<b>给出建议按钮，点一下即应用</b>，不用自己判断。手动选时把鼠标停在阶段按钮上会显示该档的适用时机；选中后说明常驻显示在下方。</li>
-                    <li><b style="color:var(--text-primary);">出建议</b>：点 <span style="color:var(--gold);">解析 GTO</span>（或按回车）。</li>
+                    <li><b style="color:var(--text-primary);">出建议</b>：<b>不用点任何按钮</b> —— 底牌选满、座位带一改、公共牌一发，决策立刻出现在右侧顶部。只有改了「传统场景标签」里的输入框才需要点一下 <b>↻ 重算</b>（或按回车）。</li>
                     <li><b style="color:var(--text-primary);">截图识别</b>：<b>Ctrl+V</b> 粘贴牌桌截图自动填入，对照"识别结果核对"卡，点 ✎ 可改。</li>
-                    <li><b style="color:var(--text-primary);">翻后</b>：底牌选满后直接在同一网格点选公共牌即自动进入翻后并算胜率（截图也自动进入）；在行动线区记录双方动作看跟/弃/加建议。</li>
+                    <li><b style="color:var(--text-primary);">翻后</b>：底牌选满后直接在同一网格点选公共牌即自动进入翻后并算胜率（截图也自动进入）。左列是一条<b>流程轴</b>：翻前时间线在上、各街行动在下，翻前区进翻后后自动折叠成一行摘要（<b>点摘要行可随时展开</b>改位置/筹码）；右列集中所有决策与分析，翻前决策同样折叠在标题行、点「展开」可看。</li>
                     <li><b style="color:var(--text-primary);">换手/重来</b>：<b>下一手</b>清本手保留配置；<b>重置</b>全部归零。</li>
-                    <li><b style="color:var(--text-primary);">快捷键</b>：翻后右手区 <b>J</b> 过牌/跟注 · <b>K</b> 下注/加注框 · <b>L</b> 弃牌 · <b>M</b> 全押 · <b>1-4</b> 尺度（开放 33/50/75/100% 池；面对下注 2.5x/3x/4x/全押）· <b>U</b> 撤回（X/C/F/B 仍可用）；<b>Z</b>/Backspace/Ctrl+Z 撤回上一步（选牌、行动、清空、重置都能退）· <b>H</b> 清底牌 · <b>G</b> 清公共牌 · <b>R</b> 重置牌桌 · <b>P</b> 底池框 · <b>E</b> 有效筹码框；<b>N</b> 下一手；<b>回车</b> 解析/重析（下注框内回车＝直接提交下注）。</li>
+                    <li><b style="color:var(--text-primary);">快捷键</b>：翻后右手区 <b>J</b> 过牌/跟注 · <b>K</b> 下注/加注框 · <b>L</b> 弃牌 · <b>M</b> 全押 · <b>1-4</b> 尺度（开放 33/50/75/100% 池；面对下注 2.5x/3x/4x/全押）· <b>U</b> 撤回（X/C/F/B 仍可用）；<b>Z</b>/Backspace/Ctrl+Z 撤回上一步（选牌、行动、清空、重置都能退）· <b>H</b> 清底牌 · <b>G</b> 清公共牌 · <b>R</b> 重置牌桌 · <b>P</b> 底池框 · <b>E</b> 有效筹码框；<b>N</b> 下一手；<b>回车</b> 解析/重析（下注框内回车＝直接提交下注）。<br>
+                        <b style="color:var(--text-primary);">改数字的三种方式</b>：直接打字 · 点框旁的 <b>−/+</b> 步进（一档≈10% 底池）· <b>先点进框再滚滚轮</b>（没点选时滚轮只滚页面，不会误改数字；Shift 精调、Alt 粗调）。</li>
                 </ol>
                 <div style="margin-top:12px;font-size:12px;color:var(--text-muted);">提示：中栏金/紫高亮处为关键决策与数据；右栏为对手范围/牌面等次要参考。</div>
             </div>
@@ -972,8 +993,14 @@
                             </div>
                         </div>
                     </div>
-                    <!-- 共享 52 张选牌网格（heroPicker 容器沿用，翻前/翻后共用） -->
+                    <!-- 共享 52 张选牌网格（heroPicker 容器沿用，翻前/翻后共用）
+                         按需展开(2026-09-11，用户："选完牌就该收起，需要时点牌面再弹出")：
+                         该阶段的牌选齐就自动收起，点上方任一牌槽（或下面这一行）随时叫回来。 -->
                     <div id="heroPicker" class="cpg-wrap"></div>
+                    <div id="pickerToggleRow" class="flex items-center gap-2 mt-1">
+                        <button id="pickerToggleBtn" onclick="togglePicker()" class="macro-btn" title="展开/收起 52 张选牌网格">收起 ▴</button>
+                        <span id="pickerToggleHint" class="text-[10px] text-gray-500">选完会自动收起，把空间留给决策</span>
+                    </div>
                     <div class="flex justify-between items-center mt-1" style="min-height:14px;">
                         <span id="heroPickerHint" class="text-[10px] text-gray-500"></span>
                         <span id="boardPickerProgress" class="text-[10px] text-gray-500"></span>
@@ -1000,7 +1027,9 @@
                          传统场景标签保留在下方折叠区作兼容/强制入口 -->
                     <div class="flex justify-between items-center mb-1.5 gap-2 flex-wrap">
                         <span class="text-xs font-bold text-gray-400 shrink-0">对局 · 翻前时间线</span>
-                        <span id="tlScenarioLabel" class="text-[10px] text-gray-400 text-right" style="font-family:var(--font-mono);"></span>
+                        <span id="tlScenarioLabel" class="text-[10px] text-gray-400 text-right" style="font-family:var(--font-mono);flex:1;min-width:0;"></span>
+                        <!-- 收起入口(2026-09-11)：展开后必须能收回去（原来只有折叠态的摘要行能点开，展开后没有出口） -->
+                        <button id="tlFoldBtn" onclick="togglePreflopZone()" class="macro-btn shrink-0" style="display:none;" title="收起翻前时间线，把空间留给翻后">收起 ▴</button>
                     </div>
                     <div id="tlHeroRow" class="mb-1.5"></div>
                     <div id="tlRibbon" class="tl-ribbon"></div>
@@ -1021,9 +1050,12 @@
                         </div>
                     </div>
                     <div id="tlUnitHint" class="text-[10px] mt-1" style="color:var(--gold);display:none;"></div>
-                    <div class="mt-1.5 flex items-center gap-2">
+                    <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         <button id="legacyScenarioToggle" onclick="toggleLegacyScenario()" class="macro-btn" title="按传统 7 个场景标签手动指定（兼容/强制入口）">传统场景标签 ▸</button>
-                        <span class="text-[10px] text-gray-600">时间线推导不准时可在此手动指定场景</span>
+                        <!-- 解析按钮降级(2026-09-11，用户第4点)：选牌与座位带改动现在都会自动出决策，
+                             它只剩"改了传统输入框想强制重算"这一条路径，故从全宽金色大按钮收成次要键。 -->
+                        <button onclick="executeEngine()" class="macro-btn" title="强制重新解析（回车 ↵ 同样触发）；正常情况下改动即自动出决策，无需点它">↻ 重算 ↵</button>
+                        <span class="text-[10px] text-gray-600">改牌/改行动即自动出决策</span>
                     </div>
                     <div id="legacyScenario" style="display:none">
                     <!-- 翻前节点 Tabs (7 个) -->
@@ -1042,30 +1074,27 @@
                     <div id="dynamicInputs" class="grid grid-cols-2 gap-1.5 shrink-0 mt-1.5 min-h-[148px]"></div>
                     </div>
 
-                    <button onclick="executeEngine()" title="回车 ↵ 同样触发" class="cta-gold w-full font-black text-base py-2.5 mt-1.5 rounded shadow shrink-0 active:scale-95 transition-transform tracking-wider">
-                        解析 GTO <span style="font-weight:600;opacity:0.65;font-size:var(--fs-caption);">↵</span>
-                    </button>
+
                 </div>
 
                 <div class="panel-bg p-2 rounded shrink-0 flex flex-col gap-1.5 flow-node flow-post" id="postActionZone" style="opacity:0.55;transition:opacity .2s;">
-                    <div class="flex justify-between items-center gap-2">
-                        <div id="actionZoneHint" class="text-[10px] text-gray-500 flex-1">选满 3 张公共牌后，在此录入双方行动并出翻后决策</div>
-                        <button onclick="clearStreetActions()" title="只清除当前街道的行动记录" class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-400 hover:bg-orange-700/50 active:scale-95 transition-all shrink-0 ml-auto">↺ 清本街</button>
-                    </div>
+                    <div id="actionZoneHint" class="text-[10px] text-gray-500">翻牌 → 转牌 → 河牌：在此发牌并按街录入双方行动</div>
 
-                    <div class="flex gap-2 items-end">
-                        <div class="flex-1">
-                            <label class="text-[10px] text-yellow-500 block mb-1">底池 (BB)</label>
+                    <div class="pot-row">
+                        <div class="pot-fld">
+                            <label class="text-yellow-500" for="potDirectInput">底池 BB</label>
                             <input type="number" id="potDirectInput" min="0.5" step="0.5" value="0"
-                                class="p-1 text-center font-bold text-sm h-[28px] w-full text-yellow-400"
+                                class="text-yellow-400" title="底池（P 键跳到这里；聚焦后滚轮可调）"
                                 oninput="onPotDirectChange(this.value)">
                         </div>
-                        <div class="flex-1">
-                            <label class="text-[10px] text-gray-400 block mb-1">有效筹码 (BB)</label>
+                        <div class="pot-fld">
+                            <label for="effDirectInput">有效筹码 BB</label>
                             <input type="number" id="effDirectInput" min="0.5" step="0.5" value="0"
-                                class="p-1 text-center text-sm h-[28px] w-full"
+                                title="有效筹码（E 键跳到这里；聚焦后滚轮可调）"
                                 oninput="onEffDirectChange(this.value)">
                         </div>
+                        <span id="sprInline" class="text-[10px]" style="color:var(--text-muted);font-family:var(--font-mono);"></span>
+                        <button onclick="clearStreetActions()" title="只清除当前街道的行动记录" class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-400 hover:bg-orange-700/50 active:scale-95 transition-all shrink-0 ml-auto">↺ 清本街</button>
                     </div>
 
                     <!-- 隐藏的旧兼容元素（potInfoFlop/Turn/River 供 updatePotUI 使用） -->
@@ -1147,7 +1176,7 @@
 
                 </div>
 
-                <div class="zone-head"><span>分析 · 翻后</span><button id="postDetailsToggle" onclick="togglePostDetails()" class="macro-btn" title="展开/收起对手范围、牌面纹理、手型与调试卡（分层显示 2026-07-21）">详情 ▸</button></div>
+                <div class="zone-head" id="postAnalysisHead"><span>分析 · 翻后</span><button id="postDetailsToggle" onclick="togglePostDetails()" class="macro-btn" title="展开/收起对手范围、牌面纹理、手型与调试卡（分层显示 2026-07-21）">详情 ▸</button></div>
                 <!-- 翻后分析区（原翻后页右栏迁移，id/结构保留；initPostRightCards 仍重建 postRightContent） -->
                 <div id="postRight" class="flex flex-col gap-1.5 w-full shrink-0">
                     <!-- SPR仅在决策面板中显示，此处隐藏 -->
@@ -1407,6 +1436,34 @@
         // 解法：改用**捕获阶段**监听 —— 捕获在目标元素自己的 onclick 之前触发，
         // 此时 DOM 还完整，closest() 判定可靠。
         // ══════════════════════════════════════════════════════════════════
+        // 重渲保焦（2026-09-11，用户报的"滚轮滑到 3、4 就卡住"）
+        // ══════════════════════════════════════════════════════════════════
+        // renderTimeline / renderBettingPanel 用 innerHTML 整块重建 DOM，正在编辑或
+        // 正在用滚轮调值的输入框会被**销毁重建** → 焦点丢失 → 新的"必须聚焦才接管滚轮"
+        // 规则下滚轮随即失效，表现就是"滚一格就卡住，还得用鼠标点"。
+        // 这里在重渲前后记住/找回焦点元素（座位内嵌金额框没有 id，用 data-tlamtpos 定位）。
+        function _saveFocus() {
+            const ae = document.activeElement;
+            if (!ae || ae.tagName !== 'INPUT') return null;
+            const key = ae.id ? '#' + ae.id
+                      : ae.dataset.tlamtpos ? `[data-tlamtpos="${ae.dataset.tlamtpos}"]` : null;
+            if (!key) return null;
+            let sel = null;
+            try { sel = [ae.selectionStart, ae.selectionEnd]; } catch (e) {}   // number 型不支持 selection
+            return { key, sel };
+        }
+        function _restoreFocus(f) {
+            if (!f) return;
+            try {
+                const el = document.querySelector(f.key);
+                if (el && el !== document.activeElement) {
+                    el.focus({ preventScroll: true });
+                    if (f.sel) { try { el.setSelectionRange(f.sel[0], f.sel[1]); } catch (e) {} }
+                }
+            } catch (e) {}
+        }
+
+        // ══════════════════════════════════════════════════════════════════
         // 输入框滚轮调值（2026-09-08 引入；2026-09-10 重做：防误触 + 跟手度）
         // ══════════════════════════════════════════════════════════════════
         // 用户反馈两点，都已修：
@@ -1426,10 +1483,11 @@
                 const s = parseFloat(el.step);
                 if (s > 0) return s;
                 const v = Math.abs(parseFloat(el.value) || 0);
-                // 按当前量级给基础步长：筹码数(几千) → 100；BB 值(几十) → 0.5
-                if (v >= 2000) return 100;
-                if (v >= 200) return 10;
-                if (v >= 20) return 1;
+                // 精度(2026-09-11，用户："每个数字都该能到小数位")：
+                // BB 量级一律 0.5（原来 ≥20 就跳整数 1，40BB 的筹码框只能整数调），
+                // Shift 再精调到 0.1；只有筹码数（几百/几千）才用大步长。
+                if (v >= 2000) return 50;
+                if (v >= 200) return 5;
                 return 0.5;
             };
             document.addEventListener('wheel', (e) => {
@@ -1446,7 +1504,9 @@
                 let dy = e.deltaY;
                 if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= 400;
                 if (!dy) return;
-                const dir = dy < 0 ? 1 : -1;              // 上滚 = 增大
+                // 方向恒定(2026-09-11，用户明确要求)：向上滚 = 增大，向下滚 = 减小。
+                // deltaY < 0 即"内容向上"，鼠标滚轮与触控板两指上推都落在这一支。
+                const dir = dy < 0 ? 1 : -1;
                 const now = performance.now();
                 // 换框 / 反向 / 停顿超过 220ms → 累积与加速全部归零（否则往回调一格会多跳一截）
                 if (el !== lastEl || dir !== lastDir || now - lastTs > 220) { acc = 0; streak = 0; }
@@ -3392,9 +3452,37 @@
         // 选满两张底牌自动转向公共牌；点击槽位分组（heroSlotsBox/boardSlotsBox）手动切换；
         // 点击已选牌 = 取消（自动路由回其归属目标）。首次选公共牌自动 goToPostFlop()。
         let pickTarget = 'hero';
+        // ══ 选牌网格按需展开(2026-09-11，用户第3c点) ══
+        // 52 张网格常驻要占 ~180px，而它只有"选牌那几秒"有用。现在：该阶段的牌选齐就收起，
+        // 点牌槽 / 点「✛ 选牌」/ 清牌 都会把它叫回来。翻后加转牌、河牌另有行动区内嵌发牌器。
+        // 开关只由三件事决定，别处一律不动它：
+        //   ① 选满两张底牌 → 自动收起（这一步之后就轮到发公共牌了，那事在下方做）
+        //   ② 用户显式操作：点牌槽 / 点「✛ 选牌 ▾ ↔ 收起 ▴」
+        //   ③ 清底牌 / 下一手 / 重置 → 自动展开（又要从选牌开始了）
+        // **在网格里连点公共牌不改变开关**（否则点第一张就把网格收走，第二张没得点）。
+        let _pickerOpen = true;
+        function setPickerOpen(v) {
+            _pickerOpen = !!v;
+            const g = document.getElementById('heroPicker');
+            const btn = document.getElementById('pickerToggleBtn');
+            const hint = document.getElementById('pickerToggleHint');
+            if (g) g.style.display = _pickerOpen ? '' : 'none';
+            if (btn) btn.textContent = _pickerOpen ? '收起 ▴' : '✛ 选牌 ▾';
+            if (hint) hint.textContent = _pickerOpen ? '选完会自动收起，把空间留给决策' : '点上方牌槽也能直接叫出选牌网格';
+        }
+        function togglePicker() { setPickerOpen(!_pickerOpen); }
+        /**
+         * 上方网格只为"选底牌"自动展开 —— 公共牌交给行动区的发牌器（用户第3c点：
+         * "翻牌、转牌、河牌在需要时于下方区域出现即可，不需要一直占着上方空间"）。
+         * 要改已发的公共牌时点上方牌槽，setPickTarget 会把网格叫回来。
+         */
+        function pickerAutoState() {
+            setPickerOpen(!heroCard1 || !heroCard2);
+        }
         function setPickTarget(t) {
             if (t !== 'hero' && t !== 'board') return;
-            if (pickTarget === t) return;
+            setPickerOpen(true);          // 点牌槽 = 我要选牌，先把网格叫出来
+            if (pickTarget === t) { renderSharedPicker(); return; }
             pickTarget = t;
             renderSharedPicker();
         }
@@ -3463,6 +3551,15 @@
                 // 首次选满两张自动转向公共牌；替换单张时停留在底牌目标
                 if (!wasFull && heroCard1 && heroCard2) pickTarget = 'board';
                 renderSharedPicker();
+                // 只在"从缺牌变成选齐"时才自动收起(2026-09-11)：满 2 张时再点是**替换**
+                //（autoReplace 语义会顶掉最旧那张），此时收起会让人换不了第二张。
+                if (!wasFull && heroCard1 && heroCard2) pickerAutoState();
+                // 底牌齐了 → 下方立刻出现发翻牌的牌面，并把行动区点亮
+                try { renderBettingPanel(); updateStreetStatusBar(); } catch (e) {}
+                // 选满底牌自动出翻前决策(2026-09-11，用户第4点)：原来选完牌还得点一次
+                // 「解析 GTO」——这是那个按钮唯一的主路径。改走与座位带同一条自动通道后，
+                // 主流程全程无需点它（它降级为折叠区里的"重算"入口，回车也仍可用）。
+                if (heroCard1 && heroCard2) { try { tlScheduleApply(); } catch (e) {} }
             } else {
                 if (!heroCard1 || !heroCard2) {
                     showToast('请先选满两张底牌', 'warn');
@@ -3761,6 +3858,7 @@
         function handleSharedUnpick(card) {
             if (!card) return;
             pushUndo(`取消 ${card[0]}${SUIT_SYMBOLS[card[1]] || ''}`); // 全局撤回栈(2026-07-21)
+            setPickerOpen(true);   // 移除了一张 = 又要选牌，网格自动回来(2026-09-11)
             if (card === heroCard1 || card === heroCard2) {
                 pickTarget = 'hero';
                 deselectHeroCard(card); // 内部重渲共享网格
@@ -3858,6 +3956,7 @@
             val1 = ''; val2 = '';
             isSuited = false;
             pickTarget = 'hero'; // 融合单页
+            setPickerOpen(true);  // 没牌了当然要展开(2026-09-11)
             renderHeroPicker();
             renderHeroSlots();
             updateHandStr();
@@ -4318,6 +4417,7 @@
         }
 
         function resetAll() {
+            try { setPickerOpen(true); } catch (e) {}   // 重置后从选牌开始(2026-09-11)
             pushUndo('重置牌桌'); // 全局撤回栈(2026-07-21)：重置可撤回，R 键无需确认
             // B1(2026-07)：恢复默认底牌（与页面初始一致）。此前清空底牌后点重置，heroCard1/2 仍为 null
             //     而 val1/val2 被写回 'A'/'Q' → 界面无牌但引擎按 AQo 分析的不一致状态。
@@ -4463,6 +4563,7 @@
 
         function nextHand() {
             pushUndo('下一手'); // 全局撤回栈(2026-07-21)
+            try { setPickerOpen(true); } catch (e) {}   // 新一手要选底牌，网格展开(2026-09-11)
             // 清底牌
             heroCard1 = null; heroCard2 = null;
             val1 = ''; val2 = ''; isSuited = false;
@@ -5743,6 +5844,7 @@
             const ribbon = document.getElementById('tlRibbon');
             const heroRow = document.getElementById('tlHeroRow');
             if (!ribbon || !heroRow) return;
+            const _foc = _saveFocus();   // 重渲保焦(2026-09-11)：座位内嵌金额框正被滚轮/键盘编辑时不能丢焦点
             const seats = getPositions();
             const hi = seats.indexOf(globalPosHero);
             // 我的位置
@@ -5876,6 +5978,7 @@
             setIf('tlStackHero', disp(globalHeroStack, 'hero')); setIf('tlStackVillain', disp(globalVillainStack, 'villain'));
             setIf('tlAvgStack', disp(avgStackTouched ? globalAvgStack : globalHeroStack, 'avg'));
             try { blRenderUnitLabels(); } catch (e) {}
+            _restoreFocus(_foc);
         }
 
         /** 座位动作弹层 */
@@ -8743,6 +8846,10 @@
             const effInput = document.getElementById('effDirectInput');
             if (effInput && document.activeElement !== effInput) effInput.value = effStr;
 
+            // SPR 就地显示(2026-09-10)：底池/有效筹码同一行右侧，省得去分析卡里找
+            const sprInline = document.getElementById('sprInline');
+            if (sprInline) sprInline.textContent = postState.potTracker.currentPot > 0 ? `SPR ${sprStr}` : '';
+
             const infoStr = `底池 ${potStr} | 有效 ${effStr} | SPR ${sprStr}`;
             const f = document.getElementById('potInfoFlop'); if (f) f.innerText = infoStr;
             const t = document.getElementById('potInfoTurn'); if (t) t.innerText = infoStr;
@@ -9027,6 +9134,7 @@
             if (postState.board.some(c => c !== null)) pushUndo('清公共牌'); // 全局撤回栈(2026-07-21)
             postState.board = [null, null, null, null, null];
             pickTarget = (heroCard1 && heroCard2) ? 'board' : 'hero'; // 融合单页：清公共牌后网格继续选公共牌
+            setPickerOpen(true);   // 要重选公共牌了，网格回来(2026-09-11)
             postState.potTracker.actions = [];
             postState.equityResult = null;
             postState.decisionResult = null;
@@ -9120,8 +9228,13 @@
                     pre.classList.toggle('zone-collapsed', inPost && !_preZoneUserOpen);
                     const t = document.getElementById('tlSummaryText');
                     if (t) t.textContent = preflopSummaryText();
+                    // 展开态才需要"收起"（折叠态本身就是一行摘要，点它即展开）
+                    const fb = document.getElementById('tlFoldBtn');
+                    if (fb) fb.style.display = (inPost && _preZoneUserOpen) ? '' : 'none';
                 }
                 if (post) post.classList.toggle('active', inPost);
+                const colR = document.querySelector('.col-right');
+                if (colR) colR.classList.toggle('pre-stage', !inPost);
                 const foldDec = inPost && !_preDecUserOpen;
                 const rp = document.getElementById('resultPanel');
                 const mp = document.getElementById('mathProofPanel');
@@ -9157,7 +9270,8 @@
                 const az = document.getElementById('actionZoneHint');
                 if (az) az.style.display = cnt >= 3 ? 'none' : '';
                 const zone = document.getElementById('postActionZone');
-                if (zone) zone.style.opacity = cnt >= 3 ? '1' : '0.55';
+                // 底牌齐了就点亮：此时这里已经能发翻牌，不该还是灰的(2026-09-11)
+                if (zone) zone.style.opacity = (cnt >= 3 || (heroCard1 && heroCard2)) ? '1' : '0.55';
             } catch (e) {}
             updateFlowStage();   // 流程轴节点高亮 + 翻前区自动折叠（2026-09-10）
         }
@@ -9452,7 +9566,10 @@
             if ([heroCard1, heroCard2, ...boardSel].includes(card)) { showToast('这张牌已被使用', 'error'); return; }
             pushUndo(`发牌 ${card[0]}${SUIT_SYMBOLS[card[1]] || ''}`);
             postState.board[boardSel.length] = card;
-            renderBoard(); renderSharedPicker(); autoTriggerAnalysis();
+            // 翻前就地发翻牌时也要初始化翻后态（与 handleSharedPick 同一处理）
+            if (!postState._entered) goToPostFlop();
+            renderBoard(); renderSharedPicker();
+            autoTriggerAnalysis();
         };
 
         function renderStreetTimeline(curStreet) {
@@ -9505,10 +9622,21 @@
         function renderBettingPanel() {
             const area = document.getElementById('postBettingArea');
             if (!area) return;
+            const _foc = _saveFocus();   // 重渲保焦(2026-09-11)：下注金额框正被编辑/滚轮调值时不能丢焦点
 
             const validCards = postState.board.filter(c => c !== null);
             const count = validCards.length;
-            if (count < 3) { area.innerHTML = ''; return; }
+            if (count < 3) {
+                // 下方发牌(2026-09-11，用户第3c点)：上方 52 张网格选完底牌就收起了，
+                // 接着要发的翻牌就在这里就地发——不必再回上方把网格叫出来。
+                area.innerHTML = (heroCard1 && heroCard2)
+                    ? `<div class="next-cta" style="flex-direction:column;align-items:stretch;gap:6px;">
+                        <span style="text-align:center;">🃏 点下面任意一张发<b>翻牌</b>${count ? `（还差 ${3 - count} 张）` : ''}</span>
+                        ${renderInlineDealer()}
+                       </div>`
+                    : '';
+                return;
+            }
 
             const street      = count === 3 ? 'flop' : count === 4 ? 'turn' : 'river';
             const streetLabel = count === 3 ? '翻牌圈 (Flop)' : count === 4 ? '转牌圈 (Turn)' : '河牌圈 (River)';
@@ -9586,10 +9714,13 @@
                 const hp = POS_LABEL[globalPosHero] || globalPosHero || '?';
                 const vpKey = (currentMode === 'coldCall') ? globalPosCaller : globalPosVillain;
                 const vp = POS_LABEL[vpKey] || vpKey || '?';
-                html += `<div class="text-[10px] mb-1 px-1" style="color:var(--text-muted);">
-                    行动顺序：我 <b style="color:#ff7a7d">${hp}</b> · 对手 <b style="color:#45d68a">${vp}</b>
-                    → <b style="color:${heroIsOOP ? '#7cc0ff' : '#45d68a'}">${heroIsOOP ? '我先行动（OOP）' : '对手先行动（我 IP）'}</b>
-                    <span style="color:#6b7280;">· 位置不对可点下方按钮改</span></div>`;
+                html += `<div class="text-[10px] mb-1.5 px-1 flex items-center gap-2 flex-wrap" style="color:var(--text-muted);">
+                    <span>行动顺序：我 <b style="color:#ff7a7d">${hp}</b> · 对手 <b style="color:#45d68a">${vp}</b>
+                    → <b style="color:${heroIsOOP ? '#7cc0ff' : '#45d68a'}">${heroIsOOP ? '我先行动（OOP）' : '对手先行动（我 IP）'}</b></span>
+                    <span class="seg-ctl" title="自动判定不对时在此覆盖">
+                        <button class="${heroIsOOP ? 'on' : ''}" onclick="overrideFirstActor('OOP')">我先 OOP</button>
+                        <button class="${!heroIsOOP ? 'on' : ''}" onclick="overrideFirstActor('IP')">对手先 IP</button>
+                    </span></div>`;
             }
             // 多人底池在行动区可见(2026-09-08，用户反复提出)：原来无论几人进池，
             // 这里永远只显示"我 + 对手"两个人，中间跟注进来的第三家在翻后完全不可见
@@ -9609,16 +9740,6 @@
                     </div>`;
                 }
             }
-            html += `<div class="flex gap-1 mb-2">
-                <button onclick="overrideFirstActor('OOP')"
-                    class="flex-1 py-1 text-[10px] rounded border transition-all ${heroIsOOP
-                        ? 'border-blue-500/60 bg-blue-900/30 text-blue-300 font-bold'
-                        : 'border-white/10 bg-white/5 text-gray-500 hover:bg-white/10'}">我先行动 (OOP)</button>
-                <button onclick="overrideFirstActor('IP')"
-                    class="flex-1 py-1 text-[10px] rounded border transition-all ${!heroIsOOP
-                        ? 'border-emerald-500/60 bg-emerald-900/30 text-emerald-300 font-bold'
-                        : 'border-white/10 bg-white/5 text-gray-500 hover:bg-white/10'}">对手先行动 (IP)</button>
-            </div>`;
 
             // 速记补录(2026-07-14)：进阶功能，默认折叠（用户反馈：常驻展示令人困惑）。
             // 用途 = 快速补录整条街行动（典型：从截图进翻后时把前面几步行动线两秒补完），
@@ -9730,8 +9851,19 @@
                 const passiveStar = (isHero && ((isFacing && suggAction === 'CALL') || (!isFacing && suggAction === 'CHECK')));
                 const foldStar = isHero && isFacing && suggAction === 'FOLD';
                 const aggrStar = isHero && ((isFacing && suggAction === 'RAISE') || (!isFacing && suggAction === 'BET'));
+                // 预填(2026-09-10)：我方一侧永远给一个可直接点的标准尺度，
+                // 于是"加注"按钮上就有金额、一眼知道点下去会发生什么（原来空框 + 光秃秃的"下注▶"）。
+                // 建议尺度优先；没有建议时给面对下注 3x / 开放半池。**对手一侧不预填**——
+                // 他的下注额是从牌桌读来的事实，猜一个数只会诱导误录。
+                const heroDefault = (() => {
+                    if (!isHero) return '';
+                    const base = isFacing ? (lastBet > 0 ? lastBet * 3 : pot * 0.5) : pot * 0.5;
+                    const v = effStack > 0 ? Math.min(base, effStack) : base;
+                    return v > 0 ? rh(v).toFixed(1) : '';
+                })();
                 const prefill = (isHero && aggrStar && suggAmt > 0) ? suggAmt.toFixed(1)
-                              : (!isHero && postState._pendingVillainBet) ? postState._pendingVillainBet : '';
+                              : (!isHero && postState._pendingVillainBet) ? postState._pendingVillainBet
+                              : heroDefault;
 
                 const foldCls = !foldOn
                     ? 'border-white/5 bg-white/[0.02] text-gray-700 cursor-not-allowed'
@@ -9766,8 +9898,8 @@
                 } else {
                     const preNum = prefill !== '' ? parseFloat(prefill) : 0;
                     const aggrLabel = (preNum > 0 ? `${aggrWord} ${preNum}` : aggrWord);
-                    html += `<div class="size-row">
-                        <span class="size-lbl">${isHero ? '尺度' : '对手下注'}</span>
+                    html += `<div class="size-row${isHero ? '' : ' size-row-villain'}">
+                        <span class="size-lbl">${isHero ? '尺度' : '对手下注（照牌桌上的数字填）'}</span>
                         ${isHero ? (!isFacing ? `
                         <button onclick="quickCommit('hero','bet',0.33)" class="qc-btn qc-size">33%池<kbd>1</kbd></button>
                         <button onclick="quickCommit('hero','bet',0.5)" class="qc-btn qc-size">半池<kbd>2</kbd></button>
@@ -9781,7 +9913,7 @@
                             <input id="${inputId}" type="number" min="0.5" step="0.5" value="${prefill}" data-word="${aggrWord}"
                                 oninput="updateBetPct(this)"
                                 onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();commitCustomAction('${playerKey}','${inputId}','${aggrType}');}"
-                                placeholder="${aggrWord}" />
+                                placeholder="BB" />
                             <button class="step-btn" onclick="stepBet('${inputId}',1)" tabindex="-1" title="加一档（约 10% 底池）">+</button>
                         </div>
                         <span id="betPctHint" class="pct-hint"></span>
@@ -9799,11 +9931,17 @@
 
             html += `</div>`;
             area.innerHTML = html;
+            // 预填值同步到"加注 X"按钮与"= X% 底池"提示（2026-09-10）
+            try {
+                const bi = document.getElementById('heroBetInput') || document.getElementById('villainBetInput');
+                if (bi && bi.value) updateBetPct(bi);
+            } catch (e) {}
             // 折叠(2026-07-14)：面板每次重渲后恢复次要卡折叠状态
             if (typeof applyCardCollapsePrefs === 'function') applyCardCollapsePrefs();
             // 待发牌高亮(2026-07-21)：行动后需刷新槽位提示——setActionRecord 只调本函数，
             // 不调 renderBoard，故在此单独应用（避免 renderBoard↔renderBettingPanel 互调）
             applyBoardSlotHint();
+            _restoreFocus(_foc);
         }
 
         /**
@@ -11676,11 +11814,20 @@
          *  2026-09-10 环节 4：由常规区的局部代码抽成共用函数 —— **承诺区必须用同一套判断**。
          *  原来承诺区自己写死"胜率≤50% → 过牌 100%"，与常规区各答各的，
          *  SPR 过渡带把两边一混合，实测把 71% 的下注频率压成 10%（发现 C）。
-         *  拟合式（六节点 80 张翻牌最小二乘，SPR 覆盖 1.08 / 1.86 / 2.10 / 3.43 / 6.69）：
-         *      下注% = 48.2 + 1.95×范围强度差% + 25.0/max(SPR, 1.08) − 9.6×成对面
+         *  拟合式（六节点 **100 张**翻牌最小二乘，SPR 覆盖 1.08 / 1.86 / 2.10 / 3.43 / 6.69）：
+         *      下注% = 53.2 + 2.00×范围强度差% + 14.2/max(SPR, 1.08) − 10.4×成对面 − 26.3×连张面
          *  **SPR 钳到 1.08** = 实测下界：有数据的区间用拟合形状，没数据的区间不外推。
-         *  上一版（只有 SPR 1.86-6.87 四个节点）的 59.3/SPR 在 SPR 1.08 上给出 100%，
-         *  而实测是 67% —— 把两个低 SPR 节点纳入后该系数自动降到 25.0。 */
+         *  （更早那版只有 SPR 1.86-6.87 四个节点，59.3/SPR 在 SPR 1.08 上给 100%、实测 67%；
+         *   纳入两个低 SPR 节点后该系数自动降下来。）
+         *
+         *  **连张面项（2026-09-11 新增，−26.3 点）**：三张牌落在 5 连跨度内时，均衡打得少得多。
+         *  这个残差在 N1 上早就看到了，但当时**没有采用**——因为 `flopset12` 的分层配额
+         *  在只有 12 个名额时把 connected 整类丢掉了，五个节点里只有 N1 有连张面，
+         *  单节点证据按规矩不能改主系统。补解 20 张连张面后：**6/6 节点全部为负，
+         *  平均 −23.3 点**（N6c −40.2 · N2 −43.5 · N4 −21.4 · N7 −17.7 · N3 −11.8 · N1 −5.4）。
+         *  加进去之后 R² 0.471→0.645、MAE 14.0→12.1，**连张面上 +18.3 点的系统性高估归零**。
+         *  顺带把成对面那一项也解放了（−0.79 → −10.40）——此前它在替连张面顶包。
+         *  牌理：连张面对跟注方的宽范围命中率高得多（成顺/两头/卡顺），持续下注的弃牌率骤降。 */
         function flopAirBetFreq(spr, mwN) {
             try {
                 const bd = (postState.board || []).slice(0, 3).filter(c => c);
@@ -11689,13 +11836,16 @@
                 const vh = (postState.villainRange && postState.villainRange.hands) || null;
                 const sd = (hr && vh) ? boardStrengthDiff(bd, hr, vh) : null;
                 if (sd === null) return null;
-                const paired = new Set(bd.map(c => c[0])).size < 3 ? 1 : 0;
+                const RKI = '23456789TJQKA';
+                const rk = [...new Set(bd.map(c => RKI.indexOf(c[0])))].sort((a, b) => a - b);
+                const paired = rk.length < 3 ? 1 : 0;
+                const conn = (rk.length === 3 && rk[2] - rk[0] <= 4) ? 1 : 0;   // 三张落在 5 连跨度内
                 let freq = Math.round(Math.max(10, Math.min(100,
-                    48.2 + 1.95 * sd + 25.0 / Math.max(spr, 1.08) - 9.6 * paired)));
+                    53.17 + 2.00 * sd + 14.16 / Math.max(spr, 1.08) - 10.40 * paired - 26.32 * conn)));
                 // 多人底池禁纯诈唬（沿用 2026-09-08 既有规则）：
                 // 要让 N 家全弃，所需弃牌率是单挑的 N 次方
                 if (mwN > 0) freq = 0;
-                return { freq, sd, paired };
+                return { freq, sd, paired, conn };
             } catch (e) { return null; }
         }
 
@@ -12132,7 +12282,15 @@
                                   `${_cvt.freq}% 频率 ${_cvt.size}（TexasSolver 校准：${_cvt.note}）`
                                 : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%` +
                                   `${equity <= 50 ? `+${outs}张进张半诈唬` : ''}，${commitStrat.sizing}`))
-                        : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%不足，过牌`;
+                        : (_cAir && _cAir.freq >= 10
+                            // 空气桶算出频率但 <50%（主动作是过牌）时，**理由不能退回"胜率不足"**——
+                            // 那会把算出来的东西丢掉，用户看到的是"没依据的过牌"。
+                            // 这是环节 4 留下的报告缺口：只写了 BET 那一侧。
+                            ? `SPR=${spr.toFixed(1)}（承诺区）：翻牌胜率${equity.toFixed(0)}%、进张${outs}张都不足，` +
+                              `范围强度差 ${_cAir.sd >= 0 ? '+' : ''}${_cAir.sd.toFixed(1)} 点` +
+                              `${_cAir.conn ? '、连张面' : ''}${_cAir.paired ? '、成对面' : ''} → ` +
+                              `只有 ${_cAir.freq}% 频率下注，多数时候过牌（TexasSolver 校准）`
+                            : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%不足，过牌`);
                 }
 
                 // ════ 超级坚果控池诱捕（P1-2）════
@@ -13538,6 +13696,8 @@ function autoFill(payload, _id) {
 
         if (typeof autoTriggerAnalysis === 'function') autoTriggerAnalysis();
     }
+    // 截图把牌都填好了 → 选牌网格没必要再占着位置(2026-09-11)
+    try { if (typeof pickerAutoState === 'function') pickerAutoState(); } catch (e) {}
 }
 
 // ─── 图片压缩（WebP 优先，降级 JPEG） ──────────────────
