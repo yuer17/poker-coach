@@ -110,6 +110,26 @@
         /* P2-4：窄屏右栏内容区可滚动 */
         #postRightContent { overflow-y: auto; }
 
+        /* ══════════ 大屏一屏化(2026-09-10，用户第2点) ══════════
+           用户："屏幕已经 2560×1440 了，还需要上下滑动才能显示全部内容，这完全没必要。"
+           实测根因有两层：
+             ① `.app-container{min-height:100vh}` 叠加 body 的 1rem padding —— **即使内容只有
+                1150px 高，文档也必然是 100vh+32px**，于是永远有一小段滚动；
+             ② 翻前区（时间线 289px + 翻前决策 325px）在翻后仍然全量占位（已由流程轴折叠解决）。
+           这里修 ①：大屏把外框钉成一屏高，两列各自内部滚动，页面本身不再滚。
+           矮窗口（<760px 高）与手机不套用——那里整页滚动才是对的。 */
+        @media (min-width: 1280px) and (min-height: 760px) {
+            body { overflow: hidden; }
+            .app-container { height: calc(100vh - 2rem); min-height: 0; }
+            .scroll-area { flex: 1 1 auto; min-height: 0; }
+            .col-left, .col-right { overflow-y: auto; overflow-x: hidden; min-height: 0;
+                                     overscroll-behavior: contain; scrollbar-width: thin; }
+            .col-left::-webkit-scrollbar, .col-right::-webkit-scrollbar { width: 8px; }
+            .col-left::-webkit-scrollbar-thumb, .col-right::-webkit-scrollbar-thumb {
+                background: rgba(255,255,255,.12); border-radius: 4px; }
+            #postRightContent { overflow: visible; }
+        }
+
         @media (min-width: 768px) {
             .scroll-area { flex-direction: row; padding: 1rem; gap: 1rem; }
             .col-left { flex: 1; height: auto; max-height: none; overflow: visible; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 0.6rem; }
@@ -156,7 +176,9 @@
             /* 容器放宽，2K/4K 铺开（宽度利用 2026-07-14：2000→2200） */
             .app-container { max-width: 2200px; }
             /* 融合单页(2026-07-14)：输入列收窄，输出列放宽（原 postLeft/postRight 比例迁移到主两列） */
-            .col-left  { flex: 0 0 34%; width: 34%; }
+            /* 流程融合(2026-09-10)：左列现在承载"牌面 + 翻前时间线 + 各街行动条"整条流程，
+               从 34% 放宽到 40%（2200 容器 ≈ 880px，正好容下 720px 上限的动作行 + 内边距） */
+            .col-left  { flex: 0 0 40%; width: 40%; }
             .col-right { flex: 1 1 0%; width: auto; min-width: 0; }
             /* 右区内部：column-count 高度均衡双列（替代刚性 grid）
                —— 修复旧 grid 的两病：① fit-content 在内容稀疏时把次要列收成窄条；
@@ -207,6 +229,35 @@
         /* ══ 融合单页(2026-07-14)：分区标题 + 选牌目标框 ══ */
         .zone-head { font-size: var(--fs-micro); font-weight: 700; letter-spacing: .08em; color: var(--text-muted); display: flex; align-items: center; gap: 8px; margin: 2px 2px 0; text-transform: uppercase; }
         .zone-head::after { content: ''; flex: 1; height: 1px; background: var(--border-primary); }
+
+        /* ══════════ 流程融合(2026-09-10，用户第1、3点) ══════════
+           打牌是顺序过程：翻前 → 翻牌 → 转牌 → 河牌。原来翻前座位带在左列、翻后行动条在右列，
+           录一手牌眼睛要跨列来回跳。现在两者合成左列一条竖向流程轴，节点圆点标出当前阶段；
+           进翻后后**翻前区自动折叠成一行摘要**（用户："打到翻牌阶段没必要再保留翻前窗口"），
+           点摘要行随时展开改位置/筹码。 */
+        .flow-track { position: relative; display: flex; flex-direction: column; gap: 0.5rem; padding-left: 16px; }
+        .flow-track::before { content: ''; position: absolute; left: 5px; top: 14px; bottom: 14px; width: 2px;
+            background: linear-gradient(180deg, var(--border-primary) 0%, rgba(87,169,255,.28) 100%); border-radius: 1px; }
+        .flow-node { position: relative; }
+        .flow-node::before { content: ''; position: absolute; left: -15px; top: 15px; width: 10px; height: 10px;
+            border-radius: 50%; background: var(--bg-body); border: 2px solid var(--border-primary); box-sizing: border-box; z-index: 1; }
+        .flow-node.active::before { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 0 3px rgba(87,169,255,.18); }
+        .flow-node.done::before { border-color: rgba(46,168,106,.75); background: rgba(46,168,106,.75); }
+        /* 折叠态：只留摘要行 */
+        .flow-node.zone-collapsed > *:not(.flow-summary) { display: none !important; }
+        .flow-node.zone-collapsed { padding: 5px 8px !important; }
+        .flow-summary { display: none; align-items: center; gap: 8px; cursor: pointer; font-size: var(--fs-caption);
+            color: var(--text-secondary); line-height: 1.5; }
+        .flow-node.zone-collapsed .flow-summary { display: flex; }
+        .flow-summary .fs-tag { font-size: var(--fs-micro); font-weight: 800; letter-spacing: .06em; color: var(--text-muted);
+            border: 1px solid var(--border-primary); border-radius: 4px; padding: 1px 5px; flex: 0 0 auto; }
+        .flow-summary .fs-body { font-family: var(--font-mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .flow-summary .fs-open { margin-left: auto; color: var(--accent); flex: 0 0 auto; font-size: var(--fs-micro); }
+        .flow-summary:hover .fs-open { text-decoration: underline; }
+        /* 翻前决策折叠后，摘要挂在 zone-head 上 */
+        #resultPanel.zone-fold, #mathProofPanel.zone-fold { display: none !important; }
+        #preDecisionSummary { font-family: var(--font-mono); font-size: var(--fs-caption); text-transform: none;
+            letter-spacing: 0; color: var(--text-secondary); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .pick-target-box { border: 1px solid var(--border-primary); border-radius: var(--radius-sm); padding: 4px 6px 6px; cursor: pointer; transition: border-color .15s, box-shadow .15s; background: var(--bg-deep); }
         .pick-target-box.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-dim); }
         .pick-target-label { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 700; margin-bottom: 3px; letter-spacing: .04em; }
@@ -620,16 +671,40 @@
                    color:var(--text-muted); cursor:pointer; }
         .tl-resp.set { border-style:solid; border-color:#e0a83a; color:#e0a83a; }
         .tl-resp:hover { filter:brightness(1.4); }
+        /* 我的第二轮应对(2026-09-10)：用身份色（红）与对手的应对（琥珀）区分，未表态时脉冲提示"该你了" */
+        .tl-resp.hero { border-color:rgba(194,59,75,.6); color:#ff7a7d; font-weight:700; }
+        .tl-resp.hero:not(.set) { animation: tlRespPulse 1.6s ease-in-out infinite; }
+        .tl-resp.hero.set { border-style:solid; border-color:#c23b4b; color:#ff9ea1; background:rgba(194,59,75,.14); }
+        @keyframes tlRespPulse { 0%,100% { background:rgba(194,59,75,.06); } 50% { background:rgba(194,59,75,.24); } }
         /* 挂件改用途(2026-09-08)：原为升盲倒计时（已移除），现显示唯一会变且影响决策的数字——距钱圈人数 */
         #moneyWidget.urgent { border-color: #e5484d; color: #ff7a7d; animation: blPulse 1s ease-in-out infinite; }
         @keyframes blPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.0); } 50% { box-shadow: 0 0 0 3px rgba(229,72,77,.35); } }
         .act-btn { min-height: 42px; font-size: var(--fs-body) !important; font-weight: 700; }
+        /* 行动区排版重做(2026-09-10)：动作四键等宽 grid + 独立尺度行，整组限宽，大屏不拉伸 */
+        .act-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 720px; }
+        .act-row.act-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 420px; }
+        .act-row .act-btn { width: 100%; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .act-btn.act-allin { color: #ff7a7d; border-color: rgba(229,72,77,.4); background: rgba(214,57,64,.10); }
+        .act-btn.act-allin:hover { background: rgba(214,57,64,.22); }
+        .size-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: 720px; margin-bottom: 8px; }
+        .size-lbl { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 700; flex: 0 0 auto; letter-spacing: .04em; }
+        .qc-btn.qc-size { flex: 0 0 auto; min-width: 54px; padding: 5px 8px; }
+        .amt-box { display: flex; align-items: stretch; border: 1px solid var(--border-primary); border-radius: var(--radius-sm);
+                   overflow: hidden; background: rgba(0,0,0,.3); flex: 0 0 auto; }
+        .amt-box input[type="number"] { width: 78px; border: none; background: transparent; text-align: center;
+                   font-family: var(--font-mono); font-size: var(--fs-body); color: var(--text-primary); height: 30px; padding: 0; border-radius: 0; }
+        .amt-box input[type="number"]:focus { outline: none; box-shadow: none; }
+        .amt-box .step-btn { width: 28px; border: none; background: rgba(255,255,255,.06); color: var(--text-secondary);
+                   cursor: pointer; font-size: var(--fs-title); line-height: 1; font-weight: 700; }
+        .amt-box .step-btn:hover { background: rgba(255,255,255,.18); color: var(--text-primary); }
+        .pct-hint { font-size: var(--fs-micro); color: var(--text-muted); font-family: var(--font-mono); flex: 0 0 auto; min-width: 62px; }
         .act-btn kbd, .qc-btn kbd { font-family: var(--font-mono); font-size: 10px; opacity: .55; margin-left: 5px; font-weight: 600; }
         .act-star { background: var(--accent) !important; color: #082744 !important; border-color: transparent !important;
                     box-shadow: 0 0 0 3px rgba(87,169,255,.30); }
         .act-star kbd { opacity: .75; color: #082744; }
         @media (max-width: 767.98px) {
             .act-btn kbd, .qc-btn kbd, .act-hint { display: none; }
+            .act-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .tl-ribbon { gap: 3px; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); }
             .tl-seat { padding: 4px 1px; }
             .tl-seat .tl-act { font-size: var(--fs-micro); }
@@ -910,7 +985,17 @@
                 </div>
 
                 <!-- 融合单页(2026-07-14)：场景与位置区（翻前场景 Tabs + 位置/筹码动态输入 + 解析入口） -->
-                <div class="panel-bg p-2 rounded shrink-0" id="scenarioZone" style="position:relative;">
+
+                <!-- 流程融合(2026-09-10，用户第1点)：打牌是顺序过程——翻前座位带与翻后各街行动
+                     原来分居左右两列，眼睛要来回跳。现在合并成左列一条竖向流程轴：
+                     翻前 → 翻牌 → 转牌 → 河牌 自上而下，所有选择在同一个版面内完成。 -->
+                <div class="zone-head">对局流程 · 翻前 → 翻后</div>
+                <div class="flow-track">
+                <div class="panel-bg p-2 rounded shrink-0 flow-node flow-pre" id="scenarioZone" style="position:relative;">
+                    <!-- 折叠摘要行(2026-09-10)：进翻后自动折叠时显示，点一下展开改位置/筹码 -->
+                    <div class="flow-summary" onclick="togglePreflopZone()" title="点击展开翻前时间线（改位置/筹码/行动）">
+                        <span class="fs-tag">翻前</span><span id="tlSummaryText" class="fs-body">—</span><span class="fs-open">展开 ▾</span>
+                    </div>
                     <!-- 翻前行动时间线(2026-07-21)：座位带按行动顺序记录"谁做了什么"，场景自动推导并编译到既有 7 模式引擎；
                          传统场景标签保留在下方折叠区作兼容/强制入口 -->
                     <div class="flex justify-between items-center mb-1.5 gap-2 flex-wrap">
@@ -962,10 +1047,59 @@
                     </button>
                 </div>
 
-                <!-- 布局R3(2026-07-14b)：翻前决策移入左列（场景与位置正下方）——
-                     翻前流「牌面 → 场景 → 解析 → 决策」在左列一条竖线完成；
-                     行动线（翻后）移至右列顶部与翻后分析同列。resultPanel id/内部结构零改动 -->
-                <div class="zone-head">决策 · 翻前</div>
+                <div class="panel-bg p-2 rounded shrink-0 flex flex-col gap-1.5 flow-node flow-post" id="postActionZone" style="opacity:0.55;transition:opacity .2s;">
+                    <div class="flex justify-between items-center gap-2">
+                        <div id="actionZoneHint" class="text-[10px] text-gray-500 flex-1">选满 3 张公共牌后，在此录入双方行动并出翻后决策</div>
+                        <button onclick="clearStreetActions()" title="只清除当前街道的行动记录" class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-400 hover:bg-orange-700/50 active:scale-95 transition-all shrink-0 ml-auto">↺ 清本街</button>
+                    </div>
+
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1">
+                            <label class="text-[10px] text-yellow-500 block mb-1">底池 (BB)</label>
+                            <input type="number" id="potDirectInput" min="0.5" step="0.5" value="0"
+                                class="p-1 text-center font-bold text-sm h-[28px] w-full text-yellow-400"
+                                oninput="onPotDirectChange(this.value)">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-[10px] text-gray-400 block mb-1">有效筹码 (BB)</label>
+                            <input type="number" id="effDirectInput" min="0.5" step="0.5" value="0"
+                                class="p-1 text-center text-sm h-[28px] w-full"
+                                oninput="onEffDirectChange(this.value)">
+                        </div>
+                    </div>
+
+                    <!-- 隐藏的旧兼容元素（potInfoFlop/Turn/River 供 updatePotUI 使用） -->
+                    <span id="potInfoFlop" class="hidden"></span>
+                    <span id="potInfoTurn" class="hidden"></span>
+                    <span id="potInfoRiver" class="hidden"></span>
+                    <div id="betPanelFlop" class="hidden"></div>
+                    <div id="betPanelTurn" class="hidden"></div>
+                    <div id="betPanelRiver" class="hidden"></div>
+
+                    <!-- 动态下注区（由 renderBettingPanel 填充） -->
+                    <div id="postBettingArea"></div>
+
+                    <!-- 动作摘要（由 renderActionSummary 填充） -->
+                    <div id="actionSummaryArea"></div>
+                </div>
+                </div>
+            </div>
+
+            <!-- 布局R3(2026-07-14b)：输出列改为纯翻后流——行动线（录入）在上、分析（结果）在下，
+                 视线自上而下：录完行动即在正下方看决策。postActionZone/postRight 的 id/内部结构全部保留 -->
+            <div class="col-right flex flex-col gap-1.5 w-full md:w-1/2 shrink-0">
+
+                <!-- 常驻决策 HUD(2026-07-21)：桌面 sticky 置顶、手机 fixed 底部；翻前/翻后共用一个位置，
+                     动作词 + 尺度 + 频率条 + 一句理由 + 明确/边缘/混合 标识，状态变即刷新（updateDecisionHUD） -->
+                <div id="decisionHUD" class="hud-empty" data-sem="neutral">
+                    <div class="hud-top"><span id="hudStage" class="hud-stage">翻前</span><span id="hudSrc" class="hud-src" style="display:none"></span><span id="hudBadge" class="hud-badge" style="display:none"></span></div>
+                    <div id="hudAction" class="hud-action">等待输入</div>
+                    <div id="hudSizing" class="hud-sizing" style="display:none"></div>
+                    <div id="hudFreq" class="freq-bar hud-freq" style="display:none"></div>
+                    <div id="hudWhy" class="hud-why" style="display:none"></div>
+                </div>
+
+                <div class="zone-head" id="preDecisionHead"><span>决策 · 翻前</span><span id="preDecisionSummary" style="display:none"></span><button id="preDecisionToggle" onclick="togglePreDecision()" class="macro-btn" style="display:none" title="展开/收起翻前决策（进翻后自动收起，腾出竖向空间）">展开 ▾</button></div>
                 <div id="resultPanel" class="flex flex-col gap-1.5 w-full invisible shrink-0">
 
                 <div id="actionBox" class="flex flex-col items-center justify-center p-2 rounded border-2 text-center shadow-lg flex-1 min-h-[160px] overflow-hidden">
@@ -1011,58 +1145,6 @@
                     </div>
                 </div>
 
-                </div>
-            </div>
-
-            <!-- 布局R3(2026-07-14b)：输出列改为纯翻后流——行动线（录入）在上、分析（结果）在下，
-                 视线自上而下：录完行动即在正下方看决策。postActionZone/postRight 的 id/内部结构全部保留 -->
-            <div class="col-right flex flex-col gap-1.5 w-full md:w-1/2 shrink-0">
-
-                <!-- 常驻决策 HUD(2026-07-21)：桌面 sticky 置顶、手机 fixed 底部；翻前/翻后共用一个位置，
-                     动作词 + 尺度 + 频率条 + 一句理由 + 明确/边缘/混合 标识，状态变即刷新（updateDecisionHUD） -->
-                <div id="decisionHUD" class="hud-empty" data-sem="neutral">
-                    <div class="hud-top"><span id="hudStage" class="hud-stage">翻前</span><span id="hudSrc" class="hud-src" style="display:none"></span><span id="hudBadge" class="hud-badge" style="display:none"></span></div>
-                    <div id="hudAction" class="hud-action">等待输入</div>
-                    <div id="hudSizing" class="hud-sizing" style="display:none"></div>
-                    <div id="hudFreq" class="freq-bar hud-freq" style="display:none"></div>
-                    <div id="hudWhy" class="hud-why" style="display:none"></div>
-                </div>
-
-                <div class="zone-head">行动线 · 翻后</div>
-                <div class="panel-bg p-2 rounded shrink-0 flex flex-col gap-1.5" id="postActionZone" style="opacity:0.55;transition:opacity .2s;">
-                    <div class="flex justify-between items-center gap-2">
-                        <div id="actionZoneHint" class="text-[10px] text-gray-500 flex-1">选满 3 张公共牌后，在此录入双方行动并出翻后决策</div>
-                        <button onclick="clearStreetActions()" title="只清除当前街道的行动记录" class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-400 hover:bg-orange-700/50 active:scale-95 transition-all shrink-0 ml-auto">↺ 清本街</button>
-                    </div>
-
-                    <div class="flex gap-2 items-end">
-                        <div class="flex-1">
-                            <label class="text-[10px] text-yellow-500 block mb-1">底池 (BB)</label>
-                            <input type="number" id="potDirectInput" min="0.5" step="0.5" value="0"
-                                class="p-1 text-center font-bold text-sm h-[28px] w-full text-yellow-400"
-                                oninput="onPotDirectChange(this.value)">
-                        </div>
-                        <div class="flex-1">
-                            <label class="text-[10px] text-gray-400 block mb-1">有效筹码 (BB)</label>
-                            <input type="number" id="effDirectInput" min="0.5" step="0.5" value="0"
-                                class="p-1 text-center text-sm h-[28px] w-full"
-                                oninput="onEffDirectChange(this.value)">
-                        </div>
-                    </div>
-
-                    <!-- 隐藏的旧兼容元素（potInfoFlop/Turn/River 供 updatePotUI 使用） -->
-                    <span id="potInfoFlop" class="hidden"></span>
-                    <span id="potInfoTurn" class="hidden"></span>
-                    <span id="potInfoRiver" class="hidden"></span>
-                    <div id="betPanelFlop" class="hidden"></div>
-                    <div id="betPanelTurn" class="hidden"></div>
-                    <div id="betPanelRiver" class="hidden"></div>
-
-                    <!-- 动态下注区（由 renderBettingPanel 填充） -->
-                    <div id="postBettingArea"></div>
-
-                    <!-- 动作摘要（由 renderActionSummary 填充） -->
-                    <div id="actionSummaryArea"></div>
                 </div>
 
                 <div class="zone-head"><span>分析 · 翻后</span><button id="postDetailsToggle" onclick="togglePostDetails()" class="macro-btn" title="展开/收起对手范围、牌面纹理、手型与调试卡（分层显示 2026-07-21）">详情 ▸</button></div>
@@ -1325,14 +1407,21 @@
         // 解法：改用**捕获阶段**监听 —— 捕获在目标元素自己的 onclick 之前触发，
         // 此时 DOM 还完整，closest() 判定可靠。
         // ══════════════════════════════════════════════════════════════════
-        // 输入框滚轮调值(2026-09-08，用户诉求：更快地输入)
+        // 输入框滚轮调值（2026-09-08 引入；2026-09-10 重做：防误触 + 跟手度）
         // ══════════════════════════════════════════════════════════════════
-        // 鼠标悬停在任意数字输入框上滚动即可改值，无需点进去打字。
-        // 步长自适应：滚得越快步长越大（连续滚动时按事件间隔加速，最高 10×），
-        // 慢滚一格一步、快滚可以迅速拉到目标量级——筹码/底池这类跨度大的框尤其省事。
-        // 触发后派发 input 事件，走各输入框原有的 oninput 逻辑（联动/校验一律不绕过）。
+        // 用户反馈两点，都已修：
+        //  ① **防误触**：原来"悬停即可滚动改值"——鼠标只是路过输入框上方去滚页面，
+        //     筹码/底池就被悄悄改了，而且页面还滚不动。现在必须**先点进这个框（聚焦）**
+        //     才接管滚轮；未聚焦时完全不拦截，页面照常滚动。
+        //  ② **跟手度**：原来每收到一个 wheel 事件走一步。鼠标滚轮一格发一个事件、刚好合适，
+        //     但触控板一次轻扫会发几十个小 delta 事件 → 数值瞬间飞出去，这才是"不跟手"的根因。
+        //     现在按设备分流：鼠标滚轮（|delta| ≥ 40）一格一步；触控板按**像素累积**
+        //     到阈值才走一步，滑多远＝改多少，与手指位移成正比。
+        // 修饰键：Shift = 精调（步长 ×0.2）· Alt = 粗调（×5）。
+        // 改值后派发 input + change，各输入框原有的 oninput 联动/校验一律不绕过。
         (() => {
-            let lastTs = 0, streak = 0, lastDir = 0, lastEl = null;
+            let lastTs = 0, streak = 0, lastDir = 0, lastEl = null, acc = 0;
+            const PX_PER_STEP = 26;      // 触控板：累积多少像素位移走一步
             const stepOf = (el) => {
                 const s = parseFloat(el.step);
                 if (s > 0) return s;
@@ -1349,18 +1438,36 @@
                 const type = (el.type || '').toLowerCase();
                 if (type !== 'number' && !(type === 'text' && el.inputMode === 'numeric')) return;
                 if (el.disabled || el.readOnly) return;
-                e.preventDefault();                       // 阻止页面滚动
+                // ① 防误触：没点选就不接管——不 preventDefault，页面正常滚动
+                if (document.activeElement !== el) return;
+                e.preventDefault();
+
+                // ② 归一化 delta（行/页模式换算成像素）并按设备分流
+                let dy = e.deltaY;
+                if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= 400;
+                if (!dy) return;
+                const dir = dy < 0 ? 1 : -1;              // 上滚 = 增大
                 const now = performance.now();
-                const dir = e.deltaY < 0 ? 1 : -1;
-                // 加速度只在"同一个框、同一方向、连续快滚"时累积——
-                // 反向或换框立即归零，否则往回调一格会多跳一截，手感很怪。
-                streak = (now - lastTs < 120 && dir === lastDir && el === lastEl)
-                    ? Math.min(streak + 1, 40) : 0;
-                lastTs = now; lastDir = dir; lastEl = el;
-                const accel = 1 + streak * 0.25;          // 连续快滚 → 步长最高约 10×
-                const step = stepOf(el) * accel;
+                // 换框 / 反向 / 停顿超过 220ms → 累积与加速全部归零（否则往回调一格会多跳一截）
+                if (el !== lastEl || dir !== lastDir || now - lastTs > 220) { acc = 0; streak = 0; }
+                lastEl = el; lastDir = dir; lastTs = now;
+
+                let steps;
+                if (Math.abs(dy) >= 40) {                 // 鼠标滚轮：一格一步 + 连续滚加速
+                    streak = Math.min(streak + 1, 20);
+                    steps = dir * (1 + Math.floor(streak / 4));   // 最高约 6 步/格
+                } else {                                  // 触控板：位移累积，滑多远＝改多少
+                    acc += dy;
+                    const n = Math.trunc(acc / PX_PER_STEP);
+                    if (!n) return;
+                    acc -= n * PX_PER_STEP;
+                    steps = -n;
+                }
+
+                const mult = e.shiftKey ? 0.2 : e.altKey ? 5 : 1;   // 精调 / 粗调
+                const step = stepOf(el) * mult;
                 const cur = parseFloat(el.value);
-                let next = (isFinite(cur) ? cur : 0) + dir * step;
+                let next = (isFinite(cur) ? cur : 0) + steps * step;
                 const min = parseFloat(el.min), max = parseFloat(el.max);
                 if (isFinite(min)) next = Math.max(min, next);
                 else next = Math.max(0, next);            // 牌局里没有负数
@@ -3399,7 +3506,7 @@
                        _manualOverride: !!pt._manualOverride },
                 entered: !!postState._entered, firstToAct: postState.firstToAct, heroPosition: postState.heroPosition,
                 extraVillains: [...(postState.extraVillains || [])],
-                tl: { events: JSON.parse(JSON.stringify(tlEvents || {})), hero: tlHero ? { ...tlHero } : null },
+                tl: { events: JSON.parse(JSON.stringify(tlEvents || {})), hero: tlHero ? JSON.parse(JSON.stringify(tlHero)) : null },
                 resultVisible: !!rp && !rp.classList.contains('invisible') && !rp.classList.contains('hidden')
             });
         }
@@ -3611,6 +3718,8 @@
                     srcEl.textContent = s.k; srcEl.title = s.t; srcEl.dataset.src = s.c; srcEl.style.display = '';
                 } else srcEl.style.display = 'none';
             }
+            // 流程轴(2026-09-10)：HUD 是"状态一变就刷新"的统一钩子，摘要/折叠跟着它走
+            try { updateFlowStage(); } catch (e) {}
         }
 
         // ══════════ 分层显示(2026-07-21)：默认只看牌局状态 + 决策 + 理由 ══════════
@@ -5357,6 +5466,36 @@
             // ══ 情形 3：我已行动 —— 看我之后有没有人再加注 ══
             let heroAct = tlHero.action;            // open / 3bet / call / limp
             const heroAmt = tlHero.amount || 0;
+            /**
+             * 我的第二轮应对(2026-09-10)：后位再加注之后，我点了 弃/跟/再加注。
+             * 决策模式**不变**（下方仍是"面对这个加注该怎么打"的复核），变的是：
+             *   fold  → 本手结束，不出建议（blocked）
+             *   call  → 可以进翻后；底池按双方投入到该加注额记账（face3b/coldCall 分支本就如此）
+             *   raise → 我是翻前侵略者，底池按我这次加注额记账（见 initPotTracker）
+             */
+            const applyHeroResp = (o) => {
+                const r = tlHero && tlHero.resp;
+                if (!r || !r.action || r.action === 'pending') return o;
+                if (r.action === 'fold') {
+                    o.blocked = true;
+                    o.label += ' → 我弃牌';
+                    o.note = '我已弃牌，本手结束。点我的座位上的「→」可切回待表态重新推演。';
+                    return o;
+                }
+                if (r.action === 'call') {
+                    o.heroResp = 'call';
+                    o.label += ' → 我跟注';
+                    o.note = (o.note ? o.note + '；' : '') + '我已跟注：下方为该决策的复核，翻后底池按双方投入到该加注额记账';
+                    return o;
+                }
+                if (r.action === 'raise') {
+                    o.heroResp = 'raise'; o.heroRespAmt = r.amount || 0;
+                    o.label += ` → 我再加注到 ${r.amount}BB`;
+                    o.note = (o.note ? o.note + '；' : '') + '我已再加注：下方为该决策的复核，翻后按我这次加注额记账（我是翻前侵略者）';
+                    return o;
+                }
+                return o;
+            };
             // 语义归一(2026-09-08)：我标了"开池"但我之前已经有人加注 —— 那实际上是再加注。
             // 原来它落进 faceBet 分支，于是"我加注到 6"却被建议"平跟"，自相矛盾。
             if (heroAct === 'open' && raisesBefore.length) heroAct = raisesBefore.length >= 2 ? '4bet' : '3bet';
@@ -5371,13 +5510,13 @@
                         out.threeBetSize = rAfterFirst.amt || tlThreeBetDefault(out.raiseSize);
                         out.fourBetSize = raisesAfter[1].amt || Math.round(out.threeBetSize * 2.3 * 2) / 2;
                         out.label = `我开池 ${out.raiseSize} → ${tlLbl(rAfterFirst.pos)} 3-Bet ${out.threeBetSize} → ${tlLbl(raisesAfter[1].pos)} 4-Bet 到 ${out.fourBetSize}BB`;
-                        return out;
+                        return applyHeroResp(out);
                     }
                     out.mode = 'face3b'; out.posV = rAfterFirst.pos;
                     out.threeBetSize = rAfterFirst.amt || tlThreeBetDefault(out.raiseSize);
                     out.label = `我开池 ${out.raiseSize}BB → ${tlLbl(rAfterFirst.pos)} 3-Bet 到 ${out.threeBetSize}BB`;
                     if (callsAfter.length) out.note = `另有 ${callsAfter.map(x => tlLbl(x.pos)).join('/')} 跟注`;
-                    return out;
+                    return applyHeroResp(out);
                 }
                 // 我 3-Bet → 后位再加注 = 4-Bet
                 if (heroAct === '3bet') {
@@ -5387,7 +5526,7 @@
                     out.raiseSize = lastRaiseBefore ? (lastRaiseBefore.amt || openAmt) : openAmt;
                     out.label = `我 3-Bet 到 ${out.threeBetSize}BB → ${tlLbl(rAfterFirst.pos)} 4-Bet 到 ${out.fourBetSize}BB`;
                     out.note = '面对 4-Bet：5-Bet 全下的 EV 是实算的（含他的弃牌率），跟注分支为启发式';
-                    return out;
+                    return applyHeroResp(out);
                 }
                 // 我跟注 → 后位加注 = 对我 Squeeze。用 coldCall 建模而不是 faceBet：
                 // coldCall 会把**开池者已投入的那份算作死钱**，而 faceBet 会把挤压额当成开池，
@@ -5398,7 +5537,7 @@
                     out.threeBetSize = rAfterFirst.amt || tlThreeBetDefault(out.raiseSize);
                     out.label = `${tlLbl(lastRaiseBefore.pos)} 开池 ${out.raiseSize} → 我跟注 → ${tlLbl(rAfterFirst.pos)} Squeeze 到 ${out.threeBetSize}BB`;
                     out.note = '面对 Squeeze，按 Cold Call（面对 3-Bet 的跟注决策）近似';
-                    return out;
+                    return applyHeroResp(out);
                 }
                 // 我跛入被 Iso-raise，或跟注但前方无加注 → 按面对该加注处理
                 out.mode = 'faceBet'; out.posV = rAfterFirst.pos;
@@ -5406,7 +5545,7 @@
                 out.label = heroAct === 'call'
                     ? `我已跟注 → ${tlLbl(rAfterFirst.pos)} 加注到 ${out.raiseSize}BB`
                     : `我跛入 → ${tlLbl(rAfterFirst.pos)} 加注到 ${out.raiseSize}BB（Iso-raise）`;
-                return out;
+                return applyHeroResp(out);
             }
 
             // ── 第二轮应对(2026-09-08)：我加注后，前方已行动者的再次表态 ──
@@ -5655,9 +5794,21 @@
                 const respLbl = { fold: '弃', call: '跟注', raise: '再加注' };
                 const respTxt = needResp ? (respLbl[(e.resp && e.resp.action) || 'pending'] || '？待表态') : '';
                 const respAmt = needResp && e.resp && e.resp.action === 'raise' && e.resp.amount ? ` ${e.resp.amount}` : '';
+                // 我的第二轮应对(2026-09-10，用户报的 bug)：我开池/跛入/跟注之后**后位再加注**时，
+                // 座位带上我只有"我已开池"一个状态——跟注与弃牌根本无处可点，于是
+                // ① 那手牌在界面上永远停在"面对 3-Bet"，② 跟注后进不了翻后（底池也就无从记账）。
+                // 对手座位早就有 tl-resp（我加注后前方玩家的再次表态），我方一直缺同一件东西。
+                const raiseAfterHero = !!tlHero && seats.slice(hi + 1).some(pp => (tlEvents[pp] || {}).action === 'raise');
+                const heroNeedResp = isHero && raiseAfterHero && ['open', '3bet', 'call', 'limp'].includes(tlHero.action);
+                const hResp = tlHero && tlHero.resp;
+                const heroRespTxt = heroNeedResp
+                    ? ({ fold: '我弃牌', call: '我跟注', raise: '我再加注' }[(hResp && hResp.action)] || '？我的应对')
+                    : '';
+                const heroRespAmt = heroNeedResp && hResp && hResp.action === 'raise' && hResp.amount ? ` ${hResp.amount}` : '';
                 return `<div class="tl-seat ${cls}${disabled ? ' disabled' : ''}" data-tlseat="${p}" title="${disabled ? '我先行动；先点我的座位记录"我开池/我已跟注"，后位才能行动' : '单击循环 弃→加注→跟注→全下 · 右键/长按选择'}">
                     <div class="tl-pos">${isHero ? '我 · ' : ''}${tlLbl(p)}</div><div class="tl-act">${act}</div>` +
                     (needResp ? `<button class="tl-resp${e.resp ? ' set' : ''}" data-tlresp="${p}" title="我加注后，他的应对：单击循环 待表态→弃→跟注→再加注">→ ${respTxt}${respAmt}</button>` : '') +
+                    (heroNeedResp ? `<button class="tl-resp hero${hResp ? ' set' : ''}" data-tlheroresp="1" title="后位加注了——我的应对：单击循环 待表态→弃牌→跟注→再加注">→ ${heroRespTxt}${heroRespAmt}</button>` : '') +
                     `</div>`;
             }).join('');
             // 第二轮应对按钮：单击循环 待表态 → 弃 → 跟注 → 再加注
@@ -5675,6 +5826,23 @@
                         const heroAmt = (tlHero && tlHero.amount) || globalThreeBetSize;
                         tlEvents[pos].resp = { action: 'raise', amount: Math.round(heroAmt * 2.3 * 2) / 2 };
                     } else tlEvents[pos].resp = { action: next };
+                    tlScheduleApply();
+                });
+            });
+            // 我的第二轮应对：待表态 → 弃牌 → 跟注 → 再加注（默认 2.3× 他的加注额）
+            ribbon.querySelectorAll('[data-tlheroresp]').forEach(btn => {
+                btn.addEventListener('click', (ev2) => {
+                    ev2.stopPropagation();          // 不要触发座位本身的动作循环
+                    if (!tlHero) return;
+                    const cur = (tlHero.resp || {}).action || 'pending';
+                    const seq = ['pending', 'fold', 'call', 'raise'];
+                    const next = seq[(seq.indexOf(cur) + 1) % seq.length];
+                    pushUndo(`时间线：我的应对 → ${{ pending: '待表态', fold: '弃牌', call: '跟注', raise: '再加注' }[next]}`);
+                    if (next === 'pending') delete tlHero.resp;
+                    else if (next === 'raise') {
+                        const maxAfter = Math.max(0, ...seats.slice(hi + 1).map(pp => (tlEvents[pp] || {}).amount || 0));
+                        tlHero.resp = { action: 'raise', amount: Math.round(Math.max(maxAfter * 2.3, 3) * 2) / 2 };
+                    } else tlHero.resp = { action: next };
                     tlScheduleApply();
                 });
             });
@@ -5924,6 +6092,7 @@
                                limp: sbFirstIn ? '已跛入(SB)' : '已跛入', fold: '已弃牌' };
                 pushUndo(`时间线：我 → ${lbl3[next]}`);
                 if (next === 'none') { tlHero = null; seats.slice(hi + 1).forEach(p => delete tlEvents[p]); }
+                // 我的动作一变，之前记的"我的应对"就失效了（下面各分支都重建 tlHero，天然清空）
                 else if (next === 'open') tlHero = { action: 'open', amount: tlOpenDefault() };
                 else if (next === '3bet') {
                     // 默认 3-Bet 额：面对最大一笔加注的 3.4 倍取 .5（与 tlDefaultRaise 同口径）
@@ -7733,7 +7902,10 @@
                 each = globalRaiseSize * (4 + nCallers); // Squeeze 尺度（与翻前引擎一致），原加注者跟注
                 extraDead = globalRaiseSize * nCallers;  // 被挤走的跟注者投入
             } else if (currentMode === 'face3b') {
-                each = globalThreeBetSize;
+                // 我的第二轮应对(2026-09-10)：我对这个 3-Bet 4-Bet 了 → 双方投入是我的 4-Bet 额
+                each = (typeof tlHero !== 'undefined' && tlHero && tlHero.resp
+                        && tlHero.resp.action === 'raise' && tlHero.resp.amount > 0)
+                    ? tlHero.resp.amount : globalThreeBetSize;
             } else if (currentMode === 'coldCall') {
                 each = globalThreeBetSize;
                 extraDead = openAmt;                     // 开池者弃牌留下的开池额
@@ -8921,6 +9093,54 @@
             return { text: '', color: '' };
         }
 
+        // ══════════════════════════════════════════════════════════════════
+        // 流程轴阶段（2026-09-10，用户第1、3点）
+        // ══════════════════════════════════════════════════════════════════
+        // 左列流程轴的当前节点高亮 + 进翻后自动折叠翻前区（时间线与翻前决策）。
+        // 折叠是**默认**而非强制：点摘要行/「展开」即可展开，展开状态在本手内保持；
+        // 回到翻前（清公共牌/下一手）自动复位，下一次进翻后重新折叠。
+        let _preZoneUserOpen = false, _preDecUserOpen = false;
+        function preflopSummaryText() {
+            try {
+                const d = deriveScenario();
+                const pos = POS_LABEL[globalPosHero] || globalPosHero || '?';
+                return `我 ${pos} · ${d.label || '—'} · ${globalHeroStack}BB`;
+            } catch (e) { return '—'; }
+        }
+        function updateFlowStage() {
+            try {
+                const cnt = postState.board.filter(c => c !== null).length;
+                const inPost = cnt >= 3;
+                if (!inPost) { _preZoneUserOpen = false; _preDecUserOpen = false; }
+                const pre = document.getElementById('scenarioZone');
+                const post = document.getElementById('postActionZone');
+                if (pre) {
+                    pre.classList.toggle('active', !inPost);
+                    pre.classList.toggle('done', inPost);
+                    pre.classList.toggle('zone-collapsed', inPost && !_preZoneUserOpen);
+                    const t = document.getElementById('tlSummaryText');
+                    if (t) t.textContent = preflopSummaryText();
+                }
+                if (post) post.classList.toggle('active', inPost);
+                const foldDec = inPost && !_preDecUserOpen;
+                const rp = document.getElementById('resultPanel');
+                const mp = document.getElementById('mathProofPanel');
+                if (rp) rp.classList.toggle('zone-fold', foldDec);
+                if (mp) mp.classList.toggle('zone-fold', foldDec);
+                const btn = document.getElementById('preDecisionToggle');
+                if (btn) { btn.style.display = inPost ? '' : 'none'; btn.textContent = foldDec ? '展开 ▾' : '收起 ▴'; }
+                const sum = document.getElementById('preDecisionSummary');
+                if (sum) {
+                    const v = (document.getElementById('actionVerdict')?.innerText || '').replace(/\s+/g, ' ').trim();
+                    const show = inPost && foldDec && !!v;
+                    sum.style.display = show ? '' : 'none';
+                    sum.textContent = show ? '· ' + (v.length > 34 ? v.slice(0, 34) + '…' : v) : '';
+                }
+            } catch (e) {}
+        }
+        function togglePreflopZone() { _preZoneUserOpen = !_preZoneUserOpen; updateFlowStage(); }
+        function togglePreDecision() { _preDecUserOpen = !_preDecUserOpen; updateFlowStage(); }
+
         /**
          * 更新阶段状态条（槽位下方的提示行）
          */
@@ -8939,6 +9159,7 @@
                 const zone = document.getElementById('postActionZone');
                 if (zone) zone.style.opacity = cnt >= 3 ? '1' : '0.55';
             } catch (e) {}
+            updateFlowStage();   // 流程轴节点高亮 + 翻前区自动折叠（2026-09-10）
         }
 
         // 渲染公共牌选牌网格——融合单页(2026-07-14)：复用共享网格（heroPicker 容器），
@@ -9078,11 +9299,28 @@
         // 实时尺度反推(2026-07-14)：输入下注额即时显示"= X% 底池"——用户从牌桌
         // 读到的是具体数字，工具替他反推底池比例（替代原对手侧底池比例快捷按钮）
         window.updateBetPct = function(el) {
-            const span = document.getElementById('betPctHint');
-            if (!span) return;
             const v = parseFloat(el.value);
             const pot = postState.potTracker.currentPot || 0;
-            span.textContent = (v > 0 && pot > 0) ? `= ${(v / pot * 100).toFixed(0)}% 底池` : '';
+            const span = document.getElementById('betPctHint');
+            if (span) span.textContent = (v > 0 && pot > 0) ? `= ${(v / pot * 100).toFixed(0)}% 底池` : '';
+            // 排版重做(2026-09-10)：金额直接写在动作按钮上（"加注 12.5"），输入即同步
+            const lb = document.getElementById('aggrBtnLabel');
+            if (lb) {
+                const w = el.dataset.word || '下注';
+                const star = lb.dataset.star === '1' ? '★ ' : '';
+                lb.textContent = star + (v > 0 ? `${w} ${v}` : w);
+            }
+        };
+        // 金额步进(2026-09-10)：一档 ≈ 10% 底池（下限 0.5BB），滚轮/打字之外的第三种改额方式
+        window.stepBet = function(inputId, dir) {
+            const el = document.getElementById(inputId);
+            if (!el) return;
+            const pot = postState.potTracker.currentPot || 0;
+            const step = Math.max(0.5, Math.round(pot * 0.1 * 2) / 2);
+            const cur = parseFloat(el.value);
+            const next = Math.max(0.5, Math.round(((isFinite(cur) ? cur : 0) + dir * step) * 2) / 2);
+            el.value = next;
+            updateBetPct(el);
         };
 
         // 速记整街录入(2026-07-14)：瀑布式的高效替代——一行录完整条街行动。
@@ -9511,37 +9749,48 @@
                 const passClick = isFacing ? (isHero ? 'recordHeroCall()' : "setActionRecord('villain','call',0)")
                                            : (isHero ? 'recordHeroCheck()' : 'recordVillainCheck()');
 
+                // ══ 行动区排版重做(2026-09-10，用户第4点：「弃牌过牌在一起、下注在另一边、
+                //    全押又在另一边，中间一个完全不对称的输入框格子」) ══
+                //    原来是一行五个不同宽度的元素 [弃牌72][跟注88][输入框 flex-1][下注64][全押64]——
+                //    输入框吃掉所有剩余宽度，大屏（右列 1400px）下被拉成近千像素，
+                //    四个按钮被挤到两端、中间一片空白。现在按职责拆两行，与真实扑克客户端一致：
+                //      · 尺度行：比例/倍数快捷 + 金额（带 −/+ 步进）+ 实时"= X% 底池"
+                //      · 动作行：四键等宽 grid，整组限宽 720px —— 屏幕再宽也不拉伸变形
                 if (isFacingAllin) {
                     const allinAmt = lastAggAct ? lastAggAct.amount : effStack;
                     html += `<div class="text-[10px] text-orange-400/80 mb-1.5 px-1 font-bold">⚠ 对手全下 ${allinAmt.toFixed(1)}BB，仅可跟注或弃牌</div>`;
-                    html += `<div class="flex gap-1.5 items-center">
-                        <button onclick="${foldClick}" class="act-btn py-2 text-xs rounded-md border ${foldCls} active:scale-95 transition-all" style="flex:1">${foldStar ? '★ ' : ''}弃牌${isHero ? '<kbd>L</kbd>' : ''}</button>
-                        <button onclick="${passClick}" class="act-btn py-2 text-xs rounded-md border ${passCls} active:scale-95 transition-all" style="flex:1.4">${passiveStar ? '★ ' : ''}${passiveLbl}${isHero ? '<kbd>J</kbd>' : ''}</button>
+                    html += `<div class="act-row act-row-2">
+                        <button onclick="${foldClick}" class="act-btn rounded-md border ${foldCls} active:scale-95 transition-all">${foldStar ? '★ ' : ''}弃牌${isHero ? '<kbd>L</kbd>' : ''}</button>
+                        <button onclick="${passClick}" class="act-btn rounded-md border ${passCls} active:scale-95 transition-all">${passiveStar ? '★ ' : ''}${passiveLbl}${isHero ? '<kbd>J</kbd>' : ''}</button>
                     </div>`;
                 } else {
-                    html += `<div class="flex gap-1.5 items-center">
-                        <button ${foldOn ? `onclick="${foldClick}"` : 'disabled'} class="act-btn py-2 text-xs rounded-md border ${foldCls} active:scale-95 transition-all shrink-0" style="min-width:72px">${foldStar ? '★ ' : ''}弃牌${isHero ? '<kbd>L</kbd>' : ''}</button>
-                        <button onclick="${passClick}" class="act-btn py-2 text-xs rounded-md border ${passCls} active:scale-95 transition-all shrink-0" style="min-width:88px">${passiveStar ? '★ ' : ''}${passiveLbl}${isHero ? '<kbd>J</kbd>' : ''}</button>
-                        <input id="${inputId}" type="number" min="0.5" step="0.5" value="${prefill}"
-                            oninput="updateBetPct(this)"
-                            onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();commitCustomAction('${playerKey}','${inputId}','${aggrType}');}"
-                            class="flex-1 min-w-0 bg-black/30 border border-white/10 rounded-md px-2 py-1.5 text-xs text-gray-300 outline-none"
-                            placeholder="${aggrWord} BB" />
-                        <button onclick="commitCustomAction('${playerKey}','${inputId}','${aggrType}')"
-                            class="act-btn py-2 px-2 text-xs rounded-md ${aggrCls} active:scale-95 transition-all shrink-0" style="min-width:64px">${aggrStar ? '★ ' : ''}${aggrWord}▶${isHero ? '<kbd>K</kbd>' : ''}</button>
-                        <button onclick="quickCommit('${playerKey}','${aggrType}','allin')" class="act-btn qc-btn qc-allin shrink-0" style="flex:0 0 64px;padding:8px 0;">全押${isHero ? '<kbd>M</kbd>' : ''}</button>
+                    const preNum = prefill !== '' ? parseFloat(prefill) : 0;
+                    const aggrLabel = (preNum > 0 ? `${aggrWord} ${preNum}` : aggrWord);
+                    html += `<div class="size-row">
+                        <span class="size-lbl">${isHero ? '尺度' : '对手下注'}</span>
+                        ${isHero ? (!isFacing ? `
+                        <button onclick="quickCommit('hero','bet',0.33)" class="qc-btn qc-size">33%池<kbd>1</kbd></button>
+                        <button onclick="quickCommit('hero','bet',0.5)" class="qc-btn qc-size">半池<kbd>2</kbd></button>
+                        <button onclick="quickCommit('hero','bet',0.75)" class="qc-btn qc-size">75%池<kbd>3</kbd></button>
+                        <button onclick="quickCommit('hero','bet',1.0)" class="qc-btn qc-size">满池<kbd>4</kbd></button>` : `
+                        <button onclick="quickCommit('hero','raise',{mult:2.5})" class="qc-btn qc-size">2.5x<kbd>1</kbd></button>
+                        <button onclick="quickCommit('hero','raise',{mult:3})" class="qc-btn qc-size">3x<kbd>2</kbd></button>
+                        <button onclick="quickCommit('hero','raise',{mult:4})" class="qc-btn qc-size">4x<kbd>3</kbd></button>`) : ''}
+                        <div class="amt-box">
+                            <button class="step-btn" onclick="stepBet('${inputId}',-1)" tabindex="-1" title="减一档（约 10% 底池）">−</button>
+                            <input id="${inputId}" type="number" min="0.5" step="0.5" value="${prefill}" data-word="${aggrWord}"
+                                oninput="updateBetPct(this)"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();commitCustomAction('${playerKey}','${inputId}','${aggrType}');}"
+                                placeholder="${aggrWord}" />
+                            <button class="step-btn" onclick="stepBet('${inputId}',1)" tabindex="-1" title="加一档（约 10% 底池）">+</button>
+                        </div>
+                        <span id="betPctHint" class="pct-hint"></span>
                     </div>`;
-                    // 底部辅助行：实时尺度反推 + Hero 专属底池比例/加注倍数快捷
-                    html += `<div class="flex gap-1 mt-1.5 items-center">
-                        <span id="betPctHint" class="text-[10px] text-gray-500 shrink-0" style="font-family:var(--font-mono);min-width:70px;"></span>
-                        ${isHero && !isFacing ? `
-                        <button onclick="quickCommit('hero','bet',0.33)" class="qc-btn">33%池<kbd>1</kbd></button>
-                        <button onclick="quickCommit('hero','bet',0.5)" class="qc-btn">半池<kbd>2</kbd></button>
-                        <button onclick="quickCommit('hero','bet',0.75)" class="qc-btn">75%池<kbd>3</kbd></button>
-                        <button onclick="quickCommit('hero','bet',1.0)" class="qc-btn">满池<kbd>4</kbd></button>` : isHero && isFacing ? `
-                        <button onclick="quickCommit('hero','raise',{mult:2.5})" class="qc-btn">2.5x<kbd>1</kbd></button>
-                        <button onclick="quickCommit('hero','raise',{mult:3})" class="qc-btn">3x<kbd>2</kbd></button>
-                        <button onclick="quickCommit('hero','raise',{mult:4})" class="qc-btn">4x<kbd>3</kbd></button>` : `<span class="flex-1"></span>`}
+                    html += `<div class="act-row">
+                        <button ${foldOn ? `onclick="${foldClick}"` : 'disabled'} class="act-btn rounded-md border ${foldCls} active:scale-95 transition-all">${foldStar ? '★ ' : ''}弃牌${isHero ? '<kbd>L</kbd>' : ''}</button>
+                        <button onclick="${passClick}" class="act-btn rounded-md border ${passCls} active:scale-95 transition-all">${passiveStar ? '★ ' : ''}${passiveLbl}${isHero ? '<kbd>J</kbd>' : ''}</button>
+                        <button onclick="commitCustomAction('${playerKey}','${inputId}','${aggrType}')" class="act-btn rounded-md ${aggrCls} active:scale-95 transition-all"><span id="aggrBtnLabel" data-star="${aggrStar ? 1 : 0}">${aggrStar ? '★ ' : ''}${aggrLabel}</span>${isHero ? '<kbd>K</kbd>' : ''}</button>
+                        <button onclick="quickCommit('${playerKey}','${aggrType}','allin')" class="act-btn act-allin rounded-md border active:scale-95 transition-all">全押${isHero ? '<kbd>M</kbd>' : ''}</button>
                     </div>`;
                 }
                 html += `</div>`;
@@ -11450,6 +11699,91 @@
             } catch (e) { return null; }
         }
 
+        /** 我方这手牌在当前牌面的**成手桶**：两对+ / 顶对 / 弱对 / 无对。
+         *  定义与测量脚本 regression_tests/reference/texassolver/sizemix.py 的 bucket() **逐条一致**
+         *  ——两边必须是同一把尺子，否则拿实测值去调引擎就是在比两样东西。 */
+        function heroMadeBucket(heroCards, board) {
+            try {
+                const bd = (board || []).filter(c => c);
+                if (!heroCards || heroCards.length < 2 || bd.length < 3) return null;
+                const RKI = '23456789TJQKA';
+                const br = bd.map(c => c[0]);
+                const top = Math.max(...br.map(r => RKI.indexOf(r)));
+                const r1 = heroCards[0][0], r2 = heroCards[1][0];
+                if (r1 === r2) {
+                    if (br.includes(r1)) return '两对+';              // 暗三条
+                    if (RKI.indexOf(r1) >= top) return '顶对';        // 超对
+                    return '弱对';
+                }
+                const hit = [r1, r2].filter(r => br.includes(r));
+                if (hit.length === 2) return '两对+';                  // 两对
+                for (const r of [r1, r2]) if (br.filter(x => x === r).length >= 2) return '两对+'; // 明三条
+                if (hit.length && RKI.indexOf(hit[0]) >= top) return '顶对';
+                if (hit.length) return '弱对';
+                return '无对';
+            } catch (e) { return null; }
+        }
+
+        /** 翻牌价值档的**频率与尺度**（2026-09-10 环节 5，六节点 80 张翻牌实测）。
+         *  返回 {freq, size, note}；bucket 为 null 或"无对"时返回 null（无对走空气桶拟合式）。
+         *
+         *  实测（solver，范围加权，按节点）：
+         *    节点   SPR   对手范围宽度   两对+   顶对   弱对
+         *    N6c   1.08     22.2%       63.4   82.4   89.8
+         *    N2    1.86     24.6%       77.8   94.3   88.5
+         *    N7    2.10     56.9%       61.3   92.2   68.4
+         *    N3    3.43     62.0%       78.0   95.6   57.5
+         *    N1    6.87     61.1%       92.8   79.6   57.2
+         *    N4    6.87     55.7%       93.6   87.3   73.0
+         *
+         *  **每个桶的驱动量不一样，这是本轮最容易搞错的地方**：
+         *   · 两对+ ← **ln(SPR)**（r=+0.894，残差 4.3 点）。分家族验证过：
+         *     3-Bet 池内部 63→78、单次加注池内部 61→78→93→94，**两个家族内都单调上升**。
+         *     对照：它对"对手范围宽度"只有 r=+0.426，宽度解释不了它。
+         *     牌理：深码坚果要打三条街价值；浅码没有三条街可打，过牌反而保护自己的过牌范围。
+         *   · 弱对 ← **对手范围宽度**（r=−0.952，残差 3.4 点）。
+         *     **我第一版把它拟合成 ln(SPR)，那是把混淆当成了因果**——低 SPR 的两个节点恰好
+         *     都是 3-Bet 底池。分家族一看：3-Bet 池内 88-90 持平、单次加注池内 68/58/57/73
+         *     **家族内根本没有 SPR 趋势**，真正的驱动量是底池类型背后的范围宽度。
+         *     牌理：3-Bet 池双方范围窄且强，弱对相对值钱；单次加注池 BB 防守 56-76%，弱对就不值钱。
+         *   · 顶对 ← 两个家族内都无结构，取常数 88（实测 80-96）。
+         *
+         *  尺度（小注占下注的比例，SPR 2.10/3.43/6.87 三档）：
+         *    两对+ 100/99/77 · 顶对 75/87/**42** · 弱对 83/90/64
+         *  → **坚果一律小注；顶对只在深码用大注**（那是怕被反超、需要保护的牌）。
+         *  引擎原来是 `胜率≥70% → 67%底池 @82-92% / ≥55% → 33-50% @65%`
+         *  ——没有任何驱动量维度，且"牌越强注越大"与实测方向相反。
+         *  自变量一律钳到实测区间（SPR [1.08, 6.87]、宽度 [22, 62]%），区间外不外推。 */
+        function flopValueTier(bucket, spr, villainPct, iHaveNutAdv, sizes) {
+            if (!bucket || bucket === '无对') return null;
+            const _sprC = Math.max(1.08, Math.min(6.87, spr > 0 ? spr : 1.08));
+            const _vpC  = (villainPct > 0) ? Math.max(22, Math.min(62, villainPct)) : 55;
+            let freq, size, note;
+            if (bucket === '两对+') {
+                // 双变量（R²=0.972，残差 1.7 点）。**斜率被独立验证过**：拟合出的
+                // ln(SPR) 系数 25.9，与手算的家族内斜率（3-Bet 池 26.8、单次加注池 26.7）
+                // 几乎一致 —— 说明它抓的是真结构，不是 6 个点上的过拟合。
+                // 只用 ln(SPR) 时 R² 只有 0.799、残差 4.3：因为底池类型的截距差（约 20 点）
+                // 与 SPR 反向共线，把斜率压平了。
+                freq = Math.round(Math.max(55, Math.min(95,
+                    72.68 + 25.91 * Math.log(_sprC) - 0.49 * _vpC)));
+                size = sizes.medium;                       // 实测 77-100% 走小注，深码也是
+                note = '坚果：深码才重打（浅码没有三条街可打，过牌保护自己的过牌范围）；小注留住对手的宽范围';
+            } else if (bucket === '顶对') {
+                freq = 88;
+                size = spr >= 5 ? sizes.strong : sizes.medium;   // 深码实测只有 42% 用小注
+                note = spr >= 5 ? '顶对深码用大注：这是怕被反超、需要保护的牌' : '顶对浅码用小注';
+            } else {                                        // 弱对
+                // 加 ln(SPR) 对它毫无改善（R² 0.905→0.906），所以只用宽度——
+                // 不往模型里塞解释不了任何东西的变量。
+                freq = Math.round(Math.max(50, Math.min(92, 107.10 - 0.74 * _vpC)));
+                size = sizes.medium;
+                note = `弱对按对手范围宽度定频（他 ${_vpC.toFixed(0)}%）：范围越宽，弱对越不值钱`;
+            }
+            if (iHaveNutAdv && bucket === '两对+') freq = Math.min(95, freq + 3);
+            return { freq, size, note };
+        }
+
         function postEngine() {
             const eq = postState.equityResult;
             if (!eq) return null;
@@ -11759,13 +12093,24 @@
                 const _cAir = (street === 'flop') ? flopAirBetFreq(spr, _mwN) : null;
                 const _cVal  = equity > 50;
                 const _cDraw = !_cVal && outs >= sc.semiBluffOuts && equity >= 40;
+                // 环节 5（2026-09-10）：承诺区的**价值牌也走同一套「成手桶 × 驱动量」**。
+                // 环节 4 只把空气桶接了过来，价值牌仍是"一律 95%"，于是低 SPR 上
+                // 坚果被过度下注：实测 N6c(SPR1.08) 两对+ 引擎 97% vs solver 63%（+33.6 点）、
+                // N2 +16.6 —— **承诺区分支在常规区之前返回，新模型根本没机会生效**。
+                // 与环节 4 修空气桶时是同一个道理：两侧必须回答同一个问题。
+                const _cvb = (street === 'flop' && _cVal)
+                    ? heroMadeBucket(postState.heroCards, postState.board.slice(0, 3)) : null;
+                const _cvt = _cvb ? flopValueTier(_cvb, spr,
+                    (postState.villainRange && postState.villainRange.rangePct) || 0,
+                    iHaveNutAdv, sc.sizes) : null;
                 const commitStrat = (_cVal || _cDraw)
-                    ? { action: 'BET',
-                        // **成手价值牌**改小注：实测顶对+ 在 SPR 1.08 上「小注 63.6% : 全押 16.2%」。
-                        // **强听牌仍走全押**：无对那一桶（本身就含听牌）的下注里全押占 43.3%
-                        //   —— 弃牌率 + 兑现权益双路盈利是低 SPR 听牌的标准打法，这一支不动。
-                        sizing: (_cVal && street === 'flop' && spr >= 1.0) ? sc.sizes.medium : sc.sizes.push,
-                        freq: { bet: 95, check: 5 } }
+                    ? (_cvt
+                        ? { action: 'BET', sizing: _cvt.size, freq: { bet: _cvt.freq, check: 100 - _cvt.freq } }
+                        : { action: 'BET',
+                            // **强听牌仍走全押**：无对那一桶（本身就含听牌）的下注里全押占 43.3%
+                            //   —— 弃牌率 + 兑现权益双路盈利是低 SPR 听牌的标准打法，这一支不动。
+                            sizing: (_cVal && street === 'flop' && spr >= 1.0) ? sc.sizes.medium : sc.sizes.push,
+                            freq: { bet: 95, check: 5 } })
                     : (_cAir && _cAir.freq >= 10
                         ? { action: _cAir.freq >= 50 ? 'BET' : 'CHECK',
                             sizing: _cAir.freq >= 50 ? sc.sizes.probe : '',
@@ -11782,8 +12127,11 @@
                               `但**范围强度差 ${_cAir.sd >= 0 ? '+' : ''}${_cAir.sd.toFixed(1)} 点**` +
                               `${_cAir.paired ? '、成对面' : ''} → ${_cAir.freq}% 频率小注施压（TexasSolver 校准：` +
                               `低 SPR 上小注才是主力，全押占比只有 0.1-23.5%）`
-                            : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%` +
-                              `${equity <= 50 ? `+${outs}张进张半诈唬` : ''}，${commitStrat.sizing}`)
+                            : (_cvt
+                                ? `SPR=${spr.toFixed(1)}（承诺区）：胜率${equity.toFixed(0)}%、成手=${_cvb} → ` +
+                                  `${_cvt.freq}% 频率 ${_cvt.size}（TexasSolver 校准：${_cvt.note}）`
+                                : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%` +
+                                  `${equity <= 50 ? `+${outs}张进张半诈唬` : ''}，${commitStrat.sizing}`))
                         : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%不足，过牌`;
                 }
 
@@ -11917,15 +12265,29 @@
                         frequencies = { check: checkFreq, bet: 100 - checkFreq };
                         reasoning = `IP控池：翻牌胜率${equity.toFixed(0)}%（中等牌力），湿润面${(wetness*100).toFixed(0)}%进张多，SPR=${spr.toFixed(1)}，C-Bet后易被进张/加注反制`;
                         warnings.push('⚠ IP湿润面中等牌力：C-Bet建大池风险高，控池等待转牌信息');
-                    } else if (equity >= sc.strongThresh) {
-                        primaryAction = 'BET'; sizing = sc.sizes.nut;
-                        const freq = iHaveNutAdv ? 92 : 82;
-                        frequencies = { bet: freq, check: 100 - freq };
-                        reasoning = `翻牌胜率${equity.toFixed(0)}%，${iHaveNutAdv ? '坚果优势，' : ''}${sc.sizes.nut} C-Bet 榨取`;
-                    } else if (equity >= sc.betThresh) {
-                        primaryAction = 'BET'; sizing = sc.sizes.medium;
-                        frequencies = { bet: 65, check: 35 };
-                        reasoning = `翻牌胜率${equity.toFixed(0)}%，${iHaveRangeAdv ? '范围优势，' : ''}${sc.sizes.medium} C-Bet`;
+                    } else if (equity >= sc.strongThresh || equity >= sc.betThresh) {
+                        // ── 价值档按「成手桶 × SPR」出频率与尺度（2026-09-10 环节 5）──
+                        // 原来是 `胜率≥70% → 67%底池 @82-92% / ≥55% → 33-50% @65%`：
+                        // **没有 SPR 维度，且"牌越强注越大"与实测方向相反**。见 flopValueTier 的实测表。
+                        // 算不出成手桶（缺底牌/公共牌）时**原样保留旧行为**。
+                        const _vb = heroMadeBucket(postState.heroCards, postState.board.slice(0, 3));
+                        const _vp = (postState.villainRange && postState.villainRange.rangePct) || 0;
+                        const _vt = flopValueTier(_vb, spr, _vp, iHaveNutAdv, sc.sizes);
+                        if (_vt) {
+                            primaryAction = 'BET'; sizing = _vt.size;
+                            frequencies = { bet: _vt.freq, check: 100 - _vt.freq };
+                            reasoning = `翻牌胜率${equity.toFixed(0)}%、成手=${_vb}，SPR=${spr.toFixed(1)} → ` +
+                                        `${_vt.freq}% 频率 ${_vt.size} C-Bet（TexasSolver 校准：${_vt.note}）`;
+                        } else if (equity >= sc.strongThresh) {
+                            primaryAction = 'BET'; sizing = sc.sizes.nut;
+                            const freq = iHaveNutAdv ? 92 : 82;
+                            frequencies = { bet: freq, check: 100 - freq };
+                            reasoning = `翻牌胜率${equity.toFixed(0)}%，${iHaveNutAdv ? '坚果优势，' : ''}${sc.sizes.nut} C-Bet 榨取`;
+                        } else {
+                            primaryAction = 'BET'; sizing = sc.sizes.medium;
+                            frequencies = { bet: 65, check: 35 };
+                            reasoning = `翻牌胜率${equity.toFixed(0)}%，${iHaveRangeAdv ? '范围优势，' : ''}${sc.sizes.medium} C-Bet`;
+                        }
                     } else if (outs >= sc.semiBluffOuts) {
                         // 半诈唬（8 张进张起步）
                         const drawFreq = Math.round(55 * Math.min(outs, 15) / 15);
