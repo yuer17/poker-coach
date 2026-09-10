@@ -4744,6 +4744,82 @@
             const list = (MPT_SB_CALL[src[0]] || {})[tier] || [];
             return list.includes(handStr);
         }
+        /** 翻前决策时的有效深度（BB）—— 查任何**翻前**范围表都必须用它。
+         *  potTracker.effStack 是"翻前投入之后剩下的钱"，用它查表会跨档：
+         *  40bb 起手、3-Bet 底池翻后只剩 32BB，就会落到 25bb 那一档 ——
+         *  可对手做那个跟注决定时手上是 40BB。 */
+        function preflopDepthBB() {
+            const a = globalHeroStack || 0, b = globalVillainStack || 0;
+            let m = Math.min(a || b || 40, b || a || 40);
+            // 兜底：手上的钱不可能比这手牌开始时还多，所以取两者较大的那个
+            // （筹码框为空或残留 0 时靠它救回来）
+            const eb = postState && postState.potTracker && postState.potTracker.effStackBase;
+            if (eb > 0 && eb > m) m = eb;
+            // 已知限制：只改翻后那个"有效筹码"框、不改筹码框时，翻前查表深度仍按筹码框走。
+            // OCR 与时间线两条路径都会同时写筹码框，所以正常流程不受影响。
+            return m > 0 ? m : 40;
+        }
+        /** 盲注位对手**选择了跟注**（而不是 3-Bet）之后的范围（2026-09-10 环节3b）。
+         *  = 该盲位的防守宽度（深度感知） − 他自己的 3-Bet 段。
+         *  依据不是外部数据，而是他的行动：他没有 3-Bet，3-Bet 段的牌就不可能
+         *  在他的跟注范围里。**我方 BB 的同一件事早就做了**
+         *  （heroPreflopRangeForPost 里 `def.filter(h => !tb.set.has(h))`），
+         *  对手侧一直没做 —— 同一个模型两套宽度（不变量 I8）。
+         *  实测代价（TexasSolver N1，BB 跟 BTN 开池，40bb）：A 高牌面上"顶对或更强"
+         *  的占比 引擎 22.7% vs 真实 12.1%，把跟注者的成手率当成了两倍，
+         *  于是持续下注被压住、面对下注过度弃牌。
+         *  不套 getPlayStyleScale()：Hero 的打法风格不得污染对手范围估计（2026-06 解耦）。*/
+        function blindCallRange(blindPos, openerPos, tableSize, effStack) {
+            try {
+                const st = effStack > 0 ? effStack : 40;
+                if (blindPos === 'SB' && typeof isHandInSBDefense === 'function') {
+                    // SB 的**跟注段**本身就是实测表（MPT 第 9 章），已经把 3-Bet/全下段分出去了，
+                    // 不需要再减。实测宽度本来就窄（BTN 档 6.6%~17.3%），所以门槛只能设很低——
+                    // 设成 20 类会让 25bb 那格（12 类）掉进下面的 BB 防守兜底、算出 76% 的
+                    // 荒谬宽度，与 40bb 的 11.8% 形成 6 倍断崖（本轮实测发现并修正）。
+                    for (const probe of [st, 25, 40, 60]) {
+                        const l = ALL_169_HANDS.filter(h => isHandInSBDefense(h, openerPos, probe));
+                        if (l.length >= 8) {
+                            let cb = 0; for (const h of l) cb += _cbOf(h);
+                            const approx = probe !== st;
+                            return { hands: l, note: `SB 跟注段 (vs ${openerPos}，${(cb / 1326 * 100).toFixed(1)}%，` +
+                                `MPT ${probe.toFixed(0)}BB 实测${approx ? `；${st.toFixed(0)}BB 档实测跟注段为空——该深度是全下或弃牌，按最近档近似` : ''})` };
+                        }
+                    }
+                }
+                let base = null;
+                const bi = (BEHIND_OF[tableSize] || BEHIND_OF['9max'])[openerPos];
+                if (bi != null && typeof bbDefendBaseList === 'function') {
+                    const bl = bbDefendBaseList(bi), tg = bbDefendTargetPct(bi, st);
+                    if (bl && bl.length) {
+                        let acc = 0, cut = bl.length;
+                        for (let i = 0; i < bl.length; i++) {
+                            acc += _cbOf(bl[i]);
+                            if (acc / 1326 * 100 > tg) { cut = i; break; }
+                        }
+                        base = bl.slice(0, cut);
+                    }
+                }
+                if (!base || base.length < 20) base = (BB_DEFENSE_RANGES[tableSize] || {})['vs_' + openerPos] || null;
+                if (!base || base.length < 20) return null;
+                // 要剔除的是他**所有比跟注更激进的动作**，不只是小 3-Bet：
+                // ≤25BB 时盲位的主要进攻手段是**重推全下**（MPT 的 3-Bet% 在 15bb 就是 0），
+                // 那一段（BB vs BTN 15bb 约 18.7%）如果留在跟注范围里，问题与 40bb 上
+                // 把 AA/KK 留在跟注范围里完全一样。用的是我方 getRejamAction 的同一张 RYE 表。
+                const agg = new Set();
+                const tb = bbSb3betSet(blindPos, openerPos, st);
+                if (tb && tb.set) for (const h of tb.set) agg.add(h);
+                if (typeof ryeJamSet === 'function' && st <= 25) {
+                    const js = ryeJamSet(blindPos, openerPos, st);
+                    if (js && js.set) for (const h of js.set) agg.add(h);
+                }
+                if (!agg.size) return { hands: [...base], note: `${blindPos} 防守 (vs ${openerPos})` };
+                const out = base.filter(h => !agg.has(h));
+                if (out.length < 20) return { hands: [...base], note: `${blindPos} 防守 (vs ${openerPos})` };
+                let cut3 = 0; for (const h of base) if (agg.has(h)) cut3 += _cbOf(h);
+                return { hands: out, note: `${blindPos} 跟注段 (vs ${openerPos}，已剔除他的 3-Bet/全下段 ${(cut3 / 1326 * 100).toFixed(1)}%)` };
+            } catch (e) { return null; }
+        }
         function getThreeBetAction(handStr, heroPos, villainPos, tableSize, effStack) {
             // BB/SB 深度分档（2026-09-09）：旧表这两行从未校准且无深度维度，
             // 实测偏窄一半（我方 BB_vs_BTN 7.39% vs MPT 40bb 的 14.1%）。
@@ -8003,6 +8079,28 @@
                                        `他其余的牌走跛入而不是弃牌)`;
                     }
                 }
+                // 按"他没做的动作"条件化(2026-09-10 环节3b)·3-Bet 底池：我方从盲位
+                // 3-Bet、他**跟注**进翻牌 —— 他的范围是"面对 3-Bet 的跟注段"，
+                // 不是完整开池范围。用的就是我方 getFacing3BetAction 那张表
+                // （MPT 第 9 章面对 3-Bet 24 张图），两侧同一份数据（不变量 I8）。
+                // 实测宽度：BTN 面对 BB 的 3-Bet，40bb 完整开池 49.9% → 跟注段约 15%。
+                if (currentMode === 'faceBet' && typeof tlHero !== 'undefined' && tlHero
+                    && tlHero.action === '3bet' && (heroPos === 'BB' || heroPos === 'SB')
+                    && typeof mptF3bSet === 'function') {
+                    const _n = mptF3bSet(villainPos, heroPos, preflopDepthBB());
+                    if (_n) {
+                        // MPT_F3B.mix 是**数组**（MPT_SB_BVB.mix 才是对象）——
+                        // 对数组做 Object.keys 会得到 "0","1" 这种下标，曾把 solver 喂崩
+                        const _mix = Array.isArray(_n.mix) ? _n.mix : Object.keys(_n.mix || {});
+                        const _cont = [...new Set([...(_n.call || []), ..._mix])];
+                        if (_cont.length >= 8) {
+                            baseHands = _cont;
+                            let _cb = 0; for (const h of _cont) _cb += _cbOf(h);
+                            vActionLabel = `面对我方 3-Bet 的跟注段 (${villainPos}，` +
+                                           `${(_cb / 1326 * 100).toFixed(1)}%，MPT 实测)`;
+                        }
+                    }
+                }
                 if (!vActionLabel) vActionLabel = `开池 (${villainPos} Open)`;
 
             } else if (currentMode === 'face3b') {
@@ -8066,22 +8164,38 @@
                 const COLD_CALL_HANDS = ['JJ','TT','99','88','77','66','55','44','33','22',
                     'AQs','AJs','ATs','KQs','KJs','KTs','QJs','QTs','JTs',
                     'T9s','98s','87s','76s','65s','AQo','AJo','KQo'];
+                // 按"他没做的动作"条件化(2026-09-10 环节3b)：盲注位对手**跟注**进翻牌，
+                // 说明他没有 3-Bet —— 他的 3-Bet 段必须从范围里剔除。详见 blindCallRange。
+                const _vDepth = preflopDepthBB();
                 if (villainPos === 'BB') {
-                    // BB 防守：精确查 BB_DEFENSE_RANGES[vs_heroPos]
-                    baseHands = BB_DEFENSE_RANGES[tableSize]?.['vs_' + heroPos] || [];
-                    vActionLabel = `BB 防守 (vs ${heroPos})`;
+                    const _bc = blindCallRange('BB', heroPos, tableSize, _vDepth);
+                    if (_bc && _bc.hands.length >= 20) {
+                        baseHands = _bc.hands; vActionLabel = _bc.note;
+                    } else {
+                        baseHands = BB_DEFENSE_RANGES[tableSize]?.['vs_' + heroPos] || [];
+                        vActionLabel = `BB 防守 (vs ${heroPos})`;
+                    }
                 } else if (villainPos === 'SB') {
                     // SB补盲范围(2026-07-13)：小盲面对常规开池是"补盲"而非冷跟——
                     // 只需再投 ~1.5-2BB 且含 ante 赔率极好，真实进池范围≈BB 防守表
                     // 剔除会 3-Bet 的强牌（~30%），远宽于冷跟紧构成（原 9% 不含
                     // A6s/64s 等补盲牌，paired board 上漏掉全部三条候选——实战
                     // 99 vs SB 补盲者在 66,4,T,K 面被反超案例的直接根因之一）
-                    const sbBase = BB_DEFENSE_RANGES[tableSize]?.['vs_' + heroPos] || [];
-                    baseHands = sbBase.filter(h => getRawEquity(h) < 67.0);
-                    if (!baseHands.length) {
-                        baseHands = COLD_CALL_HANDS.filter(h => !['65s','76s','KQo','AJo'].includes(h));
+                    // 2026-09-10：原来的"剔除裸胜率≥67 的强牌"是**没有表时的代理**，
+                    // 现在 SB 的跟注段与 3-Bet 段都有 MPT 实测表，直接用真值。
+                    // 门槛 8 而不是 20：SB 的实测跟注段本来就窄（6.6%~17.3%，12~37 类），
+                    // 用 20 会把浅档挡在外面、掉回 62% 的旧代理范围（本轮实测发现的断崖）
+                    const _sc = blindCallRange('SB', heroPos, tableSize, _vDepth);
+                    if (_sc && _sc.hands.length >= 8) {
+                        baseHands = _sc.hands; vActionLabel = _sc.note;
+                    } else {
+                        const sbBase = BB_DEFENSE_RANGES[tableSize]?.['vs_' + heroPos] || [];
+                        baseHands = sbBase.filter(h => getRawEquity(h) < 67.0);
+                        if (!baseHands.length) {
+                            baseHands = COLD_CALL_HANDS.filter(h => !['65s','76s','KQo','AJo'].includes(h));
+                        }
+                        vActionLabel = `SB 补盲/防守范围`;
                     }
-                    vActionLabel = `SB 补盲/防守范围`;
                 } else {
                     // Cold-Call修复二(2026-07-13，Codex二轮审计)：按跟注者位置分层——
                     // 前中位跟注者（UTG1/MP/LJ）中短码下近乎 3-Bet-or-Fold，其平跟实为
@@ -8172,7 +8286,9 @@
             const _boardLen = postState.board ? postState.board.filter(c => c !== null).length : 3;
             let narrowNote = '';
             if (_boardLen >= 3 && hands.length > 0 && !(opts && opts.skipActions)) {
-                const clamp = (x) => Math.max(0.40, Math.min(0.95, x)); // 单次保留比例上下限
+                // 单次保留比例上下限。下限 2026-09-10 由 0.40 降到 0.25：实测加注的等效 keep
+                // 中位就是 0.35，再叠超池的尺度因子 0.80 → 0.28，旧下限会把实测值顶回去。
+                const clamp = (x) => Math.max(0.25, Math.min(1.0, x));
                 const styleMul = 1.0; // 对手范围估计已与Hero打法开关解耦，固定中性
                                        // (原绑定playStyle会让Hero打法污染对手范围估计)
                 // 对手在某街的特征行动：raise(加注/全推，极强线) > aggro(下注) > call > check > none
@@ -8188,22 +8304,29 @@
                     if (acts.some(a => a.action === 'check')) return 'check';
                     return 'none';
                 };
-                // 转牌阶段保留比例（依据翻牌行动）；styleMul 已固定 1.0，aggro 分支恒中性
-                const turnKeep = (flopAct) => {
-                    if (flopAct === 'raise') return clamp(0.45); // 加注线：只保留强端 45%
-                    if (flopAct === 'check') return clamp(0.62);
-                    if (flopAct === 'aggro') return clamp(0.82 * styleMul);
-                    if (flopAct === 'call')  return clamp(0.70);
-                    return clamp(0.72); // 无行动记录兜底（沿用原值）
+                // ── 收窄系数重标定（2026-09-10 环节3b，TexasSolver 四节点 56 张翻牌实测）──
+                // 测法：对每个动作算「无条件强牌率 s_u」与「做了该动作之后的强牌率 s_a」
+                //（强牌＝顶对或更强，与 strongRateOnBoard 同定义）。截断只会砍掉弱牌，
+                // 所以**等效 keep = s_u / s_a**。各节点中位数（N1/N2/N3/N4）：
+                //   下注  0.75 / 0.67 / 0.73 / 0.89  → 0.75（原 0.82，收得略松）
+                //   跟注  0.47 / 0.38 / 0.56 / 0.45  → 0.45（原 0.70，**收得远远不够**）
+                //   加注  0.39 / 0.48 / 0.29 / 0.34  → 0.35（原 0.45）
+                //   过牌  1.00 / 1.66 / 1.00 / 1.00  → **≥1，原来的 0.62 方向是反的**
+                // 过牌那一条是本轮的主修：过牌不是强度信号。N5（给 OOP 开放 donk 下注、
+                // 排除"树里没得下注"这个建树 artifact）复测：过牌频率 93.7%，
+                // 过牌后的范围比无条件范围还**弱** 0.5 点，而引擎把它抬强 14.2 点。
+                // 提取器 regression_tests/reference/texassolver/narrowcal.py。
+                // 已知界限：solver 的 dump 只到翻牌（chance 节点是空的），所以
+                // **转牌/河牌的系数没有独立实测**——沿用同一组值（同一机制），
+                // 多街效应由逐街连乘承担，不再为"更晚的街"另设一套没有依据的数。
+                const keepOf = (act) => {
+                    if (act === 'raise') return clamp(0.35);
+                    if (act === 'aggro') return clamp(0.75 * styleMul);
+                    if (act === 'call')  return clamp(0.45);
+                    if (act === 'check') return 1.0;   // 过牌不向强端收窄（见上）
+                    return 1.0;                        // 无行动：绝不凭空收窄
                 };
-                // 河牌叠加 overlay（依据转牌行动）；styleMul 已固定 1.0，aggro 分支恒中性
-                const riverOverlay = (turnAct) => {
-                    if (turnAct === 'raise') return clamp(0.45); // 加注线：只保留强端 45%
-                    if (turnAct === 'check') return clamp(0.65);
-                    if (turnAct === 'aggro') return clamp(0.85 * styleMul);
-                    if (turnAct === 'call')  return clamp(0.72);
-                    return clamp(0.76); // 无记录兜底（≈原 55/72，无行动时向后兼容旧值）
-                };
+                const turnKeep = keepOf, riverOverlay = keepOf;
 
                 // 尺度感知(2026-07-13)：对手 bet/raise 相对底池越大范围越强、收窄越狠。
                 // 重放行动流水，取该街对手最后一次主动进攻的 (本次净投入 / 当时底池)。
@@ -8253,8 +8376,31 @@
                 if (_boardLen >= 4 && vActed('turn'))  keep *= sized(riverOverlay(vAction('turn')), 'turn', vAction('turn'));
                 if (_boardLen >= 5 && vActed('river')) keep *= sized(riverOverlay(vAction('river')), 'river', vAction('river'));
 
-                // 仅在确有收窄（keep<1）时排序截断，保证"对手未行动"时范围与未收窄完全一致
-                if (keep < 1.0) {
+                // ── 过牌 = 封顶而不是收窄（2026-09-10 环节3b）────────────────
+                // 过牌携带多少信息，取决于他是不是"有持续下注义务的那一方"：
+                //   · 翻前侵略者过牌 = 放弃主动权。实测过牌频率只有 22.7%（N2，OOP 侧）
+                //     与 25-41%（N1/N3/N4，IP 侧），过牌后范围**变弱**，等效
+                //     "砍掉最强的一段" +11.3 / +10.5 / +15.9 / +16.4 点 → 取 0.13；
+                //   · 非侵略者过牌 = 默认动作。N2 的非侵略者过牌 90.2%、只 +1.2 点；
+                //     N5（专门给 OOP 开放 donk，排除"树里没得下注"这个建树 artifact）
+                //     过牌 93.7%、−0.5 点 → 取 0，即**不动他的范围**。
+                // 引擎的机制只能"砍两头"，砍不掉中段，所以这是近似；但方向与量级都是
+                // 实测的，而原来的"保留最强 62%"连方向都反了。
+                const villainIsPFA = !(['open', 'vsLimp', 'squeeze'].includes(currentMode) ||
+                                       (currentMode === 'faceBet' && typeof tlHero !== 'undefined'
+                                        && tlHero && tlHero.action === '3bet'));
+                let capTop = 0;
+                if (villainIsPFA) {
+                    const streets = ['flop'];
+                    if (_boardLen >= 4) streets.push('turn');
+                    if (_boardLen >= 5) streets.push('river');
+                    for (const st of streets)
+                        if (vActed(st) && vAction(st) === 'check') capTop = 1 - (1 - capTop) * (1 - 0.13);
+                    capTop = Math.min(0.25, capTop);  // 连续多街过牌的量级无实测，封顶
+                }
+
+                // 仅在确有收窄/封顶时排序截断，保证"对手未行动"时范围与未收窄完全一致
+                if (keep < 1.0 || capTop > 0) {
                     // 牌面感知收窄(2026-07-13)：对手有主动下注/加注时，按"该手牌类在
                     // 当前牌面的实际成牌强度"排序保留强端（Hand.solve 牌型等级×100 +
                     // 同花听 +150 加成，同档内用翻前胜率破平）。替代 M1 的翻前裸胜率
@@ -8264,7 +8410,11 @@
                     const anyAggro = ['flop', 'turn', 'river'].some(st =>
                         vActed(st) && ['aggro', 'raise'].includes(vAction(st)));
                     const bc = postState.board ? postState.board.filter(c => c !== null) : [];
-                    if (anyAggro && bc.length >= 3 && typeof Hand !== 'undefined') {
+                    // 2026-09-10：牌面感知排序的门槛从"他有下注/加注"放宽到"只要要动他的范围"。
+                    // 原注释说"只有过牌/跟注时无成牌信号"——**跟注恰恰是成手信号**，
+                    // 用翻前裸胜率序会保留 AQo、丢掉在这张牌面上成了顺子的 76s；
+                    // 封顶（cap）要砍的也正是"他本该下注的那些成手"，同样必须按牌面强度排。
+                    if (bc.length >= 3 && typeof Hand !== 'undefined') {
                         const cache = rangeEstimator._bsCache || (rangeEstimator._bsCache = new Map());
                         if (cache.size > 3000) cache.clear(); // 防跨局无限增长
                         // 审计修复#12(2026-09-08)：缓存键原本只有 board+牌类，但下面的 dead
@@ -8316,6 +8466,11 @@
                         hands.sort((a, b) => boardScore(b) - boardScore(a));
                     } else {
                         hands.sort((a, b) => getRawEquity(b) - getRawEquity(a));
+                    }
+                    // 先砍掉最强的一段（他过牌 ⇒ 那些牌不在他手里），再在剩下的里保留强端
+                    if (capTop > 0) {
+                        const cutN = Math.floor(hands.length * capTop);
+                        if (cutN > 0 && hands.length - cutN >= 10) hands = hands.slice(cutN);
                     }
                     let kept = hands.slice(0, Math.ceil(hands.length * keep));
                     // 安全锁：收窄后不得少于 5 combos，不足则从最强端补齐
@@ -8381,7 +8536,9 @@
                         }
                     }
                     hands = kept;
-                    narrowNote = `，动态收窄保留 ${(keep * 100).toFixed(0)}%${sizeNoted ? '（含下注尺度修正）' : ''}${bluffNote}`;
+                    narrowNote = (capTop > 0 ? `，他过牌⇒剔除最强 ${(capTop * 100).toFixed(0)}%` : '') +
+                                 (keep < 1.0 ? `，动态收窄保留 ${(keep * 100).toFixed(0)}%` : '') +
+                                 `${sizeNoted ? '（含下注尺度修正）' : ''}${bluffNote}`;
                 }
             }
 
@@ -11188,6 +11345,83 @@
             } catch (e) { console.warn('[Blocker] 跳过:', e.message); return null; }
         }
 
+        // ════════════════════════════════════════════════════
+        // 牌面范围强度差（2026-09-10，TexasSolver 校准 · 环节 3）
+        // ----------------------------------------------------
+        // 用途：驱动"没成牌"那一桶的持续下注频率。
+        // 依据：四节点 56 张翻牌的实测对账（见 TEXASSOLVER_CALIBRATION_REPORT.md）——
+        //   引擎对"进张<8 且胜率<门槛"的牌一律给**过牌 100%**，而均衡对这批牌
+        //   下注 57-77%，**这一桶贡献了全部差距的约 85%**。
+        // 驱动量的选择是**验证过的**：先试"对手空手率"，实测相关系数只有 0.10 —— 否掉；
+        //   换"双方在该牌面上顶对及以上的占比之差"，r = 0.677，加入 1/SPR 与成对面
+        //   两项后 R² = 0.652、逐节点残差 −3.7~+5.4 点。
+        // ════════════════════════════════════════════════════
+        const _RKI = '23456789TJQKA';
+        function _cbOfClass(h) { return h.length === 2 ? 6 : (h[2] === 's' ? 4 : 12); }
+        /** 该范围里"顶对或更好"的组合占比（与离线拟合用的是同一套判据） */
+        function strongRateOnBoard(handClasses, board) {
+            if (!handClasses || !handClasses.length || !board || board.length < 3) return null;
+            const br = board.map(c => c[0]);
+            const top = Math.max(...br.map(r => _RKI.indexOf(r)));
+            let tot = 0, strong = 0;
+            for (const h of handClasses) {
+                const w = _cbOfClass(h);
+                const r1 = h[0], r2 = h[1];
+                tot += w;
+                let ok = false;
+                if (r1 === r2) {
+                    if (_RKI.indexOf(r1) >= top) ok = true;          // 超对
+                    else if (br.includes(r1)) ok = true;             // 暗三条
+                } else {
+                    for (const r of [r1, r2]) {
+                        if (br.includes(r) && _RKI.indexOf(r) >= top) ok = true;   // 顶对
+                        if (br.filter(x => x === r).length >= 2) ok = true;        // 明三条
+                    }
+                }
+                if (ok) strong += w;
+            }
+            return tot > 0 ? strong / tot : null;
+        }
+        /** 重建我方翻前范围。**算不出就返回 null**，调用方据此保持原行为——
+         *  这道闸门刻意把新逻辑的作用面限制在"能算清楚驱动量"的场景里。 */
+        function heroPreflopRangeForPost(heroPos, villPos, effStack) {
+            try {
+                const ts = gameConfig.tableSize, st = gameConfig.stage, gt = gameConfig.gameType;
+                const mode = currentMode;
+                if (mode === 'open' && heroPos !== 'BB') {
+                    if (heroPos === 'SB' && typeof MPT_SB_BVB !== 'undefined') {
+                        const N = MPT_SB_BVB[bvbTier(effStack)] || {};
+                        const r = [...(N.raise || []), ...Object.keys(N.mix || {})];
+                        return r.length >= 10 ? r : null;
+                    }
+                    return ALL_169_HANDS.filter(h => isHandInOpenRange(h, heroPos, ts, st, gt, effStack));
+                }
+                // **顺序要紧**：我方已 3-Bet 时，范围是 3-Bet 段而**不是**防守跟注段。
+                // 第一版把"BB 防守"那条放在前面，3-Bet 分支永远走不到，
+                // 于是 3-Bet 底池里拿 61% 的跟注范围当成了我方范围（实际只有 14.5%），
+                // 范围强度差被严重低估 → 空气桶频率抬不起来（实测 N2 只改善 2.1 点）。
+                if (typeof tlHero !== 'undefined' && tlHero && tlHero.action === '3bet'
+                    && (heroPos === 'BB' || heroPos === 'SB')) {
+                    const tb = bbSb3betSet(heroPos, villPos, effStack);
+                    return tb && tb.set.size >= 10 ? [...tb.set] : null;
+                }
+                if (mode === 'faceBet' && heroPos === 'BB') {
+                    const def = ALL_169_HANDS.filter(h => isHandInBBDefense(h, villPos, ts, effStack));
+                    const tb = bbSb3betSet('BB', villPos, effStack);
+                    const out = def.filter(h => !(tb && tb.set.has(h)));
+                    return out.length >= 10 ? out : null;
+                }
+                return null;
+            } catch (e) { return null; }
+        }
+        /** 范围强度差（百分点）。null = 算不出，调用方保持原行为。缓存到牌面+双方范围。 */
+        function boardStrengthDiff(board, heroRange, villHands) {
+            const sh = strongRateOnBoard(heroRange, board);
+            const sv = strongRateOnBoard(villHands, board);
+            if (sh === null || sv === null) return null;
+            return (sh - sv) * 100;
+        }
+
         function postEngine() {
             const eq = postState.equityResult;
             if (!eq) return null;
@@ -11647,9 +11881,48 @@
                         frequencies = { bet: 40, check: 60 };
                         reasoning = `翻牌范围优势，胜率${equity.toFixed(0)}%≥35%，25%底池探测下注`;
                     } else {
-                        primaryAction = 'CHECK'; sizing = '';
-                        frequencies = { check: 100 };
-                        reasoning = `翻牌胜率${equity.toFixed(0)}%（门槛${sc.betThresh}%），进张${outs}张不足，过牌`;
+                        // ── 空气桶不再一刀切过牌（2026-09-10，TexasSolver 校准 · 环节 3）──
+                        // 实测：四节点 56 张翻牌上，引擎对这一桶给"过牌 100%"，
+                        // 而均衡下注 57-77%；**这一桶贡献了全部频率差距的约 85%**
+                        //（N1 24.9/29.3 点 · N2 15.6/20.6 · N3 25.0/29.5 · N4 32.7/41.4）。
+                        // 频率由**双方在该牌面上的范围强度差**驱动（该驱动量经验证：
+                        // 先试"对手空手率"r 仅 0.10 已否掉；强度差 r=0.677，
+                        // 加 1/SPR 与成对面两项后 R²=0.652）。
+                        // 拟合式（离线最小二乘，样本 56 张 × 4 节点）：
+                        //   下注% = 39.7 + 2.23×强度差% + 59.3×(1/SPR) − 11.8×成对
+                        // （2026-09-10 二次拟合：驱动量本身修好之后重拟——原先喂进去的
+                        //  强度差被『过牌⇒保留最强 62%』污染过，A 高面上算出来的范围优势
+                        //  方向是反的。修正后 r 由 0.677 升到 0.712、R² 0.652→0.689）
+                        // **算不出强度差时保持原行为（过牌 100%）**，把作用面限制在
+                        // 能算清驱动量的场景，避免把一个拟合式外推到没验证过的地方。
+                        const _hr = heroPreflopRangeForPost(globalPosHero, globalPosVillain, preflopDepthBB());
+                        const _vh = (postState.villainRange && postState.villainRange.hands) || null;
+                        const _sd = (_hr && _vh) ? boardStrengthDiff(postState.board.slice(0, 3), _hr, _vh) : null;
+                        const _brk = postState.board.slice(0, 3).map(c => c[0]);
+                        const _paired = new Set(_brk).size < 3 ? 1 : 0;
+                        let _airFreq = null;
+                        if (_sd !== null && spr > 0) {
+                            _airFreq = Math.round(Math.max(10, Math.min(100,
+                                39.7 + 2.23 * _sd + 59.3 / spr - 11.8 * _paired)));
+                            // 多人底池禁纯诈唬（沿用 2026-09-08 既有规则）：
+                            // 要让 N 家全弃，所需弃牌率是单挑的 N 次方
+                            if (_mwN > 0) _airFreq = 0;
+                        }
+                        if (_airFreq && _airFreq >= 10) {
+                            primaryAction = _airFreq >= 50 ? 'BET' : 'CHECK';
+                            sizing = _airFreq >= 50 ? sc.sizes.probe : '';
+                            frequencies = { bet: _airFreq, check: 100 - _airFreq };
+                            reasoning = `翻牌胜率${equity.toFixed(0)}%、进张${outs}张（都不足），` +
+                                        `但**范围强度差 ${_sd >= 0 ? '+' : ''}${_sd.toFixed(1)} 点**` +
+                                        `${_paired ? '、成对面' : ''}、SPR=${spr.toFixed(1)} → ` +
+                                        `${_airFreq}% 频率小注施压（TexasSolver 校准）`;
+                        } else {
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { check: 100 };
+                            reasoning = _mwN > 0
+                                ? `翻牌胜率${equity.toFixed(0)}%、进张${outs}张不足，且 ${_mwN + 1} 人在局 —— 多人底池不做纯诈唬，过牌`
+                                : `翻牌胜率${equity.toFixed(0)}%（门槛${sc.betThresh}%），进张${outs}张不足，过牌`;
+                        }
                     }
                 }
 
@@ -11664,6 +11937,13 @@
                     primaryAction = commitWeight >= 0.5 ? commitStrat.action : flexAction;
                     sizing = commitWeight >= 0.5 ? commitStrat.sizing : flexSizing;
                     reasoning = `SPR=${spr.toFixed(1)}（临界过渡区，承诺权重${(commitWeight * 100).toFixed(0)}%）：${reasoning}`;
+                    // 口径一致(2026-09-10)：理由里若写了"某某频率"（空气桶拟合式就会写），
+                    // 混合之后那个数已经不是实际输出了 —— 实测 3-Bet 底池 SPR 1.9 上
+                    // 拟合式给"下注 71%"，混合后实际是"过牌 90 / 下注 10"，
+                    // 同一屏两个口径。把混合结果写出来，不让理由自说自话。
+                    if (/\d+% 频率/.test(reasoning) && frequencies && typeof frequencies.bet === 'number') {
+                        reasoning += `；但承诺区权重 ${(commitWeight * 100).toFixed(0)}% 把它压到实际下注 ${frequencies.bet}%`;
+                    }
                     if (commitStrat.action !== flexAction) {
                         warnings.push(`⚠️ SPR临界区(spr=${spr.toFixed(2)})：筹码略浅倾向${commitStrat.action}，略深倾向${flexAction}`);
                     }
