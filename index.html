@@ -242,8 +242,8 @@
            已整条移除（连同 16px 的 padding）。阶段仍然分得清：当前那块用 3px 内嵌色条标记，
            inset box-shadow 不占任何布局宽度。 */
         .flow-track { display: flex; flex-direction: column; gap: 0.5rem; }
-        .flow-node.active { box-shadow: inset 3px 0 0 var(--accent); }
-        .flow-node.done { box-shadow: inset 3px 0 0 rgba(46,168,106,.45); }
+        /* 2026-09-11：左侧那条色道也去掉了（用户："不需要做什么区分不区分的，正常输入就 OK"）。
+           阶段区分已经由"翻前区折叠成一行摘要 / 行动区标题写着翻牌圈"表达得很清楚。 */
         /* 折叠态：只留摘要行 */
         .flow-node.zone-collapsed > *:not(.flow-summary) { display: none !important; }
         .flow-node.zone-collapsed { padding: 5px 8px !important; }
@@ -635,6 +635,20 @@
         .tl-seat.allin { border-color: #e0a83a; background: rgba(224,168,58,.14); } .tl-seat.allin .tl-act { color: #e0a83a; }
         .tl-seat.hero { border: 2px solid #c23b4b; background: rgba(194,59,75,.16); } .tl-seat.hero .tl-pos { color: #ff7a7d; } .tl-seat.hero .tl-act { color: var(--text-primary); }
         .tl-seat.disabled { opacity: .3; cursor: not-allowed; }
+        /* 按流水重写(2026-09-11)：轮到谁谁脉冲；多次行动的座位补一行"共投 X" */
+        .tl-seat.idle .tl-act { color: var(--text-muted); opacity: .7; }
+        .tl-seat.turn { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(87,169,255,.28); animation: tlTurnPulse 1.6s ease-in-out infinite; }
+        .tl-seat.turn .tl-act { color: #9fd0ff; font-weight: 800; }
+        .tl-seat.hero.turn { border-color: #c23b4b; box-shadow: 0 0 0 2px rgba(194,59,75,.35); }
+        .tl-seat.hero.turn .tl-act { color: #ff9ea1; }
+        @keyframes tlTurnPulse { 0%,100% { box-shadow: 0 0 0 2px rgba(87,169,255,.20); } 50% { box-shadow: 0 0 0 4px rgba(87,169,255,.34); } }
+        .tl-seat .tl-sub { font-size: var(--fs-micro); color: var(--gold); margin-top: 2px; font-family: var(--font-mono); }
+        .tl-turnbar { margin-top: 6px; font-size: var(--fs-caption); color: var(--text-secondary); font-family: var(--font-mono);
+                      padding: 4px 8px; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); background: rgba(0,0,0,.22); }
+        .tl-pop-title { font-size: var(--fs-micro); color: var(--text-muted); margin-bottom: 6px; font-weight: 700; }
+        .tl-pop-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .tl-pop-raise { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); color: var(--text-secondary); }
+        .tl-pop-hint { font-size: var(--fs-micro); color: var(--text-muted); margin-top: 6px; }
         .tl-pop { position: absolute; z-index: 45; background: var(--bg-surface-2, #171a21); border: 1px solid var(--accent); border-radius: var(--radius-md, 8px);
                   padding: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.5); display: flex; gap: 4px; flex-wrap: wrap; align-items: center; min-width: 260px; max-width: 96%; }
         .tl-pop .macro-btn { padding: 7px 10px; font-size: var(--fs-caption); display: inline-flex; align-items: center; gap: 4px; }
@@ -1033,6 +1047,8 @@
                     </div>
                     <div id="tlHeroRow" class="mb-1.5"></div>
                     <div id="tlRibbon" class="tl-ribbon"></div>
+                    <!-- 顺序写在明面上(2026-09-11)：轮到谁、需跟多少、底池多少、几个人在池 -->
+                    <div id="tlTurnBar" class="tl-turnbar"></div>
                     <div id="tlPopover" class="tl-pop" style="display:none"></div>
                     <div id="tlNote" class="text-[10px] mt-1" style="color:#e0a83a;display:none;"></div>
                     <div class="grid grid-cols-3 gap-1.5 mt-1.5">
@@ -3603,7 +3619,9 @@
                        _manualOverride: !!pt._manualOverride },
                 entered: !!postState._entered, firstToAct: postState.firstToAct, heroPosition: postState.heroPosition,
                 extraVillains: [...(postState.extraVillains || [])],
-                tl: { events: JSON.parse(JSON.stringify(tlEvents || {})), hero: tlHero ? JSON.parse(JSON.stringify(tlHero)) : null },
+                // 流水才是真源(2026-09-11)：events/hero 是派生视图，一并存下来只为兼容旧快照
+                tl: { acts: JSON.parse(JSON.stringify(tlActs || [])),
+                      events: JSON.parse(JSON.stringify(tlEvents || {})), hero: tlHero ? JSON.parse(JSON.stringify(tlHero)) : null },
                 resultVisible: !!rp && !rp.classList.contains('invisible') && !rp.classList.contains('hidden')
             });
         }
@@ -3664,7 +3682,11 @@
                 });
                 switchMode(currentMode);
                 // 翻前时间线(2026-07-21)：switchMode 已按模式重建座位带，再用快照精确覆盖（含用户补录的额外座位）
-                if (s.tl) { tlEvents = s.tl.events || {}; tlHero = s.tl.hero || null; try { renderTimeline(); } catch (e) {} }
+                if (s.tl) {
+                    if (Array.isArray(s.tl.acts)) { tlActs = s.tl.acts; tlRebuildLegacy(); }
+                    else { tlEvents = s.tl.events || {}; tlHero = s.tl.hero || null; }   // 旧快照：由兼容层重建流水
+                    try { renderTimeline(); } catch (e) {}
+                }
                 const shEl = document.getElementById('stackHero'); if (shEl) shEl.value = globalHeroStack;
                 const svEl = document.getElementById('stackVillain'); if (svEl) svEl.value = globalVillainStack;
                 renderHeroPicker(); renderHeroSlots(); updateHandStr();
@@ -5447,12 +5469,195 @@
         // 场景由 deriveScenario() 自动推出并"编译"到既有 7 模式引擎（currentMode + 隐藏的
         // 传统输入框），引擎零改动。传统场景标签保留在折叠区作兼容/强制入口。
         // 反向同步：外部 switchMode（OCR autoFill / 传统标签 / 撤回）→ tlSyncFromMode 重建座位带。
-        let tlEvents = {};          // { pos: { action: 'fold'|'limp'|'call'|'raise'|'allin', amount } }
-        // 审计修复#6(2026-09-08)：新增 '3bet' —— 原本 Hero 只能标"轮到我/已开池/已跟注"，
-        // 于是按工具自己的建议 3-Bet 之后进翻后，底池仍按"平跟开池额"算。
-        // 实测 AA 在 BB 被建议 3-Bet 到 10BB，若对手跟注真实底池应为 21.5BB / SPR 1.40，
-        // 系统却给 6.5BB / SPR 5.77（放大 4.1 倍），承诺区被误判成深码区。
-        let tlHero = null;          // null=轮到我 | {action:'open',amount} | {action:'call'} | {action:'3bet',amount}
+        // ══ 2026-09-11 重写：一条按时间顺序的动作流水，取代"一格一个动作 + 再表态" ══
+        // 用户指出的根本问题：原模型每个座位只能存**一个**动作，于是
+        //   · 开池者被 3-Bet 之后没有"跟注"可选（截图1）；
+        //   · 我开池被 3-Bet 后只能走一个另加的"我的应对"按钮（截图2/3），它和座位带的
+        //     行动线各说各话，底池也算不对；
+        //   · 前位玩家的再次表态要靠第二个按钮（"→ ？待表态"），界面乱切。
+        // 真实扑克里翻前就是一条顺序流水：谁、做了什么、投到多少；**每个人可以行动多次**。
+        // 一旦按流水建模，"几个人进池、每人投了多少、底池多大"就是纯算术，没有任何猜测。
+        // 每个座位的选项也永远只有那四个（弃/跟/加注到/全下），只是金额随当前 curBet 变。
+        let tlActs = [];            // [{ pos, a: 'fold'|'limp'|'call'|'raise'|'allin', amt }]，amt = 投到的总额
+        // ── 兼容视图：下列两个变量仍由 tlActs 派生出来，供既有代码与回归套件读取 ──
+        //    （initPotTracker / rangeEstimator / goToPostFlop / 25 个套件都直接读它们）
+        //    外部若**直接赋值**（旧测试、tlSyncFromMode），tlAdoptLegacy() 会检测到并反向重建流水。
+        let tlEvents = {};          // { pos: { action, amount } }  ← 该座位的**最后一个**动作
+        let tlHero = null;          // null=我还没行动 | { action:'open'|'call'|'3bet'|'limp'|'fold', amount }
+        let _tlLegacySig = '';      // 兼容视图的签名，用于发现"外部改了 tlEvents/tlHero"
+
+        /** 翻前座位顺序（UTG…BB）——行动顺序即数组顺序 */
+        function tlSeatOrder() { return getPositions(); }
+
+        /**
+         * 从动作流水求出全部状态。**这是整个翻前的唯一真源**，底池/在池人数/轮到谁
+         * 全部由它算出，不再有任何按场景硬编码的底池公式。
+         */
+        function tlState() {
+            tlAdoptLegacy();
+            const seats = tlSeatOrder();
+            const committed = {}, folded = new Set(), allIn = new Set();
+            seats.forEach(p => committed[p] = 0);
+            // 盲注（已投入，但 SB/BB 都还没"行动过"）
+            if (committed.SB !== undefined) committed.SB = 0.5;
+            if (committed.BB !== undefined) committed.BB = 1;
+            let curBet = 1, lastRaiseInc = 1, lastAggIdx = -1;
+            const raises = [];       // 依次记录每一次加注（含开池）：{pos, amt, idx}
+            const stackOf = p => (p === globalPosHero ? globalHeroStack : globalVillainStack) || 40;
+
+            tlActs.forEach((act, i) => {
+                if (!seats.includes(act.pos)) return;
+                const p = act.pos;
+                if (act.a === 'fold') { folded.add(p); return; }
+                if (act.a === 'limp') { committed[p] = Math.max(committed[p], 1); return; }
+                if (act.a === 'call') { committed[p] = Math.min(curBet, stackOf(p)); if (committed[p] >= stackOf(p)) allIn.add(p); return; }
+                if (act.a === 'raise' || act.a === 'allin') {
+                    const amt = act.a === 'allin' ? (act.amt || stackOf(p)) : act.amt;
+                    committed[p] = amt;
+                    if (act.a === 'allin') allIn.add(p);
+                    if (amt > curBet) { lastRaiseInc = amt - curBet; curBet = amt; lastAggIdx = i; raises.push({ pos: p, amt, idx: i, act }); }
+                }
+            });
+
+            const inPot = seats.filter(p => !folded.has(p));
+            // 已经把钱投到位的人 —— 翻前一结束，这批人就是进翻后的人（盲注位只投了盲注不算）
+            const contenders = seats.filter(p => !folded.has(p) && committed[p] > 0 && committed[p] >= curBet);
+            const pot = seats.reduce((s, p) => s + committed[p], 0);
+
+            // ── 轮到谁 ──
+            // 规则：最后一次加注之后，按座位顺序从加注者的下一位起，
+            //       找第一个「未弃牌 且 (投入不足 curBet 或 这一轮还没表过态)」的人。
+            const actedAfter = new Set(tlActs.slice(lastAggIdx + 1).map(a => a.pos));
+            const everActed = new Set(tlActs.map(a => a.pos));
+            let order;
+            if (lastAggIdx >= 0) {
+                const i0 = seats.indexOf(tlActs[lastAggIdx].pos);
+                order = [...seats.slice(i0 + 1), ...seats.slice(0, i0 + 1)];
+            } else {
+                order = [...seats];
+            }
+            let nextToAct = null;
+            for (const p of order) {
+                if (folded.has(p) || allIn.has(p)) continue;
+                if (committed[p] < curBet) { nextToAct = p; break; }          // 钱不够，必须表态
+                if (!actedAfter.has(p) && lastAggIdx >= 0) continue;          // 他就是加注者本人
+                if (lastAggIdx < 0 && !everActed.has(p)) { nextToAct = p; break; }   // 无人加注：还没说话的（含 BB 的 option）
+            }
+
+            return { seats, committed, folded, allIn, inPot, contenders, pot, curBet, lastRaiseInc,
+                     raises, nextToAct, closed: nextToAct === null && tlActs.length > 0,
+                     heroActs: tlActs.filter(a => a.pos === globalPosHero) };
+        }
+
+        /** 该座位此刻的合法动作（选项永远是这四类，只是金额随当前局面变） */
+        function tlOptions(pos) {
+            const st = tlState();
+            const need = Math.max(0, st.curBet - (st.committed[pos] || 0));
+            const openAmt = tlOpenDefault();
+            // 最小合法加注 = 当前额 + 上次加注增量；无人加注时即开池额
+            const minRaise = st.raises.length ? Math.round((st.curBet + st.lastRaiseInc) * 2) / 2 : openAmt;
+            const dflt = st.raises.length ? Math.max(minRaise, Math.round(st.curBet * 3.4 * 2) / 2) : openAmt;
+            const stack = (pos === globalPosHero ? globalHeroStack : globalVillainStack) || 40;
+            return {
+                need, minRaise, raiseDefault: Math.min(dflt, stack), stack,
+                facing: st.curBet > 1 || (st.committed[pos] || 0) < st.curBet,
+                canCheck: need <= 0,                       // BB 无人加注时可以过牌
+                nRaises: st.raises.length,
+                st
+            };
+        }
+
+        /** 记录一个动作（流水追加）。amt 为"投到的总额" */
+        function tlPush(pos, a, amt) {
+            tlActs.push({ pos, a, amt: amt || 0 });
+            tlRebuildLegacy();
+        }
+        /** 撤掉某座位的最后一个动作（点同一格改主意时用） */
+        function tlPopLast(pos) {
+            for (let i = tlActs.length - 1; i >= 0; i--) {
+                if (tlActs[i].pos === pos) { tlActs.splice(i, 1); break; }
+            }
+            tlRebuildLegacy();
+        }
+        /** 该座位到目前为止的动作序列 */
+        function tlActsOf(pos) { return tlActs.filter(a => a.pos === pos); }
+
+        /**
+         * 点一个"还没轮到"的座位时，把他前面尚未行动的人自动补成弃牌(2026-09-11)。
+         * 顺序依然严谨（流水是完整的一轮），但录入只要点一次——否则每手都得先点五次"弃牌"。
+         * 遇到**我**就停下：我还没表态时，后面的人本来就不该有行动。
+         * @returns {boolean} 是否可以继续记录 pos 的动作
+         */
+        function tlAutoFoldBefore(pos) {
+            if (tlActsOf(pos).length) return true;           // 他已经行动过 = 改主意，不补
+            let guard = 0;
+            while (guard++ < 24) {
+                const st = tlState();
+                if (!st.nextToAct || st.nextToAct === pos) return true;
+                if (st.nextToAct === globalPosHero) {
+                    showToast('先记录我的行动，后面的人才能行动', 'warn');
+                    return false;
+                }
+                tlActs.push({ pos: st.nextToAct, a: 'fold', amt: 0, auto: true });
+            }
+            return true;
+        }
+
+        // ── 兼容层：tlEvents / tlHero 由流水派生；外部直接赋值时反向重建流水 ──
+        function tlRebuildLegacy() {
+            const ev = {};
+            tlActs.forEach(a => {
+                if (a.pos === globalPosHero) return;
+                ev[a.pos] = { action: a.a === 'allin' ? 'allin' : a.a, amount: a.amt || 0 };
+            });
+            tlEvents = ev;
+            const mine = tlActsOf(globalPosHero);
+            if (!mine.length) tlHero = null;
+            else {
+                const last = mine[mine.length - 1];
+                // 语义映射：我的加注按"第几次加注"翻译成 open / 3bet（既有代码按这两个词分支）
+                let action = last.a;
+                if (last.a === 'raise') {
+                    const before = tlActs.slice(0, tlActs.indexOf(last)).filter(x => x.a === 'raise' || x.a === 'allin').length;
+                    action = before === 0 ? 'open' : '3bet';
+                }
+                tlHero = { action, amount: last.amt || 0 };
+            }
+            _tlLegacySig = JSON.stringify({ e: tlEvents, h: tlHero });
+        }
+        /** 外部（旧测试 / tlSyncFromMode / 撤回恢复）直接写了 tlEvents / tlHero → 反向重建流水 */
+        function tlAdoptLegacy() {
+            const sig = JSON.stringify({ e: tlEvents, h: tlHero });
+            if (sig === _tlLegacySig) return;
+            const seats = getPositions();
+            const acts = [];
+            const hi = seats.indexOf(globalPosHero);
+            // 第一轮：按座位顺序把每个人的单一动作排成流水（旧模型本来就只表达得了一轮）
+            // 第一轮：按座位顺序（旧模型只表达得了这一轮）
+            seats.forEach((p) => {
+                if (p === globalPosHero) {
+                    if (tlHero && tlHero.action && tlHero.action !== 'none') {
+                        const a = tlHero.action === 'open' || tlHero.action === '3bet' ? 'raise' : tlHero.action;
+                        acts.push({ pos: p, a, amt: tlHero.amount || 0 });
+                    }
+                    return;
+                }
+                const e = tlEvents[p];
+                // 旧模型里"没有记录"就等于弃牌（座位格显示"弃"）——补出来，流水才是完整的一轮，
+                // 否则"轮到谁"会指向一个从没说过话的前位，提示文案看着莫名其妙。
+                if (!e || !e.action) { acts.push({ pos: p, a: 'fold', amt: 0 }); return; }
+                acts.push({ pos: p, a: e.action, amt: e.amount || 0 });
+            });
+            // 第二轮：旧模型的 resp（对手的再表态 / 我的应对）**整体排在第一轮之后**——
+            // 按座位顺序混排会把"他对我的 3-Bet 再加注"排到我的 3-Bet 前面，加注序整个错位。
+            seats.forEach((p) => {
+                const e = p === globalPosHero ? tlHero : tlEvents[p];
+                const rp = e && e.resp;
+                if (rp && rp.action && rp.action !== 'pending') acts.push({ pos: p, a: rp.action, amt: rp.amount || 0 });
+            });
+            tlActs = acts;
+            tlRebuildLegacy();
+        }
         let _tlApplying = false;    // 时间线驱动 switchMode 时防反向同步回环
         let _tlTimer = null;
         const TL_MODE_LABEL = { open: 'Open 开池', vsLimp: 'vs Limp 隔离', faceBet: 'vs Raise', squeeze: 'Squeeze',
@@ -5463,279 +5668,246 @@
             const m = gameConfig.tbSize === 'auto' ? 3.4 : gameConfig.tbSize;
             return Math.max(openAmt + 2, Math.round(openAmt * m * 2) / 2);
         }
-        function tlReset() { tlEvents = {}; tlHero = null; }
+        function tlReset() { tlActs = []; tlEvents = {}; tlHero = null; _tlLegacySig = JSON.stringify({ e: {}, h: null }); }
         const tlLbl = p => p === 'UTG1' ? 'U+1' : (POS_LABEL[p] || p);
 
         /**
-         * 由座位带推出场景与引擎输入。
+         * 由动作流水推出场景与引擎输入。
          *
-         * 2026-09-08 重写：原实现是一串"命中哪个形状就返回哪个模式"的 if 链，
-         * **任何没被枚举到的组合不会报错，而是悄悄掉进一个错误的分支并给出自信的建议**。
-         * 用户实测到的四个问题全部源于此：
-         *   · 我之前有人加注、我却标了"开池" → 返回 open「无人再加注」（从不检查 rBefore）
-         *   · 两个加注都在我之前、我标"已跟注" → 掉进 faceBet，**完全无视第二个加注**，
-         *     理由还写着"面对 UTG+1 开池"
-         *   · 面对"开池+跟注"与面对"3-Bet"给出方向相反的结论
+         * 2026-09-11 重写：判据从"座位先后"换成 **"第几次加注"**。
+         * 原来用"我之前/我之后有没有人加注"分类，在单轮里恰好等价，但翻前本来就可以打很多轮：
+         * 我开池 2.2 → 他 3-Bet 7.5 → 我跟注，此时"我之前的加注次数"是 0，
+         * 旧判据把它当成"前方没人加注却标了跟注"→ 归成跛入池，底池自然全错（用户截图2）。
+         * 现在一律看 tlState().raises 这条加注序列：第 1 次＝开池、第 2 次＝3-Bet、第 3 次＝4-Bet…
+         * 我处在序列的哪一格，就决定了场景是什么。单轮情形下与旧判据结果一致（回归锁定）。
          *
-         * 现在改为**先把行动序归一化，再分类**，并且**穷尽所有分支**：
-         * 任何无法归类的组合返回 unsupported 而不是猜一个模式。
+         * 底池不再由本函数猜：tlPot / tlCommitted / tlContenders 是流水求和出来的精确值，
+         * initPotTracker 与 goToPostFlop 直接用它们。
          */
         function deriveScenario() {
-            const seats = getPositions();
-            const hero = globalPosHero;
-            const hi = seats.indexOf(hero);
-            const before = seats.slice(0, Math.max(0, hi)), after = hi >= 0 ? seats.slice(hi + 1) : [];
-            const ev = p => tlEvents[p] || { action: 'fold' };
+            const st = tlState();
+            const seats = st.seats, hero = globalPosHero;
+            const R = st.raises;                       // [{pos, amt, idx}] 按时间序的加注（含开池）
             const openAmt = tlOpenDefault();
             const out = { mode: 'open', posV: null, posC: null, raiseSize: openAmt, threeBetSize: globalThreeBetSize,
-                          fourBetSize: globalFourBetSize,
-                          limpers: [], callers: 0, vStack: null, note: '', blocked: false, label: '' };
+                          fourBetSize: globalFourBetSize, limpers: [], callers: 0, vStack: null,
+                          note: '', blocked: false, label: '',
+                          tlPot: st.pot, tlCommitted: st.committed, tlContenders: [...st.contenders],
+                          tlClosed: st.closed, tlNextToAct: st.nextToAct };
 
-            // ── 归一化：把座位带整理成"谁做了什么"的清单 ──
-            const act = p => ({ pos: p, a: ev(p).action, amt: ev(p).amount || 0 });
-            const listBefore = before.map(act).filter(x => x.a !== 'fold');
-            const listAfter  = after.map(act).filter(x => x.a !== 'fold');
-            const raisesBefore = listBefore.filter(x => x.a === 'raise');
-            const raisesAfter  = listAfter.filter(x => x.a === 'raise');
-            const limpsBefore  = listBefore.filter(x => x.a === 'limp');
-            const callsBefore  = listBefore.filter(x => x.a === 'call');
-            const callsAfter   = listAfter.filter(x => x.a === 'call');
-            const allinsAll    = listBefore.concat(listAfter).filter(x => x.a === 'allin');
-            // 加注序列（按座位顺序）：第 1 个 = 开池，第 2 个 = 3-Bet，第 3 个 = 4-Bet…
-            const raiseSeq = listBefore.concat(listAfter).filter(x => x.a === 'raise');
-            const lastRaiseBefore = raisesBefore.length ? raisesBefore[raisesBefore.length - 1] : null;
+            const acts = tlActs;
+            const mine = st.heroActs;                              // 我的动作序列
+            const myLast = mine.length ? mine[mine.length - 1] : null;
+            const myLastIdx = myLast ? acts.lastIndexOf(myLast) : -1;
+            const limps = seats.filter(p => tlActsOf(p).some(a => a.a === 'limp') && !st.folded.has(p) && p !== hero);
+            const allins = acts.filter(a => a.a === 'allin' && a.pos !== hero);
+            // 我最后一次行动之前 / 之后的加注
+            const rBefore = R.filter(r => myLastIdx < 0 ? true : r.idx < myLastIdx);
+            const rAfter  = R.filter(r => myLastIdx >= 0 && r.idx > myLastIdx);
+            const rMine   = R.filter(r => r.pos === hero);
+            const sz = i => (R[i] ? R[i].amt : 0);                 // 第 i 次加注的额度（0-based）
 
-            // ══ 情形 0：有人全下 —— 不论我做过什么，这是接注决策 ══
-            if (allinsAll.length) {
-                const shover = allinsAll.reduce((a, b) => (a.amt >= b.amt ? a : b));
+            // 尺度字段：第 1/2/3 次加注额（引擎按这三个读）
+            if (R[0]) out.raiseSize = R[0].amt || openAmt;
+            if (R[1]) out.threeBetSize = R[1].amt;
+            if (R[2]) out.fourBetSize = R[2].amt;
+
+            // ══ 情形 0：有人全下 —— 这是接注决策 ══
+            if (allins.length) {
+                const shover = allins.reduce((a, b) => ((a.amt || 0) >= (b.amt || 0) ? a : b));
                 out.mode = 'defend'; out.posV = shover.pos; out.vStack = shover.amt || globalVillainStack;
-                out.label = `${tlLbl(shover.pos)} 全下 ${out.vStack}BB`;
-                if (allinsAll.length > 1) out.note = `另有 ${allinsAll.length - 1} 人全下，按最大者估算`;
-                if (raisesBefore.length) out.note += (out.note ? '；' : '') +
-                    `前方另有 ${raisesBefore.map(x => tlLbl(x.pos)).join('/')} 加注（其投入计为死钱）`;
+                out.label = `${tlLbl(shover.pos)} 全下 ${(+out.vStack.toFixed(1))}BB`;
+                if (allins.length > 1) out.note = `另有 ${allins.length - 1} 人全下，按最大者估算`;
+                const dead = R.filter(r => r.pos !== shover.pos && r.pos !== hero);
+                if (dead.length) out.note += (out.note ? '；' : '') +
+                    `另有 ${dead.map(r => tlLbl(r.pos)).join('/')} 加注（其投入计为死钱）`;
                 return out;
             }
 
-            // ══ 情形 1：我还没行动（tlHero == null）—— 计算我此刻该怎么打 ══
-            if (!tlHero) {
-                if (raisesBefore.length === 0) {
-                    if (limpsBefore.length) {
-                        out.mode = 'vsLimp'; out.limpers = limpsBefore.map(x => x.pos); out.posV = limpsBefore[0].pos;
-                        out.label = `${out.limpers.map(tlLbl).join('/')} 跛入`;
+            // ══ 情形 1：我已弃牌 ══
+            if (myLast && myLast.a === 'fold') {
+                out.blocked = true; out.label = '我已弃牌';
+                out.note = '本手已弃牌，无需决策。点我的座位可改回来重新推演。';
+                return out;
+            }
+
+            // ── 主对手与跟注者：按"谁的钱在池里"定 ──
+            const others = st.contenders.filter(p => p !== hero);
+            const lastOtherRaise = [...R].reverse().find(r => r.pos !== hero) || null;
+
+            // ══ 情形 2：我还没行动 —— 算我此刻该怎么打 ══
+            if (!myLast) {
+                if (R.length === 0) {
+                    if (limps.length) {
+                        out.mode = 'vsLimp'; out.limpers = limps; out.posV = limps[0];
+                        out.label = `${limps.map(tlLbl).join('/')} 跛入`;
                         return out;
                     }
                     out.mode = 'open'; out.label = '前方全部弃牌';
                     if (hero === 'BB') { out.blocked = true; out.note = 'BB 无人入池 = 免费拿走盲注（walk），无需决策'; }
                     return out;
                 }
-                if (raisesBefore.length === 1) {
-                    const r0 = raisesBefore[0];
-                    out.raiseSize = r0.amt || openAmt;
-                    // 该加注之后有没有人跟 → 有则是 Squeeze 位，没有则是单纯面对加注
-                    const callersAfterRaise = callsBefore.filter(x => seats.indexOf(x.pos) > seats.indexOf(r0.pos));
-                    if (callersAfterRaise.length) {
-                        out.mode = 'squeeze'; out.posV = r0.pos; out.posC = callersAfterRaise[0].pos;
-                        out.callers = callersAfterRaise.length;
-                        out.label = `${tlLbl(r0.pos)} 开池 ${out.raiseSize} → ${callersAfterRaise.map(x => tlLbl(x.pos)).join('/')} 跟注`;
+                if (R.length === 1) {
+                    const r0 = R[0];
+                    // 该加注之后跟进来的人 → Squeeze 位
+                    const callers = seats.filter(p => p !== hero && p !== r0.pos && !st.folded.has(p)
+                        && (st.committed[p] || 0) >= st.curBet && st.committed[p] > 1);
+                    out.posV = r0.pos;
+                    if (callers.length) {
+                        out.mode = 'squeeze'; out.posC = callers[0]; out.callers = callers.length;
+                        out.label = `${tlLbl(r0.pos)} 开池 ${out.raiseSize} → ${callers.map(tlLbl).join('/')} 跟注`;
                         return out;
                     }
-                    out.mode = 'faceBet'; out.posV = r0.pos;
+                    out.mode = 'faceBet';
                     out.label = `${tlLbl(r0.pos)} 开池 ${out.raiseSize}BB`;
-                    if (limpsBefore.length) out.note = `另有 ${limpsBefore.map(x => tlLbl(x.pos)).join('/')} 跛入（其投入计为死钱）`;
+                    if (limps.length) out.note = `另有 ${limps.map(tlLbl).join('/')} 跛入（其投入计为死钱）`;
                     return out;
                 }
-                // ≥2 个加注在我之前 = 已经被 3-Bet（或更多），我是冷跟/4-Bet 的一方
-                {
-                    const rOpen = raisesBefore[0], rLast = raisesBefore[raisesBefore.length - 1];
-                    out.mode = 'coldCall'; out.posV = rOpen.pos; out.posC = rLast.pos;
-                    out.raiseSize = rOpen.amt || openAmt;
-                    out.threeBetSize = rLast.amt || tlThreeBetDefault(out.raiseSize);
-                    out.label = `${tlLbl(rOpen.pos)} 开池 ${out.raiseSize} → ${tlLbl(rLast.pos)} ${raisesBefore.length >= 3 ? '4-Bet' : '3-Bet'} 到 ${out.threeBetSize}BB`;
-                    if (raisesBefore.length >= 3) out.note = `前方已到 ${raisesBefore.length} 次加注，按面对 3-Bet 的冷跟决策近似`;
-                    return out;
-                }
-            }
-
-            // ══ 情形 2：我已弃牌 ══
-            if (tlHero.action === 'fold') {
-                out.blocked = true;
-                out.label = '我已弃牌';
-                out.note = '本手已弃牌，无需决策。点我的座位可切回"轮到我"重新推演。';
+                // ≥2 次加注且我还没说话 = 冷跟 / 冷 4-Bet 的一方
+                out.mode = 'coldCall'; out.posV = R[0].pos; out.posC = R[R.length - 1].pos;
+                out.label = `${tlLbl(R[0].pos)} 开池 ${out.raiseSize} → ${tlLbl(R[R.length - 1].pos)} ` +
+                            `${R.length >= 3 ? '4-Bet' : '3-Bet'} 到 ${(+R[R.length - 1].amt.toFixed(1))}BB`;
+                if (R.length >= 3) out.note = `前方已到 ${R.length} 次加注，按面对 3-Bet 的冷跟决策近似`;
                 return out;
             }
 
-            // ══ 情形 3：我已行动 —— 看我之后有没有人再加注 ══
-            let heroAct = tlHero.action;            // open / 3bet / call / limp
-            const heroAmt = tlHero.amount || 0;
-            /**
-             * 我的第二轮应对(2026-09-10)：后位再加注之后，我点了 弃/跟/再加注。
-             * 决策模式**不变**（下方仍是"面对这个加注该怎么打"的复核），变的是：
-             *   fold  → 本手结束，不出建议（blocked）
-             *   call  → 可以进翻后；底池按双方投入到该加注额记账（face3b/coldCall 分支本就如此）
-             *   raise → 我是翻前侵略者，底池按我这次加注额记账（见 initPotTracker）
-             */
-            const applyHeroResp = (o) => {
-                const r = tlHero && tlHero.resp;
-                if (!r || !r.action || r.action === 'pending') return o;
-                if (r.action === 'fold') {
-                    o.blocked = true;
-                    o.label += ' → 我弃牌';
-                    o.note = '我已弃牌，本手结束。点我的座位上的「→」可切回待表态重新推演。';
-                    return o;
-                }
-                if (r.action === 'call') {
-                    o.heroResp = 'call';
-                    o.label += ' → 我跟注';
-                    o.note = (o.note ? o.note + '；' : '') + '我已跟注：下方为该决策的复核，翻后底池按双方投入到该加注额记账';
-                    return o;
-                }
-                if (r.action === 'raise') {
-                    o.heroResp = 'raise'; o.heroRespAmt = r.amount || 0;
-                    o.label += ` → 我再加注到 ${r.amount}BB`;
-                    o.note = (o.note ? o.note + '；' : '') + '我已再加注：下方为该决策的复核，翻后按我这次加注额记账（我是翻前侵略者）';
-                    return o;
-                }
-                return o;
-            };
-            // 语义归一(2026-09-08)：我标了"开池"但我之前已经有人加注 —— 那实际上是再加注。
-            // 原来它落进 faceBet 分支，于是"我加注到 6"却被建议"平跟"，自相矛盾。
-            if (heroAct === 'open' && raisesBefore.length) heroAct = raisesBefore.length >= 2 ? '4bet' : '3bet';
+            // ══ 情形 3：我已行动 ══
+            // 第几次加注：按**加注动作的序号**数（含金额没超过前一次的非法/记错情形——
+            // 用户截图7 就是"我标的加注额与前一次相同"，旧模型把它算作 3-Bet，此行为保留）
+            const raiseActs = acts.filter(a => a.a === 'raise' || a.a === 'allin');
+            const nthOf = (a) => raiseActs.indexOf(a);
+            const myRaiseSeq = myLast && myLast.a === 'raise' ? nthOf(myLast) : -1;   // 0-based
+            const contendersTxt = () => others.length ? `${others.map(tlLbl).join('/')} 跟注` : '';
 
-            if (raisesAfter.length) {
-                const rAfterFirst = raisesAfter[0];
-                // 我开池 → 后位加注 = 3-Bet；再有一次 = 4-Bet
-                if (heroAct === 'open') {
-                    out.raiseSize = heroAmt || openAmt;
-                    if (raisesAfter.length >= 2) {
-                        out.mode = 'face4b'; out.posV = raisesAfter[1].pos;
-                        out.threeBetSize = rAfterFirst.amt || tlThreeBetDefault(out.raiseSize);
-                        out.fourBetSize = raisesAfter[1].amt || Math.round(out.threeBetSize * 2.3 * 2) / 2;
-                        out.label = `我开池 ${out.raiseSize} → ${tlLbl(rAfterFirst.pos)} 3-Bet ${out.threeBetSize} → ${tlLbl(raisesAfter[1].pos)} 4-Bet 到 ${out.fourBetSize}BB`;
-                        return applyHeroResp(out);
+            if (rAfter.length) {
+                // 我行动之后又有人加注 → 我正面对它
+                const rr = rAfter[rAfter.length - 1];
+                out.posV = rr.pos;
+                const nBeforeRr = nthOf(rr.act || acts[rr.idx]);       // 他这次是第几次加注（0-based）
+                if (myLast.a === 'raise') {
+                    if (myRaiseSeq === 0) {
+                        // 我开池 → 被再加注
+                        if (nBeforeRr >= 2) {
+                            out.mode = 'face4b';
+                            out.label = `我开池 ${out.raiseSize} → ${tlLbl(R[1].pos)} 3-Bet ${(+sz(1).toFixed(1))} → ` +
+                                        `${tlLbl(rr.pos)} 4-Bet 到 ${(+rr.amt.toFixed(1))}BB`;
+                        } else {
+                            out.mode = 'face3b';
+                            out.label = `我开池 ${out.raiseSize}BB → ${tlLbl(rr.pos)} 3-Bet 到 ${(+rr.amt.toFixed(1))}BB`;
+                            const cs2 = others.filter(p => p !== rr.pos);
+                            if (cs2.length) out.note = `另有 ${cs2.map(tlLbl).join('/')} 跟注（${others.length + 1} 人底池）`;
+                        }
+                    } else {
+                        // 我 3-Bet / 4-Bet 之后被再加注
+                        out.mode = 'face4b';
+                        const myR = rMine.length ? rMine[rMine.length - 1] : null;
+                        out.threeBetSize = myR ? myR.amt : (myLast.amt || globalThreeBetSize);
+                        out.fourBetSize = rr.amt;
+                        // 措辞按"第几次加注"给：第 3 次叫 4-Bet、第 4 次叫 5-Bet（引擎与文案口径一致）
+                        const NTH = ['开池', '3-Bet', '4-Bet', '5-Bet', '6-Bet'];
+                        out.label = `我 ${NTH[myRaiseSeq] || '再加注'} 到 ${(+out.threeBetSize.toFixed(1))}BB → ` +
+                                    `${tlLbl(rr.pos)} ${NTH[nBeforeRr] || '再加注'} 到 ${(+rr.amt.toFixed(1))}BB`;
+                        out.note = '面对再加注：全下的 EV 是实算的（含他的弃牌率），跟注分支为启发式';
                     }
-                    out.mode = 'face3b'; out.posV = rAfterFirst.pos;
-                    out.threeBetSize = rAfterFirst.amt || tlThreeBetDefault(out.raiseSize);
-                    out.label = `我开池 ${out.raiseSize}BB → ${tlLbl(rAfterFirst.pos)} 3-Bet 到 ${out.threeBetSize}BB`;
-                    if (callsAfter.length) out.note = `另有 ${callsAfter.map(x => tlLbl(x.pos)).join('/')} 跟注`;
-                    return applyHeroResp(out);
+                    return out;
                 }
-                // 我 3-Bet → 后位再加注 = 4-Bet
-                if (heroAct === '3bet') {
-                    out.mode = 'face4b'; out.posV = rAfterFirst.pos;
-                    out.threeBetSize = heroAmt || globalThreeBetSize;
-                    out.fourBetSize = rAfterFirst.amt || Math.round(out.threeBetSize * 2.3 * 2) / 2;
-                    out.raiseSize = lastRaiseBefore ? (lastRaiseBefore.amt || openAmt) : openAmt;
-                    out.label = `我 3-Bet 到 ${out.threeBetSize}BB → ${tlLbl(rAfterFirst.pos)} 4-Bet 到 ${out.fourBetSize}BB`;
-                    out.note = '面对 4-Bet：5-Bet 全下的 EV 是实算的（含他的弃牌率），跟注分支为启发式';
-                    return applyHeroResp(out);
-                }
-                // 我跟注 → 后位加注 = 对我 Squeeze。用 coldCall 建模而不是 faceBet：
-                // coldCall 会把**开池者已投入的那份算作死钱**，而 faceBet 会把挤压额当成开池，
-                // 丢掉开池者的投入、把底池算小。（回归套件锁定了这个映射。）
-                if (heroAct === 'call' && lastRaiseBefore) {
-                    out.mode = 'coldCall'; out.posV = lastRaiseBefore.pos; out.posC = rAfterFirst.pos;
-                    out.raiseSize = lastRaiseBefore.amt || openAmt;
-                    out.threeBetSize = rAfterFirst.amt || tlThreeBetDefault(out.raiseSize);
-                    out.label = `${tlLbl(lastRaiseBefore.pos)} 开池 ${out.raiseSize} → 我跟注 → ${tlLbl(rAfterFirst.pos)} Squeeze 到 ${out.threeBetSize}BB`;
+                // 我跟注/跛入之后被加注
+                if (rBefore.length >= 1) {
+                    out.mode = 'coldCall'; out.posV = R[0].pos; out.posC = rr.pos;
+                    out.threeBetSize = rr.amt;
+                    out.label = `${tlLbl(R[0].pos)} 开池 ${out.raiseSize} → 我跟注 → ${tlLbl(rr.pos)} Squeeze 到 ${(+rr.amt.toFixed(1))}BB`;
                     out.note = '面对 Squeeze，按 Cold Call（面对 3-Bet 的跟注决策）近似';
-                    return applyHeroResp(out);
-                }
-                // 我跛入被 Iso-raise，或跟注但前方无加注 → 按面对该加注处理
-                out.mode = 'faceBet'; out.posV = rAfterFirst.pos;
-                out.raiseSize = rAfterFirst.amt || tlThreeBetDefault(lastRaiseBefore ? lastRaiseBefore.amt : openAmt);
-                out.label = heroAct === 'call'
-                    ? `我已跟注 → ${tlLbl(rAfterFirst.pos)} 加注到 ${out.raiseSize}BB`
-                    : `我跛入 → ${tlLbl(rAfterFirst.pos)} 加注到 ${out.raiseSize}BB（Iso-raise）`;
-                return applyHeroResp(out);
-            }
-
-            // ── 第二轮应对(2026-09-08)：我加注后，前方已行动者的再次表态 ──
-            // 若有人"再加注"，那就是对我的 3-Bet/4-Bet，优先级高于下面的复核分支。
-            const respRaise = listBefore.filter(x => (ev(x.pos).resp || {}).action === 'raise');
-            if (respRaise.length && (heroAct === 'open' || heroAct === '3bet')) {
-                const rr = respRaise[respRaise.length - 1];
-                const rrAmt = (ev(rr.pos).resp || {}).amount || Math.round(heroAmt * 2.3 * 2) / 2;
-                if (heroAct === 'open') {
-                    out.mode = 'face3b'; out.posV = rr.pos;
-                    out.raiseSize = heroAmt || openAmt; out.threeBetSize = rrAmt;
-                    out.label = `我开池 ${out.raiseSize} → ${tlLbl(rr.pos)} 再加注到 ${rrAmt}BB（3-Bet）`;
-                } else {
-                    out.mode = 'face4b'; out.posV = rr.pos;
-                    out.threeBetSize = heroAmt; out.fourBetSize = rrAmt;
-                    out.raiseSize = lastRaiseBefore ? (lastRaiseBefore.amt || openAmt) : openAmt;
-                    out.label = `我 3-Bet 到 ${heroAmt} → ${tlLbl(rr.pos)} 再加注到 ${rrAmt}BB（4-Bet）`;
-                }
-                return out;
-            }
-            const respCall = listBefore.filter(x => (ev(x.pos).resp || {}).action === 'call');
-
-            // ── 我已行动、后方无人再加注：复核我这个决策 ──
-            if (heroAct === 'open') {
-                out.raiseSize = heroAmt || openAmt;
-                const inPot = callsAfter.concat(respCall);   // 后位跟注 + 前方对我加注的应对跟注
-                if (inPot.length) {
-                    const byPost = [...inPot].sort((a, b) => (POSTFLOP_ORDER[a.pos] || 0) - (POSTFLOP_ORDER[b.pos] || 0));
-                    out.mode = 'open'; out.posV = byPost[0].pos;
-                    out.label = `我开池 ${out.raiseSize}BB → ${inPot.map(x => tlLbl(x.pos)).join('/')} 跟注`;
-                    out.note = inPot.length > 1
-                        ? `${inPot.length + 1} 人底池：主对手 ${tlLbl(byPost[0].pos)}（翻后最先行动），其余已自动加入"多人+"`
-                        : `${tlLbl(byPost[0].pos)} 跟注，翻后单挑`;
                     return out;
                 }
-                out.mode = 'open'; out.label = `我开池 ${out.raiseSize}BB，无人再加注`;
-                out.note = '你已开池且无人再加注——下方为开池决策复核；对手行动后在座位带补录即可';
+                out.mode = 'faceBet'; out.raiseSize = rr.amt;
+                out.label = `我${myLast.a === 'limp' ? '跛入' : '跟注'} → ${tlLbl(rr.pos)} 加注到 ${(+rr.amt.toFixed(1))}BB（Iso-raise）`;
                 return out;
             }
 
-            if (heroAct === '3bet' || heroAct === '4bet') {
-                const isFour = heroAct === '4bet';
-                const rOpen = raisesBefore[0], rLast = raisesBefore[raisesBefore.length - 1];
-                out.raiseSize = rOpen ? (rOpen.amt || openAmt) : openAmt;
-                if (isFour) { out.threeBetSize = rLast ? rLast.amt : globalThreeBetSize; out.fourBetSize = heroAmt; }
-                else out.threeBetSize = heroAmt || globalThreeBetSize;
-                out.mode = 'faceBet'; out.posV = rLast ? rLast.pos : globalPosVillain;
-                out.label = rOpen
-                    ? `${tlLbl(rOpen.pos)} 开池 ${out.raiseSize} → 我${isFour ? ' 4-Bet' : ' 3-Bet'} 到 ${heroAmt}BB`
-                    : `我${isFour ? ' 4-Bet' : ' 3-Bet'} 到 ${heroAmt}BB`;
-                const contin = respCall.concat(callsAfter);
-                out.note = `已按你的${isFour ? ' 4-Bet' : ' 3-Bet'} 记账：翻后底池/SPR 与范围优势均按"我是翻前侵略者"计算` +
-                    (contin.length ? `；${contin.map(x => tlLbl(x.pos)).join('/')} 跟注（${contin.length + 1} 人底池）` : '');
+            // ── 我行动之后没人再加注：复核我这个决定 ──
+            if (myLast.a === 'raise') {
+                if (myRaiseSeq === 0) {
+                    out.mode = 'open';
+                    if (others.length) {
+                        const byPost = [...others].sort((a, b) => (POSTFLOP_ORDER[a] || 0) - (POSTFLOP_ORDER[b] || 0));
+                        out.posV = byPost[0];
+                        out.label = `我开池 ${out.raiseSize}BB → ${contendersTxt()}`;
+                        out.note = others.length > 1
+                            ? `${others.length + 1} 人底池：主对手 ${tlLbl(byPost[0])}（翻后最先行动），其余已自动加入"多人+"`
+                            : `${tlLbl(byPost[0])} 跟注，翻后单挑`;
+                    } else {
+                        out.label = `我开池 ${out.raiseSize}BB，${st.closed ? '无人跟注' : '等待其他人行动'}`;
+                        out.note = st.closed ? '' : `现在轮到 ${tlLbl(st.nextToAct)} —— 在座位带上补录他的行动`;
+                    }
+                    return out;
+                }
+                // 我 3-Bet / 4-Bet 且没人再加注 → 复核（引擎按"面对前一次加注"算）
+                out.mode = 'faceBet';
+                out.posV = lastOtherRaise ? lastOtherRaise.pos : (others[0] || globalPosVillain);
+                out.raiseSize = R[myRaiseSeq - 1] ? R[myRaiseSeq - 1].amt : openAmt;
+                out.threeBetSize = rMine.length ? rMine[rMine.length - 1].amt : (myLast.amt || globalThreeBetSize);
+                if (myRaiseSeq >= 2) out.fourBetSize = out.threeBetSize;
+                const NTH2 = ['开池', '3-Bet', '4-Bet', '5-Bet', '6-Bet'];
+                const myWord = NTH2[myRaiseSeq] || '再加注';
+                out.label = `${tlLbl(R[0] ? R[0].pos : (lastOtherRaise ? lastOtherRaise.pos : '?'))} 开池 ${(+sz(0).toFixed(1))} → 我 ${myWord} 到 ${(+out.threeBetSize.toFixed(1))}BB`;
+                out.note = `已按你的 ${myWord} 记账：翻后底池/SPR 与范围优势均按"我是翻前侵略者"计算` +
+                           (others.length ? `；${contendersTxt()}（${others.length + 1} 人底池）` : '');
                 return out;
             }
 
-            if (heroAct === 'call') {
-                // ★ 关键修复：主对手取**我之前最后一次加注**的那位，尺度也用它。
-                //   原实现只看 rBefore[0]，于是"U+1 开 2.2 → LJ 3-Bet 7.5 → 我跟注"
-                //   会当成"面对 U+1 的 2.2 开池"，第二个加注被整个丢掉。
-                if (raisesBefore.length >= 2) {
-                    const rOpen = raisesBefore[0], rLast = raisesBefore[raisesBefore.length - 1];
-                    out.mode = 'coldCall'; out.posV = rOpen.pos; out.posC = rLast.pos;
-                    out.raiseSize = rOpen.amt || openAmt;
-                    out.threeBetSize = rLast.amt || tlThreeBetDefault(out.raiseSize);
-                    out.label = `${tlLbl(rOpen.pos)} 开池 ${out.raiseSize} → ${tlLbl(rLast.pos)} 3-Bet 到 ${out.threeBetSize} → 我跟注`;
-                    out.note = '我已冷跟这个 3-Bet：下方为该决策的复核，翻后底池按 3-Bet 额记账';
+            if (myLast.a === 'call') {
+                // 我自己开过池、后来跟了别人的再加注 —— 这是"面对 3-Bet 后选择跟注"的复核，
+                // 不是冷跟（cold call）。区别很实在：主对手是 3-Bet 者而不是开池者（开池者就是我），
+                // 翻后范围也该按"我是被 3-Bet 的开池者"来估。
+                const myRaises = R.filter(r => r.pos === hero);
+                if (myRaises.length && R.length >= 2) {
+                    const rr = [...R].reverse().find(r => r.pos !== hero);
+                    out.mode = 'face3b'; out.posV = rr ? rr.pos : (others[0] || globalPosVillain);
+                    out.raiseSize = myRaises[0].amt;
+                    if (rr) out.threeBetSize = rr.amt;
+                    const nth = rr ? nthOf(rr.act || acts[rr.idx]) : 1;
+                    const NTH3 = ['开池', '3-Bet', '4-Bet', '5-Bet'];
+                    out.label = `我开池 ${(+out.raiseSize.toFixed(1))} → ${rr ? tlLbl(rr.pos) : '对手'} ` +
+                                `${NTH3[nth] || '再加注'} 到 ${(+out.threeBetSize.toFixed(1))} → 我跟注`;
+                    out.note = `我已跟注到 ${(+(st.committed[hero] || 0).toFixed(1))}BB：下方为该决策的复核，` +
+                               `翻后底池按实际投入记账（${st.contenders.length} 人进池）`;
                     return out;
                 }
-                if (raisesBefore.length === 1) {
-                    const r0 = raisesBefore[0];
-                    out.mode = 'faceBet'; out.posV = r0.pos; out.raiseSize = r0.amt || openAmt;
-                    out.label = `${tlLbl(r0.pos)} 开池 ${out.raiseSize} → 我跟注`;
-                    out.note = '下方为该跟注决策的复核；后位若有行动，在座位带补录';
+                if (R.length >= 2) {
+                    out.mode = 'coldCall'; out.posV = R[0].pos; out.posC = R[R.length - 1].pos;
+                    out.label = `${tlLbl(R[0].pos)} 开池 ${(+sz(0).toFixed(1))} → ${tlLbl(R[R.length - 1].pos)} ` +
+                                `${R.length >= 3 ? '4-Bet' : '3-Bet'} 到 ${(+sz(R.length - 1).toFixed(1))} → 我跟注`;
+                    out.note = `我已跟注到 ${(+(st.committed[hero] || 0).toFixed(1))}BB：下方为该决策的复核，` +
+                               `翻后底池按实际投入记账（${st.contenders.length} 人进池）`;
                     return out;
                 }
-                // 前方无人加注却标了"跟注" = 其实是跛入
-                out.mode = 'vsLimp'; out.limpers = limpsBefore.map(x => x.pos);
-                out.posV = limpsBefore.length ? limpsBefore[0].pos : null;
-                out.label = limpsBefore.length ? `${out.limpers.map(tlLbl).join('/')} 跛入 → 我跟着跛入` : '我跛入';
+                if (R.length === 1) {
+                    if (R[0].pos === hero) {
+                        // 我自己开池、后来又"跟注"——只可能是我跟了别人的加注，理论上不会走到这
+                        out.mode = 'open'; out.posV = others[0] || null;
+                        out.label = `我开池 ${out.raiseSize}BB → ${contendersTxt()}`;
+                        return out;
+                    }
+                    out.mode = 'faceBet'; out.posV = R[0].pos;
+                    out.label = `${tlLbl(R[0].pos)} 开池 ${out.raiseSize} → 我跟注`;
+                    out.note = st.closed ? '下方为该跟注决策的复核'
+                                         : `下方为该跟注决策的复核；现在轮到 ${tlLbl(st.nextToAct)}`;
+                    return out;
+                }
+                // 无人加注却"跟注" = 跛入/过牌
+                if (hero === 'BB') {
+                    out.mode = 'vsLimp'; out.limpers = limps; out.posV = limps[0] || 'SB';
+                    out.label = limps.length ? `${limps.map(tlLbl).join('/')} 跛入 → 我过牌` : '我在 BB 过牌';
+                    return out;
+                }
+                out.mode = 'vsLimp'; out.limpers = limps; out.posV = limps[0] || null;
+                out.label = limps.length ? `${limps.map(tlLbl).join('/')} 跛入 → 我跟着跛入` : '我跛入';
                 out.note = '前方没有加注，"跟注"在此等同于跛入（over-limp）';
                 return out;
             }
 
-            if (heroAct === 'limp') {
-                // 盲对盲（2026-09-09）：全弃到我(SB) 而我跛入——这不是 over-limp，
-                // 是 SB 在该节点的**主策略**。路由回 open 模式，让 SB 盲对盲分支
-                // 复核这手牌该跛/该加/该弃；底池由 initPotTracker 按跛入池记账。
-                if (globalPosHero === 'SB' && !limpsBefore.length && !raisesBefore.length) {
+            if (myLast.a === 'limp') {
+                if (hero === 'SB' && !limps.length && R.length === 0) {
                     out.mode = 'open'; out.posV = 'BB'; out.limpers = [];
                     out.label = '全弃到我（SB）→ 我跛入';
                     out.note = 'SB 跛入是该节点的主策略（MPT 实测 15-60bb 跛入 50-70%）；' +
@@ -5743,20 +5915,18 @@
                     return out;
                 }
                 out.mode = 'vsLimp';
-                out.limpers = limpsBefore.map(x => x.pos).concat(listAfter.filter(x => x.a === 'limp').map(x => x.pos));
+                out.limpers = limps.length ? limps : seats.filter(p => p !== hero && tlActsOf(p).some(a => a.a === 'limp'));
                 out.posV = out.limpers[0] || null;
-                out.label = `${limpsBefore.map(x => tlLbl(x.pos)).join('/') || '前位'} 跛入 → 我跟着跛入`;
+                out.label = `${out.limpers.map(tlLbl).join('/') || '前位'} 跛入 → 我跟着跛入`;
                 out.note = '你已跛入（over-limp）：下方为该决策的复核；翻后按跛入池记账';
                 return out;
             }
 
-            // ── 兜底：走到这里说明出现了未枚举的组合。**不猜模式**，明确说不支持。──
-            out.blocked = true;
-            out.mode = 'open';
+            // ── 兜底：不猜。──
+            out.blocked = true; out.mode = 'open';
             out.label = '无法识别的行动序';
-            out.note = `座位带上的行动组合超出当前支持范围（我方=${heroAct}，前方 ${raisesBefore.length} 次加注、` +
-                       `后方 ${raisesAfter.length} 次加注）。请用「传统场景标签」手动指定场景，` +
-                       `或调整座位带。**系统不会在这种情况下猜一个建议给你。**`;
+            out.note = `行动组合超出当前支持范围（我方=${myLast.a}，共 ${R.length} 次加注）。` +
+                       `请用「传统场景标签」手动指定场景，或调整座位带。**系统不会在这种情况下猜一个建议给你。**`;
             return out;
         }
 
@@ -5819,18 +5989,24 @@
 
         /** 外部 switchMode（OCR / 传统标签 / 撤回）后，用当前模式与全局值重建座位带 */
         function tlSyncFromMode() {
-            const m = currentMode; const ev = {};
-            let hero = null;
+            // 2026-09-11：直接构造**流水**而不是 per-seat 映射 —— 顺序必须显式给出。
+            // 按座位顺序反推会在"我开池、而 3-Bet 者的座位排在我前面"时把两次加注排反，
+            // 于是 R[0] 变成他的 3-Bet，开池额与 3-Bet 额整体错位。
+            const m = currentMode;
+            const H = globalPosHero, V = globalPosVillain, C = globalPosCaller;
             const openAmt = tlOpenDefault();
-            if (m === 'faceBet')       { ev[globalPosVillain] = { action: 'raise', amount: globalRaiseSize }; }
-            else if (m === 'squeeze')  { ev[globalPosVillain] = { action: 'raise', amount: globalRaiseSize }; ev[globalPosCaller] = { action: 'call' }; }
-            else if (m === 'face3b')   { hero = { action: 'open', amount: openAmt }; ev[globalPosVillain] = { action: 'raise', amount: globalThreeBetSize }; }
-            else if (m === 'face4b')   { hero = { action: '3bet', amount: globalThreeBetSize }; ev[globalPosVillain] = { action: 'raise', amount: globalFourBetSize }; }
-            else if (m === 'coldCall') { ev[globalPosVillain] = { action: 'raise', amount: openAmt }; ev[globalPosCaller] = { action: 'raise', amount: globalThreeBetSize }; }
-            else if (m === 'vsLimp')   { (selectedLimperPositions || []).forEach(p => { ev[p] = { action: 'limp' }; }); }
-            else if (m === 'defend')   { ev[globalPosVillain] = { action: 'allin', amount: globalVillainStack }; }
-            delete ev[globalPosHero];
-            tlEvents = ev; tlHero = hero;
+            let acts = [];
+            if (m === 'faceBet')       acts = [{ pos: V, a: 'raise', amt: globalRaiseSize }];
+            else if (m === 'squeeze')  acts = [{ pos: V, a: 'raise', amt: globalRaiseSize }, { pos: C, a: 'call', amt: 0 }];
+            else if (m === 'face3b')   acts = [{ pos: H, a: 'raise', amt: openAmt }, { pos: V, a: 'raise', amt: globalThreeBetSize }];
+            else if (m === 'face4b')   acts = [{ pos: V, a: 'raise', amt: globalRaiseSize },
+                                               { pos: H, a: 'raise', amt: globalThreeBetSize },
+                                               { pos: V, a: 'raise', amt: globalFourBetSize }];
+            else if (m === 'coldCall') acts = [{ pos: V, a: 'raise', amt: openAmt }, { pos: C, a: 'raise', amt: globalThreeBetSize }];
+            else if (m === 'vsLimp')   acts = (selectedLimperPositions || []).filter(p => p !== H).map(p => ({ pos: p, a: 'limp', amt: 1 }));
+            else if (m === 'defend')   acts = [{ pos: V, a: 'allin', amt: globalVillainStack }];
+            tlActs = acts.filter(a => a.pos && (a.pos !== H || m === 'face3b' || m === 'face4b'));
+            tlRebuildLegacy();
             renderTimeline();
             const d = deriveScenario();
             const lbl = document.getElementById('tlScenarioLabel');
@@ -5840,118 +6016,82 @@
         }
 
         /** 座位带 + 我的位置行 + 筹码行 渲染 */
+        /** 座位带 + 我的位置行 + 筹码行 渲染（2026-09-11 按动作流水重写） */
         function renderTimeline() {
             const ribbon = document.getElementById('tlRibbon');
             const heroRow = document.getElementById('tlHeroRow');
             if (!ribbon || !heroRow) return;
-            const _foc = _saveFocus();   // 重渲保焦(2026-09-11)：座位内嵌金额框正被滚轮/键盘编辑时不能丢焦点
-            const seats = getPositions();
-            const hi = seats.indexOf(globalPosHero);
-            // 我的位置
+            const _foc = _saveFocus();   // 重渲保焦：座位内嵌金额框正被滚轮/键盘编辑时不能丢焦点
+            const st = tlState();
+            const seats = st.seats;
+
+            // ── 我的位置 ──
             heroRow.innerHTML = `<div class="text-[10px] text-red-400 font-bold mb-1">我的位置</div><div class="tl-hero-grid">` +
                 seats.map(p => `<button class="pos-btn-hero${p === globalPosHero ? ' active' : ''}" data-tlhero="${p}">${tlLbl(p)}</button>`).join('') + `</div>`;
             heroRow.querySelectorAll('[data-tlhero]').forEach(b => b.onclick = () => {
                 pushUndo(`我的位置 → ${tlLbl(b.dataset.tlhero)}`);
-                globalPosHero = b.dataset.tlhero; delete tlEvents[globalPosHero];
-                // 我的位置之后的座位若无我的行动则不能有行动
-                if (!tlHero) seats.slice(seats.indexOf(globalPosHero) + 1).forEach(p => delete tlEvents[p]);
+                globalPosHero = b.dataset.tlhero;
+                tlActs = [];                      // 换位置＝重新开始这手牌的行动线
+                tlRebuildLegacy();
                 tlScheduleApply();
             });
-            // 座位带
-            const actTxt = (p) => {
-                if (p === globalPosHero) {
-                    if (!tlHero) return '轮到我';
-                    if (tlHero.action === 'open') return `我开池 ${tlHero.amount}`;
-                    if (tlHero.action === '3bet') return `我 3-Bet ${tlHero.amount}`;   // 审计修复#6
-                    if (tlHero.action === 'limp') return '我跛入';                       // 2026-09-08
-                    if (tlHero.action === 'fold') return '我已弃牌';                     // 2026-09-08
-                    return '我已跟注';
-                }
-                const e = tlEvents[p];
-                if (!e || e.action === 'fold') return '弃';
-                if (e.action === 'limp') return '跛入';
-                if (e.action === 'call') return '跟注';
-                if (e.action === 'raise') return `加注 ${e.amount}`;
-                if (e.action === 'allin') return `全下 ${e.amount}`;
-                return e.action;
-            };
-            // 点选简化(2026-07-21)：单击座位循环 弃→加注→跟注/跛入→全下；加注/全下额就地可改；
-            // 右键 / 长按（450ms）才弹出完整动作弹层
+
+            // ── 座位带 ──
+            // 每格显示：位置 · 最后一个动作（含就地可改的金额）· 多次行动时补一行"共投 X"。
+            // 轮到谁，谁高亮并写"● 该他了"；还没轮到且没动过的座位置灰（按顺序来）。
             const amtInput = (p, amt) => `<input class="tl-amt-inline" type="number" step="0.1" min="0.5" value="${amt}" data-tlamtpos="${p}" title="就地改额，回车确认">`;
-            ribbon.innerHTML = seats.map((p, i) => {
+            // 加注按"第几次"命名（开池 / 3-Bet / 4-Bet…），比笼统的"加注"有用，也与场景标签口径一致
+            const _raiseSeqAll = tlActs.filter(a => a.a === 'raise' || a.a === 'allin');
+            const NTHW = ['开池', '3-Bet', '4-Bet', '5-Bet', '6-Bet'];
+            ribbon.innerHTML = seats.map(p => {
+                const acts = tlActsOf(p);
+                const last = acts.length ? acts[acts.length - 1] : null;
+                const lastManual = acts.filter(x => !x.auto).length > 0;
                 const isHero = p === globalPosHero;
-                const e = tlEvents[p];
-                const cls = isHero ? 'hero' : (e && e.action !== 'fold' ? e.action : 'fold');
-                const disabled = !isHero && i > hi && !tlHero;
-                let act = actTxt(p);
-                if (isHero && tlHero && tlHero.action === 'open') act = `我开池 ${amtInput(p, tlHero.amount)}`;
-                else if (isHero && tlHero && tlHero.action === '3bet') act = `我 3-Bet ${amtInput(p, tlHero.amount)}`;   // 审计修复#6
-                else if (!isHero && e && e.action === 'raise') act = `加注 ${amtInput(p, e.amount)}`;
-                else if (!isHero && e && e.action === 'allin') act = `全下 ${amtInput(p, e.amount)}`;
-                // 第二轮应对(2026-09-08，用户："我 4-Bet 之后，最开始 open 的那个人没有跟注选项")：
-                // 我加注（开池/3-Bet）之后，我**之前**已经行动过的人还要再表态一次。
-                // 原来每个座位只能存一个动作，所以他们的应对根本无处可记。
-                const heroRaised = tlHero && (tlHero.action === 'open' || tlHero.action === '3bet');
-                const needResp = !isHero && i < hi && heroRaised && e && e.action !== 'fold' && e.action !== 'allin';
-                const respLbl = { fold: '弃', call: '跟注', raise: '再加注' };
-                const respTxt = needResp ? (respLbl[(e.resp && e.resp.action) || 'pending'] || '？待表态') : '';
-                const respAmt = needResp && e.resp && e.resp.action === 'raise' && e.resp.amount ? ` ${e.resp.amount}` : '';
-                // 我的第二轮应对(2026-09-10，用户报的 bug)：我开池/跛入/跟注之后**后位再加注**时，
-                // 座位带上我只有"我已开池"一个状态——跟注与弃牌根本无处可点，于是
-                // ① 那手牌在界面上永远停在"面对 3-Bet"，② 跟注后进不了翻后（底池也就无从记账）。
-                // 对手座位早就有 tl-resp（我加注后前方玩家的再次表态），我方一直缺同一件东西。
-                const raiseAfterHero = !!tlHero && seats.slice(hi + 1).some(pp => (tlEvents[pp] || {}).action === 'raise');
-                const heroNeedResp = isHero && raiseAfterHero && ['open', '3bet', 'call', 'limp'].includes(tlHero.action);
-                const hResp = tlHero && tlHero.resp;
-                const heroRespTxt = heroNeedResp
-                    ? ({ fold: '我弃牌', call: '我跟注', raise: '我再加注' }[(hResp && hResp.action)] || '？我的应对')
-                    : '';
-                const heroRespAmt = heroNeedResp && hResp && hResp.action === 'raise' && hResp.amount ? ` ${hResp.amount}` : '';
-                return `<div class="tl-seat ${cls}${disabled ? ' disabled' : ''}" data-tlseat="${p}" title="${disabled ? '我先行动；先点我的座位记录"我开池/我已跟注"，后位才能行动' : '单击循环 弃→加注→跟注→全下 · 右键/长按选择'}">
-                    <div class="tl-pos">${isHero ? '我 · ' : ''}${tlLbl(p)}</div><div class="tl-act">${act}</div>` +
-                    (needResp ? `<button class="tl-resp${e.resp ? ' set' : ''}" data-tlresp="${p}" title="我加注后，他的应对：单击循环 待表态→弃→跟注→再加注">→ ${respTxt}${respAmt}</button>` : '') +
-                    (heroNeedResp ? `<button class="tl-resp hero${hResp ? ' set' : ''}" data-tlheroresp="1" title="后位加注了——我的应对：单击循环 待表态→弃牌→跟注→再加注">→ ${heroRespTxt}${heroRespAmt}</button>` : '') +
-                    `</div>`;
+                const isTurn = st.nextToAct === p;
+                const folded = st.folded.has(p);
+                const com = st.committed[p] || 0;
+                let cls = folded ? 'fold'
+                        : last ? (last.a === 'raise' ? 'raise' : last.a === 'allin' ? 'allin'
+                                 : last.a === 'call' ? 'call' : 'limp')
+                        : 'idle';
+                if (isHero) cls += ' hero';
+                if (isTurn) cls += ' turn';
+                // 可点规则(2026-09-11)：任何前位/已行动过的座位都能点（点了会自动补齐它之前的弃牌）；
+                // 只有"我还没表态、却想先记我后面的人"才拦——那在牌桌上本来就不可能发生。
+                const heroActed = tlActsOf(globalPosHero).length > 0;
+                const afterHero = seats.indexOf(p) > seats.indexOf(globalPosHero);
+                const editable = !!last || isTurn || !(afterHero && !heroActed);
+                let actTxt;
+                if (!last) actTxt = isTurn ? '● 该他了' : (com > 0 ? `盲注 ${com}` : '—');
+                else if (last.a === 'fold')  actTxt = '弃牌';
+                else if (last.a === 'limp')  actTxt = '跛入 1';
+                else if (last.a === 'call')  actTxt = `跟注 ${(+com.toFixed(2))}`;
+                else if (last.a === 'allin') actTxt = `全下 ${amtInput(p, last.amt)}`;
+                else actTxt = `${NTHW[_raiseSeqAll.indexOf(last)] || '加注'} ${amtInput(p, last.amt)}`;
+                const multi = acts.filter(a => a.a !== 'fold').length > 1 && !folded;
+                const sub = multi ? `<div class="tl-sub">共投 ${(+com.toFixed(2))}</div>` : '';
+                const title = editable
+                    ? (isTurn ? '该他行动：单击循环 · 右键/长按选具体动作'
+                              : last ? '已行动：单击改动作（其后的行动会一并清掉重录）· 右键/长按选具体动作'
+                                     : '点他即记录他的行动，他前面没动过的人自动记为弃牌')
+                    : '我还没表态 —— 先点我的座位，后面的人才能行动';
+                return `<div class="tl-seat ${cls}${editable ? '' : ' disabled'}" data-tlseat="${p}" title="${title}">
+                    <div class="tl-pos">${isHero ? '我 · ' : ''}${tlLbl(p)}</div>
+                    <div class="tl-act">${actTxt}</div>${sub}</div>`;
             }).join('');
-            // 第二轮应对按钮：单击循环 待表态 → 弃 → 跟注 → 再加注
-            ribbon.querySelectorAll('[data-tlresp]').forEach(btn => {
-                btn.addEventListener('click', (ev2) => {
-                    ev2.stopPropagation();          // 不要触发座位本身的循环
-                    const pos = btn.dataset.tlresp;
-                    const cur = (tlEvents[pos] && tlEvents[pos].resp && tlEvents[pos].resp.action) || 'pending';
-                    const seq = ['pending', 'fold', 'call', 'raise'];
-                    const next = seq[(seq.indexOf(cur) + 1) % seq.length];
-                    pushUndo(`时间线：${tlLbl(pos)} 应对 → ${{ pending: '待表态', fold: '弃牌', call: '跟注', raise: '再加注' }[next]}`);
-                    if (!tlEvents[pos]) return;
-                    if (next === 'pending') delete tlEvents[pos].resp;
-                    else if (next === 'raise') {
-                        const heroAmt = (tlHero && tlHero.amount) || globalThreeBetSize;
-                        tlEvents[pos].resp = { action: 'raise', amount: Math.round(heroAmt * 2.3 * 2) / 2 };
-                    } else tlEvents[pos].resp = { action: next };
-                    tlScheduleApply();
-                });
-            });
-            // 我的第二轮应对：待表态 → 弃牌 → 跟注 → 再加注（默认 2.3× 他的加注额）
-            ribbon.querySelectorAll('[data-tlheroresp]').forEach(btn => {
-                btn.addEventListener('click', (ev2) => {
-                    ev2.stopPropagation();          // 不要触发座位本身的动作循环
-                    if (!tlHero) return;
-                    const cur = (tlHero.resp || {}).action || 'pending';
-                    const seq = ['pending', 'fold', 'call', 'raise'];
-                    const next = seq[(seq.indexOf(cur) + 1) % seq.length];
-                    pushUndo(`时间线：我的应对 → ${{ pending: '待表态', fold: '弃牌', call: '跟注', raise: '再加注' }[next]}`);
-                    if (next === 'pending') delete tlHero.resp;
-                    else if (next === 'raise') {
-                        const maxAfter = Math.max(0, ...seats.slice(hi + 1).map(pp => (tlEvents[pp] || {}).amount || 0));
-                        tlHero.resp = { action: 'raise', amount: Math.round(Math.max(maxAfter * 2.3, 3) * 2) / 2 };
-                    } else tlHero.resp = { action: next };
-                    tlScheduleApply();
-                });
-            });
+
+            // 座位交互：单击循环 / 右键·长按弹层
             ribbon.querySelectorAll('[data-tlseat]').forEach(el => {
                 const pos = el.dataset.tlseat;
                 let pressTimer = null, longPressed = false;
-                const guard = () => { if (el.classList.contains('disabled')) { showToast('我先行动——先点我的座位记录"我开池/我已跟注"，后位才能行动', 'warn'); return false; } return true; };
+                const guard = () => {
+                    if (el.classList.contains('disabled')) {
+                        showToast('先记录我的行动，后面的人才能行动', 'warn');
+                        return false;
+                    }
+                    return true;
+                };
                 el.onclick = (e) => {
                     if (e.target.closest('.tl-amt-inline')) return;
                     if (longPressed) { longPressed = false; return; }
@@ -5967,12 +6107,27 @@
                 inp.onchange = () => tlSetAmount(inp.dataset.tlamtpos, inp.value);
                 inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); inp.blur(); } e.stopPropagation(); };
             });
+
+            // ── 轮到谁 / 底池速览（把"顺序"这件事直接写出来）──
+            const turnEl = document.getElementById('tlTurnBar');
+            if (turnEl) {
+                const potTxt = `底池 ${(+st.pot.toFixed(2))}BB`;
+                if (st.nextToAct) {
+                    const who = st.nextToAct === globalPosHero ? '轮到我' : `轮到 ${tlLbl(st.nextToAct)}`;
+                    const need = Math.max(0, st.curBet - (st.committed[st.nextToAct] || 0));
+                    turnEl.innerHTML = `<b style="color:${st.nextToAct === globalPosHero ? '#ff7a7d' : 'var(--accent)'}">${who}</b>` +
+                        (need > 0 ? ` · 需跟 ${(+need.toFixed(2))}BB` : ' · 可过牌') + ` · ${potTxt}` +
+                        ` · 在池 ${st.inPot.length} 人`;
+                } else {
+                    turnEl.innerHTML = `<b style="color:#45d68a">翻前结束</b> · ${potTxt} · ${st.contenders.length} 人进翻后（${st.contenders.map(tlLbl).join('/')}）`;
+                }
+            }
+
             // 筹码行（不覆盖用户正在输入的框）
             const d = deriveScenario();
             const vl = document.getElementById('tlStackVillainLabel');
             if (vl) vl.textContent = d.posV ? `对手筹码 · ${tlLbl(d.posV)} (BB)` : '对手筹码 (BB)';
             const setIf = (id, v) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = v; };
-            // 筹码单位(2026-07-21)：筹码数模式下框里显示真实筹码（BB×当前大盲）
             const chipsMode = gameConfig.chipUnit === 'chips' && gameConfig.blinds.bb > 0;
             const disp = (bbVal, key) => chipsMode ? (chipVals[key] > 0 ? chipVals[key] : Math.round(bbVal * gameConfig.blinds.bb)) : bbVal;
             setIf('tlStackHero', disp(globalHeroStack, 'hero')); setIf('tlStackVillain', disp(globalVillainStack, 'villain'));
@@ -5981,63 +6136,47 @@
             _restoreFocus(_foc);
         }
 
+
         /** 座位动作弹层 */
+        /**
+         * 座位动作弹层（2026-09-11 统一）：**任何人、任何时候都是这四类**
+         *   弃牌 · 过牌/跟注 X · 加注到 ___ · 全下
+         * 金额由当前局面算出（需跟多少、最小合法加注多少），不再有单独的"再表态"入口。
+         */
         function tlOpenPopover(pos, anchorEl) {
             const pop = document.getElementById('tlPopover');
             const zone = document.getElementById('scenarioZone');
             if (!pop || !zone) return;
-            const seats = getPositions();
+            if (!tlAutoFoldBefore(pos)) return;
+            const o = tlOptions(pos);
             const isHero = pos === globalPosHero;
-            const idx = seats.indexOf(pos), hi = seats.indexOf(globalPosHero);
-            const raiseBefore = seats.slice(0, idx).some(p => (tlEvents[p] || {}).action === 'raise') || (idx > hi && tlHero && tlHero.action === 'open');
-            const cur = tlEvents[pos] || { action: 'fold' };
-            const openAmt = tlOpenDefault();
-            const defRaise = tlDefaultRaise(pos);
-            const btn = (label, key, extra = '') => `<button class="macro-btn tl-pop-btn" data-tlact="${key}" ${extra}>${label}</button>`;
-            let html = `<div class="text-[10px] text-gray-400 w-full mb-1">${isHero ? '我的翻前行动' : tlLbl(pos) + ' 的行动'}</div>`;
-            if (isHero) {
-                html += btn('轮到我（尚未行动）', 'heroNone') +
-                        btn(`我已开池 <input type="number" step="0.1" min="1" value="${tlHero?.amount || openAmt}" data-tlamt onclick="event.stopPropagation()" class="tl-amt">`, 'heroOpen') +
-                        (seats.slice(0, hi).some(p => (tlEvents[p] || {}).action === 'raise') ? btn('我已跟注（等后位）', 'heroCall') : '');
-            } else {
-                html += btn('弃牌', 'fold');
-                if (!raiseBefore) html += btn('跛入 1BB', 'limp');
-                if (raiseBefore) html += btn('跟注', 'call');
-                html += btn(`${raiseBefore ? '3-Bet 到' : '加注到'} <input type="number" step="0.1" min="1" value="${cur.action === 'raise' ? cur.amount : defRaise}" data-tlamt onclick="event.stopPropagation()" class="tl-amt"> BB`, 'raise');
-                html += btn(`全下 <input type="number" step="0.5" min="0.5" value="${cur.action === 'allin' ? cur.amount : globalVillainStack}" data-tlamt2 onclick="event.stopPropagation()" class="tl-amt"> BB`, 'allin');
-            }
-            html += `<button class="macro-btn" data-tlact="close" style="margin-left:auto;">✕</button>`;
-            pop.innerHTML = html;
-            // 定位到座位下方
+            const lbl = isHero ? '我' : tlLbl(pos);
+            const btn = (txt, fn, extra = '') => `<button class="macro-btn" ${extra} onclick="${fn}">${txt}</button>`;
+            const act = (k) => `data-tlact="${k}"`;
+            // 无人加注时，跟到 1BB 就是**跛入**——措辞与动作都按跛入记（牌桌上就是这么说的）
+            const noRaise = o.nRaises === 0;
+            const passTxt = o.canCheck ? '过牌' : noRaise ? '跛入 1BB' : `跟注 ${(+o.need.toFixed(2))}`;
+            const passAct = o.canCheck ? 'check' : noRaise ? 'limp' : 'call';
+            pop.innerHTML = `<div class="tl-pop-title">${lbl} 的行动 · 需跟 ${(+o.need.toFixed(2))}BB</div>
+                <div class="tl-pop-row">
+                    ${btn('弃牌', `tlDo('${pos}','fold')`, act('fold'))}
+                    ${btn(passTxt, `tlDo('${pos}','${passAct}')`, act(passAct))}
+                    <span class="tl-pop-raise">加注到
+                        <input id="tlPopAmt" class="tl-amt" type="number" step="0.1" min="${o.minRaise}" value="${o.raiseDefault}">BB
+                        ${btn('确定', `tlDo('${pos}','raise',parseFloat(document.getElementById('tlPopAmt').value))`, act('raise'))}
+                    </span>
+                    ${btn(`全下 ${(+o.stack.toFixed(1))}`, `tlDo('${pos}','allin',${o.stack})`, act('allin'))}
+                    ${btn('✕', 'tlClosePopover()', act('close'))}
+                </div>
+                <div class="tl-pop-hint">最小合法加注 ${(+o.minRaise.toFixed(2))}BB${o.nRaises ? `（当前已有 ${o.nRaises} 次加注）` : ''}</div>`;
+            pop.style.display = 'block';
             const zr = zone.getBoundingClientRect(), ar = anchorEl.getBoundingClientRect();
-            pop.style.display = 'flex';
-            pop.style.top = (ar.bottom - zr.top + 4) + 'px';
-            const left = Math.max(4, Math.min(ar.left - zr.left, zr.width - pop.offsetWidth - 4));
-            pop.style.left = left + 'px';
-            pop.querySelectorAll('[data-tlact]').forEach(b => b.onclick = (ev) => {
-                ev.stopPropagation();
-                const act = b.dataset.tlact;
-                if (act === 'close') { tlClosePopover(); return; }
-                const amtEl = b.querySelector('[data-tlamt]') || b.querySelector('[data-tlamt2]');
-                const amt = amtEl ? parseFloat(amtEl.value) : 0;
-                pushUndo(`时间线：${isHero ? '我' : tlLbl(pos)} ${b.innerText.replace(/\s+/g, ' ').trim()}`);
-                if (act === 'heroNone') { tlHero = null; seats.slice(hi + 1).forEach(p => delete tlEvents[p]); }
-                else if (act === 'heroOpen') { tlHero = { action: 'open', amount: amt > 0 ? amt : openAmt }; }
-                else if (act === 'heroCall') { tlHero = { action: 'call' }; }
-                else if (act === 'fold') { delete tlEvents[pos]; }
-                else if (act === 'raise') { if (!(amt > 0)) { showToast('请输入加注额', 'error'); return; } tlEvents[pos] = { action: 'raise', amount: amt }; }
-                else if (act === 'allin') { if (!(amt > 0)) { showToast('请输入全下额', 'error'); return; } tlEvents[pos] = { action: 'allin', amount: amt }; }
-                else { tlEvents[pos] = { action: act }; }
-                tlClosePopover();
-                tlScheduleApply();
-            });
-            // 回车=确认加注/全下
-            pop.querySelectorAll('input').forEach(inp => inp.addEventListener('keydown', (ke) => {
-                if (ke.key === 'Enter') { ke.preventDefault(); ke.stopPropagation(); inp.closest('[data-tlact]').click(); }
-                if (ke.key === 'Escape') { tlClosePopover(); }
-            }));
-            const firstAmt = pop.querySelector('[data-tlamt]'); if (firstAmt) { firstAmt.focus(); firstAmt.select(); }
+            pop.style.left = Math.max(4, Math.min(ar.left - zr.left, zr.width - pop.offsetWidth - 4)) + 'px';
+            pop.style.top = (ar.bottom - zr.top + 6) + 'px';
+            const amt = document.getElementById('tlPopAmt');
+            if (amt) amt.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); tlDo(pos, 'raise', parseFloat(amt.value)); } e.stopPropagation(); };
         }
+
         function tlClosePopover() { const pop = document.getElementById('tlPopover'); if (pop) pop.style.display = 'none'; }
         document.addEventListener('click', (e) => {
             const pop = document.getElementById('tlPopover');
@@ -6160,71 +6299,102 @@
             return globalPosHero;
         }
         /** 座位单击循环：弃 → 加注 → 跟注/跛入 → 全下 → 弃；我的座位：轮到我 → 我已开池 → (我已跟注) → 轮到我 */
-        function tlDefaultRaise(pos) {
-            const seats = getPositions(); const idx = seats.indexOf(pos), hi = seats.indexOf(globalPosHero);
-            const openAmt = tlOpenDefault();
-            const prior = seats.slice(0, idx).reduce((m, p) => Math.max(m, (tlEvents[p] || {}).action === 'raise' ? tlEvents[p].amount : 0), 0);
-            const heroOpen = (idx > hi && tlHero && tlHero.action === 'open') ? tlHero.amount : 0;
-            const base = Math.max(prior, heroOpen);
-            return base > 0 ? tlThreeBetDefault(base) : openAmt;
-        }
-        function tlCycleSeat(pos) {
-            const seats = getPositions(); const idx = seats.indexOf(pos), hi = seats.indexOf(globalPosHero);
-            const raiseBefore = seats.slice(0, idx).some(p => (tlEvents[p] || {}).action === 'raise') || (idx > hi && tlHero && tlHero.action === 'open');
-            if (pos === globalPosHero) {
-                const raiseAhead = seats.slice(0, hi).some(p => (tlEvents[p] || {}).action === 'raise');
-                // 我方可选动作补齐(2026-09-08，用户："前位 limp 我在后位应该能跟注/弃牌/加注")：
-                // 原循环只有 轮到我→开池（+前方有加注时 跟注/3-Bet），于是
-                //   · 前位只跛入时我**无法表达"跟着跛入"**（over-limp），只能开池；
-                //   · 任何情况下都**没有弃牌**——而弃牌恰恰是最常见的动作。
-                // 现按"前方发生了什么"给出真实可选项，末位一律接弃牌再回到轮到我。
-                const limpAhead = seats.slice(0, hi).some(p => (tlEvents[p] || {}).action === 'limp');
-                // 盲对盲（2026-09-09）：全弃到 SB 时**跛入是 SB 的主策略**
-                // （MPT 实测 15-60bb 跛入 50-70%），必须能表达，否则这个高频节点
-                // 在界面上根本走不到。其他位置首个进池者跛入是非标打法，不给。
-                const sbFirstIn = globalPosHero === 'SB' && !raiseAhead && !limpAhead;
-                const seq = raiseAhead ? ['none', 'call', '3bet', 'fold']
-                          : limpAhead  ? ['none', 'limp', 'open', 'fold']
-                          : sbFirstIn  ? ['none', 'open', 'limp', 'fold']
-                                       : ['none', 'open', 'fold'];
-                const cur = tlHero ? tlHero.action : 'none';
-                const idxCur = seq.indexOf(cur);
-                const next = seq[(idxCur < 0 ? 0 : idxCur + 1) % seq.length];
-                const lbl3 = { none: '轮到我', open: limpAhead ? '已加注(Iso)' : '已开池',
-                               call: '已跟注', '3bet': '已 3-Bet',
-                               limp: sbFirstIn ? '已跛入(SB)' : '已跛入', fold: '已弃牌' };
-                pushUndo(`时间线：我 → ${lbl3[next]}`);
-                if (next === 'none') { tlHero = null; seats.slice(hi + 1).forEach(p => delete tlEvents[p]); }
-                // 我的动作一变，之前记的"我的应对"就失效了（下面各分支都重建 tlHero，天然清空）
-                else if (next === 'open') tlHero = { action: 'open', amount: tlOpenDefault() };
-                else if (next === '3bet') {
-                    // 默认 3-Bet 额：面对最大一笔加注的 3.4 倍取 .5（与 tlDefaultRaise 同口径）
-                    const maxAhead = Math.max(0, ...seats.slice(0, hi).map(p => (tlEvents[p] || {}).amount || 0));
-                    tlHero = { action: '3bet', amount: Math.round(Math.max(maxAhead * 3.4, 3) * 2) / 2 };
-                } else tlHero = { action: next };   // call / limp / fold
-                tlScheduleApply(); return;
+        /**
+         * 记一个动作。**这是唯一的写入口**（单击循环与弹层都走它）。
+         * 若该座位已经行动过而现在不是轮到他 → 视为"改主意"：替换他的最后一个动作，
+         * 并把其后的所有行动清掉重录（后面的人是基于旧局面表的态，不能留着）。
+         */
+        window.tlDo = function(pos, a, amt) {
+            if (!tlAutoFoldBefore(pos)) return;
+            const st = tlState();
+            // 注意：这里要算**全部**动作（含自动补的弃牌）。若把 auto 过滤掉，
+            // 那条自动弃牌就不会被替换，同一个座位会同时留下"弃牌"和"加注"两条，
+            // 于是他既在 folded 里又在加注序列里，后面的判定全乱。
+            const acts = tlActsOf(pos);
+            const isTurn = st.nextToAct === pos;
+            const CN = { fold: '弃牌', check: '过牌', call: '跟注', limp: '跛入', raise: '加注', allin: '全下' };
+            let act = a, amount = amt || 0;
+            if (a === 'check') { act = st.curBet <= (st.committed[pos] || 0) ? 'call' : 'call'; }   // 过牌＝跟 0
+            if (a === 'limp')  { act = 'limp'; amount = 1; }
+            if (a === 'raise') {
+                const o = tlOptions(pos);
+                if (!(amount > 0)) amount = o.raiseDefault;
+                if (amount < o.minRaise - 1e-9 && amount < o.stack) {
+                    showToast(`最小合法加注是 ${(+o.minRaise.toFixed(2))}BB`, 'error'); return;
+                }
+                if (amount >= o.stack) { act = 'allin'; amount = o.stack; }
             }
-            const seq = ['fold', 'raise', raiseBefore ? 'call' : 'limp', 'allin'];
-            const cur = (tlEvents[pos] || {}).action || 'fold';
-            const next = seq[(seq.indexOf(cur) + 1) % seq.length];
-            pushUndo(`时间线：${tlLbl(pos)} → ${{ fold: '弃牌', raise: '加注', call: '跟注', limp: '跛入', allin: '全下' }[next]}`);
-            if (next === 'fold') delete tlEvents[pos];
-            else if (next === 'raise') tlEvents[pos] = { action: 'raise', amount: tlDefaultRaise(pos) };
-            else if (next === 'allin') tlEvents[pos] = { action: 'allin', amount: globalVillainStack };
-            else tlEvents[pos] = { action: next };
+            if (a === 'allin') { amount = amount || tlOptions(pos).stack; }
+            pushUndo(`时间线：${pos === globalPosHero ? '我' : tlLbl(pos)} → ${CN[a] || a}`);
+            if (acts.length && !isTurn) {
+                // 改主意：定位他的最后一个动作，替换并截断其后
+                let idx = -1;
+                for (let i = tlActs.length - 1; i >= 0; i--) if (tlActs[i].pos === pos) { idx = i; break; }
+                tlActs = tlActs.slice(0, idx);
+            }
+            tlActs.push({ pos, a: act, amt: amount });
+            tlRebuildLegacy();
+            tlClosePopover();
             tlScheduleApply();
+        };
+
+        /** 单击循环：按当前局面给出的合法动作依次轮换，最后一档回到"未行动" */
+        function tlCycleSeat(pos) {
+            if (!tlAutoFoldBefore(pos)) return;
+            const acts0 = tlActsOf(pos);
+            let last = acts0.length ? acts0[acts0.length - 1] : null;
+            if (last && last.auto) last = null;      // 自动补的弃牌不算他"表过态"
+            // 算"他这次有哪些选项"时必须把他自己上一次的动作排除掉——否则他一加注，
+            // 局面就从"无人加注"变成"面对加注"，下一次点击会从错误的档位继续，循环跳档。
+            const _saved = tlActs;
+            if (last) { const i = tlActs.lastIndexOf(last); if (i >= 0) tlActs = tlActs.slice(0, i); }
+            const o = tlOptions(pos);
+            tlActs = _saved;
+            const st = o.st;
+            // 可选动作序列：无人加注时是 跛入/加注；面对加注时是 跟注/加注
+            // 单击循环的档位按"最可能想记的动作"排：**进池动作在前、弃牌在最后**
+            //（真弃牌的人根本不用点——点后面的人时会自动补成弃牌）。
+            // 右键弹层里永远是完整的四项，这里只是把常用的排在前面少点几下。
+            // 我方与对手的差别只有一处：无人加注时**我**不给"跛入"档（非标打法，
+            // 工具不建议这么打），只有 SB 盲对盲例外——那里跛入本来就是主策略。
+            const isMe = pos === globalPosHero;
+            const limpAhead = st.seats.some(q => q !== pos && tlActsOf(q).some(a => a.a === 'limp'));
+            let seq;
+            if (st.raises.length > 0) {
+                seq = ['call', 'raise', 'allin', 'fold'];
+            } else if (isMe) {
+                seq = limpAhead ? ['limp', 'raise', 'fold']                 // over-limp 优先，其次 Iso
+                    : pos === 'SB' ? ['raise', 'limp', 'fold']              // 盲对盲：跛入是主策略
+                    : ['raise', 'fold'];
+            } else {
+                seq = o.canCheck ? ['raise', 'call', 'allin', 'fold']       // BB 无人加注：call 即过牌
+                                 : ['raise', 'limp', 'allin', 'fold'];
+            }
+            const curIdx = last ? seq.indexOf(last.a === 'raise' && last.amt >= o.stack ? 'allin' : last.a) : -1;
+            const next = curIdx < 0 ? seq[0] : seq[curIdx + 1];
+            if (next === undefined) {          // 走完一圈 → 撤销这个座位的最后一个动作
+                pushUndo(`时间线：${pos === globalPosHero ? '我' : tlLbl(pos)} → 撤销`);
+                let idx = -1;
+                for (let i = tlActs.length - 1; i >= 0; i--) if (tlActs[i].pos === pos) { idx = i; break; }
+                if (idx >= 0) tlActs = tlActs.slice(0, idx);
+                tlRebuildLegacy(); tlScheduleApply(); return;
+            }
+            tlDo(pos, next, next === 'raise' ? o.raiseDefault : next === 'allin' ? o.stack : 0);
         }
+
+        /** 就地改额：只改数额、不改动作，因此**不截断**后续行动 */
         function tlSetAmount(pos, val) {
             const amt = parseFloat(val);
             if (!(amt > 0)) return;
-            if (pos === globalPosHero) {
-                if (tlHero && (tlHero.action === 'open' || tlHero.action === '3bet')) {
-                    pushUndo(`时间线：我${tlHero.action === '3bet' ? ' 3-Bet' : '开池'}额 ${amt}`); tlHero.amount = amt;
-                }
-            }
-            else if (tlEvents[pos] && ['raise', 'allin'].includes(tlEvents[pos].action)) { pushUndo(`时间线：${tlLbl(pos)} 额 ${amt}`); tlEvents[pos].amount = amt; }
+            let idx = -1;
+            for (let i = tlActs.length - 1; i >= 0; i--) if (tlActs[i].pos === pos) { idx = i; break; }
+            if (idx < 0 || !['raise', 'allin'].includes(tlActs[idx].a)) return;
+            pushUndo(`时间线：${pos === globalPosHero ? '我' : tlLbl(pos)} 额 ${amt}`);
+            tlActs[idx].amt = amt;
+            tlRebuildLegacy();
             tlScheduleApply();
         }
+
 
         // ── 翻前输入校验（P0-4）──
         // 返回 true = 通过；false = 有错误（已显示 Toast + 标红输入框）
@@ -7972,6 +8142,35 @@
             // ④ 新增 effStackBase = 翻前投入后的剩余有效筹码，并由 recalculatePot 逐街扣减——
             //    原直接用总筹码且从不扣除任何投入，转牌/河牌的 SPR、承诺区、全押阈值系统性偏高。
             const heroPos = globalPosHero, villPos = globalPosVillain;
+
+            // ══ 精确底池(2026-09-11)：翻前行动录完整时，底池不需要任何按场景的公式 ══
+            // 用户点到了要害："最後到底有幾個人進底池、每個人進底池的金額肯定都是固定的，
+            // 否則這局開不了。" —— 一旦有完整流水，底池就是 Σ(每人投入)，纯算术、零假设。
+            // 下面那套按 currentMode 分支的公式只在**流水没走完**（对手还没表态，需要假设
+            // "他跟注继续"）或走传统场景标签路径时才用。
+            try {
+                if (typeof tlActs !== 'undefined' && tlActs.length) {
+                    const _tl = tlState();
+                    if (_tl.closed && _tl.contenders.length >= 2 && _tl.contenders.includes(heroPos)) {
+                        const myCommit = _tl.committed[heroPos] || 0;
+                        const vPos = _tl.contenders.includes(villPos) ? villPos
+                                   : _tl.contenders.find(x => x !== heroPos);
+                        const vCommit = _tl.committed[vPos] || myCommit;
+                        const pPotX = _tl.pot + getAnteBB();      // 盲注已在流水里，ante 另计
+                        postState.potTracker.preflopPot = pPotX;
+                        postState.potTracker.currentPot = pPotX;
+                        postState.potTracker.effStackBase = Math.max(0,
+                            Math.min(globalHeroStack - myCommit, globalVillainStack - vCommit));
+                        postState.potTracker.effBaseStreet = 0;
+                        postState.potTracker.effStack = postState.potTracker.effStackBase;
+                        postState.potTracker.spr = pPotX > 0 ? postState.potTracker.effStack / pPotX : 0;
+                        postState.potTracker.actions = [];
+                        updatePotUI();
+                        return;
+                    }
+                }
+            } catch (e) {}
+
             let dead = getAnteBB();   // 2026-09-08：按实际 ante/BB，不再写死 1.0
             if (heroPos !== 'SB' && villPos !== 'SB') dead += 0.5;
             if (heroPos !== 'BB' && villPos !== 'BB') dead += 1.0;
@@ -8893,11 +9092,22 @@
                 // 翻后就该是三人底池")：**直接读时间线**——谁没弃牌谁就在池里。
                 // 原来只有 squeeze / vsLimp 两种场景会预填，我开池被两人跟注这种最常见的
                 // 多人底池反而完全带不过来（deriveScenario 只在提示里写一句"另有 X 跟注"）。
-                // 判据：tlEvents 里 action 非 fold 的座位即在池；Hero 与主对手自动排除。
-                if (typeof tlEvents === 'object' && tlEvents) {
+                // 判据(2026-09-11 改为精确)：翻前走完时，谁把钱投到位谁就在池里（tlState().contenders）——
+                // 这和底池是同一份算术，不会出现"底池按三人算、界面只显示两人"的错位。
+                // 流水没走完（对手还没表态）时回退旧判据：有非 fold 动作即视为在池。
+                let _exDone = false;
+                try {
+                    if (typeof tlActs !== 'undefined' && tlActs.length) {
+                        const _tl = tlState();
+                        if (_tl.closed && _tl.contenders.length >= 2) {
+                            _tl.contenders.forEach(_addExtra);
+                            _exDone = true;
+                        }
+                    }
+                } catch (e) {}
+                if (!_exDone && typeof tlEvents === 'object' && tlEvents) {
                     Object.keys(tlEvents).forEach(pos => {
                         const en = tlEvents[pos] || {};
-                        // 第二轮应对为弃牌者不入池(2026-09-08)
                         if (en.resp && en.resp.action === 'fold') return;
                         if (en.action && en.action !== 'fold') _addExtra(pos);
                     });
