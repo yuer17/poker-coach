@@ -8066,9 +8066,54 @@
                 // 已含在 p(1-p) 内，无处可减。唯一解是加采样，但没必要每次都加：
                 // 先 6000 次快跑（~120ms），只在"真值距红线 <2.5 点"的刀尖局面才补到
                 // 50000 次（sd→0.22，~1s）。绝大多数手牌不付这个代价。
-                let _mcEq = preflopEquityVsRange([heroCard1, heroCard2], pushHands, 6000);
+                // ── 多家全下：按真实边池结构算，不再"取最大者"（2026-09-11，用户实战手）──
+                // 原模型把其余全下者的筹码当死钱、只对最大的那家算胜率。**胜率上这是错的**：
+                // 接两家全下要**同时**打赢两家。实测用户那手（Q♦T♦ / BB 27.5BB /
+                // MP 全下 6 + SB 全下 19.5）：只对 SB 算 50.4%，对两家只有 32.7% ——
+                // **高估 17.7 点**，于是给出「边缘接注」，而真实该弃。
+                let _multi = null, _shoveCount = 0;
+                const _mcEqLabel = '下方"我方胜率"';
+                try {
+                    const _shoves = (typeof tlActs !== 'undefined' ? tlActs : [])
+                        .filter(a => a.a === 'allin' && a.pos !== globalPosHero)
+                        .map(a => ({ pos: a.pos, amt: +a.amt || 0 }))
+                        .filter(x => x.amt > 0);
+                    _shoveCount = _shoves.length;
+                    if (_shoves.length > 1) {
+                        const _heroCall = Math.min(sH, Math.max(..._shoves.map(x => x.amt)));
+                        // 每家按**自己的有效深度**查推注范围（与单挑分支同一口径）
+                        const _ranges = _shoves.map(x => {
+                            const _eff = Math.min(sH, x.amt);
+                            let _pct = getNashPushRange(_eff, x.pos);
+                            if (_eff > 15) _pct = Math.max(8, _pct - (_eff - 15) * 1.8);
+                            // 与单挑分支同一口径：先看是不是 Re-Jam（他在我之后行动），
+                            // 否则退回按推/弃组合% 截断。
+                            const _rj = ryeJamSet(x.pos, posH, _eff);
+                            if (_rj && _rj.set.size >= 8) return [..._rj.set];
+                            return ALL_169_HANDS.filter(h => getPushCombopct(h) <= _pct);
+                        });
+                        // 死钱＝不属于任何全下者的盲注/ante（与单挑分支的 deadPre 同一算法）
+                        let _dead = getAnteBB();
+                        const _shovePos = new Set(_shoves.map(x => x.pos));
+                        if (posH !== 'SB' && !_shovePos.has('SB')) _dead += 0.5;
+                        if (posH !== 'BB' && !_shovePos.has('BB')) _dead += 1.0;
+                        _multi = preflopMultiAllinEquity([heroCard1, heroCard2],
+                            _ranges, _shoves.map(x => x.amt), _heroCall, _dead, 6000);
+                    }
+                } catch (e) { _multi = null; }
+
+                if (_multi) {
+                    // 把依据写出来：用户看到的 41.8% 不是"同时赢过所有人"的概率（那是 32.7%），
+                    // 而是按边池结构加权的**等效胜率** —— 边池那一层只需赢过最大的那家。
+                    warnings.push(`⚠ ${_shoveCount} 家全下：已按边池结构计算 —— ` +
+                        `主池要赢过全部 ${_shoveCount} 家（概率 ${_multi.pWinAll.toFixed(1)}%），` +
+                        `边池只需赢过最大的那家；${_mcEqLabel}为两层按底池加权的等效胜率。` +
+                        `原模型只对最大的一家估算、把其余全下当死钱，会高估十几个点。`);
+                }
+                let _mcEq = _multi ? _multi.eqEff
+                          : preflopEquityVsRange([heroCard1, heroCard2], pushHands, 6000);
                 let simsUsed = 6000, razorThin = false;
-                if (_mcEq !== null && Math.abs(_mcEq - adjustedReqEq) < 2.5) {
+                if (!_multi && _mcEq !== null && Math.abs(_mcEq - adjustedReqEq) < 2.5) {
                     razorThin = true; simsUsed = 50000;
                     _mcEq = preflopEquityVsRange([heroCard1, heroCard2], pushHands, simsUsed);
                 }
@@ -8111,7 +8156,10 @@
                 } else {
                     box.style.borderColor = '#5c667f'; box.style.backgroundColor = 'rgba(92,102,127,0.12)';
                     vText.style.color = '#8b95ab'; vText.innerText = '⚪ 弃牌 (Fold)';
-                    logicText.innerText = `胜率不足，接注送死。`;
+                    // 弃牌分支原来只有一句「胜率不足，接注送死」，**把 warnings 整个丢掉了** ——
+                    // 多家全下的边池说明、风险溢价档位这些依据在最该看到的分支上反而不显示。
+                    logicText.innerHTML = `胜率 ${actEq}% 低于门槛 ${adjustedReqEq.toFixed(1)}%，接注送死。` +
+                        (warnings.length ? `<br><span class="text-green-400 text-[10px]">${warnings.join('<br>')}</span>` : '');
                 }
 
                 document.getElementById('lblBox1').innerText = "底池赔率";
@@ -11752,6 +11800,77 @@
          * 翻前胜率：Hero 具体底牌 vs 手牌类范围（组合加权采样 + 5 张 runout）
          * 全盘审计修复(2026-07-21)：供 All-in 接注引擎替换错误 eqMatrix。
          */
+        /** 面对**多家全下**时的接注 EV（2026-09-11，用户实战手触发）。
+         *
+         *  原模型只取"最大的那家"当对手、把其余全下的筹码算作死钱 —— 这在**胜率**上是错的：
+         *  接两家全下要**同时**打赢两家。实测用户那手（Q♦T♦ / BB 27.5BB /
+         *  MP 全下 6 + SB 全下 19.5）：只对 SB 一家算 **50.4%**，
+         *  同时对两家只有 **32.7%** —— **高估 17.7 点**，于是引擎建议「边缘接注」，
+         *  而真实该弃。接全下是 MTT 最贵的决策，这个方向（该弃却让你接）代价最大。
+         *
+         *  这里按**真实的边池结构**算，不做"取最大者"的近似：
+         *  每一层边池由"投入 ≥ 该层"的人争夺 —— 我在主池要赢过所有人，
+         *  在边池只需赢过还在那一层的人（例：MP 只全下 6，超出 6 的那部分与他无关）。
+         *  返回一个**等效胜率** = 期望赢得额 ÷ 总底池，与所需赔率 `跟注额 ÷ 总底池`
+         *  直接可比 —— 两者比较等价于 EV>0，同时不改动既有 UI 的「胜率 vs 门槛」表达。
+         *
+         *  @param oppRanges 每家的推注范围（牌类数组）
+         *  @param oppAmts   每家的全下额（BB）
+         *  @param heroCall  我方需投入（= min(我方筹码, 最大全下额)）
+         *  @param deadChips 不属于任何全下者的死钱（盲注 + ante + 已弃牌者的投入）
+         */
+        function preflopMultiAllinEquity(heroCards, oppRanges, oppAmts, heroCall, deadChips, sims = 6000) {
+            try {
+                if (typeof Hand === 'undefined' || !heroCards || heroCards.length !== 2) return null;
+                if (!oppRanges.length || oppRanges.length !== oppAmts.length) return null;
+                const RK = '23456789TJQKA', SU = 'shdc';
+                // 每人实际参与的投入上限 = min(他的全下额, 我方跟注额)
+                const contrib = oppAmts.map(a => Math.min(a, heroCall));
+                const levels = [...new Set(contrib.concat([heroCall]))].sort((a, b) => a - b);
+                let winSum = 0, used = 0, allWin = 0;
+                for (let k = 0; k < sims; k++) {
+                    const deadSet = new Set(heroCards);
+                    const hands = []; let ok = true;
+                    for (let i = 0; i < oppRanges.length; i++) {
+                        let h = null;
+                        for (let t = 0; t < 40; t++) {
+                            const c = sampleHandFromRange(oppRanges[i], deadSet);
+                            if (c && !deadSet.has(c[0]) && !deadSet.has(c[1])) { h = c; break; }
+                        }
+                        if (!h) { ok = false; break; }
+                        deadSet.add(h[0]); deadSet.add(h[1]); hands.push(h);
+                    }
+                    if (!ok) continue;
+                    const deck = [];
+                    for (const r of RK) for (const su of SU) { const c = r + su; if (!deadSet.has(c)) deck.push(c); }
+                    const board = [];
+                    for (let i = 0; i < 5; i++) board.push(deck.splice((Math.random() * deck.length) | 0, 1)[0]);
+                    const mine = Hand.solve(heroCards.concat(board));
+                    const solved = hands.map(h => Hand.solve(h.concat(board)));
+                    used++;
+                    let prev = 0, w = 0;
+                    for (let li = 0; li < levels.length; li++) {
+                        const L = levels[li], step = L - prev; prev = L;
+                        if (step <= 0) continue;
+                        // 这一层的参与者：投入 ≥ L 的对手 + 我（我投到 heroCall ≥ L）
+                        const idx = [];
+                        for (let i = 0; i < contrib.length; i++) if (contrib[i] >= L - 1e-9) idx.push(i);
+                        const layerPot = step * (idx.length + 1) + (li === 0 ? deadChips : 0); // 死钱只进主池
+                        const winners = Hand.winners([mine].concat(idx.map(i => solved[i])));
+                        if (winners.includes(mine)) w += layerPot / winners.length;
+                    }
+                    winSum += w;
+                    const wAll = Hand.winners([mine].concat(solved));
+                    if (wAll.includes(mine)) allWin += 1 / wAll.length;
+                }
+                if (!used) return null;
+                const totalPot = contrib.reduce((a, b) => a + b, 0) + heroCall + deadChips;
+                return { eqEff: winSum / used / totalPot * 100,   // 等效胜率（可直接与所需赔率比）
+                         pWinAll: allWin / used * 100,            // 同时打赢所有人的概率（展示用）
+                         totalPot, reqEq: heroCall / totalPot * 100, sims: used };
+            } catch (e) { return null; }
+        }
+
         function preflopEquityVsRange(heroCards, rangeHands, sims = 2000) {
             if (typeof Hand === 'undefined' || !heroCards || heroCards.length < 2 ||
                 !rangeHands || !rangeHands.length) return null;
