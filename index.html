@@ -5377,6 +5377,34 @@
         // Re-Jam（2026-07-13）：≤25BB 面对单次开池的 3-Bet 全推查表
         // 返回 jam_value / jam_bluff / jam_bluff_reduced / none（none = 落入跟注/弃牌逻辑）
         // 阶段修正复用 THREBET stageModifiers.bluffMult（bubble 0.5→降频 / final 0.7→降频）
+        /** 浅码下"价值段但这个深度根本没有小 3-Bet 可选"→ 该用全下表达（2026-09-11 P0 修复配套）。
+         *  背景：RYE 的 Re-Jam 表把 AA/KK/QQ/JJ/AK 标为「3B/Call —— 永不全下」，
+         *  **那个结论的前提是"小 3-Bet 这个选项存在"**。而 MPT 实测：盲位在 15bb 的
+         *  小 3-Bet 频率就是 **0**（`bbSb3betSet('SB','BTN',15)` 实测 0 手），
+         *  该深度盲位唯一的进攻动作就是重推。
+         *  两份数据都没错，错的是把它们直接相接——于是顶端强牌两头落空掉进弃牌。
+         *  判据：① ≤25BB；② 该深度的盲位 3-Bet 段为空（没有小 3-Bet 这个选项）；
+         *  ③ 同一张表在**有该选项的深度**（40BB）判它为价值段。三条全中才全下。
+         *  只认价值段——诈唬牌在没有 3-Bet 选项的深度就该弃，不该凭空推。 */
+        function shallowValueJam(handStr, posH, posV, effStack) {
+            try {
+                if (effStack > 25) return false;
+                if (posH !== 'SB' && posH !== 'BB') return false;
+                // 该深度的小 3-Bet 段里有它 → 交给正常分支，这里不插手
+                const seg = bbSb3betSet(posH, posV, effStack);
+                if (seg && seg.set && seg.set.has(handStr)) return false;
+                // 跟注段里有它 → 也交给正常分支（跟注不是漏洞，弃牌才是）
+                const inCall = posH === 'SB'
+                    ? (typeof isHandInSBDefense === 'function' && isHandInSBDefense(handStr, posV, effStack))
+                    : (typeof isHandInBBDefense === 'function' && isHandInBBDefense(handStr, posV, gameConfig.tableSize, effStack));
+                if (inCall) return false;
+                // 到这里＝这个深度的三个段（全推/小3Bet/跟注）都没有它，原本必然弃牌。
+                // 只有在**有小 3-Bet 这个选项的深度（40BB）判它为价值段**时才改成全下——
+                // 这一步刻意只认价值段，诈唬牌在这里弃掉是对的。
+                return getThreeBetAction(handStr, posH, posV, gameConfig.tableSize, 40) === 'threebet_value';
+            } catch (e) { return false; }
+        }
+
         function getRejamAction(handStr, heroPos, villainPos, effStack, stage) {
             if (!(effStack > 0) || effStack > 25) return 'none';
             // ── RYE 双维度表优先（2026-09-09）────────────────────────────
@@ -5554,8 +5582,12 @@
             const st = tlState();
             const need = Math.max(0, st.curBet - (st.committed[pos] || 0));
             const openAmt = tlOpenDefault();
-            // 最小合法加注 = 当前额 + 上次加注增量；无人加注时即开池额
-            const minRaise = st.raises.length ? Math.round((st.curBet + st.lastRaiseInc) * 2) / 2 : openAmt;
+            // 最小合法加注 = 当前额 + 上次加注增量，**任何时候都是这个**。
+            // 修复(2026-09-11)：原来无人加注时把 minRaise 写成 `openAmt`（我们**建议**的
+            // 开池尺度，≥25BB 含 ante 是 2.2），于是对手真实的 2.0x min-open 被
+            // tlDo 当成"低于最小合法加注"**静默拒绝**——座位留空、场景仍判为 open、
+            // 整手牌没有决策输出。**"最小合法额"与"建议尺度"是两件事，不能共用一个值。**
+            const minRaise = Math.round((st.curBet + st.lastRaiseInc) * 2) / 2;
             const dflt = st.raises.length ? Math.max(minRaise, Math.round(st.curBet * 3.4 * 2) / 2) : openAmt;
             const stack = (pos === globalPosHero ? globalHeroStack : globalVillainStack) || 40;
             return {
@@ -7158,7 +7190,12 @@
                         // 防守表内，未 3-Bet 的部分改为跟注而非弃牌。
                         const shouldDefend = isHandInBBDefense(handStr, posV, gameConfig.tableSize, effStack);
                         const bb3b = getThreeBetAction(handStr, 'BB', posV, gameConfig.tableSize, effStack);
-                        if (bb3b === 'threebet_value') {
+                        if (bb3b !== 'threebet_value' && shallowValueJam(handStr, 'BB', posV, effStack)) {
+                            // 同上：BB 在 15BB 该深度没有小 3-Bet 档，顶端强牌原来只会平跟
+                            b = 100; c = 0; f = 0; rejamChosen = true; action3bValue = true;
+                            logic = `${effStack}BB BB 面对开池：该深度实测没有小 3-Bet 这一档，` +
+                                    `顶端价值牌用重推表达（原来会退化成平跟）。`;
+                        } else if (bb3b === 'threebet_value') {
                             b = 100; action3bValue = true;
                             logic = 'BB 强牌，价值 3-Bet（BB 3-Bet 表）。';
                         } else if (bb3b === 'threebet_bluff') {
@@ -7175,12 +7212,51 @@
                             f = 100; logic = '不在 BB 防守范围，弃牌。';
                         }
                     } else {
-                    // Re-Jam(2026-07-13)：≤25BB 未命中 REJAM 表时屏蔽小 3-Bet
-                    // （'fold' 使流程落入下方 set-mining / IP 平跟 / 弃牌分支）
-                    const action3b = effStack <= 25
-                        ? 'fold'
-                        : getThreeBetAction(handStr, posH, posV, gameConfig.tableSize, effStack);
-                    if (action3b === 'threebet_value') {
+                    // ── Re-Jam 闸门修复（2026-09-11，P0）────────────────────────────
+                    // 原来这里是 `effStack <= 25 ? 'fold' : getThreeBetAction(...)`，
+                    // 即「≤25BB 未命中 REJAM 表就屏蔽小 3-Bet」。
+                    // 那条规则在 2026-07-13 写下时是自洽的——当时 REJAM_RANGES 的价值段里
+                    // **含 AA/KK/QQ/JJ/AKs/AKo**，它们走 jam 分支，闸门碰不到它们。
+                    // 2026-09-09 用 RYE 实测重建 Re-Jam 时把顶端强牌移出了全推段
+                    //（真实解里它们是「小 3-Bet + 跟 4-Bet」，永不全下），
+                    // **但这道闸门的前提没跟着改** → 顶端既不 jam、又被屏蔽 3-Bet，
+                    // 一路掉到弃牌分支。实测后果：**12-25BB 面对开池，非 BB 位的
+                    // AA/KK/QQ/JJ/AKs/AKo 全部输出「弃牌 100%」，而 TT 输出「全下」**。
+                    // 逐备份回放确认自 `index_backup_20260909_rye_rejam.html` 起存在。
+                    //
+                    // 修法：**只屏蔽诈唬 3-Bet，价值 3-Bet 必须放行**。
+                    // 原规则要防的是「15BB 3-Bet 到 6.6BB 留 0.3 SPR 却还得弃牌」——
+                    // 那是**诈唬**牌的问题；价值牌本来就打算跟 4-Bet/全下，被承诺不是缺陷。
+                    // 再按承诺度二选一：3-Bet 额占有效筹码 ≥40% 时小 3-Bet 已无意义
+                    //（跟 4-Bet 是必然），直接表达为全下；否则走正常小 3-Bet。
+                    const _tb3 = getThreeBetAction(handStr, posH, posV, gameConfig.tableSize, effStack);
+                    let action3b = _tb3;
+                    if (effStack <= 25 && _tb3 !== 'threebet_value' && shallowValueJam(handStr, posH, posV, effStack)) {
+                        // SB 在 15BB 这类深度：实测小 3-Bet 段为空，顶端强牌只能用全下表达
+                        b = 100; c = 0; f = 0; rejamChosen = true; action3bValue = true;
+                        logic = `${effStack}BB 盲位面对开池：该深度实测**没有小 3-Bet 这一档**` +
+                                `（MPT：SB vs 后位 15BB 的 3-Bet 频率为 0），顶端价值牌的唯一进攻动作是重推。`;
+                        action3b = 'handled';
+                    } else if (effStack <= 25) {
+                        if (_tb3 === 'threebet_value') {
+                            const _tbAmt = raiseSize * getTbMult(POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV]);
+                            if (_tbAmt / Math.max(effStack, 1) >= 0.40) {
+                                b = 100; c = 0; f = 0; rejamChosen = true; action3bValue = true;
+                                logic = `${effStack}BB 面对开池，价值段但不在全推表内：小 3-Bet 到 ` +
+                                        `${_tbAmt.toFixed(1)}BB 已占有效筹码 ${(_tbAmt / effStack * 100).toFixed(0)}%，` +
+                                        `跟 4-Bet 是必然 —— 直接全下表达，不留不可打的 SPR。`;
+                                action3b = 'handled';
+                            } else {
+                                action3b = 'threebet_value';   // 深一点：正常小 3-Bet，准备跟 4-Bet
+                            }
+                        } else {
+                            action3b = 'fold';                 // 诈唬段仍屏蔽（原规则的本意）
+                        }
+                    }
+                    if (action3b === 'handled') {
+                        // 上面的 ≤25BB 承诺度分支已经把 b/c/f 与 logic 定好了，
+                        // 这里必须让开——否则会被下面的 else 分支覆写回弃牌。
+                    } else if (action3b === 'threebet_value') {
                         b = 100; c = 0; f = 0; action3bValue = true;
                         logic = '价值 3-Bet，强牌榨取。';
                     } else if (action3b === 'threebet_bluff') {
