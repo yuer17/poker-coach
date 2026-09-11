@@ -5386,6 +5386,63 @@
          *  判据：① ≤25BB；② 该深度的盲位 3-Bet 段为空（没有小 3-Bet 这个选项）；
          *  ③ 同一张表在**有该选项的深度**（40BB）判它为价值段。三条全中才全下。
          *  只认价值段——诈唬牌在没有 3-Bet 选项的深度就该弃，不该凭空推。 */
+        /** 同族严格支配关系：返回 handStr **严格强于**的同族手牌（最多十余个）。
+         *  只用无争议的支配（这三条是可证的，不依赖任何外部数据）：
+         *    · 对子：点数更大者支配（77 ▷ 55）
+         *    · 同结构非对子：高张相同时踢脚更大者支配（KQs ▷ KJs）；
+         *      踢脚相同时高张更大者支配（KQs ▷ QJs 不成立，故只比同高张）
+         *    · 同花支配离手（KQs ▷ KQo）
+         *  用途见 defendClosure。 */
+        function dominatedSameFamily(handStr) {
+            const R = '23456789TJQKA';
+            const out = [];
+            if (!handStr || handStr.length < 2) return out;
+            const a = handStr[0], b = handStr[1], ty = handStr[2] || '';
+            const ia = R.indexOf(a), ib = R.indexOf(b);
+            if (ia < 0 || ib < 0) return out;
+            if (a === b) {                                   // 对子
+                for (let i = 0; i < ia; i++) out.push(R[i] + R[i]);
+                return out;
+            }
+            if (ty === 's') out.push(a + b + 'o');           // 同花 ▷ 离手
+            for (let i = 0; i < ib; i++) {                   // 同高张、踢脚更小
+                if (R[i] === a) continue;
+                out.push(a + R[i] + ty);
+                if (ty === 's') out.push(a + R[i] + 'o');
+            }
+            return out;
+        }
+
+        /** 防守段闭包（2026-09-11，发现 I）。
+         *  问题：盲位面对开池的防守由**两段拼起来**——3-Bet 段是逐手实测列表，
+         *  跟注段是按 percentile 截断的另一套排序。两段各自都对，**但拼接处有缝**：
+         *  中间强度的牌既不在诈唬列表、也没进跟注截断，于是掉进弃牌。
+         *  决策扫描器实测到的实例（SB/BB 40BB vs BTN）：
+         *    · 55 走「价值 3-Bet」，而**严格更强的 77 只跟注**
+         *    · T9s 走 3-Bet 诈唬，而**JTs 弃牌**
+         *    · AQo 弃牌，而更弱的 KQo 在诈唬段
+         *    · JTs 在 SB：25BB 全下 / **40BB 弃牌** / 60BB 价值 3-Bet（深度断裂）
+         *  这跟 normalizeRangeTables 里已经在用的「族内连续 / 嵌套闭包」是同一件事，
+         *  只是对象从范围表换成了**两段拼接后的防守集合**。
+         *  判据可证：**若一手牌严格支配的某个同族牌在防守集合里，它自己必须也在**。
+         *  只补跟注（最保守的防守动作），**绝不凭空加进 3-Bet 段、也不加宽任何一张表**。 */
+        function defendClosure(handStr, posH, posV, effStack) {
+            try {
+                const dom = dominatedSameFamily(handStr);
+                if (!dom.length) return false;
+                const ts = gameConfig.tableSize;
+                const inDefense = (h) => {
+                    const tb = getThreeBetAction(h, posH, posV, ts, effStack);
+                    if (tb === 'threebet_value' || tb === 'threebet_bluff' || tb === 'threebet_bluff_reduced') return true;
+                    if (posH === 'BB') return isHandInBBDefense(h, posV, ts, effStack);
+                    if (posH === 'SB') return typeof isHandInSBDefense === 'function' && isHandInSBDefense(h, posV, effStack);
+                    return false;
+                };
+                for (const d of dom) if (inDefense(d)) return true;
+                return false;
+            } catch (e) { return false; }
+        }
+
         function shallowValueJam(handStr, posH, posV, effStack) {
             try {
                 if (effStack > 25) return false;
@@ -7190,7 +7247,14 @@
                         // 防守表内，未 3-Bet 的部分改为跟注而非弃牌。
                         const shouldDefend = isHandInBBDefense(handStr, posV, gameConfig.tableSize, effStack);
                         const bb3b = getThreeBetAction(handStr, 'BB', posV, gameConfig.tableSize, effStack);
-                        if (bb3b !== 'threebet_value' && shallowValueJam(handStr, 'BB', posV, effStack)) {
+                        const bbIsValue = bb3b === 'threebet_value' || (effStack <= 25 &&
+                            getThreeBetAction(handStr, 'BB', posV, gameConfig.tableSize, 40) === 'threebet_value');
+                        if (bbIsValue && bb3b !== 'threebet_value') {
+                            // 同上：浅码档归属噪声 → 用 40BB 的分类兜底，只认价值段
+                            b = 100; c = 0; f = 0; rejamChosen = true; action3bValue = true;
+                            logic = `${effStack}BB BB 面对开池：该深度的价值/诈唬归属有插值噪声，` +
+                                    `按 40BB 的可靠分类判为价值段 → 重推表达。`;
+                        } else if (bb3b !== 'threebet_value' && shallowValueJam(handStr, 'BB', posV, effStack)) {
                             // 同上：BB 在 15BB 该深度没有小 3-Bet 档，顶端强牌原来只会平跟
                             b = 100; c = 0; f = 0; rejamChosen = true; action3bValue = true;
                             logic = `${effStack}BB BB 面对开池：该深度实测没有小 3-Bet 这一档，` +
@@ -7208,6 +7272,13 @@
                             else              { f = 70; logic = 'ICM 阶段修正：BB 3-Bet 诈唬降频 30%，其余弃牌。'; }
                         } else if (shouldDefend) {
                             c = 100; logic = 'BB 防守范围内，跟注。';
+                        } else if (defendClosure(handStr, 'BB', posV, effStack)) {
+                            // 防守段闭包（2026-09-11 发现 I）：3-Bet 段与跟注段是两套独立数据拼起来的，
+                            // 拼接处会漏牌 —— 若它**严格支配**的某个同族牌已在防守集合里，
+                            // 它自己就不该弃（可证判据，不加宽任何一张表，只补最保守的跟注）。
+                            c = 100; b = 0; f = 0;
+                            logic = `防守段闭包：${handStr} 严格强于某个已在防守范围内的同族牌，` +
+                                    `不该反而弃牌（3-Bet 段与跟注段拼接处的漏牌，见发现 I），按跟注防守。`;
                         } else {
                             f = 100; logic = '不在 BB 防守范围，弃牌。';
                         }
@@ -7238,7 +7309,15 @@
                                 `（MPT：SB vs 后位 15BB 的 3-Bet 频率为 0），顶端价值牌的唯一进攻动作是重推。`;
                         action3b = 'handled';
                     } else if (effStack <= 25) {
-                        if (_tb3 === 'threebet_value') {
+                        // 浅码档的价值/诈唬归属有插值噪声：盲位 3-Bet 表只有 15/25/40/60
+                        // 四个实测档，中间深度按宽度截断时归属会乱 —— 实测 SB 18BB 把
+                        // **AA 归进诈唬段、KK 归进弃牌**，SB 20BB 把 KK 归进诈唬段。
+                        // 而闸门把诈唬当必弃，于是 KK 在 20BB 掉进弃牌（决策扫描器 D2 抓到）。
+                        // **"AA 是价值牌"不会因为筹码变浅而改变**——用分类可靠的深度(40BB)兜底。
+                        // 只放宽"是不是价值"这一件事，宽度与诈唬段一律不动。
+                        const _isValue = _tb3 === 'threebet_value' ||
+                            getThreeBetAction(handStr, posH, posV, gameConfig.tableSize, 40) === 'threebet_value';
+                        if (_isValue) {
                             const _tbAmt = raiseSize * getTbMult(POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV]);
                             if (_tbAmt / Math.max(effStack, 1) >= 0.40) {
                                 b = 100; c = 0; f = 0; rejamChosen = true; action3bValue = true;
@@ -7250,7 +7329,14 @@
                                 action3b = 'threebet_value';   // 深一点：正常小 3-Bet，准备跟 4-Bet
                             }
                         } else {
-                            action3b = 'fold';                 // 诈唬段仍屏蔽（原规则的本意）
+                            // 诈唬段：只在**会把自己打成承诺**的深度屏蔽 —— 那才是原规则
+                            // 2026-07-13 要防的事（「15BB 3-Bet 到 6.6BB 留 0.3 SPR 却还得弃牌」）。
+                            // 一刀切按深度屏蔽会造出深度断裂：实测 JTs 在 BTN vs MP 是
+                            // **20BB 全下 / 25BB 弃牌 / 40BB 3-Bet**（决策扫描器 D5 抓到）——
+                            // 25BB 上 3-Bet 到 6.6BB 还剩 18.4BB，SPR 完全打得动，没有理由屏蔽。
+                            // 判据与价值段同一把尺子：占有效筹码 ≥40% 才屏蔽。
+                            const _bAmt = raiseSize * getTbMult(POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV]);
+                            action3b = (_bAmt / Math.max(effStack, 1) >= 0.40) ? 'fold' : _tb3;
                         }
                     }
                     if (action3b === 'handled') {
@@ -7303,10 +7389,22 @@
                             if (flatCallHands.includes(handStr) && effStack >= 20) {
                                 c = 100; b = 0; f = 0;
                                 logic = `${handStr} 是高质量 IP 平跟牌，面对 ${POS_LABEL[posV]} 开池，平跟控 SPR，翻后有利位置决策。`;
+                            } else if (defendClosure(handStr, posH, posV, effStack)) {
+                                // 防守段闭包（2026-09-11 发现 I）：3-Bet 段与跟注段是两套独立数据拼起来的，
+                            // 拼接处会漏牌 —— 若它**严格支配**的某个同族牌已在防守集合里，
+                            // 它自己就不该弃（可证判据，不加宽任何一张表，只补最保守的跟注）。
+                                c = 100; b = 0; f = 0;
+                                logic = `防守段闭包：${handStr} 严格强于某个已在防守范围内的同族牌，按跟注防守（发现 I）。`;
                             } else {
                                 f = 100; b = 0; c = 0;
                                 logic = '不在 3-Bet 或平跟范围，弃牌。';
                             }
+                        } else if (defendClosure(handStr, posH, posV, effStack)) {
+                            // 防守段闭包（2026-09-11 发现 I）：3-Bet 段与跟注段是两套独立数据拼起来的，
+                            // 拼接处会漏牌 —— 若它**严格支配**的某个同族牌已在防守集合里，
+                            // 它自己就不该弃（可证判据，不加宽任何一张表，只补最保守的跟注）。
+                            c = 100; b = 0; f = 0;
+                            logic = `防守段闭包：${handStr} 严格强于某个已在防守范围内的同族牌，按跟注防守（发现 I）。`;
                         } else {
                             f = 100; b = 0; c = 0;
                             logic = '不在 3-Bet 范围，位置不利，弃牌。';
