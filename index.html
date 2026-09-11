@@ -8793,51 +8793,78 @@
                 // 已知界限：solver 的 dump 只到翻牌（chance 节点是空的），所以
                 // **转牌/河牌的系数没有独立实测**——沿用同一组值（同一机制），
                 // 多街效应由逐街连乘承担，不再为"更晚的街"另设一套没有依据的数。
-                const keepOf = (act) => {
-                    if (act === 'raise') return clamp(0.35);
-                    if (act === 'aggro') return clamp(0.75 * styleMul);
-                    if (act === 'call')  return clamp(0.45);
-                    if (act === 'check') return 1.0;   // 过牌不向强端收窄（见上）
-                    return 1.0;                        // 无行动：绝不凭空收窄
+                // ── 收窄系数按**下注尺度分档**重标定（2026-09-11 环节 7，narrowcal2.py）──
+                // 上面那组单一常数是 v1 标定的结果，**它把所有下注尺度混在一起平均了**，
+                // 而 N1/N3/N4 的树里含一个 673% 底池的"全押"选项 —— 它几乎不被使用
+                //（宽度占比不到 20%），却把平均值整个拉歪。v1 还先对 s_u 与 s_a 各自
+                // 跨板跨尺度求平均、再取比值 —— **比值的平均 ≠ 平均的比值**，有极端点时差很多。
+                // 逐点算 keep 再按尺度分档（五节点 N1/N3/N4/N6c/N7，共 192 个跟注观测）：
+                //     跟注  ≤45%池 0.80 · 45-85% 0.59 · 85-140% 0.52 · >140% 0.25
+                //     加注  ≤45%池 0.36 · 45-85% 0.32
+                //     下注  ≤45%池 0.84 · 45-85% 0.67
+                // 跨节点复现（≤85% 池的跟注）：N1 0.65 · N3 0.67 · N4 0.60 · N6c 0.57 · N7 0.80。
+                // **落地影响最大的是"跟注"**：原来一律 0.45，而正常尺度（≤85% 底池）
+                // 实测在 0.57-0.80 —— 引擎把对手的跟注范围收得太窄、当得太强，
+                // 于是我方胜率被系统性低估、打法偏被动偏弃牌。
+                // 这个洞是做转牌校准时撞出来的：同一局面 solver 的对手范围在牌面上
+                // 有 22.9% 顶对+，引擎算出 45.9%，范围强度差因此差了 22 点。
+                const KEEP_BY_SIZE = {
+                    call:  [[0.45, 0.80], [0.85, 0.59], [1.40, 0.52], [99, 0.25]],
+                    raise: [[0.45, 0.36], [0.85, 0.32], [99, 0.30]],
+                    aggro: [[0.45, 0.84], [0.85, 0.67], [99, 0.60]],
                 };
-                const turnKeep = keepOf, riverOverlay = keepOf;
+                // 尺度未知时的默认值 = 各节点在 ≤85% 底池那一档的中位数
+                // （真实牌局里绝大多数下注落在这个区间；绝不用 >140% 那一档当默认）。
+                const KEEP_DEFAULT = { call: 0.65, raise: 0.34, aggro: 0.75 };
+                const keepBySize = (act, ratio) => {
+                    const tbl = KEEP_BY_SIZE[act];
+                    if (!tbl) return 1.0;
+                    if (ratio === null || !(ratio > 0)) return KEEP_DEFAULT[act];
+                    for (const [hi, v] of tbl) if (ratio <= hi) return v;
+                    return tbl[tbl.length - 1][1];
+                };
 
                 // 尺度感知(2026-07-13)：对手 bet/raise 相对底池越大范围越强、收窄越狠。
                 // 重放行动流水，取该街对手最后一次主动进攻的 (本次净投入 / 当时底池)。
                 // amount 语义 = 本街投入总额（与 recalculatePot 一致），净投入 = amount − 此前已投。
-                const sizeRatioOf = (street) => {
+                // 环节 7：**跟注也有尺度**——他跟的是"我下的那注"，所以要同时记录
+                // 对手最后一次主动进攻的尺度（用于 bet/raise）与我方的（用于 call）。
+                // 原来这个函数只返回对手的，于是 call 分支永远拿不到尺度、只能吃默认值。
+                const sizeRatioOf = (street, who) => {
                     const acts = postState.potTracker?.actions || [];
                     let potBase = postState.potTracker?.preflopPot || 0;
-                    let hIn = 0, vIn = 0, cur = null, ratio = null;
+                    let hIn = 0, vIn = 0, cur = null, rV = null, rH = null;
                     for (const a of acts) {
                         if (cur !== a.street) { potBase += hIn + vIn; hIn = 0; vIn = 0; cur = a.street; }
                         const potNow = potBase + hIn + vIn;
                         if (a.action === 'bet' || a.action === 'raise' || a.action === 'allin') {
                             if (a.player === 'villain') {
-                                if (a.street === street && potNow > 0) ratio = (a.amount - vIn) / potNow;
+                                if (a.street === street && potNow > 0) rV = (a.amount - vIn) / potNow;
                                 vIn = a.amount;
-                            } else { hIn = a.amount; }
+                            } else {
+                                if (a.street === street && potNow > 0) rH = (a.amount - hIn) / potNow;
+                                hIn = a.amount;
+                            }
                         } else if (a.action === 'call') {
                             if (a.player === 'villain') vIn = hIn; else hIn = vIn;
                         }
                     }
-                    return ratio;
+                    return who === 'hero' ? rH : rV;
                 };
                 let sizeNoted = false;
-                const sizeMul = (street) => {
-                    const r = sizeRatioOf(street);
-                    if (r === null) return 1.0;
-                    let m = 1.0;
-                    if (r <= 0.40)      m = 1.10;  // 小注(≤40%池)：范围偏宽，收窄放松
-                    else if (r <= 0.80) m = 1.0;   // 标准注：维持基准
-                    else if (r <= 1.30) m = 0.90;  // 大注：收窄加重
-                    else                m = 0.80;  // 超池：极化强端
-                    if (m !== 1.0) sizeNoted = true;
-                    return m;
+                // 原来是「基准常数 × 猜出来的尺度乘数(1.10/1.0/0.90/0.80)」两层；
+                // 现在尺度档位本身就是实测值，不再乘一个没有出处的系数。
+                const turnKeep = (act, street) => {
+                    if (act === 'check') return 1.0;   // 过牌不向强端收窄（见上）
+                    if (!KEEP_BY_SIZE[act]) return 1.0;  // 无行动：绝不凭空收窄
+                    // call 看的是**我方**那注的尺度，bet/raise 看对手自己那注的尺度
+                    const r = sizeRatioOf(street, act === 'call' ? 'hero' : 'villain');
+                    if (r !== null && r > 0) sizeNoted = true;
+                    let k = keepBySize(act, r);
+                    if (act === 'aggro') k *= styleMul;
+                    return clamp(k);
                 };
-                // 仅进攻类行动（bet/raise）叠乘尺度因子，check/call 与尺度无关
-                const sized = (base, street, act) =>
-                    (act === 'aggro' || act === 'raise') ? clamp(base * sizeMul(street)) : base;
+                const riverOverlay = turnKeep;
 
                 // 键值 = 截至当前街（含当前街）的累积行动：
                 //   仅当某街对手"确有行动记录"时，才把该街收窄因子乘入（绝不凭空收窄；
@@ -8846,9 +8873,9 @@
                 const vActed = (street) => (postState.potTracker?.actions || [])
                     .some(a => a.street === street && a.player === 'villain');
                 let keep = 1.0;
-                if (vActed('flop'))                    keep *= sized(turnKeep(vAction('flop')), 'flop', vAction('flop'));
-                if (_boardLen >= 4 && vActed('turn'))  keep *= sized(riverOverlay(vAction('turn')), 'turn', vAction('turn'));
-                if (_boardLen >= 5 && vActed('river')) keep *= sized(riverOverlay(vAction('river')), 'river', vAction('river'));
+                if (vActed('flop'))                    keep *= turnKeep(vAction('flop'), 'flop');
+                if (_boardLen >= 4 && vActed('turn'))  keep *= riverOverlay(vAction('turn'), 'turn');
+                if (_boardLen >= 5 && vActed('river')) keep *= riverOverlay(vAction('river'), 'river');
 
                 // ── 过牌 = 封顶而不是收窄（2026-09-10 环节3b）────────────────
                 // 过牌携带多少信息，取决于他是不是"有持续下注义务的那一方"：
@@ -12144,6 +12171,123 @@
             return { freq, size, note };
         }
 
+        /** 转牌驱动量：{sd, over}，算不出返回 null（调用方据此保持原行为）。
+         *  · sd   = 双方在 4 张公共牌上的"顶对+"占比之差（与翻牌同一口径 boardStrengthDiff）
+         *  · over = 转牌点数大于翻牌全部三张（转牌是超牌）
+         *  **已知近似（量化过，不藏着）**：我方用的是翻前范围，而 solver 用的是
+         *  "翻牌下注被跟之后"的真实转牌范围——引擎不建模自己的范围收窄。
+         *  64 个观测实测：这个近似让 sd 平均偏 −2.4 点、绝对 3.1 点、最大 10.9 点；
+         *  sd 系数约 1.0，折算成频率约 3 点误差，且偏差方向是**偏保守**。 */
+        function turnDrivers() {
+            try {
+                const bd = (postState.board || []).slice(0, 4).filter(c => c);
+                if (bd.length < 4) return null;
+                const hr = heroPreflopRangeForPost(globalPosHero, globalPosVillain, preflopDepthBB());
+                const vh = (postState.villainRange && postState.villainRange.hands) || null;
+                const sd = (hr && vh) ? boardStrengthDiff(bd, hr, vh) : null;
+                if (sd === null) return null;
+                const RKI = '23456789TJQKA';
+                const flopTop = Math.max(...bd.slice(0, 3).map(c => RKI.indexOf(c[0])));
+                const over = RKI.indexOf(bd[3][0]) > flopTop ? 1 : 0;
+                const rk = bd.map(c => c[0]);
+                const paired = new Set(rk).size < rk.length ? 1 : 0;
+                return { sd, over, paired };
+            } catch (e) { return null; }
+        }
+
+        /** 转牌持续下注的频率与尺度（2026-09-11 环节 7）。
+         *  返回 {freq, size, note}；驱动量算不出时调用方传 null 进来即返回 null → 保持原行为。
+         *
+         *  **为什么转牌要单独一套**：环节 3-6 的所有校准都写在 `street === 'flop'` 里，
+         *  转牌分支一直是校准之前的老启发式（强牌 80/90、中等 55、空气直接过牌 100%）。
+         *  实测四节点 × 16 张转牌，引擎范围加权持续下注频率比 solver 低 19-42 点，
+         *  其中**无对桶引擎给 0-3.5%、solver 给 30-93%**——整整一个桶是空的。
+         *
+         *  数据：`regression_tests/reference/texassolver/` 的 64 个转牌节点
+         *  （4 张翻牌 × 4 张转牌 × 4 个底池家族：BTN开池40BB / UTG开池40BB / BTN开池20BB /
+         *   BB三注底池；SPR 3.77 / 3.77 / 1.73 / 0.89；全部收敛到可利用度 <0.5%）。
+         *  **范围不是编的**：每个转牌节点的双方范围都是从对应翻牌解里按到达概率抽出来的
+         *  （build_turn.py，出处写在节点文件的 rangeProvenance 里）。
+         *
+         *  实测（范围加权，各节点 16 张转牌的均值）：
+         *    SPR    全部   两对+   顶对   弱对   无对      小注33% 大注75% 全押
+         *    3.77  58-60%  85/84  74/76  47/44  56/62      23.6%  76.4%   0.0%
+         *    1.73   65.4%   75.3   86.6   54.9   58.9      53.7%  45.8%   0.5%
+         *    0.89   60.1%   49.1   77.9   55.5   50.0      73.6%   7.7%  18.8%
+         *
+         *  **驱动量是选出来的，不是挑好看的**：候选 sd / sDef / airAgg / over / flush3 /
+         *  paired / conn / ln(SPR) 全组合枚举，判据是**留一节点 + 留一牌面两种交叉验证**
+         *  与**系数跨折稳定性**，不看 R²（64 个观测只有 16 张牌面 × 4 个节点，
+         *  R² 很容易被节点身份刷上去）。
+         *  · `1/SPR`（翻牌式里的项）在转牌上 r 只有 −0.138，且**与节点身份完全共线**
+         *    （每个节点只有一个 SPR），自由拟合时系数在 −27.5 ~ +0.72 之间变号 —— 丢弃。
+         *  · `paired` / `conn` 加进去后留一牌面反而变差（conn 13.4 vs 12.9）—— 丢弃。
+         *  · `over`（转牌是超牌）是转牌独有、翻牌上不存在的驱动量，r=+0.663，稳定。
+         *  · `sDef+airAgg+paired` 交叉验证略好（11.3/10.3）但系数大且不可解释，按
+         *    环节 5 的教训（稳定与可独立验证优先于 R²）**不采用**。
+         *
+         *  ln(SPR) 只在 两对+ / 弱对 上保留，且**独立验证过不是节点混淆**：
+         *  N1 与 N4 的 SPR 同为 3.77 但范围宽度差一倍，两对+ 85.5 vs 84.2（几乎相同），
+         *  说明节点身份本身不驱动它；跨 SPR 则 85→75→49 单调。弱对方向相反（45→55→55.5），
+         *  牌理也相反：浅码时弱对相对更值钱、保护性下注便宜。
+         *
+         *  **系数是按「引擎自己算得出来的驱动量」拟合的，不是按 solver 的真值拟合的。**
+         *  这一步很关键：引擎的 sd 用的是「我方翻前范围 + 自己的收窄模型」估出来的，
+         *  与 solver 的真实转牌范围对照，平均偏 −4.7 点、绝对 9.1 点、相关 r=0.71。
+         *  **用理想输入拟合、拿近似输入消费**，近似的偏差会整个转成频率偏差。
+         *  所以先把引擎在这 64 个节点上实际算出的驱动量导出来（turndrv_probe.mjs），
+         *  再拿它当自变量去拟合 solver 的频率——这样落地时的误差才是被验证过的那个误差。
+         *  代价是 sd 的解释力下降（它带着估计误差），于是模型自动更多地依赖
+         *  **纯牌面事实**（over / paired，这两个没有估计误差）：
+         *  顶对与弱对上 sd 的系数直接退化到 ≈0，被踢出模型。
+         *
+         *  拟合式（留一节点/留一牌面两种交叉验证的绝对误差）：
+         *    两对+ = 48.39 + 0.42·sd + 24.07·over + 23.05·ln(SPR)      (13.7 / 13.2)
+         *    顶对  = 81.19 + 16.19·over − 26.66·成对面                   (10.7 / 10.1)
+         *    弱对  = 49.30 + 27.74·over − 7.93·ln(SPR)                  (14.0 / 15.0)
+         *    无对  = 47.03 + 0.70·sd + 29.78·over                       (13.8 / 13.7)
+         *  对照：「翻牌式原样迁移」16.9 点、**现行引擎 30-90 点**。
+         *  ln(SPR) 在 两对+ 上是正的、在 弱对 上是负的——这不是拟合噪声：
+         *  N1 与 N4 的 SPR 同为 3.77 但范围宽度差一倍，两对+ 85.5 vs 84.2（几乎相同），
+         *  说明节点身份本身不驱动它；跨 SPR 则 85→75→49 单调，弱对反向 45→55→55.5。
+         *  成对面只在顶对上留下（−26.7）：转牌配对时顶对可能已被三条压制，打不动。
+         *  SPR 钳到实测区间 [0.89, 3.77]，sd 钳到 [−36, +31]——**区间外不外推**。
+         *
+         *  尺度按逐桶实测取众数（不是平均，引擎只能给一个尺度）：
+         *    SPR 3.77：四桶全部大注（57-85%）
+         *    SPR 1.73：两对+ 小注 94.9%（坚果做陷阱）· 顶对 大注 64.3% · 弱对/无对 小注
+         *    SPR 0.89：四桶全部小注（72-84%），且 顶对/弱对/无对 有 17-21% 全押、两对+ 只有 5.7%
+         *  —— 低 SPR 上**坚果收小、次强牌反而推全押**，这是第三次见到同一形状
+         *  （环节 4 的承诺区、环节 5 的翻牌价值档）。 */
+        function turnBetTier(bucket, spr, drv, sizes) {
+            if (!drv || !bucket) return null;
+            const s = Math.max(0.89, Math.min(3.77, spr > 0 ? spr : 0.89));
+            const sd = Math.max(-36, Math.min(31, drv.sd));
+            const ls = Math.log(s), ov = drv.over ? 1 : 0, pr = drv.paired ? 1 : 0;
+            let freq, note;
+            if (bucket === '两对+') {
+                freq = 48.39 + 0.42 * sd + 24.07 * ov + 23.05 * ls;
+                note = '坚果：深码打三条街价值；浅码收频率并改小注（他没有筹码可跟大注）';
+            } else if (bucket === '顶对') {
+                freq = 81.19 + 16.19 * ov - 26.66 * pr;
+                note = pr ? '顶对遇转牌配对：他可能已成三条，顶对打不动了'
+                          : '顶对是转牌上下注频率最高的一桶（怕被反超，需要收钱+保护）';
+            } else if (bucket === '弱对') {
+                freq = 49.30 + 27.74 * ov - 7.93 * ls;
+                note = `弱对：${ov ? '转牌是超牌，他的跟注范围被打穿；' : ''}浅码时相对更值钱，深码打不了`;
+            } else {
+                freq = 47.03 + 0.70 * sd + 29.78 * ov;
+                note = `空气：${ov ? '转牌超牌，他的翻牌跟注范围里没有这张' : '按范围强度差施压'}`;
+            }
+            freq = Math.round(Math.max(0, Math.min(100, freq)));
+            // 尺度取逐桶实测众数
+            let size;
+            if (s >= 2.5)      size = sizes.strong;                                  // 75% 底池
+            else if (s >= 1.2) size = (bucket === '顶对') ? sizes.strong : sizes.small;
+            else               size = sizes.small;                                   // 33% 底池
+            return { freq, size, note, sd, over: ov };
+        }
+
         function postEngine() {
             const eq = postState.equityResult;
             if (!eq) return null;
@@ -12273,6 +12417,9 @@
                     sizes: {
                         probe:  '67% 底池',
                         medium: '67% 底池',
+                        // 环节 7：转牌实测只有 33% 与 75% 两个尺度被用到（树里给的就是这两个 +全押）。
+                        // 原来转牌一档小注都没有，而低 SPR 上小注占下注的 72-84%。
+                        small:  '33% 底池',
                         strong: '75% 底池',
                         nut:    (iHaveNutAdv && sprZone === 'deep') ? '125% 底池' : '100% 底池',
                         push:   '全押',
@@ -12451,6 +12598,19 @@
                 // 作用面限定在**翻牌**（solver 的 dump 只到翻牌，转牌/河牌没有实测），
                 // 且 SPR<1.0 仍回到全押（那一档没有数据，保守保留原行为）。
                 const _cAir = (street === 'flop') ? flopAirBetFreq(spr, _mwN) : null;
+                // ── 转牌（2026-09-11 环节 7）：同一套「成手桶 × 驱动量」──
+                // 承诺区与常规区必须回答同一个问题，否则 SPR 过渡带一混合就会把频率压掉
+                // （环节 3b 的发现 C 就是这么来的：常规区算出 71%、承诺区给过牌，
+                //  按权重混合后实际输出 10%）。所以这里和下面的转牌分支共用同一个 _tTier。
+                const _tDrv    = (street === 'turn') ? turnDrivers() : null;
+                const _tBucket = (street === 'turn')
+                    ? heroMadeBucket(postState.heroCards, postState.board.slice(0, 4)) : null;
+                // 多人底池禁纯诈唬（2026-09-08 既有规则）：要让 N 家全弃，所需弃牌率是单挑的 N 次方。
+                // 空气桶在多人池归零，有成手的三桶不受影响。
+                const _tTier0  = turnBetTier(_tBucket, spr, _tDrv, sc.sizes);
+                const _tTier   = (_tTier0 && _mwN > 0 && _tBucket === '无对')
+                    ? { ..._tTier0, freq: 0, note: _tTier0.note + `；但 ${_mwN + 1} 人在局，多人底池不做纯诈唬` }
+                    : _tTier0;
                 const _cVal  = equity > 50;
                 const _cDraw = !_cVal && outs >= sc.semiBluffOuts && equity >= 40;
                 // 环节 5（2026-09-10）：承诺区的**价值牌也走同一套「成手桶 × 驱动量」**。
@@ -12463,7 +12623,16 @@
                 const _cvt = _cvb ? flopValueTier(_cvb, spr,
                     (postState.villainRange && postState.villainRange.rangePct) || 0,
                     iHaveNutAdv, sc.sizes) : null;
-                const commitStrat = (_cVal || _cDraw)
+                // 环节 7：**转牌的承诺区也走同一个 _tTier**。
+                // 这是环节 4（空气桶）与环节 5（价值档）都踩过的同一个坑——
+                // 承诺区分支在常规区之前返回，新模型根本没机会生效；更要命的是
+                // SPR 过渡带会把两侧按权重混合，一边 70%、一边过牌，混出来就是 10%。
+                // 强听牌（_cDraw 且没有成手）仍走全押，那一支实测有据，不动。
+                const commitStrat = (_tTier && !( _cDraw && _tBucket === '无对'))
+                    ? { action: _tTier.freq >= 50 ? 'BET' : 'CHECK',
+                        sizing: _tTier.freq >= 50 ? _tTier.size : '',
+                        freq: { bet: _tTier.freq, check: 100 - _tTier.freq } }
+                    : (_cVal || _cDraw)
                     ? (_cvt
                         ? { action: 'BET', sizing: _cvt.size, freq: { bet: _cvt.freq, check: 100 - _cvt.freq } }
                         : { action: 'BET',
@@ -12481,7 +12650,13 @@
                 if (commitWeight >= 1) {
                     primaryAction = commitStrat.action; sizing = commitStrat.sizing;
                     frequencies = { ...commitStrat.freq };
-                    reasoning = commitStrat.action === 'BET'
+                    reasoning = _tTier
+                        ? `SPR=${spr.toFixed(1)}（承诺区）：转牌成手=${_tBucket}、` +
+                          `范围强度差 ${_tTier.sd >= 0 ? '+' : ''}${_tTier.sd.toFixed(1)} 点` +
+                          `${_tTier.over ? '、转牌是超牌' : ''} → ${_tTier.freq}% 频率` +
+                          `${_tTier.freq >= 50 ? ' ' + _tTier.size : '（多数时候过牌）'}` +
+                          `（TexasSolver 校准：${_tTier.note}）`
+                        : commitStrat.action === 'BET'
                         ? (_cAir && equity <= 50 && outs < sc.semiBluffOuts
                             ? `SPR=${spr.toFixed(1)}（承诺区）：翻牌胜率${equity.toFixed(0)}%、进张${outs}张都不足，` +
                               `但**范围强度差 ${_cAir.sd >= 0 ? '+' : ''}${_cAir.sd.toFixed(1)} 点**` +
@@ -12569,6 +12744,26 @@
                         frequencies = { check: checkFreq, bet: 100 - checkFreq };
                         reasoning = `IP控池：转牌胜率${equity.toFixed(0)}%（薄价值），湿润面${(wetness*100).toFixed(0)}%，SPR=${spr.toFixed(1)}，双桶不如控池`;
                         warnings.push('⚠ 转牌湿润面薄价值：双桶后进张落地将难以处理，过牌控池留手牌权益');
+                    } else if (_tTier) {
+                        // ── 转牌按「成手桶 × 驱动量」出频率与尺度（2026-09-11 环节 7）──
+                        // 这一段替换的是三条老分支：强牌 80/90 大注、中等 55、以及**空气直接过牌 100%**。
+                        // 四节点 × 16 张转牌实测，老分支范围加权频率比 solver 低 19-42 点，
+                        // 缺口几乎全在「无对」与「弱对」两桶（引擎 0-47%，solver 30-93%）。
+                        // 驱动量算不出来时 `_tTier` 为 null，整段跳过、老分支原样保留。
+                        primaryAction = _tTier.freq >= 50 ? 'BET' : 'CHECK';
+                        sizing = _tTier.freq >= 50 ? _tTier.size : '';
+                        frequencies = { bet: _tTier.freq, check: 100 - _tTier.freq };
+                        reasoning = `转牌胜率${equity.toFixed(0)}%、成手=${_tBucket}，` +
+                                    `范围强度差 ${_tTier.sd >= 0 ? '+' : ''}${_tTier.sd.toFixed(1)} 点` +
+                                    `${_tTier.over ? '、转牌是超牌' : ''}、SPR=${spr.toFixed(1)} → ` +
+                                    `${_tTier.freq}% 频率${_tTier.freq >= 50 ? ' ' + _tTier.size : '（多数时候过牌）'}` +
+                                    `（TexasSolver 校准：${_tTier.note}）`;
+                        // 坚果优势 + 深码的超池分支是老行为，**solver 的树里根本没给超池选项**，
+                        // 所以它的缺席不是证据，不动它——只在这里让路。
+                        if (iHaveNutAdv && sprZone === 'deep' && _tBucket === '两对+' && equity >= sc.strongThresh) {
+                            sizing = sc.sizes.nut;
+                            reasoning += '；坚果优势深码改超池（该尺度未经 solver 验证，属既有行为）';
+                        }
                     } else if (equity >= sc.strongThresh) {
                         // 强价值：坚果+深码可超池
                         primaryAction = 'BET';
