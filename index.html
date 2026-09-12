@@ -122,10 +122,17 @@
             body { overflow: hidden; }
             .app-container { height: calc(100vh - 2rem); min-height: 0; }
             .scroll-area { flex: 1 1 auto; min-height: 0; }
-            .col-left, .col-right { overflow-y: auto; overflow-x: hidden; min-height: 0;
-                                     overscroll-behavior: contain; scrollbar-width: thin; }
-            .col-left::-webkit-scrollbar, .col-right::-webkit-scrollbar { width: 8px; }
-            .col-left::-webkit-scrollbar-thumb, .col-right::-webkit-scrollbar-thumb {
+            /* ⚠ 特异性必须高过后面那条 `@media (min-width:768px) { .col-left { overflow: visible } }` ——
+               它在源码里排在本块之后，同特异性会赢。2026-09-11 实测踩到：列的 overflow-y 一直是
+               visible，而外框又是 height:100vh + overflow:clip，**超出的内容直接被裁掉且滚不到**
+               （1512×950 上左列 948px 内容只露出 731px，"↻ 重算"整个够不着）。 */
+            .scroll-area > .col-left, .scroll-area > .col-right, .scroll-area > .col-dec {
+                overflow-y: auto; overflow-x: hidden; min-height: 0;
+                overscroll-behavior: contain; scrollbar-width: thin; }
+            .scroll-area > .col-left::-webkit-scrollbar, .scroll-area > .col-right::-webkit-scrollbar,
+            .scroll-area > .col-dec::-webkit-scrollbar { width: 8px; }
+            .scroll-area > .col-left::-webkit-scrollbar-thumb, .scroll-area > .col-right::-webkit-scrollbar-thumb,
+            .scroll-area > .col-dec::-webkit-scrollbar-thumb {
                 background: rgba(255,255,255,.12); border-radius: 4px; }
             #postRightContent { overflow: visible; }
             /* 翻前：右列还没有翻后分析，隐藏那个空标题；决策卡保持自然高度——
@@ -133,10 +140,44 @@
             .col-right.pre-stage > #postAnalysisHead { display: none; }
         }
 
+        /* ══════════ 三列布局(2026-09-11 交互审计 P0-2) ══════════
+           实测：决策区夹在左列中间时，结论条 y=432、行动条 y=1046，固定相隔 490px；
+           而并排窗口（1280×800 / 1512×950，主屏跑扑克客户端时的常态）可视高只有 581~731，
+           于是**每手都要多滚一次**才能从"看结论"走到"点行动条"。
+           独立成决策列后两者水平相邻，垂直距离归零。
+           三档：
+             ≥1600  三列   操作 | 决策 | 参考   —— 决策居中，是视线自然落点
+             768-1599 两列  操作 | (决策在上 / 参考在下) —— 窄到放不下三列时，
+                            决策仍与行动条同屏（一个在左、一个在右上，都在视口内）
+             <768   单列堆叠（手机）：决策由贴底 HUD 承担 */
         @media (min-width: 768px) {
-            .scroll-area { flex-direction: row; padding: 1rem; gap: 1rem; }
-            .col-left { flex: 1; height: auto; max-height: none; overflow: visible; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 0.6rem; }
-            .col-right { flex: 1; height: auto; max-height: none; overflow: visible; padding-left: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+            .scroll-area { display: grid; padding: 1rem; gap: 1rem; align-items: stretch; }
+            .col-left, .col-dec, .col-right {
+                height: auto; max-height: none; overflow: visible;
+                display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+            /* ⚠ 三列踩坑(2026-09-11 实测)：这三个 div 身上还挂着两列时代的 Tailwind
+               `md:w-1/2` —— 作为 grid item，width:50% 是**网格轨道宽度的一半**，于是
+               2560 上左列只有 347px（轨道 694）、右列 417px（轨道 803），列与列之间
+               裂出 276~362px 的空白带。用后代选择器提高特异性压掉它（Tailwind CDN 的
+               样式表注入顺序不可靠，同特异性不一定赢）。 */
+            .scroll-area > .col-left, .scroll-area > .col-dec, .scroll-area > .col-right {
+                width: 100%; max-width: none; flex-shrink: 1; }
+            .col-right { gap: 0.75rem; }
+        }
+        /* 两列：左＝操作（跨两行），右上＝决策，右下＝参考 */
+        @media (min-width: 768px) and (max-width: 1599.98px) {
+            .scroll-area { grid-template-columns: 48% 1fr; grid-template-rows: auto 1fr; }
+            .col-left  { grid-column: 1; grid-row: 1 / span 2; }
+            .col-dec   { grid-column: 2; grid-row: 1; }
+            .col-right { grid-column: 2; grid-row: 2; min-height: 0; }
+        }
+        @media (min-width: 1280px) and (max-width: 1599.98px) {
+            .scroll-area { grid-template-columns: 52% 1fr; }
+        }
+        /* 三列：操作 | 决策 | 参考 */
+        @media (min-width: 1600px) {
+            .scroll-area { grid-template-columns: 34% 30% 1fr; grid-template-rows: 1fr; }
+            .col-left { grid-column: 1; } .col-dec { grid-column: 2; } .col-right { grid-column: 3; }
         }
 
         /* ══════════ UI 响应式 Step1：放开宽度 + 两栏优化（笔记本屏一屏看全关键区）══════════
@@ -158,7 +199,7 @@
         /* 2) 笔记本断点（768–1439）：收紧两栏间距 + 次要面板限高内部滚动 */
         @media (min-width: 768px) and (max-width: 1439.98px) {
             /* 融合单页(2026-07-14)：两列统一收紧（原仅翻后页收紧） */
-            .col-left, .col-right { gap: 0.5rem; }
+            .col-left, .col-dec, .col-right { gap: 0.5rem; }
             /* 次要面板内边距收紧（不动关键面板 decisionPanel/equityPanel） */
             #postHandCard, #postTextureCard { padding: 0.4rem; }
             /* 对手范围/牌面结构的内部滚动已移除（zone2-B）：内容完全展开，靠整页滚动看全 */
@@ -179,10 +220,9 @@
             /* 容器放宽，2K/4K 铺开（宽度利用 2026-07-14：2000→2200） */
             .app-container { max-width: 2200px; }
             /* 融合单页(2026-07-14)：输入列收窄，输出列放宽（原 postLeft/postRight 比例迁移到主两列） */
-            /* 流程融合(2026-09-10)：左列现在承载"牌面 + 翻前时间线 + 各街行动条"整条流程，
-               从 34% 放宽到 40%（2200 容器 ≈ 880px，正好容下 720px 上限的动作行 + 内边距） */
-            .col-left  { flex: 0 0 40%; width: 40%; }
-            .col-right { flex: 1 1 0%; width: auto; min-width: 0; }
+            /* 2026-09-11：三列后比例由 grid-template-columns 给（flex 属性对 grid item 无效）。
+               2K/4K 上参考列可以再宽些，让它内部的双列卡不至于太挤。 */
+            .scroll-area { grid-template-columns: 32% 28% 1fr; }
             /* 右区内部：column-count 高度均衡双列（替代刚性 grid）
                —— 修复旧 grid 的两病：① fit-content 在内容稀疏时把次要列收成窄条；
                ② 关键区 2 卡 vs 次要区 4 卡的列高失衡导致中栏下方大片空白。
@@ -225,6 +265,7 @@
             .scroll-area { padding: 0.6rem; gap: 0.6rem; }
             .col-left { padding-right: 0.25rem; }
             .col-right { padding-left: 0.25rem; }
+            .col-dec { padding-left: 0.25rem; padding-right: 0.25rem; }
             /* 2026-07-21：决策大字已移至 HUD，此处不再放大（原 2rem 是"面板即答案"时代的遗留） */
             #postHandCard, #postTextureCard { padding: 0.4rem; }
         }
@@ -255,6 +296,26 @@
         .flow-summary .fs-body { font-family: var(--font-mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .flow-summary .fs-open { margin-left: auto; color: var(--accent); flex: 0 0 auto; font-size: var(--fs-micro); }
         .flow-summary:hover .fs-open { text-decoration: underline; }
+        /* 结论层(2026-09-11 第四轮)：上一轮把 HUD 在桌面整个隐藏是**错的** ——
+           decisionPanel 早在 2026-07-21 就被降级成"依据"，并明写「答案见上方决策条 ↑」，
+           它依赖 HUD 提供结论。隐藏之后翻后的大字动作/频率/确定性全没了，
+           而决策区标题却还在显示**翻前**的 verdict（用户实测："只有翻前、没有翻后的数据"）。
+           正解不是隐藏，是让它**随屏幕换形态**：大屏是决策区顶部的卡片（一屏不滚，不必浮动），
+           窄屏才是固定贴底的条。角色始终是"结论"，位置随形态变。 */
+        @media (min-width: 1280px) {
+            /* 列内 sticky：往下滚去点行动条时，结论仍钉在视野顶部 —— 结论与执行同屏，
+               这正是 HUD 当初存在的理由，只是位置从"右列顶"回到了"决策区顶"。 */
+            #decisionHUD { position: sticky; top: 0; z-index: 30; padding: 10px 14px; }
+            #decisionHUD .hud-action { font-size: var(--fs-display); line-height: 1.05; }
+            /* 桌面上理由只由下面的「决策依据」出一次 —— 结论条只回答"做什么"，
+               依据卡回答"为什么"。窄屏相反：那里依据卡可能滚出视野，贴底的结论条要自带理由。 */
+            #decisionHUD .hud-why { display: none; }
+        }
+        .dec-src { font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0; text-transform: none;
+                   border: 1px solid var(--border-primary); border-radius: 4px; padding: 0 5px; color: var(--text-muted); }
+        .dec-src[data-src="book"] { color: #9fd0ff; border-color: rgba(87,169,255,.45); }
+        .dec-src[data-src="calc"] { color: #45d68a; border-color: rgba(46,168,106,.45); }
+        .dec-src[data-src="heur"] { color: #e0a83a; border-color: rgba(224,168,58,.45); }
         /* 翻前决策折叠后，摘要挂在 zone-head 上 */
         #resultPanel.zone-fold, #mathProofPanel.zone-fold { display: none !important; }
         #preDecisionSummary { font-family: var(--font-mono); font-size: var(--fs-caption); text-transform: none;
@@ -382,7 +443,7 @@
         /* lg：最外大框 */
         .app-container { border-radius: var(--radius-lg); }
         /* md：卡片/面板/翻前建议框（含 zone1 的决策/胜率卡） */
-        .col-left .panel-bg, .col-right .panel-bg,
+        .col-left .panel-bg, .col-dec .panel-bg, .col-right .panel-bg,
         #decisionPanel, #equityPanel, #actionBox, #mathProofPanel, .glass-card,
         #cfgContent, #postHandCard, #postRangeCard, #postTextureCard, #postDebugCard { border-radius: var(--radius-md); }
         /* sm：所有按钮/输入/子选项/牌 chip（统一小圆角，告别 3/4px 杂值） */
@@ -457,7 +518,7 @@
         .app-container .rounded-md { border-radius: var(--radius-sm); }
         .app-container .rounded-lg, .app-container .rounded-xl, .app-container .rounded-2xl { border-radius: var(--radius-md); }
         /* 卡片/面板维持 md（放在 catch-all 之后，同级 source-order 胜出；#id 更高自然胜） */
-        .col-left .panel-bg, .col-right .panel-bg,
+        .col-left .panel-bg, .col-dec .panel-bg, .col-right .panel-bg,
         #decisionPanel, #equityPanel, #actionBox, #mathProofPanel, .glass-card,
         #cfgContent, #postHandCard, #postRangeCard, #postTextureCard, #postDebugCard { border-radius: var(--radius-md); }
 
@@ -733,9 +794,17 @@
             font-size: var(--fs-body); font-weight: 700; padding: 0 4px; }
         #actionSummaryArea { display: none; }   /* 与跨街行动线重复（2026-09-10 去重） */
         .act-btn kbd, .qc-btn kbd { font-family: var(--font-mono); font-size: 10px; opacity: .55; margin-left: 5px; font-weight: 600; }
+        /* ★ 建议键与结论条共用一套语义色(2026-09-11)：结论是绿的，那个绿键就是要点的那个。
+           原来 ★ 一律 accent 蓝，与结论的语义色对不上，等于让用户再读一遍字才敢点。 */
         .act-star { background: var(--accent) !important; color: #082744 !important; border-color: transparent !important;
                     box-shadow: 0 0 0 3px rgba(87,169,255,.30); }
-        .act-star kbd { opacity: .75; color: #082744; }
+        .act-star.act-sem-attack  { background: #d63940 !important; color: #fff !important;
+                    box-shadow: 0 0 0 3px rgba(214,57,64,.32); }
+        .act-star.act-sem-passive { background: #2ea86a !important; color: #052318 !important;
+                    box-shadow: 0 0 0 3px rgba(46,168,106,.32); }
+        .act-star.act-sem-fold    { background: #5c667f !important; color: #fff !important;
+                    box-shadow: 0 0 0 3px rgba(92,102,127,.32); }
+        .act-star kbd { opacity: .75; color: inherit; }
         @media (max-width: 767.98px) {
             .act-btn kbd, .qc-btn kbd, .act-hint { display: none; }
             .act-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -936,7 +1005,7 @@
                     <li><b style="color:var(--text-primary);">截图识别</b>：<b>Ctrl+V</b> 粘贴牌桌截图自动填入，对照"识别结果核对"卡，点 ✎ 可改。</li>
                     <li><b style="color:var(--text-primary);">翻后</b>：底牌选满后直接在同一网格点选公共牌即自动进入翻后并算胜率（截图也自动进入）。左列是一条<b>流程轴</b>：翻前时间线在上、各街行动在下，翻前区进翻后后自动折叠成一行摘要（<b>点摘要行可随时展开</b>改位置/筹码）；右列集中所有决策与分析，翻前决策同样折叠在标题行、点「展开」可看。</li>
                     <li><b style="color:var(--text-primary);">换手/重来</b>：<b>下一手</b>清本手保留配置；<b>重置</b>全部归零。</li>
-                    <li><b style="color:var(--text-primary);">快捷键</b>：翻后右手区 <b>J</b> 过牌/跟注 · <b>K</b> 下注/加注框 · <b>L</b> 弃牌 · <b>M</b> 全押 · <b>1-4</b> 尺度（开放 33/50/75/100% 池；面对下注 2.5x/3x/4x/全押）· <b>U</b> 撤回（X/C/F/B 仍可用）；<b>Z</b>/Backspace/Ctrl+Z 撤回上一步（选牌、行动、清空、重置都能退）· <b>H</b> 清底牌 · <b>G</b> 清公共牌 · <b>R</b> 重置牌桌 · <b>P</b> 底池框 · <b>E</b> 有效筹码框；<b>N</b> 下一手；<b>回车</b> 解析/重析（下注框内回车＝直接提交下注）。<br>
+                    <li><b style="color:var(--text-primary);">快捷键</b>：翻后右手区 <b>J</b> 过牌/跟注 · <b>K</b> 下注/加注框 · <b>L</b> 弃牌 · <b>A</b> 全押 · <b>1-4</b> 尺度（开放 33/50/75/100% 池；面对下注 2.5x/3x/4x/全押）· <b>U</b> 撤回（X/C/F/B 仍可用）；<b>Z</b>/Backspace/Ctrl+Z 撤回上一步（选牌、行动、清空、重置都能退）· <b>H</b> 清底牌 · <b>G</b> 清公共牌 · <b>R</b> 重置牌桌 · <b>P</b> 底池框 · <b>E</b> 有效筹码框；<b>N</b> 下一手；<b>回车</b> 解析/重析（下注框内回车＝直接提交下注）。<br>
                         <b style="color:var(--text-primary);">改数字的三种方式</b>：直接打字 · 点框旁的 <b>−/+</b> 步进（一档≈10% 底池）· <b>先点进框再滚滚轮</b>（没点选时滚轮只滚页面，不会误改数字；Shift 精调、Alt 粗调）。</li>
                 </ol>
                 <div style="margin-top:12px;font-size:12px;color:var(--text-muted);">提示：中栏金/紫高亮处为关键决策与数据；右栏为对手范围/牌面等次要参考。</div>
@@ -955,8 +1024,12 @@
                 </div>
                 <input type="file" id="visionFileInput" accept="image/*" style="display:none">
             </div>
-            <div id="visionThumbnails" style="display:flex;flex-wrap:wrap;gap:6px;min-height:52px;align-items:center;">
-                <div id="visionEmptyHint" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;">暂无截图，Ctrl+V 粘贴开始识别</div>
+            <!-- 空态紧凑(2026-09-11 交互审计)：没有截图时这里白占 52px，而里面那句
+                 "暂无截图，Ctrl+V 粘贴开始识别" 与上面 #visionStatus 的文字完全重复。
+                 实测 1280×800（并排窗口常态）下，省掉这块正好让行动条回到视口内。
+                 有截图时恢复原高度，缩略图不受影响。 -->
+            <div id="visionThumbnails" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+                <div id="visionEmptyHint" style="font-size:12px;color:var(--text-muted);display:none;align-items:center;">暂无截图，Ctrl+V 粘贴开始识别</div>
             </div>
             <!-- 识别结果一览卡（只读展示 + null 标黄，由 renderVisionReviewCard 填充） -->
             <div id="visionReviewCard" style="display:none"></div>
@@ -1016,7 +1089,9 @@
                         <span id="pickerToggleHint" class="text-[10px] text-gray-500">选完会自动收起，把空间留给决策</span>
                     </div>
                     <div class="flex justify-between items-center mt-1" style="min-height:14px;">
-                        <span id="heroPickerHint" class="text-[10px] text-gray-500"></span>
+                        <!-- 对比度(2026-09-11 审计)：10px 文字用 gray-500 实测仅 3.71:1，低于 WCAG AA 的 4.5。
+                             DESIGN.md 的规则本就是"muted 仅限 ≥11px"，这里违反了自己的规则。 -->
+                        <span id="heroPickerHint" class="text-[10px] text-gray-400"></span>
                         <span id="boardPickerProgress" class="text-[10px] text-gray-500"></span>
                     </div>
                     <div id="streetStatusBar" class="mt-1 px-1 rounded text-[10px] text-gray-400 flex items-center justify-between">
@@ -1130,12 +1205,18 @@
                 </div>
             </div>
 
-            <!-- 布局R3(2026-07-14b)：输出列改为纯翻后流——行动线（录入）在上、分析（结果）在下，
-                 视线自上而下：录完行动即在正下方看决策。postActionZone/postRight 的 id/内部结构全部保留 -->
-            <div class="col-right flex flex-col gap-1.5 w-full md:w-1/2 shrink-0">
-
-                <!-- 常驻决策 HUD(2026-07-21)：桌面 sticky 置顶、手机 fixed 底部；翻前/翻后共用一个位置，
-                     动作词 + 尺度 + 频率条 + 一句理由 + 明确/边缘/混合 标识，状态变即刷新（updateDecisionHUD） -->
+            <!-- 决策列(2026-09-11 交互审计 P0-2)：并排窗口（1280×800 / 1512×950）下，
+                 决策区夹在左列中间会把行动条推出视口 —— 实测结论条 y=432、行动条 y=1046，
+                 相隔 490px 而可视高只有 581~731，每手都要多滚一次。
+                 独立成列后两者水平相邻，垂直距离归零。 -->
+            <div class="col-dec flex flex-col gap-1.5 w-full shrink-0">
+                <!-- 决策前置(2026-09-11，用户：决策放到牌面输入与对局流程中间)：
+                     这里是视线中心——看完自己的牌，紧接着就是"该怎么打"，再往下才是录行动。
+                     翻后的 decisionPanel 由 mountDecision() 搬到同一个位置，保证"一个窗口只有一处结论"。 -->
+                <div class="zone-head" id="preDecisionHead"><span>决策</span><span id="decisionSrc" class="dec-src" style="display:none"></span><span id="preDecisionSummary" style="display:none" hidden></span><button id="preDecisionToggle" onclick="togglePreDecision()" class="macro-btn" style="display:none" title="展开/收起决策详情">展开 ▾</button></div>
+                <!-- 结论层(2026-09-11 第四轮)：HUD 不是"另一个面板"，是**结论本身**。
+                     大屏它是决策区顶部的卡片（一屏不滚，无需浮动）；窄屏它固定贴底（内容要滚，必须钉住）。
+                     位置随屏幕形态变，角色不变 —— 这样 decisionPanel 里那句「答案见上方决策条 ↑」两种形态都成立。 -->
                 <div id="decisionHUD" class="hud-empty" data-sem="neutral">
                     <div class="hud-top"><span id="hudStage" class="hud-stage">翻前</span><span id="hudSrc" class="hud-src" style="display:none"></span><span id="hudBadge" class="hud-badge" style="display:none"></span></div>
                     <div id="hudAction" class="hud-action">等待输入</div>
@@ -1143,12 +1224,12 @@
                     <div id="hudFreq" class="freq-bar hud-freq" style="display:none"></div>
                     <div id="hudWhy" class="hud-why" style="display:none"></div>
                 </div>
-
-                <div class="zone-head" id="preDecisionHead"><span>决策 · 翻前</span><span id="preDecisionSummary" style="display:none"></span><button id="preDecisionToggle" onclick="togglePreDecision()" class="macro-btn" style="display:none" title="展开/收起翻前决策（进翻后自动收起，腾出竖向空间）">展开 ▾</button></div>
                 <div id="resultPanel" class="flex flex-col gap-1.5 w-full invisible shrink-0">
 
                 <div id="actionBox" class="flex flex-col items-center justify-center p-2 rounded border-2 text-center shadow-lg flex-1 min-h-[160px] overflow-hidden">
-                    <h2 id="actionVerdict" class="text-2xl md:text-3xl font-black mb-1"></h2>
+                    <!-- 2026-09-11：降级为上下文标签 —— 大字结论由上方结论条统一出，
+                         这里与翻后的 decisionPanel 一样只做"依据"（同一信息不出现两次）。 -->
+                    <h2 id="actionVerdict" class="text-xs font-bold mb-1" style="letter-spacing:.04em;opacity:.85;"></h2>
                     <p id="actionLogic" class="text-xs font-medium px-1 text-gray-200 overflow-y-auto"></p>
 
                     <div id="sizingBox" class="w-full mt-2 hidden shrink-0">
@@ -1161,7 +1242,21 @@
                         <div class="freq-bar" id="freqBar"></div>
                     </div>
                 </div>
+                </div>
+                <div id="postDecisionSlot"></div>
+            </div>
 
+
+            <!-- 布局R3(2026-07-14b)：输出列改为纯翻后流——行动线（录入）在上、分析（结果）在下，
+                 视线自上而下：录完行动即在正下方看决策。postActionZone/postRight 的 id/内部结构全部保留 -->
+            <div class="col-right flex flex-col gap-1.5 w-full md:w-1/2 shrink-0">
+
+
+
+                <!-- 三列(2026-09-11)：自证属"参考"不属"决策" —— 用户第四轮明确要求
+                     「画面右边显示底层范围、自证等逻辑内容」。放在参考列顶部，
+                     决策列只留结论与依据，一屏之内三列各管一件事。 -->
+                <!-- 底层逻辑：范围自证（自带标题，不再占一个 zone-head） -->
                 <div id="mathProofPanel" class="hidden panel-bg p-2 rounded shadow-inner shrink-0">
                     <h3 onclick="toggleMathProof()" title="点击展开/收起（分层显示 2026-07-21，默认收起）" class="text-[10px] font-bold text-gray-400 uppercase mb-1.5 border-b border-white/10 pb-0.5 text-center tracking-widest">底层范围自证 (Range Logic)</h3>
                     <div class="grid grid-cols-3 gap-1.5 text-center mb-2">
@@ -1189,9 +1284,6 @@
                         </div>
                     </div>
                 </div>
-
-                </div>
-
                 <div class="zone-head" id="postAnalysisHead"><span>分析 · 翻后</span><button id="postDetailsToggle" onclick="togglePostDetails()" class="macro-btn" title="展开/收起对手范围、牌面纹理、手型与调试卡（分层显示 2026-07-21）">详情 ▸</button></div>
                 <!-- 翻后分析区（原翻后页右栏迁移，id/结构保留；initPostRightCards 仍重建 postRightContent） -->
                 <div id="postRight" class="flex flex-col gap-1.5 w-full shrink-0">
@@ -1719,7 +1811,13 @@
             onConfigChange(); tyRender();
             showToast('赛事类型 → 极速赛', 'ok');
         }
-        function tyClear() {
+        function tyClear(opts) {
+            // 撤回栈(2026-09-12)：赛事信息是手打进去的（总参赛/剩余/奖金%/起始筹码），
+            // 清空一下就没了，而它直接驱动"距钱圈"与码量分档。误点必须能退回来。
+            // resetAll 传 {ownEntry:false}：它那条快照里已经带着 gameConfig（JSON 深拷贝），
+            // 再压一条会让"重置牌桌"要按两次 Z。
+            const _had = Object.values(gameConfig.tourney || {}).some(v => v != null && v !== '');
+            if (_had && (!opts || opts.ownEntry !== false)) { try { pushUndo('清空赛事信息'); } catch (e) {} }
             Object.keys(gameConfig.tourney).forEach(k => gameConfig.tourney[k] = null);
             tyFields.forEach(([id]) => { const el = document.getElementById(id); if (el) { el.value = ''; el.dataset.dirty = ''; } });
             tyRender();
@@ -3633,6 +3731,16 @@
                 _updateUndoBtn();
             } catch (e) {}
         }
+        // 撤回栈侧挂(2026-09-12)：截图这类"不能进 JSON 快照"的大对象（每张 base64 上百 KB，
+        // 而每次选牌/录行动都会压一次栈）挂在最近一条记录上，按引用保存、零拷贝。
+        // 好处是"一次 Z 撤回一步"这条规矩不被破坏——清截图与重置牌桌各自只占一条记录。
+        function attachUndoExtra(key, val) {
+            if (_undoRestoring || val == null) return;
+            const top = undoStack[undoStack.length - 1];
+            if (top) top[key] = val;
+        }
+        window.attachUndoExtra = attachUndoExtra;
+        window.pushUndoSafe = function (label) { try { pushUndo(label); } catch (e) {} };
         function _updateUndoBtn() {
             const b = document.getElementById('macroUndoBtn');
             if (!b) return;
@@ -3711,6 +3819,13 @@
                 // 翻前决策：快照时可见 → 重跑解析恢复（switchMode 已把结果面板隐藏）
                 if (s.resultVisible && heroCard1 && heroCard2 && boardN < 3) { try { executeEngine(); } catch (e) {} }
                 updateCfgSummary();
+                // gameConfig.tourney 是嵌套对象，Object.assign 已换成快照里的新对象，
+                // 但输入框与"距钱圈"挂件不会自己刷新（tyClear 接入撤回栈后必须补这一下）
+                try { tyRender(); } catch (e) {}
+                // 截图历史：见 attachUndoExtra —— 不在 JSON 快照里，单独还原
+                if (entry.vision && typeof window._visionRestore === 'function') {
+                    try { window._visionRestore(entry.vision); } catch (e) { console.warn('[撤回] 截图还原失败', e); }
+                }
                 showToast(`已撤回：${entry.label}`, 'info');
             } catch (e) {
                 console.error('[撤回] 恢复失败', e);
@@ -3827,16 +3942,19 @@
             actEl.textContent = action || '等待输入';
             sizeEl.textContent = sizing; sizeEl.style.display = sizing ? '' : 'none';
             freqEl.innerHTML = freqHTML; freqEl.style.display = freqHTML ? '' : 'none';
-            whyEl.textContent = why; whyEl.style.display = why ? '' : 'none';
+            // 窄屏贴底条会显示这一行；引擎文案里的 **强调** 用 textContent 会原样带星号
+            // （2026-09-12 与 decisionReason 同批修）。这里不需要粗体，直接去掉标记。
+            whyEl.textContent = String(why).replace(/\*\*([^*]+)\*\*/g, '$1');
+            whyEl.style.display = why ? '' : 'none';
             badgeEl.textContent = badge; badgeEl.dataset.level = badge; badgeEl.style.display = badge ? '' : 'none';
             // 来源分级(2026-09-08)：只在真出了建议时显示
-            const srcEl = document.getElementById('hudSrc');
-            if (srcEl) {
-                if (action && !/等待输入|计算中|悖论/.test(action)) {
-                    const s = adviceSourceOf(boardN);
-                    srcEl.textContent = s.k; srcEl.title = s.t; srcEl.dataset.src = s.c; srcEl.style.display = '';
-                } else srcEl.style.display = 'none';
-            }
+            const hasAdvice = action && !/等待输入|计算中|悖论/.test(action);
+            const srcInfo = hasAdvice ? adviceSourceOf(boardN) : null;
+            [document.getElementById('hudSrc'), document.getElementById('decisionSrc')].forEach(el => {
+                if (!el) return;
+                if (srcInfo) { el.textContent = srcInfo.k; el.title = srcInfo.t; el.dataset.src = srcInfo.c; el.style.display = ''; }
+                else el.style.display = 'none';
+            });
             // 流程轴(2026-09-10)：HUD 是"状态一变就刷新"的统一钩子，摘要/折叠跟着它走
             try { updateFlowStage(); } catch (e) {}
         }
@@ -3985,21 +4103,24 @@
         }
 
         // 选牌提示（融合单页：提示当前选牌目标与进度）
+        // 对比度(2026-09-11 审计)：这里的 10px 提示实测只有 3.71:1，低于 WCAG AA 的 4.5。
+        // DESIGN.md 自己的规则就是"muted/gray-500 仅限 ≥11px"——10px 档必须用 gray-400。
+        // 注意：className 是在这里**运行时重写**的，只改 HTML 里的 class 不起作用。
         function updateHeroPickerHint() {
             const el = document.getElementById('heroPickerHint');
             if (!el) return;
             if (!heroCard1) {
                 el.textContent = '点击网格选两张底牌';
-                el.className = 'text-[10px] text-gray-500';
+                el.className = 'text-[10px] text-gray-400';
             } else if (!heroCard2) {
                 el.textContent = '再选一张底牌';
                 el.className = 'text-[10px] text-yellow-400';
             } else if (pickTarget === 'board') {
                 el.textContent = '底牌已锁定 · 网格现在选公共牌（点「底牌」分组可改）';
-                el.className = 'text-[10px] text-gray-500';
+                el.className = 'text-[10px] text-gray-400';
             } else {
                 el.textContent = '底牌目标：点新牌替换 · 点「公共牌」分组选翻牌';
-                el.className = 'text-[10px] text-gray-500';
+                el.className = 'text-[10px] text-gray-400';
             }
         }
 
@@ -4450,7 +4571,7 @@
             gameConfig.villainModel = 'exploit'; // M5：对手模型复位为默认剥削
             gameConfig.openSize = 'auto'; gameConfig.tbSize = 'auto'; // 尺度可选(2026-09-08)
             gameConfig.autoAdvancePos = true; gameConfig.chipUnit = 'bb'; gameConfig.blinds.running = false; // 2026-07-21
-            try { tyClear(); } catch (e) {} // 赛事信息(2026-09-08)：彻底重置连同赛事信息一并清空
+            try { tyClear({ ownEntry: false }); } catch (e) {} // 赛事信息(2026-09-08)：彻底重置连同赛事信息一并清空（撤回记录并进重置牌桌那条）
             chipVals = { hero: null, villain: null, avg: null }; try { blSave(); blRender(); } catch (e) {}
             globalHeroStack = 40; globalVillainStack = 40;
             globalAvgStack = 40; avgStackTouched = false; // O4：平均码持久化一并复位
@@ -4645,7 +4766,9 @@
             if (svEl) { svEl.value = savedVillain; globalVillainStack = savedVillain; }
 
             // 清空 Vision 历史（如有）
-            if (typeof window.clearVisionHistory === 'function') window.clearVisionHistory();
+            // ownEntry:false —— nextHand 自己已压过一条"下一手"，截图挂到那条上，
+            // 一次 Z 把牌和截图一起退回来（不是按两次，见 attachUndoExtra）
+            if (typeof window.clearVisionHistory === 'function') window.clearVisionHistory({ ownEntry: false });
 
             if (typeof updateNavButtons === 'function') updateNavButtons('pre');
             updateCfgSummary();
@@ -5631,6 +5754,16 @@
 
             return { seats, committed, folded, allIn, inPot, contenders, pot, curBet, lastRaiseInc,
                      raises, nextToAct, closed: nextToAct === null && tlActs.length > 0,
+                     // 本轮已经表过态的人 —— 用来区分"他还该再说一次"与"他这轮说过了，现在是改主意"。
+                     // 判据是**他最后一个动作的位置 ≥ 最后一次加注的位置**，而不是"在最后一次加注之后"：
+                     // 加注者本人不在"之后"的名单里，但他显然刚说过话（否则点他会变成追加而不是改主意，
+                     // 同一座位同时留下"加注"和"弃牌"两条）。
+                     lastAggIdx,
+                     actedThisRound: new Set(seats.filter(p => {
+                         let li = -1;
+                         for (let i = tlActs.length - 1; i >= 0; i--) if (tlActs[i].pos === p) { li = i; break; }
+                         return li >= 0 && li >= lastAggIdx;
+                     })),
                      heroActs: tlActs.filter(a => a.pos === globalPosHero) };
         }
 
@@ -5678,7 +5811,11 @@
          * @returns {boolean} 是否可以继续记录 pos 的动作
          */
         function tlAutoFoldBefore(pos) {
-            if (tlActsOf(pos).length) return true;           // 他已经行动过 = 改主意，不补
+            // 2026-09-11 修正：判据是"**这一轮**他表过态没有"，不是"他这手牌行动过没有"。
+            // 原来只要他有过动作就直接 return —— 于是"我 4-Bet 之后点开池者"时不补中间的弃牌，
+            // 紧接着又被 tlDo 当成改主意，把我的 4-Bet 连同别人的 3-Bet 一起截断（用户实测：
+            // 底池从 36.7 掉回 2.5）。他在上一轮加注、这一轮还没说话，本来就该再行动一次。
+            if (tlState().actedThisRound.has(pos)) return true;   // 这一轮说过了 = 改主意，不补
             let guard = 0;
             while (guard++ < 24) {
                 const st = tlState();
@@ -6400,7 +6537,9 @@
             // 那条自动弃牌就不会被替换，同一个座位会同时留下"弃牌"和"加注"两条，
             // 于是他既在 folded 里又在加注序列里，后面的判定全乱。
             const acts = tlActsOf(pos);
-            const isTurn = st.nextToAct === pos;
+            // 2026-09-11：是不是"改主意"，看的是**这一轮**他表过态没有 —— 翻前可以打很多轮，
+            // 上一轮加过注的人这一轮当然还要再说一次（面对我的 4-Bet 跟/弃/5-Bet）。
+            const changingMind = st.actedThisRound.has(pos);
             const CN = { fold: '弃牌', check: '过牌', call: '跟注', limp: '跛入', raise: '加注', allin: '全下' };
             let act = a, amount = amt || 0;
             if (a === 'check') { act = st.curBet <= (st.committed[pos] || 0) ? 'call' : 'call'; }   // 过牌＝跟 0
@@ -6415,11 +6554,12 @@
             }
             if (a === 'allin') { amount = amount || tlOptions(pos).stack; }
             pushUndo(`时间线：${pos === globalPosHero ? '我' : tlLbl(pos)} → ${CN[a] || a}`);
-            if (acts.length && !isTurn) {
-                // 改主意：定位他的最后一个动作，替换并截断其后
+            if (changingMind) {
+                // 改主意：定位他**这一轮**的那个动作，替换并截断其后
+                //（后面的人是基于旧局面表的态，不能留着）
                 let idx = -1;
                 for (let i = tlActs.length - 1; i >= 0; i--) if (tlActs[i].pos === pos) { idx = i; break; }
-                tlActs = tlActs.slice(0, idx);
+                if (idx >= 0) tlActs = tlActs.slice(0, idx);
             }
             tlActs.push({ pos, a: act, amt: amount });
             tlRebuildLegacy();
@@ -6433,6 +6573,8 @@
             const acts0 = tlActsOf(pos);
             let last = acts0.length ? acts0[acts0.length - 1] : null;
             if (last && last.auto) last = null;      // 自动补的弃牌不算他"表过态"
+            // 上一轮的动作也不算——他这一轮是全新的一次表态，循环该从第一档开始
+            if (last && !tlState().actedThisRound.has(pos)) last = null;
             // 算"他这次有哪些选项"时必须把他自己上一次的动作排除掉——否则他一加注，
             // 局面就从"无人加注"变成"面对加注"，下一次点击会从错误的档位继续，循环跳档。
             const _saved = tlActs;
@@ -7942,6 +8084,24 @@
                 vText.innerText = verdict;
                 logicText.innerHTML = logic;
 
+                // 4-Bet 尺度(2026-09-11，用户："价值 4-Bet 到底要下多大，并没有明确体现")：
+                // 这条分支从来没设过 sizingBox —— 建议 4-Bet 100% 却不说打到多少，等于没法执行。
+                // 尺度与 face3b 同一套（同样是"面对 3-Bet 的 4-Bet"）：按 3-Bet 额定档
+                // IP 2.2x / OOP 2.5x，下限为最小合法加注，≥85% 有效筹码改全押。
+                // IP/OOP 对的是 **3-Bet 者**（posC）——翻后主对手是他，不是开池者。
+                if (b > 0) {
+                    const _open4 = getOpenSizeBB();
+                    const _vs4 = posC || posV;
+                    const _isIP4c = (POSTFLOP_ORDER[posH] || 0) > (POSTFLOP_ORDER[_vs4] || 0);
+                    const _minLegal4c = threeBetSize + Math.max(0, threeBetSize - _open4);
+                    const _amt4 = Math.max(threeBetSize * (_isIP4c ? 2.2 : 2.5), _minLegal4c);
+                    const _allin4 = effStack > 0 && _amt4 >= effStack * 0.85;
+                    sizingBox.classList.remove('hidden');
+                    document.getElementById('sizingContent').innerHTML = _allin4
+                        ? `${effStack.toFixed(1)}BB All-in（4-Bet 到 ${_amt4.toFixed(1)} 已占 ${(_amt4 / effStack * 100).toFixed(0)}% 筹码，直接全下）`
+                        : `${_amt4.toFixed(1)}BB 4-Bet（${_isIP4c ? 'IP 2.2×' : 'OOP 2.5×'} 他的 ${threeBetSize}BB 3-Bet）`;
+                }
+
                 freqBox.classList.remove('hidden');
                 document.getElementById('freqBar').innerHTML =
                     (c>0?`<div class="freq-fill bg-call" style="width:${c}%">${c}%</div>`:'') +
@@ -8276,7 +8436,11 @@
                 e.preventDefault(); // 防止字母被打进刚聚焦的输入框
                 const inp = document.getElementById(actor === 'hero' ? 'heroBetInput' : 'villainBetInput');
                 if (inp) { inp.focus(); inp.select(); }
-            // 翻后右手区快捷键(2026-07-21，用户要求靠近 H/J/N)：J 过牌/跟注 · K 下注/加注框 · L 弃牌 · M 全押
+            // 翻后右手区快捷键(2026-07-21，用户要求靠近 H/J/N)：J 过牌/跟注 · K 下注/加注框 · L 弃牌 · A 全押
+            // ⚠ 全押 2026-09-12 由 M 改到 A：M 与 N（下一手）在键盘上紧挨着，而这两个键的后果
+            //   恰好最不对称——一个把全部筹码推进去、一个把这手牌清掉。**同一个手指、相邻一格、
+            //   两个都不可轻易挽回**，是本项目里最危险的一对相邻键。A 在左手区、离 N 最远，
+            //   且是 All-in 的首字母。旧的 M 保留为提示（见下），不再执行动作。
             } else if (k === 'j') {
                 e.preventDefault();
                 if (isFacing) { if (actor === 'hero') recordHeroCall(); else setActionRecord('villain', 'call', 0); }
@@ -8284,9 +8448,14 @@
             } else if (k === 'l' && isFacing) {
                 e.preventDefault();
                 if (actor === 'hero') recordHeroFold(); else setActionRecord('villain', 'fold', 0);
-            } else if (k === 'm') {
+            } else if (k === 'a') {
                 e.preventDefault();
                 quickCommit(actor, isFacing ? 'raise' : 'bet', 'allin');
+            } else if (k === 'm') {
+                // 旧键位：不执行动作，只告诉用户改到哪了（肌肉记忆需要一次明确纠正，
+                // 静默无反应会让人以为程序卡了、然后去点鼠标——那才是真的浪费时间）
+                e.preventDefault();
+                showToast('全押已改到 A 键 —— M 紧挨着 N（下一手），两个都不好撤，分开放', 'warn');
             // 数字 1-4：我方尺度快捷（开放：33%/半池/75%/满池；面对下注：2.5x/3x/4x/全押）
             } else if (actor === 'hero' && /^[1-4]$/.test(k)) {
                 e.preventDefault();
@@ -8312,7 +8481,21 @@
             if (k === 'n') { e.preventDefault(); nextHand(); return; }
             // 环节快捷键(2026-07-21)：Z/Backspace 撤回上一步 · H 清底牌 · G 清公共牌 · R 重置牌桌（均可撤回）
             if (k === 'z' || e.key === 'Backspace') { e.preventDefault(); undoLastStep(); return; }
-            if (k === 'h') { e.preventDefault(); clearHeroCards(); return; }
+            // ══ 误触防护(2026-09-11 交互审计) ══
+            // QWERTY 上 H 与 J 紧邻，而翻后 J＝过牌/跟注（全流程最高频键）。
+            // 手指偏左一格就是"清底牌"——牌都打到翻后了还清底牌，几乎必然是误触，
+            // 而在 15-30 秒倒计时里，界面全变 + 认知中断 + 撤回，代价远超省下的那一个修饰键。
+            // 按 Norman「Constraints」：在当前上下文里无效/危险的动作就该被限制住。
+            // 翻前不变（那时 J/K/L/M 本来就不生效，H 相邻无害）。
+            if (k === 'h') {
+                e.preventDefault();
+                const _boardN = (() => { try { return postState.board.filter(c => c !== null).length; } catch (_) { return 0; } })();
+                if (_boardN >= 3 && !e.shiftKey) {
+                    showToast('翻后清底牌请用 Shift+H —— H 紧挨着 J（过牌/跟注），防误触', 'warn');
+                    return;
+                }
+                clearHeroCards(); return;
+            }
             if (k === 'g') { e.preventDefault(); clearBoard(); return; }
             if (k === 'r') { e.preventDefault(); resetAll(); return; }
             // P 跳底池框；E 跳有效筹码框（看到什么填什么）
@@ -8754,7 +8937,7 @@
                         } else {
                             const minus = baseHands.filter(h => !_js.has(h));
                             if (minus.length >= 5) { baseHands = minus;
-                                vActionLabel = `开池但**非全下**段 (${villainPos} ${_vs}BB，已剔除全下段 ${openJamPct(_bi, _vs).toFixed(1)}%)`; }
+                                vActionLabel = `开池但非全下段 (${villainPos} ${_vs}BB，已剔除全下段 ${openJamPct(_bi, _vs).toFixed(1)}%)`; }
                         }
                     }
                 }
@@ -9674,6 +9857,20 @@
                 return `我 ${pos} · ${d.label || '—'} · ${globalHeroStack}BB`;
             } catch (e) { return '—'; }
         }
+        /**
+         * 把翻后的 decisionPanel 搬到左列的决策槽(2026-09-11)。
+         * 翻前用 resultPanel、翻后用 decisionPanel，但它们在界面上必须是**同一个位置**——
+         * 否则一个"结论"在左、一个在右，又回到信息分散。decisionPanel 由 initPostRightCards
+         * 用 innerHTML 重建，所以每次重建后都要重新挂一次。
+         */
+        function mountDecision() {
+            try {
+                const slot = document.getElementById('postDecisionSlot');
+                const dp = document.getElementById('decisionPanel');
+                if (slot && dp && dp.parentElement !== slot) slot.appendChild(dp);
+            } catch (e) {}
+        }
+
         function updateFlowStage() {
             try {
                 const cnt = postState.board.filter(c => c !== null).length;
@@ -9694,20 +9891,15 @@
                 if (post) post.classList.toggle('active', inPost);
                 const colR = document.querySelector('.col-right');
                 if (colR) colR.classList.toggle('pre-stage', !inPost);
+                mountDecision();   // 翻后决策卡挂到左列同一个槽位
+                // 进翻后：翻前决策收起（翻后决策接管同一位置）；自证卡在右列不受影响
                 const foldDec = inPost && !_preDecUserOpen;
                 const rp = document.getElementById('resultPanel');
-                const mp = document.getElementById('mathProofPanel');
                 if (rp) rp.classList.toggle('zone-fold', foldDec);
-                if (mp) mp.classList.toggle('zone-fold', foldDec);
                 const btn = document.getElementById('preDecisionToggle');
                 if (btn) { btn.style.display = inPost ? '' : 'none'; btn.textContent = foldDec ? '展开 ▾' : '收起 ▴'; }
-                const sum = document.getElementById('preDecisionSummary');
-                if (sum) {
-                    const v = (document.getElementById('actionVerdict')?.innerText || '').replace(/\s+/g, ' ').trim();
-                    const show = inPost && foldDec && !!v;
-                    sum.style.display = show ? '' : 'none';
-                    sum.textContent = show ? '· ' + (v.length > 34 ? v.slice(0, 34) + '…' : v) : '';
-                }
+                // 2026-09-11：标题不再挂"翻前 verdict 摘要" —— 进翻后它与下面的翻后内容直接矛盾
+                //（实测标题「🔴 主动 3-Bet」而内容是「CALL」）。结论只由上方的结论条出，一处即可。
             } catch (e) {}
         }
         function togglePreflopZone() { _preZoneUserOpen = !_preZoneUserOpen; updateFlowStage(); }
@@ -10297,7 +10489,7 @@
                 html += `<div class="border ${frameCls} rounded-lg p-2">
                     <div class="text-sm font-bold ${titleCls} mb-1.5 flex justify-between items-center gap-2">
                         <span>${titleTxt}</span>
-                        ${isHero ? '<span class="text-[10px] text-gray-500 font-normal shrink-0 act-hint">J 过/跟 · K 注 · L 弃 · M 全押 · 1-4 尺度</span>' : ''}
+                        ${isHero ? '<span class="text-[10px] text-gray-500 font-normal shrink-0 act-hint">J 过/跟 · K 注 · L 弃 · A 全押 · 1-4 尺度</span>' : ''}
                     </div>`;
                 if (isHero && odds !== null) {
                     html += `<div class="text-[10px] text-yellow-500/80 mb-1.5 px-1">底池赔率 ${odds}%，需胜率 ≥ ${odds}%</div>`;
@@ -10324,15 +10516,17 @@
                               : (!isHero && postState._pendingVillainBet) ? postState._pendingVillainBet
                               : heroDefault;
 
+                // ★ 建议键带上语义(2026-09-11)：弃=fold / 过牌·跟注=passive / 下注·加注·全押=attack，
+                // 与上方结论条同一套色。看到绿色结论，下面那个绿键就是要点的那个。
                 const foldCls = !foldOn
                     ? 'border-white/5 bg-white/[0.02] text-gray-700 cursor-not-allowed'
-                    : foldStar ? 'act-star font-bold'
+                    : foldStar ? 'act-star act-sem-fold font-bold'
                     : 'border-red-700/40 bg-red-900/10 text-red-300 hover:bg-red-900/30';
                 const passCls = passiveStar
-                    ? 'act-star font-bold'
+                    ? 'act-star act-sem-passive font-bold'
                     : 'border-green-700/40 bg-green-900/10 text-green-300 hover:bg-green-900/30';
                 const aggrCls = aggrStar
-                    ? 'act-star border font-bold'
+                    ? 'act-star act-sem-attack border font-bold'
                     : (isHero ? 'bg-blue-900/30 border border-blue-700/30 text-blue-300 hover:bg-blue-900/50'
                               : 'bg-emerald-900/30 border border-emerald-700/30 text-emerald-300 hover:bg-emerald-900/50');
 
@@ -10381,7 +10575,7 @@
                         <button ${foldOn ? `onclick="${foldClick}"` : 'disabled'} class="act-btn rounded-md border ${foldCls} active:scale-95 transition-all">${foldStar ? '★ ' : ''}弃牌${isHero ? '<kbd>L</kbd>' : ''}</button>
                         <button onclick="${passClick}" class="act-btn rounded-md border ${passCls} active:scale-95 transition-all">${passiveStar ? '★ ' : ''}${passiveLbl}${isHero ? '<kbd>J</kbd>' : ''}</button>
                         <button onclick="commitCustomAction('${playerKey}','${inputId}','${aggrType}')" class="act-btn rounded-md ${aggrCls} active:scale-95 transition-all"><span id="aggrBtnLabel" data-star="${aggrStar ? 1 : 0}">${aggrStar ? '★ ' : ''}${aggrLabel}</span>${isHero ? '<kbd>K</kbd>' : ''}</button>
-                        <button onclick="quickCommit('${playerKey}','${aggrType}','allin')" class="act-btn act-allin rounded-md border active:scale-95 transition-all">全押${isHero ? '<kbd>M</kbd>' : ''}</button>
+                        <button onclick="quickCommit('${playerKey}','${aggrType}','allin')" class="act-btn act-allin rounded-md border active:scale-95 transition-all">全押${isHero ? '<kbd>A</kbd>' : ''}</button>
                     </div>`;
                 }
                 html += `</div>`;
@@ -10894,6 +11088,8 @@
                         <div id="postAuditContent" class="text-[10px]"></div>
                     </div>
                 </div>`;
+            // 决策前置(2026-09-11)：重建后把决策卡搬回左列的决策槽
+            try { if (typeof mountDecision === 'function') mountDecision(); } catch (e) {}
         }
 
         /** 折叠/展开调试卡片 */
@@ -13491,7 +13687,10 @@
             }
 
             // 推理
-            document.getElementById('decisionReason').innerText = result.reasoning || '';
+            // 文案里的 <b>/**强调** 要真的渲染出来（2026-09-12 截图实测：innerText 会把
+            // "但**范围强度差 +2.9 点**" 原样显示成带星号的字面量）。内容全是引擎里的常量。
+            document.getElementById('decisionReason').innerHTML =
+                String(result.reasoning || '').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
 
             // 频率条
             const freqs = result.frequencies;
@@ -13516,10 +13715,26 @@
             // 警告
             const warnEl = document.getElementById('decisionWarnings');
             warnEl.innerHTML = '';
+            // 警示分级(2026-09-12 交互审计)：这一栏原本无论内容是什么都刷成橙色"警告"。
+            // 实测同一栏里混着三种性质完全不同的东西——
+            //   ⚠ 真警示（多人底池禁诈唬 / SPR 承诺区 / underpair 降级）
+            //   🎯 阻断分析（中性事实，4 个取样局面里 3 个都有，还是最长的一条）
+            //   ✓ 对我有利的提示（"大码接短码：风险溢价仅 3%"——被刷成橙色后读起来像在报警）
+            // 全刷橙色的代价是**真警示被稀释**：15-30 秒里眼睛只够扫一遍颜色，
+            // 一栏全橙等于没有分级（Tognazzini「Color」：颜色要承载意义，不能当装饰）。
+            // 按首字符分三档；不折叠、不隐藏任何一条——这些都是要在决策当下看的内容。
+            const _warnStyle = w => {
+                const t = String(w).trim();
+                if (t.startsWith('✓')) return 'text-emerald-300 bg-emerald-900/25 border-emerald-500/30';
+                if (t.startsWith('🎯') || t.startsWith('ℹ')) return 'text-slate-300 bg-white/5 border-white/10';
+                return 'text-orange-300 bg-orange-900/30 border-orange-500/30';   // ⚠ 及其他 = 真警示
+            };
             (result.warnings || []).forEach(w => {
                 const div = document.createElement('div');
-                div.className = 'text-[10px] text-orange-300 bg-orange-900/30 px-2 py-1 rounded border border-orange-500/30';
-                div.innerText = w;
+                div.className = 'text-[10px] px-2 py-1 rounded border ' + _warnStyle(w);
+                // 警示文案里带 <b> 强调（如"多人底池：<b>纯诈唬一律关闭</b>"），
+                // 用 innerText 会把标签当字面量原样显示出来（用户截图可见）。内容全是引擎里的常量，非用户输入。
+                div.innerHTML = w;
                 warnEl.appendChild(div);
             });
         }
@@ -14799,13 +15014,57 @@ window.deleteVisionRecord = function(id, event) {
 function makeEmptyHint() {
     const d = document.createElement('div');
     d.id = 'visionEmptyHint';
+    d.style.display = 'none';   // 空态紧凑(2026-09-11)：提示与上方 visionStatus 重复，不再占位
     d.style.cssText = 'font-size:12px;color:var(--text-muted);display:flex;align-items:center;';
     d.textContent = '暂无截图，Ctrl+V 粘贴开始识别';
     return d;
 }
 
-// ─── 清空本局（无确认弹窗） ───────────────────────────
-window.clearVisionHistory = function() {
+// ─── 清空本局（无确认弹窗，但可撤回）───────────────────
+// 撤回栈(2026-09-12)：原来「清截图」是全系统仅剩的**不可逆**按钮——一点下去，
+// 截图、识别结果、以及 manualFields（哪些字段是我手工改过的、下次识别不许覆盖）
+// 一起消失，而这三样都要靠重新粘贴截图+重新手改才能拿回来。
+// 图片不进 JSON 快照（每张上百 KB，而每次选牌都要压栈），改为按引用侧挂，见 attachUndoExtra。
+function captureVisionState() {
+    if (!visionHistory.length) return null;
+    const rc = document.getElementById('visionReviewCard');
+    return {
+        history: visionHistory.slice(),        // 同一批对象的引用，不复制图片数据
+        counter: visionCounter,
+        currentId: currentVisionId,
+        manual: [...manualFields],
+        reviewHTML: rc ? rc.innerHTML : '',
+        reviewDisplay: rc ? rc.style.display : 'none'
+    };
+}
+window._visionRestore = function (v) {
+    if (!v) return;
+    visionHistory = v.history.slice();
+    visionCounter = v.counter;
+    currentVisionId = v.currentId;
+    manualFields.clear(); v.manual.forEach(f => manualFields.add(f));
+    const container = document.getElementById('visionThumbnails');
+    if (container) {
+        container.innerHTML = '';
+        container.appendChild(makeEmptyHint());
+        visionHistory.forEach(r => {
+            appendThumbnail(r.id, r.base64url);
+            if (r.data) { try { updateThumb(r.id, '✅', buildSummary(r.data)); } catch (e) {} }
+        });
+    }
+    if (currentVisionId != null) selectThumb(currentVisionId);
+    const rc = document.getElementById('visionReviewCard');
+    if (rc) { rc.innerHTML = v.reviewHTML; rc.style.display = v.reviewDisplay; }
+    updateVisionStatus(`已恢复 ${visionHistory.length} 张截图`);
+};
+window.clearVisionHistory = function(opts) {
+    const cap = captureVisionState();
+    // resetAll 走 {ownEntry:false}：它自己已经压过一条"重置牌桌"，截图挂到那条上，
+    // 这样一次 Z 把牌桌和截图一起退回来，而不是要按两次。
+    if (cap) {
+        if (!opts || opts.ownEntry !== false) { if (typeof window.pushUndoSafe === 'function') window.pushUndoSafe('清空截图'); }
+        if (typeof window.attachUndoExtra === 'function') window.attachUndoExtra('vision', cap);
+    }
     if (visionTimer) { clearInterval(visionTimer); visionTimer = null; }
     isVisionProcessing = false;
     currentVisionId = null;
@@ -14826,7 +15085,7 @@ window.clearVisionHistory = function() {
 const _origResetAll = window.resetAll;
 window.resetAll = function() {
     if (typeof _origResetAll === 'function') _origResetAll();
-    window.clearVisionHistory();
+    window.clearVisionHistory({ ownEntry: false });
 };
 
 })(); // end IIFE
