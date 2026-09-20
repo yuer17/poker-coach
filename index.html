@@ -5240,7 +5240,7 @@
                             const pctVal = (targetCombos / 1326 * 100).toFixed(1);
                             return {
                                 hands: out,
-                                note: `${blindPos} 跟注段 (vs ${openerPos}，${pctVal}%，MPT 组合加权实测)`
+                                note: `${blindPos} 跟注段 (vs ${openerPos}，${pctVal}%，MPT 组合加权实测，剔除他的 3-Bet/全下段)`
                             };
                         }
                     }
@@ -12719,10 +12719,16 @@
                     return tb && tb.set.size >= 10 ? [...tb.set] : null;
                 }
                 if (mode === 'faceBet' && heroPos === 'BB') {
+                    const bc = typeof blindCallRange === 'function' && blindCallRange('BB', villPos, ts, effStack);
+                    if (bc && bc.hands && bc.hands.length >= 10) return bc.hands;
                     const def = ALL_169_HANDS.filter(h => isHandInBBDefense(h, villPos, ts, effStack));
                     const tb = bbSb3betSet('BB', villPos, effStack);
                     const out = def.filter(h => !(tb && tb.set.has(h)));
                     return out.length >= 10 ? out : null;
+                }
+                if (mode === 'faceBet' && heroPos === 'SB') {
+                    const sc = typeof blindCallRange === 'function' && blindCallRange('SB', villPos, ts, effStack);
+                    if (sc && sc.hands && sc.hands.length >= 8) return sc.hands;
                 }
                 return null;
             } catch (e) { return null; }
