@@ -817,9 +817,7 @@
         .picker-open .mini-deal { display: none; }
         .picker-open .inline-deal-hint { display: block; }
         @media (max-width: 767.98px) {
-            .cpg-row { display: grid; grid-template-columns: repeat(6, minmax(44px, 1fr)); }
-            .mini-deal { grid-template-columns: repeat(6, minmax(44px, 1fr)); }
-            .cpg-btn, .md-card, .macro-btn, .macro-btn.macro-next, .pos-btn, .pos-btn-hero,
+            .macro-btn, .macro-btn.macro-next, .pos-btn, .pos-btn-hero,
             #tlHeroRow .pos-btn-hero, .tl-seat, .nav-phase-btn, .act-btn, .qc-btn, .seg-ctl button, .amt-box .step-btn {
                 min-height: 44px; min-width: 44px;
             }
@@ -6766,6 +6764,7 @@
         function executeEngineCore() {
             delete document.getElementById('resultPanel').dataset.bbMix;
             delete document.getElementById('resultPanel').dataset.sbMixFallback;
+            delete document.getElementById('resultPanel').dataset.mixFallback;
             saveCurrentInputs();
 
             if (!validatePreFlopInputs()) {
@@ -6874,16 +6873,11 @@
                     : gameConfig.playStyle !== 'normal' ? `自定义打法的 ${posH} 混合未校准`
                     : Math.abs(raiseSize - mix.open) > 0.300001 ? `此开池尺度的 ${posH} 混合未校准`
                     : raise > 0 && gameConfig.tbSize !== 'auto' ? '自定义 3-Bet 尺度未校准' : '';
-                if (mix && unsupported && posH === 'SB') {
-                    // 不 return：落入下方旧 SB 模型，executeEngine 包装层在理由末尾追加标注
+                if (mix && unsupported) {
+                    // 不 return：落入下方旧 BB/SB 模型，executeEngine 包装层在理由末尾追加标注
+                    document.getElementById('resultPanel').dataset.mixFallback = `${posH}:${unsupported}`;
                     document.getElementById('resultPanel').dataset.sbMixFallback = unsupported;
                 } else if (mix) {
-                    if (unsupported) {
-                        box.style.borderColor = '#e0a83a'; box.style.backgroundColor = 'rgba(224,168,58,.1)';
-                        vText.style.color = '#e0a83a'; vText.innerText = `⚠️ ${unsupported}`;
-                        logicText.innerText = `本节点只有常规期、含 Ante 的 ChipEV 原图（开池约 ${mix.open}BB）。` +
-                            '缺少当前设置的频率依据，暂不输出动作、尺度或频率；不会用列表顺序猜价值/诈唬段。';
-                    } else {
                         const actions = [
                             { name:'跟注 (Call)', short:'跟注', f:call, cls:'bg-call' },
                             { name:'3-Bet', short:'3-Bet', f:raise, cls:'bg-raise' },
@@ -6908,12 +6902,11 @@
                         document.getElementById('freqBar').innerHTML = actions.map(a => `<div class="freq-fill ${a.cls}" style="width:${a.f}%;min-width:0;overflow:hidden;white-space:nowrap" title="${a.short} ${a.f}%">${a.short} ${a.f}%</div>`).join('');
                         document.getElementById('freqLabels').innerHTML = actions.map(a => `<span>${a.short} ${a.f}%</span>`).join('');
                         document.getElementById('resultPanel').dataset.bbMix = posH;
+                        document.getElementById('resultPanel').classList.remove('invisible');
+                        updateCfgSummary();
+                        return;
                     }
-                    document.getElementById('resultPanel').classList.remove('invisible');
-                    updateCfgSummary();
-                    return;
                 }
-            }
 
             // 模式 8: 面对 4-Bet（2026-09-08 新增）
             if (currentMode === 'face4b') {
@@ -8486,13 +8479,15 @@
         // 常驻决策 HUD(2026-07-21)：翻前解析各分支均以 return 结束，包一层统一刷新 HUD
         function executeEngine() {
             executeEngineCore();
-            // SB 原图未覆盖（ICM/无Ante/自定义打法/开池尺度偏离）时，旧模型的结论要带出处标注
-            const _sbFb = document.getElementById('resultPanel').dataset.sbMixFallback;
+            // 原图未覆盖（ICM/无Ante/自定义打法/开池尺度偏离）时，旧模型的结论带出处标注
+            const rp = document.getElementById('resultPanel');
+            const _mixFb = rp ? (rp.dataset.mixFallback || rp.dataset.sbMixFallback) : null;
             const _lg = document.getElementById('actionLogic');
-            if (_sbFb && _lg && _lg.innerText.trim()) {
+            if (_mixFb && _lg && _lg.innerText.trim()) {
+                const [p, reason] = _mixFb.includes(':') ? _mixFb.split(':') : ['SB', _mixFb];
                 const n = document.createElement('div');
-                n.className = 'sb-mix-fallback'; n.style.color = '#e0a83a';
-                n.textContent = `⚠️ 旧模型 · 未按原图校准（${_sbFb}）：MPT SB 原图只覆盖常规期、含 Ante、默认打法、开池约 2–2.3BB。`;
+                n.className = 'sb-mix-fallback'; n.style.color = '#e0a83a'; n.style.marginTop = '4px';
+                n.textContent = `⚠️ 旧模型 · 未按原图校准（${reason}）：MPT ${p} 原图只覆盖常规期、含 Ante、默认打法、开池约 2–2.3BB。`;
                 _lg.appendChild(n);
             }
             try { updateDecisionHUD(); } catch (e) {}
