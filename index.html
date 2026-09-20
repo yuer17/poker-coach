@@ -742,16 +742,7 @@
         /* zone-head 已有 ::after 分隔线撑满剩余空间，右侧操作键自然靠右——不再叠加 space-between */
         .tl-amt-inline::-webkit-outer-spin-button, .tl-amt-inline::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         /* 第二轮应对(2026-09-08)：我加注后，前方已行动者的再次表态 */
-        .tl-resp { display:block; width:100%; margin-top:3px; font-size:12px; line-height:1.4; padding:1px 2px;
-                   border:1px dashed var(--glass-border); border-radius:4px; background:transparent;
-                   color:var(--text-muted); cursor:pointer; }
-        .tl-resp.set { border-style:solid; border-color:#e0a83a; color:#e0a83a; }
-        .tl-resp:hover { filter:brightness(1.4); }
-        /* 我的第二轮应对(2026-09-10)：用身份色（红）与对手的应对（琥珀）区分，未表态时脉冲提示"该你了" */
-        .tl-resp.hero { border-color:rgba(194,59,75,.6); color:#ff7a7d; font-weight:700; }
-        .tl-resp.hero:not(.set) { animation: tlRespPulse 1.6s ease-in-out infinite; }
-        .tl-resp.hero.set { border-style:solid; border-color:#c23b4b; color:#ff9ea1; background:rgba(194,59,75,.14); }
-        @keyframes tlRespPulse { 0%,100% { background:rgba(194,59,75,.06); } 50% { background:rgba(194,59,75,.24); } }
+
         /* 挂件改用途(2026-09-08)：原为升盲倒计时（已移除），现显示唯一会变且影响决策的数字——距钱圈人数 */
         #moneyWidget.urgent { border-color: #e5484d; color: #ff7a7d; animation: blPulse 1s ease-in-out infinite; }
         @keyframes blPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.0); } 50% { box-shadow: 0 0 0 3px rgba(229,72,77,.35); } }
@@ -5054,7 +5045,13 @@
             const hiP = opener === 'SB' ? loP : anchors.find(a => a[1] >= behind);
             if (!loP || !hiP) return null;
             const blend = (a, b, w) => a.map((v, i) => v + (b[i] - v) * w);
-            const at = (p, d) => MPT_BB_MIX[`${p}_${d}`]?.[hand] || [0, 0, 0, 100];
+            const at = (p, d) => {
+                const row = MPT_BB_MIX[`${p}_${d}`]?.[hand];
+                if (!Array.isArray(row) || row.length !== 4) return [0, 0, 0, 100];
+                const sum = row.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+                if (sum <= 0 || !Number.isFinite(sum)) return [0, 0, 0, 100];
+                return row.map(v => Number.isFinite(v) ? v : 0);
+            };
             const atDepth = p => blend(at(p, loD), at(p, hiD), hiD === loD ? 0 : (depth - loD) / (hiD - loD));
             const f = blend(atDepth(loP[0]), atDepth(hiP[0]), hiP[1] === loP[1] ? 0 : (behind - loP[1]) / (hiP[1] - loP[1]));
             // Table 43（PDF296）：20BB以下没有非全下3-Bet；插值不能创造非法尺度。
@@ -5062,7 +5059,9 @@
             const rounded = f.map(Math.floor);
             const order = [0,1,2,3].sort((a,b) => (f[b]-rounded[b]) - (f[a]-rounded[a]));
             const left = 100 - rounded.reduce((a,b)=>a+b,0);
-            for (let i=0; i<left; i++) rounded[order[i]]++;
+            if (left > 0 && left <= 3) {
+                for (let i=0; i<left; i++) rounded[order[i]]++;
+            }
             return { frequencies: rounded, interpolated: loD !== hiD || loP[0] !== hiP[0],
                      open: opener === 'SB' ? (depth <= 32 ? 3.3 : 3.5) : (depth <= 27 ? 2 : 2.3),
                      // BB对SB的尺度沿用既有IP规则，明确标为启发式；其余取Table43。
@@ -5081,7 +5080,13 @@
             const loP = anchors.filter(a => a[1] <= behind).pop(), hiP = anchors.find(a => a[1] >= behind);
             if (!loP || !hiP) return null;
             const blend = (a, b, w) => a.map((v, i) => v + (b[i] - v) * w);
-            const at = (p, d) => MPT_SB_MIX[`${p}_${d}`]?.[hand] || [0, 0, 0, 100];
+            const at = (p, d) => {
+                const row = MPT_SB_MIX[`${p}_${d}`]?.[hand];
+                if (!Array.isArray(row) || row.length !== 4) return [0, 0, 0, 100];
+                const sum = row.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+                if (sum <= 0 || !Number.isFinite(sum)) return [0, 0, 0, 100];
+                return row.map(v => Number.isFinite(v) ? v : 0);
+            };
             const atDepth = p => blend(at(p, loD), at(p, hiD), hiD === loD ? 0 : (depth - loD) / (hiD - loD));
             const f = blend(atDepth(loP[0]), atDepth(hiP[0]), hiP[1] === loP[1] ? 0 : (behind - loP[1]) / (hiP[1] - loP[1]));
             // Table 43（PDF296）SB 列：20BB以下只有全下；插值不能创造非法尺度。
@@ -5089,7 +5094,9 @@
             const rounded = f.map(Math.floor);
             const order = [0,1,2,3].sort((a,b) => (f[b]-rounded[b]) - (f[a]-rounded[a]));
             const left = 100 - rounded.reduce((a,b)=>a+b,0);
-            for (let i=0; i<left; i++) rounded[order[i]]++;
+            if (left > 0 && left <= 3) {
+                for (let i=0; i<left; i++) rounded[order[i]]++;
+            }
             return { frequencies: rounded, interpolated: loD !== hiD || loP[0] !== hiP[0],
                      open: depth <= 27 ? 2 : 2.3,
                      // Table 43 SB 列与 BB 列在 ≤65BB 各档相同。
@@ -5203,6 +5210,41 @@
         function blindCallRange(blindPos, openerPos, tableSize, effStack) {
             try {
                 const st = effStack > 0 ? effStack : 40;
+                // 2026-09-21 (T-02 核心攻坚): 盲位面对单次开池，消费 MPT_BB_MIX / MPT_SB_MIX 组合加权期望宽度
+                if (st >= 15 && st <= 60 && typeof bbMixedFrequencies === 'function') {
+                    const fn = blindPos === 'BB' ? bbMixedFrequencies : sbMixedFrequencies;
+                    let targetCombos = 0;
+                    const pure = [], mixed = [];
+                    for (const h of ALL_169_HANDS) {
+                        const mf = fn(h, openerPos, st, tableSize);
+                        if (!mf || !mf.frequencies) continue;
+                        const callF = mf.frequencies[0];
+                        if (callF <= 0) continue;
+                        const cb = _cbOf(h);
+                        targetCombos += cb * callF / 100;
+                        if (callF >= 100) pure.push(h);
+                        else mixed.push({ hand: h, f: callF, cb });
+                    }
+                    if (targetCombos > 0) {
+                        mixed.sort((a, b) => (b.f - a.f) || (getRawEquity(b.hand) - getRawEquity(a.hand)));
+                        const out = [...pure];
+                        let curCombos = 0;
+                        for (const h of out) curCombos += _cbOf(h);
+                        for (const m of mixed) {
+                            if (curCombos >= targetCombos) break;
+                            out.push(m.hand);
+                            curCombos += m.cb;
+                        }
+                        const minThreshold = blindPos === 'SB' ? 8 : 20;
+                        if (out.length >= minThreshold) {
+                            const pctVal = (targetCombos / 1326 * 100).toFixed(1);
+                            return {
+                                hands: out,
+                                note: `${blindPos} 跟注段 (vs ${openerPos}，${pctVal}%，MPT 组合加权实测)`
+                            };
+                        }
+                    }
+                }
                 if (blindPos === 'SB' && typeof isHandInSBDefense === 'function') {
                     // SB 的**跟注段**本身就是实测表（MPT 第 9 章），已经把 3-Bet/全下段分出去了，
                     // 不需要再减。实测宽度本来就窄（BTN 档 6.6%~17.3%），所以门槛只能设很低——
@@ -6863,7 +6905,7 @@
             // 盲位单次开池：源图四动作，不经过旧价值/诈唬标签
             // （BB 2026-09-19；SB 2026-09-20，SB 原图未覆盖时回退旧模型并标注——用户决定，见 D-25）
             // ════════════════════════════════════════════════════
-            if (currentMode === 'faceBet' && (posH === 'BB' || posH === 'SB')) {
+            if (currentMode === 'faceBet' && (posH === 'BB' || posH === 'SB') && raiseSize < effStack) {
                 const mix = posH === 'BB' ? bbMixedFrequencies(handStr, posV, effStack)
                                           : sbMixedFrequencies(handStr, posV, effStack);
                 const [call, raise, jam, fold] = mix ? mix.frequencies : [];
@@ -6873,17 +6915,31 @@
                     : gameConfig.playStyle !== 'normal' ? `自定义打法的 ${posH} 混合未校准`
                     : Math.abs(raiseSize - mix.open) > 0.300001 ? `此开池尺度的 ${posH} 混合未校准`
                     : raise > 0 && gameConfig.tbSize !== 'auto' ? '自定义 3-Bet 尺度未校准' : '';
-                if (mix && unsupported) {
+                if (!mix) {
+                    const rp = document.getElementById('resultPanel');
+                    if (rp) {
+                        const reason = '深度/位置超出原图覆盖（15–60BB）';
+                        rp.dataset.mixFallback = `${posH}:${reason}`;
+                        rp.dataset.sbMixFallback = reason;
+                    }
+                } else if (unsupported) {
                     // 不 return：落入下方旧 BB/SB 模型，executeEngine 包装层在理由末尾追加标注
-                    document.getElementById('resultPanel').dataset.mixFallback = `${posH}:${unsupported}`;
-                    document.getElementById('resultPanel').dataset.sbMixFallback = unsupported;
-                } else if (mix) {
+                    const rp = document.getElementById('resultPanel');
+                    if (rp) {
+                        rp.dataset.mixFallback = `${posH}:${unsupported}`;
+                        rp.dataset.sbMixFallback = unsupported;
+                        if (mix.open) rp.dataset.mixOpen = mix.open;
+                    }
+                } else {
                         const actions = [
                             { name:'跟注 (Call)', short:'跟注', f:call, cls:'bg-call' },
                             { name:'3-Bet', short:'3-Bet', f:raise, cls:'bg-raise' },
                             { name:'全下 (Re-Jam)', short:'全下', f:jam, cls:'bg-open' },
                             { name:'弃牌 (Fold)', short:'弃牌', f:fold, cls:'bg-fold' }
-                        ].filter(a => a.f > 0);
+                        ].filter(a => Number.isFinite(a.f) && a.f > 0);
+                        if (actions.length === 0) {
+                            actions.push({ name:'弃牌 (Fold)', short:'弃牌', f:100, cls:'bg-fold' });
+                        }
                         const main = [...actions].sort((a,b) => b.f-a.f)[0];
                         const isMix = actions.length > 1 && main.f < 80;
                         const color = isMix ? '#e0a83a' : main.short === '弃牌' ? '#8b95ab' : main.short === '跟注' ? '#45d68a' : '#ff7a7d';
@@ -8479,15 +8535,18 @@
         // 常驻决策 HUD(2026-07-21)：翻前解析各分支均以 return 结束，包一层统一刷新 HUD
         function executeEngine() {
             executeEngineCore();
-            // 原图未覆盖（ICM/无Ante/自定义打法/开池尺度偏离）时，旧模型的结论带出处标注
+            // 原图未覆盖（ICM/无Ante/自定义打法/开池尺度偏离/超界深度）时，旧模型的结论带出处标注
             const rp = document.getElementById('resultPanel');
             const _mixFb = rp ? (rp.dataset.mixFallback || rp.dataset.sbMixFallback) : null;
             const _lg = document.getElementById('actionLogic');
             if (_mixFb && _lg && _lg.innerText.trim()) {
-                const [p, reason] = _mixFb.includes(':') ? _mixFb.split(':') : ['SB', _mixFb];
+                const idx = _mixFb.indexOf(':');
+                const [p, reason] = idx !== -1 ? [_mixFb.slice(0, idx), _mixFb.slice(idx + 1)] : ['SB', _mixFb];
                 const n = document.createElement('div');
                 n.className = 'sb-mix-fallback'; n.style.color = '#e0a83a'; n.style.marginTop = '4px';
-                n.textContent = `⚠️ 旧模型 · 未按原图校准（${reason}）：MPT ${p} 原图只覆盖常规期、含 Ante、默认打法、开池约 2–2.3BB。`;
+                const openDesc = rp.dataset.mixOpen ? `开池约 ${rp.dataset.mixOpen}BB` : (p === 'BB' && typeof globalPosVillain !== 'undefined' && globalPosVillain === 'SB' ? '开池约 3.3–3.5BB' : '开池约 2–2.3BB');
+                const jamNote = (typeof globalHeroStack !== 'undefined' && globalHeroStack > 25) ? '；旧模型在 >25BB 无全下段、价值/诈唬标签为近似' : '';
+                n.textContent = `⚠️ 旧模型 · 未按原图校准（${reason}）：MPT ${p} 原图只覆盖常规期、含 Ante、默认打法、${openDesc}${jamNote}。`;
                 _lg.appendChild(n);
             }
             try { updateDecisionHUD(); } catch (e) {}
@@ -10745,7 +10804,7 @@
          */
         function renderActionSummary() {
             const area = document.getElementById('actionSummaryArea');
-            if (!area) return;
+            if (!area || area.style.display === 'none' || (typeof window !== 'undefined' && window.getComputedStyle && window.getComputedStyle(area).display === 'none')) return;
 
             const validCards = postState.board.filter(c => c !== null);
             const count = validCards.length;
