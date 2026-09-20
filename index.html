@@ -48,7 +48,7 @@
             /* 文字三级（暗房可读：正文 ≥6:1） */
             --text-primary: #eef1f6;
             --text-secondary: #a9b2c1;
-            --text-muted: #707a8c;
+            --text-muted: #a9b2c1;
             /* 语义动作色（解算器词汇：进攻红 / 被动绿 / 弃牌灰蓝） */
             --act-aggr: #d63940;         /* open/bet/raise/push */
             --act-passive: #2ea86a;      /* call/check */
@@ -72,7 +72,7 @@
                heading 24px = 大读数/中间态（text-2xl）
                display 40px = 决策动作词（全屏唯一最大字）
                牌面图形（大槽位 rank 28px/花色 20px）为拟真元素，豁免于刻度 */
-            --fs-micro: 0.625rem;
+            --fs-micro: 0.75rem;
             --fs-caption: 0.75rem;
             --fs-body: 0.875rem;
             --fs-title: 1rem;
@@ -622,7 +622,7 @@
         .hud-src[data-src="ref"]  { background: rgba(87,169,255,.12);  color: #7cc0ff; border-color: rgba(87,169,255,.30); }
         .hud-src[data-src="calc"] { background: rgba(46,168,106,.12);  color: #45d68a; border-color: rgba(46,168,106,.30); }
         .hud-src[data-src="mix"]  { background: rgba(224,168,58,.12);  color: #e0a83a; border-color: rgba(224,168,58,.30); }
-        .hud-action { font-family: var(--font-mono); font-size: var(--fs-heading); font-weight: 900; line-height: 1.15; margin-top: 2px; color: var(--text-primary); }
+        .hud-action { font-family: var(--font-mono); font-size: var(--fs-display); font-weight: 900; line-height: 1.15; margin-top: 2px; color: var(--text-primary); }
         #decisionHUD[data-sem="attack"]  .hud-action { color: #ff7a7d; }
         #decisionHUD[data-sem="passive"] .hud-action { color: #45d68a; }
         #decisionHUD[data-sem="fold"]    .hud-action { color: #8b95ab; }
@@ -636,7 +636,7 @@
                      border: 1px solid var(--glass-border); background: rgba(255,255,255,.04); color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
         .macro-btn:hover { background: rgba(255,255,255,.09); color: var(--text-primary); }
         .macro-btn:disabled { cursor: not-allowed; }
-        .macro-btn kbd { font-family: var(--font-mono); font-size: 10px; opacity: .55; margin-left: 4px; }
+        .macro-btn kbd { font-family: var(--font-mono); font-size:12px; opacity: .55; margin-left: 4px; }
         /* 下一手(2026-07-21)：全流程最高频动作，升为主行动样式（实心 accent + 更大） */
         .macro-btn.macro-next { background: var(--accent); color: #082744; border-color: transparent;
             font-size: var(--fs-caption); padding: 5px 14px; min-height: 28px; }
@@ -689,7 +689,7 @@
         .tl-seat:hover { background: rgba(255,255,255,.08); }
         .tl-seat .tl-pos { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 800; letter-spacing: .04em; }
         .tl-seat .tl-act { font-size: var(--fs-caption); font-family: var(--font-mono); font-weight: 700; margin-top: 2px; color: var(--text-muted); white-space: normal; line-height: 1.2; }
-        .tl-seat.fold .tl-act { opacity: .4; }
+        .tl-seat.fold .tl-act { color: var(--text-secondary); }
         .tl-seat.limp { border-color: rgba(46,168,106,.45); } .tl-seat.limp .tl-act { color: #45d68a; }
         .tl-seat.call { border-color: rgba(46,168,106,.7); background: rgba(46,168,106,.08); } .tl-seat.call .tl-act { color: #45d68a; }
         .tl-seat.raise { border-color: #e5484d; background: rgba(214,57,64,.12); } .tl-seat.raise .tl-act { color: #ff7a7d; }
@@ -697,7 +697,7 @@
         .tl-seat.hero { border: 2px solid #c23b4b; background: rgba(194,59,75,.16); } .tl-seat.hero .tl-pos { color: #ff7a7d; } .tl-seat.hero .tl-act { color: var(--text-primary); }
         .tl-seat.disabled { opacity: .3; cursor: not-allowed; }
         /* 按流水重写(2026-09-11)：轮到谁谁脉冲；多次行动的座位补一行"共投 X" */
-        .tl-seat.idle .tl-act { color: var(--text-muted); opacity: .7; }
+        .tl-seat.idle .tl-act { color: var(--text-secondary); }
         .tl-seat.turn { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(87,169,255,.28); animation: tlTurnPulse 1.6s ease-in-out infinite; }
         .tl-seat.turn .tl-act { color: #9fd0ff; font-weight: 800; }
         .tl-seat.hero.turn { border-color: #c23b4b; box-shadow: 0 0 0 2px rgba(194,59,75,.35); }
@@ -742,7 +742,7 @@
         /* zone-head 已有 ::after 分隔线撑满剩余空间，右侧操作键自然靠右——不再叠加 space-between */
         .tl-amt-inline::-webkit-outer-spin-button, .tl-amt-inline::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         /* 第二轮应对(2026-09-08)：我加注后，前方已行动者的再次表态 */
-        .tl-resp { display:block; width:100%; margin-top:3px; font-size:10px; line-height:1.4; padding:1px 2px;
+        .tl-resp { display:block; width:100%; margin-top:3px; font-size:12px; line-height:1.4; padding:1px 2px;
                    border:1px dashed var(--glass-border); border-radius:4px; background:transparent;
                    color:var(--text-muted); cursor:pointer; }
         .tl-resp.set { border-style:solid; border-color:#e0a83a; color:#e0a83a; }
@@ -793,7 +793,7 @@
         .pot-fld input[type="number"] { width: 92px; height: 28px; text-align: center; font-family: var(--font-mono);
             font-size: var(--fs-body); font-weight: 700; padding: 0 4px; }
         #actionSummaryArea { display: none; }   /* 与跨街行动线重复（2026-09-10 去重） */
-        .act-btn kbd, .qc-btn kbd { font-family: var(--font-mono); font-size: 10px; opacity: .55; margin-left: 5px; font-weight: 600; }
+        .act-btn kbd, .qc-btn kbd { font-family: var(--font-mono); font-size:12px; opacity: .55; margin-left: 5px; font-weight: 600; }
         /* ★ 建议键与结论条共用一套语义色(2026-09-11)：结论是绿的，那个绿键就是要点的那个。
            原来 ★ 一律 accent 蓝，与结论的语义色对不上，等于让用户再读一遍字才敢点。 */
         .act-star { background: var(--accent) !important; color: #082744 !important; border-color: transparent !important;
@@ -812,6 +812,20 @@
             .tl-seat { padding: 4px 1px; }
             .tl-seat .tl-act { font-size: var(--fs-micro); }
         }
+        /* 2026-09-19：只保留一个可见发牌入口；手机主输入至少 44px。 */
+        .inline-deal-hint { display: none; color: var(--text-secondary); font-size: var(--fs-caption); }
+        .picker-open .mini-deal { display: none; }
+        .picker-open .inline-deal-hint { display: block; }
+        @media (max-width: 767.98px) {
+            .cpg-row { display: grid; grid-template-columns: repeat(6, minmax(44px, 1fr)); }
+            .mini-deal { grid-template-columns: repeat(6, minmax(44px, 1fr)); }
+            .cpg-btn, .md-card, .macro-btn, .macro-btn.macro-next, .pos-btn, .pos-btn-hero,
+            #tlHeroRow .pos-btn-hero, .tl-seat, .nav-phase-btn, .act-btn, .qc-btn, .seg-ctl button, .amt-box .step-btn {
+                min-height: 44px; min-width: 44px;
+            }
+            .tl-amt-inline { min-height: 44px; }
+            .tl-seat .tl-act { font-size: var(--fs-caption); }
+        }
     </style>
     <!-- pokersolver 本地化：原 CDN(cdn.jsdelivr.net) 偶发加载失败 → 报"PokerSolver 未加载"，
          改为本地 lib/pokersolver.js（内容与 CDN 一致，仅去网络依赖，不动任何引擎逻辑） -->
@@ -822,7 +836,7 @@
     <div class="app-container">
         <div id="headerBar" class="flex justify-between items-center bg-black/40 px-4 py-2.5 border-b border-white/10 shrink-0" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 -->
-            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">9-Max GTO <span class="text-[10px] px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v1.2</span></h1>
+            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">9-Max GTO <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v1.2</span></h1>
 
             <!-- 窗口身份色(2026-07-14)：多窗口多桌用 Banner 颜色区分（每标签页独立，
                  sessionStorage 持久 + 浏览器标签 emoji 前缀，一眼分清哪个窗口对哪张桌） -->
@@ -848,87 +862,87 @@
                         <div id="cfgContent" class="p-2 space-y-2">
                             <div class="flex justify-between items-center border-b border-white/10 pb-1">
                                 <span class="text-xs font-bold" style="color: var(--accent-hover);">⚙ 赛事配置</span>
-                                <span id="cfgSummary" class="text-[10px] text-gray-400 truncate ml-2"></span>
+                                <span id="cfgSummary" class="text-xs text-gray-400 truncate ml-2"></span>
                             </div>
                             <!-- 赛事信息(2026-09-08)：赛前从大厅「比赛信息」页截图一次带入全部字段 -->
                             <div class="pb-1 border-b border-white/10">
                                 <div class="flex justify-between items-center mb-1">
-                                    <span class="text-[10px] text-yellow-500 font-bold">🏆 赛事信息</span>
+                                    <span class="text-xs text-yellow-500 font-bold">🏆 赛事信息</span>
                                     <button onclick="tyClear()" class="cfg-btn bl-btn" style="padding:0 6px;">清空</button>
                                 </div>
-                                <div id="tyName" class="text-[10px] text-gray-400 truncate mb-1" style="display:none;"></div>
+                                <div id="tyName" class="text-xs text-gray-400 truncate mb-1" style="display:none;"></div>
                                 <!-- 字段瘦身(2026-09-08)：只留能改变决策的维度。
                                      前三项开赛后固定，**一场比赛只录一次**；只有「剩余玩家」会变，
                                      而它也只在临近钱圈时才影响决策。平均筹码不再手填/截图——
                                      由 总参赛×起始筹码÷剩余÷当前大盲 精确算出（实测 44.2BB，与 GG 显示一致）。 -->
-                                <div class="text-[10px] text-gray-500 mb-1">下面 3 项开赛后固定，录一次即可 ↓</div>
+                                <div class="text-xs text-gray-500 mb-1">下面 3 项开赛后固定，录一次即可 ↓</div>
                                 <div class="grid grid-cols-3 gap-1">
-                                    <label class="text-[10px] text-gray-400">总参赛
+                                    <label class="text-xs text-gray-400">总参赛
                                         <input id="tyEntrants" class="bl-input" oninput="tyOnInput()" placeholder="277"></label>
-                                    <label class="text-[10px] text-gray-400">奖金分配%
+                                    <label class="text-xs text-gray-400">奖金分配%
                                         <input id="tyPayoutPct" class="bl-input" oninput="tyOnInput()" placeholder="15"></label>
-                                    <label class="text-[10px] text-gray-400">起始筹码
+                                    <label class="text-xs text-gray-400">起始筹码
                                         <input id="tyStartStack" class="bl-input" oninput="tyOnInput()" placeholder="6000"></label>
                                 </div>
-                                <div class="text-[10px] text-gray-500 mt-1 mb-1">↓ 只有这项会变（临近钱圈时才需要更新）</div>
+                                <div class="text-xs text-gray-500 mt-1 mb-1">↓ 只有这项会变（临近钱圈时才需要更新）</div>
                                 <div class="grid grid-cols-2 gap-1">
-                                    <label class="text-[10px] text-gray-400">剩余玩家
+                                    <label class="text-xs text-gray-400">剩余玩家
                                         <input id="tyRemaining" class="bl-input" oninput="tyOnInput()" placeholder="235"></label>
-                                    <label class="text-[10px] text-gray-400">盲注间隔分
+                                    <label class="text-xs text-gray-400">盲注间隔分
                                         <input id="tyLevelMin" class="bl-input" oninput="tyOnInput()" placeholder="3"></label>
                                 </div>
-                                <div id="tyDerived" class="text-[10px] mt-1 leading-relaxed" style="color:var(--accent);"></div>
+                                <div id="tyDerived" class="text-xs mt-1 leading-relaxed" style="color:var(--accent);"></div>
                             </div>
                             <div>
-                                <div class="text-[10px] text-gray-400 mb-1">赛事类型</div>
+                                <div class="text-xs text-gray-400 mb-1">赛事类型</div>
                                 <div class="grid grid-cols-3 gap-1" id="grpGameType"></div>
                             </div>
                             <div>
-                                <div class="text-[10px] text-gray-400 mb-1">桌型人数</div>
+                                <div class="text-xs text-gray-400 mb-1">桌型人数</div>
                                 <div class="grid grid-cols-3 gap-1" id="grpTableSize"></div>
                             </div>
                             <div>
-                                <div class="text-[10px] text-gray-400 mb-1">比赛阶段</div>
+                                <div class="text-xs text-gray-400 mb-1">比赛阶段</div>
                                 <div class="grid grid-cols-3 gap-1" id="grpStage"></div>
-                                <div id="stageAdvice" class="text-[10px] mt-1 leading-relaxed" style="display:none;"></div>
+                                <div id="stageAdvice" class="text-xs mt-1 leading-relaxed" style="display:none;"></div>
                             </div>
                             <div>
-                                <div class="text-[10px] text-gray-400 mb-1">打法风格</div>
+                                <div class="text-xs text-gray-400 mb-1">打法风格</div>
                                 <div class="grid grid-cols-3 gap-1" id="grpPlayStyle"></div>
                             </div>
                             <div>
-                                <div class="text-[10px] text-gray-400 mb-1">对手模型（翻后范围估计）</div>
+                                <div class="text-xs text-gray-400 mb-1">对手模型（翻后范围估计）</div>
                                 <div class="grid grid-cols-2 gap-1" id="grpVillainModel"></div>
                             </div>
                             <!-- 尺度可选(2026-09-08)：范围表按 2.2x/2.5x 校准，选别的尺度会同步调整该开多宽 -->
                             <div>
-                                <div class="text-[10px] text-gray-400 mb-1">我的开池尺度</div>
+                                <div class="text-xs text-gray-400 mb-1">我的开池尺度</div>
                                 <div class="grid grid-cols-5 gap-1" id="grpOpenSize"></div>
                             </div>
                             <div>
-                                <div class="text-[10px] text-gray-400 mb-1">我的 3-Bet 尺度（开池额的倍数）</div>
+                                <div class="text-xs text-gray-400 mb-1">我的 3-Bet 尺度（开池额的倍数）</div>
                                 <div class="grid grid-cols-5 gap-1" id="grpTbSize"></div>
-                                <div id="sizingAdvice" class="text-[10px] mt-1 leading-relaxed text-gray-400"></div>
+                                <div id="sizingAdvice" class="text-xs mt-1 leading-relaxed text-gray-400"></div>
                             </div>
                             <div class="pt-1 border-t border-white/10">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-[10px] text-yellow-500 font-bold">Ante (MTT)</span>
-                                    <button id="anteToggle" onclick="toggleAnte()" class="bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded">开启</button>
+                                    <span class="text-xs text-yellow-500 font-bold">Ante (MTT)</span>
+                                    <button id="anteToggle" onclick="toggleAnte()" class="bg-green-600 text-white text-xs font-bold px-3 py-0.5 rounded">开启</button>
                                 </div>
                                 <!-- ante 口径(2026-09-08)：牌桌显示的 ante 是全桌总额还是每人一份，
                                      两种读法差约 8 倍，而死钱直接决定底池/赔率/SPR。
                                      下方实时显示算出的死钱，开一手牌对一眼即可确认。 -->
                                 <div class="flex items-center gap-1 mt-1">
-                                    <span class="text-[10px] text-gray-400 shrink-0">上面填的 ante 是</span>
+                                    <span class="text-xs text-gray-400 shrink-0">上面填的 ante 是</span>
                                     <button id="anteModePer" onclick="setAnteMode('perPlayer')" class="cfg-btn bl-btn active" title="时钟/牌桌标题栏显示的数（如 80/160 (20) 的 20）——每人一份，总额 = 该值 × 桌上人数">每人一份</button>
                                     <button id="anteModeTotal" onclick="setAnteMode('total')" class="cfg-btn bl-btn" title="手牌回顾里的 All Ante——已经是全桌总额，不用再乘人数">全桌总额</button>
                                 </div>
-                                <div id="anteInfo" class="text-[10px] mt-1 leading-relaxed"></div>
+                                <div id="anteInfo" class="text-xs mt-1 leading-relaxed"></div>
                             </div>
                             <!-- 自动移位 + 升盲同步 + 筹码单位（2026-07-21） -->
                             <div class="flex justify-between items-center pt-1 border-t border-white/10">
-                                <span class="text-[10px] text-yellow-500 font-bold" title="下一手时我的位置自动往前退一格（BTN→CO→…→UTG→BB→SB→BTN），错位时点座位带修正">下一手自动移位</span>
-                                <button id="autoPosToggle" onclick="toggleAutoPos()" class="bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded">开启</button>
+                                <span class="text-xs text-yellow-500 font-bold" title="下一手时我的位置自动往前退一格（BTN→CO→…→UTG→BB→SB→BTN），错位时点座位带修正">下一手自动移位</span>
+                                <button id="autoPosToggle" onclick="toggleAutoPos()" class="bg-green-600 text-white text-xs font-bold px-3 py-0.5 rounded">开启</button>
                             </div>
                             <!-- 升盲计时机器移除(2026-09-08，用户："不要一直做加法")：
                                  原来这里有大盲/Ante/每级时长/本级剩余 + 倒计时 + 自动升盲 + 盲注结构表，
@@ -938,25 +952,25 @@
                                  自动更新（OCR 一直在读标题栏盲注），无需任何手工维护。 -->
                             <div class="pt-1 border-t border-white/10">
                                 <div class="flex justify-between items-center mb-1 gap-2">
-                                    <span class="text-[10px] text-yellow-500 font-bold shrink-0">筹码换算基准</span>
-                                    <div class="flex gap-1 items-center"><span class="text-[10px] text-gray-400 shrink-0">筹码框单位</span>
+                                    <span class="text-xs text-yellow-500 font-bold shrink-0">筹码换算基准</span>
+                                    <div class="flex gap-1 items-center"><span class="text-xs text-gray-400 shrink-0">筹码框单位</span>
                                         <button id="unitBB" onclick="setChipUnit('bb')" class="cfg-btn bl-btn active">BB</button>
                                         <button id="unitChips" onclick="setChipUnit('chips')" class="cfg-btn bl-btn">筹码数</button></div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-1">
-                                    <div><div class="text-[10px] text-gray-300">当前大盲(筹码)</div><input type="number" id="blBb" oninput="blOnInput(this)" class="bl-input" placeholder="160"></div>
-                                    <div><div class="text-[10px] text-gray-300">Ante(筹码)</div><input type="number" id="blAnte" oninput="blOnInput(this)" class="bl-input" placeholder="20"></div>
+                                    <div><div class="text-xs text-gray-300">当前大盲(筹码)</div><input type="number" id="blBb" oninput="blOnInput(this)" class="bl-input" placeholder="160"></div>
+                                    <div><div class="text-xs text-gray-300">Ante(筹码)</div><input type="number" id="blAnte" oninput="blOnInput(this)" class="bl-input" placeholder="20"></div>
                                 </div>
-                                <div id="blStatus" class="text-[10px] text-gray-500 mt-1 leading-relaxed"></div>
+                                <div id="blStatus" class="text-xs text-gray-500 mt-1 leading-relaxed"></div>
                             </div>
                             <div class="panel-bg p-1.5 rounded flex items-center gap-2 mt-1">
-                                <label class="text-[10px] text-gray-400 shrink-0 w-24">Vision API Key</label>
+                                <label class="text-xs text-gray-400 shrink-0 w-24">Vision API Key</label>
                                 <input type="password" id="qwenApiKey" placeholder="填入 Qwen API Key"
                                     class="flex-1 p-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white"
                                     oninput="localStorage.setItem('vision_api_key', this.value)">
                             </div>
                             <div class="panel-bg p-1.5 rounded flex items-center gap-2 mt-1">
-                                <label class="text-[10px] text-gray-400 shrink-0 w-24">Vision 模型</label>
+                                <label class="text-xs text-gray-400 shrink-0 w-24">Vision 模型</label>
                                 <select id="visionModel" onchange="onVisionModelChange()"
                                     class="flex-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white px-1">
                                     <!-- 模型升级(2026-07-21)：Qwen3.8 系列 2026-08 发布，原生多模态且更快；
@@ -991,9 +1005,9 @@
                 </div>
                 <ol style="margin:0;padding-left:1.2em;color:var(--text-secondary);font-size:14px;line-height:1.85;">
                     <li><b style="color:var(--text-primary);">选底牌</b>：点 52 张牌网格选两张（红/蓝/绿/灰即花色），选满后网格<b>自动收起</b>把空间让给决策——要改牌就点上方牌槽（或「✛ 选牌」）叫它回来。选错了按 <b>Z</b> 撤回，<b>H</b> 清底牌。</li>
-                    <li><b style="color:var(--text-primary);">录时间线</b>：选我的位置，<b>单击</b>座位循环 弃→加注→跟注→全下（加注额就地可改），<b>右键/长按</b>选完整动作；<b>后位加注后，我的座位上会出现「→ 我的应对」</b>，点它循环 弃牌/跟注/再加注（跟注后即可进翻后）；场景自动识别并实时出决策；推导不准时展开「传统场景标签」手动指定。<b>下一手</b>时我的位置自动往前退一格（配置可关）。</li>
+                    <li><b style="color:var(--text-primary);">录时间线</b>：选我的位置，<b>单击</b>座位循环 弃→加注→跟注→全下（加注额就地可改），<b>右键/长按</b>选完整动作；<b>再次轮到我时，点击我的座位录入应对</b>（右键/长按可选择完整动作）；场景自动识别并实时出决策；推导不准时展开「传统场景标签」手动指定。<b>下一手</b>时我的位置自动往前退一格（配置可关）。</li>
                     <li><b style="color:var(--text-primary);">赛事信息 · 什么时候截图</b>（决定 ICM 与阶段，全程只有 4 个时点）：
-                        <ol style="margin:4px 0 0;padding-left:1.1em;font-size:13px;line-height:1.7;">
+                        <ol style="margin:4px 0 0;padding-left:1.1em;font-size:14px;line-height:1.7;">
                             <li><b>坐下时</b>：截大厅「比赛信息」页 → 起始筹码 / 盲注间隔 / 奖金分配% / 桌型 一次全填。</li>
                             <li><b>延迟报名结束时</b>（唯一必须记住的时点）：再截一次 → 锁定「总参赛」，进钱名额才算得准（报名期间人数一直在涨）。</li>
                             <li><b>打牌全程</b>：Ctrl+V 粘贴牌桌截图即可 —— 底牌 / 公共牌 / 筹码 / 位置 / 盲注全自动，无需额外动作。</li>
@@ -1001,14 +1015,14 @@
                         </ol>
                         平均筹码由「总参赛 × 起始筹码 ÷ 剩余 ÷ 当前大盲」自动推算，不用管。筹码单位可切「筹码数」按牌桌真实筹码输入，自动换算 BB。</li>
                     <li><b style="color:var(--text-primary);">比赛阶段怎么选</b>：填了赛事信息后系统会算出「距钱圈还需淘汰几人」并<b>给出建议按钮，点一下即应用</b>，不用自己判断。手动选时把鼠标停在阶段按钮上会显示该档的适用时机；选中后说明常驻显示在下方。</li>
-                    <li><b style="color:var(--text-primary);">出建议</b>：<b>不用点任何按钮</b> —— 底牌选满、座位带一改、公共牌一发，决策立刻出现在右侧顶部。只有改了「传统场景标签」里的输入框才需要点一下 <b>↻ 重算</b>（或按回车）。</li>
+                    <li><b style="color:var(--text-primary);">出建议</b>：<b>不用点任何按钮</b> —— 底牌选满、座位带一改、公共牌一发，决策立刻出现在「决策」区顶部（手机固定在底部）。只有改了「传统场景标签」里的输入框才需要点一下 <b>↻ 重算</b>（或按回车）。</li>
                     <li><b style="color:var(--text-primary);">截图识别</b>：<b>Ctrl+V</b> 粘贴牌桌截图自动填入，对照"识别结果核对"卡，点 ✎ 可改。</li>
-                    <li><b style="color:var(--text-primary);">翻后</b>：底牌选满后直接在同一网格点选公共牌即自动进入翻后并算胜率（截图也自动进入）。左列是一条<b>流程轴</b>：翻前时间线在上、各街行动在下，翻前区进翻后后自动折叠成一行摘要（<b>点摘要行可随时展开</b>改位置/筹码）；右列集中所有决策与分析，翻前决策同样折叠在标题行、点「展开」可看。</li>
+                    <li><b style="color:var(--text-primary);">翻后</b>：底牌选满后在行动区发公共牌（也可点公共牌槽打开共享网格）即自动进入翻后并算胜率（截图也自动进入）。左列是一条<b>流程轴</b>：翻前时间线在上、各街行动在下，翻前区进翻后后自动折叠成一行摘要（<b>点摘要行可随时展开</b>改位置/筹码）；「决策」区显示结论与依据，「参考」区显示范围和牌面分析，翻前决策同样折叠在标题行、点「展开」可看。</li>
                     <li><b style="color:var(--text-primary);">换手/重来</b>：<b>下一手</b>清本手保留配置；<b>重置</b>全部归零。</li>
                     <li><b style="color:var(--text-primary);">快捷键</b>：翻后右手区 <b>J</b> 过牌/跟注 · <b>K</b> 下注/加注框 · <b>L</b> 弃牌 · <b>A</b> 全押 · <b>1-4</b> 尺度（开放 33/50/75/100% 池；面对下注 2.5x/3x/4x/全押）· <b>U</b> 撤回（X/C/F/B 仍可用）；<b>Z</b>/Backspace/Ctrl+Z 撤回上一步（选牌、行动、清空、重置都能退）· <b>H</b> 清底牌 · <b>G</b> 清公共牌 · <b>R</b> 重置牌桌 · <b>P</b> 底池框 · <b>E</b> 有效筹码框；<b>N</b> 下一手；<b>回车</b> 解析/重析（下注框内回车＝直接提交下注）。<br>
                         <b style="color:var(--text-primary);">改数字的三种方式</b>：直接打字 · 点框旁的 <b>−/+</b> 步进（一档≈10% 底池）· <b>先点进框再滚滚轮</b>（没点选时滚轮只滚页面，不会误改数字；Shift 精调、Alt 粗调）。</li>
                 </ol>
-                <div style="margin-top:12px;font-size:12px;color:var(--text-muted);">提示：中栏金/紫高亮处为关键决策与数据；右栏为对手范围/牌面等次要参考。</div>
+                <div style="margin-top:12px;font-size:12px;color:var(--text-muted);">提示：「决策」区的大字给出动作，金色文字给出尺度；「参考」区用于核对对手范围与牌面。</div>
             </div>
         </div>
         
@@ -1018,9 +1032,9 @@
                 <span style="font-size:12px;color:#6b7280;font-weight:bold;">📷 截图识别</span>
                 <div style="display:flex;gap:10px;align-items:center;">
                     <span id="visionStatus" style="font-size:12px;color:#6b7280;">Ctrl+V 粘贴截图自动识别</span>
-                    <button onclick="pickVisionImage()" style="font-size:10px;color:var(--text-secondary);background:transparent;border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">📷 选择图片</button>
-                    <button id="visionBarToggle" onclick="toggleVisionBar()" title="收起/展开截图栏（记住选择）" style="font-size:10px;color:var(--text-secondary);background:transparent;border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">收起 ▴</button>
-                    <button onclick="clearVisionHistory()" title="清空截图历史与识别结果" style="font-size:10px;color:#ff8589;background:transparent;border:1px solid rgba(229,72,77,0.35);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">清截图</button>
+                    <button onclick="pickVisionImage()" style="font-size:12px;color:var(--text-secondary);background:transparent;border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">📷 选择图片</button>
+                    <button id="visionBarToggle" onclick="toggleVisionBar()" title="收起/展开截图栏（记住选择）" style="font-size:12px;color:var(--text-secondary);background:transparent;border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">收起 ▴</button>
+                    <button onclick="clearVisionHistory()" title="清空截图历史与识别结果" style="font-size:12px;color:#ff8589;background:transparent;border:1px solid rgba(229,72,77,0.35);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">清截图</button>
                 </div>
                 <input type="file" id="visionFileInput" accept="image/*" style="display:none">
             </div>
@@ -1038,7 +1052,7 @@
 
         <div class="scroll-area">
             
-            <div class="col-left flex flex-col gap-1.5 w-full md:w-1/2 shrink-0">
+            <div class="col-left flex flex-col gap-1.5 w-full shrink-0">
 
                 <!-- 配置上移(2026-07-14b)：赛事配置面板已迁往 header ⚙ 配置 下拉
                      （低频调整项不占主界面；比赛阶段单独常驻 header 下拉 stageQuickSelect） -->
@@ -1070,13 +1084,13 @@
                         <div id="boardSlotsBox" class="pick-target-box" onclick="setPickTarget('board')" style="flex:1;">
                             <div class="pick-target-label">公共牌 · 翻牌｜转牌｜河牌</div>
                             <div class="flex items-center gap-1">
-                                <div id="boardSlot0" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-[10px] text-gray-500">F1</span></div>
-                                <div id="boardSlot1" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-[10px] text-gray-500">F2</span></div>
-                                <div id="boardSlot2" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-[10px] text-gray-500">F3</span></div>
+                                <div id="boardSlot0" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">F1</span></div>
+                                <div id="boardSlot1" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">F2</span></div>
+                                <div id="boardSlot2" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">F3</span></div>
                                 <div class="w-px self-stretch mx-0.5" style="background:var(--border-primary);"></div>
-                                <div id="boardSlot3" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-[10px] text-gray-500">T</span></div>
+                                <div id="boardSlot3" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">T</span></div>
                                 <div class="w-px self-stretch mx-0.5" style="background:var(--border-primary);"></div>
-                                <div id="boardSlot4" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-[10px] text-gray-500">R</span></div>
+                                <div id="boardSlot4" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">R</span></div>
                             </div>
                         </div>
                     </div>
@@ -1086,17 +1100,17 @@
                     <div id="heroPicker" class="cpg-wrap"></div>
                     <div id="pickerToggleRow" class="flex items-center gap-2 mt-1">
                         <button id="pickerToggleBtn" onclick="togglePicker()" class="macro-btn" title="展开/收起 52 张选牌网格">收起 ▴</button>
-                        <span id="pickerToggleHint" class="text-[10px] text-gray-500">选完会自动收起，把空间留给决策</span>
+                        <span id="pickerToggleHint" class="text-xs text-gray-500">选完会自动收起，把空间留给决策</span>
                     </div>
                     <div class="flex justify-between items-center mt-1" style="min-height:14px;">
                         <!-- 对比度(2026-09-11 审计)：10px 文字用 gray-500 实测仅 3.71:1，低于 WCAG AA 的 4.5。
                              DESIGN.md 的规则本就是"muted 仅限 ≥11px"，这里违反了自己的规则。 -->
-                        <span id="heroPickerHint" class="text-[10px] text-gray-400"></span>
-                        <span id="boardPickerProgress" class="text-[10px] text-gray-500"></span>
+                        <span id="heroPickerHint" class="text-xs text-gray-400"></span>
+                        <span id="boardPickerProgress" class="text-xs text-gray-500"></span>
                     </div>
-                    <div id="streetStatusBar" class="mt-1 px-1 rounded text-[10px] text-gray-400 flex items-center justify-between">
+                    <div id="streetStatusBar" class="mt-1 px-1 rounded text-xs text-gray-400 flex items-center justify-between">
                         <span id="streetStatusText"></span>
-                        <span id="streetCalcStatus" class="text-[10px] text-gray-500"></span>
+                        <span id="streetCalcStatus" class="text-xs text-gray-500"></span>
                     </div>
                 </div>
 
@@ -1116,7 +1130,7 @@
                          传统场景标签保留在下方折叠区作兼容/强制入口 -->
                     <div class="flex justify-between items-center mb-1.5 gap-2 flex-wrap">
                         <span class="text-xs font-bold text-gray-400 shrink-0">对局 · 翻前时间线</span>
-                        <span id="tlScenarioLabel" class="text-[10px] text-gray-400 text-right" style="font-family:var(--font-mono);flex:1;min-width:0;"></span>
+                        <span id="tlScenarioLabel" class="text-xs text-gray-400 text-right" style="font-family:var(--font-mono);flex:1;min-width:0;"></span>
                         <!-- 收起入口(2026-09-11)：展开后必须能收回去（原来只有折叠态的摘要行能点开，展开后没有出口） -->
                         <button id="tlFoldBtn" onclick="togglePreflopZone()" class="macro-btn shrink-0" style="display:none;" title="收起翻前时间线，把空间留给翻后">收起 ▴</button>
                     </div>
@@ -1125,32 +1139,32 @@
                     <!-- 顺序写在明面上(2026-09-11)：轮到谁、需跟多少、底池多少、几个人在池 -->
                     <div id="tlTurnBar" class="tl-turnbar"></div>
                     <div id="tlPopover" class="tl-pop" style="display:none"></div>
-                    <div id="tlNote" class="text-[10px] mt-1" style="color:#e0a83a;display:none;"></div>
+                    <div id="tlNote" class="text-xs mt-1" style="color:#e0a83a;display:none;"></div>
                     <div class="grid grid-cols-3 gap-1.5 mt-1.5">
                         <div class="panel-bg p-1.5 rounded border-red-900/50">
-                            <label id="tlStackHeroLabel" class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
+                            <label id="tlStackHeroLabel" class="text-xs text-red-400 block mb-1">我的筹码 (BB)</label>
                             <input type="number" id="tlStackHero" value="40" oninput="tlOnStackInput('hero')" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
                         </div>
                         <div class="panel-bg p-1.5 rounded">
-                            <label id="tlStackVillainLabel" class="text-[10px] text-green-400 block mb-1">对手筹码 (BB)</label>
+                            <label id="tlStackVillainLabel" class="text-xs text-green-400 block mb-1">对手筹码 (BB)</label>
                             <input type="number" id="tlStackVillain" value="40" oninput="tlOnStackInput('villain')" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                         </div>
                         <div class="panel-bg p-1.5 rounded">
-                            <label id="tlAvgStackLabel" class="text-[10px] text-yellow-500 block mb-1">桌面平均码 (BB)</label>
+                            <label id="tlAvgStackLabel" class="text-xs text-yellow-500 block mb-1">桌面平均码 (BB)</label>
                             <input type="number" id="tlAvgStack" value="40" oninput="tlOnStackInput('avg')" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                         </div>
                     </div>
-                    <div id="tlUnitHint" class="text-[10px] mt-1" style="color:var(--gold);display:none;"></div>
+                    <div id="tlUnitHint" class="text-xs mt-1" style="color:var(--gold);display:none;"></div>
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         <button id="legacyScenarioToggle" onclick="toggleLegacyScenario()" class="macro-btn" title="按传统 7 个场景标签手动指定（兼容/强制入口）">传统场景标签 ▸</button>
                         <!-- 解析按钮降级(2026-09-11，用户第4点)：选牌与座位带改动现在都会自动出决策，
                              它只剩"改了传统输入框想强制重算"这一条路径，故从全宽金色大按钮收成次要键。 -->
                         <button onclick="executeEngine()" class="macro-btn" title="强制重新解析（回车 ↵ 同样触发）；正常情况下改动即自动出决策，无需点它">↻ 重算 ↵</button>
-                        <span class="text-[10px] text-gray-600">改牌/改行动即自动出决策</span>
+                        <span class="text-xs text-gray-600">改牌/改行动即自动出决策</span>
                     </div>
                     <div id="legacyScenario" style="display:none">
                     <!-- 翻前节点 Tabs (7 个) -->
-                    <div class="grid grid-cols-7 gap-1 shrink-0 mt-1.5">
+                    <div class="grid grid-cols-4 gap-1 shrink-0 mt-1.5">
                         <button onclick="switchMode('open')" id="tabOpen" class="tab-btn active">Open</button>
                         <button onclick="switchMode('vsLimp')" id="tabVsLimp" class="tab-btn">vs Limp</button>
                         <button onclick="switchMode('faceBet')" id="tabFaceBet" class="tab-btn">vs Raise</button>
@@ -1169,7 +1183,7 @@
                 </div>
 
                 <div class="panel-bg p-2 rounded shrink-0 flex flex-col gap-1.5 flow-node flow-post" id="postActionZone" style="opacity:0.55;transition:opacity .2s;">
-                    <div id="actionZoneHint" class="text-[10px] text-gray-500">翻牌 → 转牌 → 河牌：在此发牌并按街录入双方行动</div>
+                    <div id="actionZoneHint" class="text-xs text-gray-500">翻牌 → 转牌 → 河牌：在此发牌并按街录入双方行动</div>
 
                     <div class="pot-row">
                         <div class="pot-fld">
@@ -1184,8 +1198,8 @@
                                 title="有效筹码（E 键跳到这里；聚焦后滚轮可调）"
                                 oninput="onEffDirectChange(this.value)">
                         </div>
-                        <span id="sprInline" class="text-[10px]" style="color:var(--text-muted);font-family:var(--font-mono);"></span>
-                        <button onclick="clearStreetActions()" title="只清除当前街道的行动记录" class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-400 hover:bg-orange-700/50 active:scale-95 transition-all shrink-0 ml-auto">↺ 清本街</button>
+                        <span id="sprInline" class="text-xs" style="color:var(--text-muted);font-family:var(--font-mono);"></span>
+                        <button onclick="clearStreetActions()" title="只清除当前街道的行动记录" class="text-xs font-bold px-2 py-0.5 rounded bg-orange-900/40 border border-orange-600/50 text-orange-400 hover:bg-orange-700/50 active:scale-95 transition-all shrink-0 ml-auto">↺ 清本街</button>
                     </div>
 
                     <!-- 隐藏的旧兼容元素（potInfoFlop/Turn/River 供 updatePotUI 使用） -->
@@ -1233,12 +1247,12 @@
                     <p id="actionLogic" class="text-xs font-medium px-1 text-gray-200 overflow-y-auto"></p>
 
                     <div id="sizingBox" class="w-full mt-2 hidden shrink-0">
-                        <div class="text-[10px] text-gray-400 mb-1">建议尺度</div>
+                        <div class="text-xs text-gray-400 mb-1">建议尺度</div>
                         <div id="sizingContent" class="text-sm font-bold text-yellow-300"></div>
                     </div>
 
                     <div id="freqBox" class="w-full max-w-sm mt-2 hidden shrink-0">
-                        <div class="flex justify-between text-[10px] font-bold text-gray-300 mb-0.5" id="freqLabels"></div>
+                        <div class="flex justify-between text-xs font-bold text-gray-300 mb-0.5" id="freqLabels"></div>
                         <div class="freq-bar" id="freqBar"></div>
                     </div>
                 </div>
@@ -1249,7 +1263,7 @@
 
             <!-- 布局R3(2026-07-14b)：输出列改为纯翻后流——行动线（录入）在上、分析（结果）在下，
                  视线自上而下：录完行动即在正下方看决策。postActionZone/postRight 的 id/内部结构全部保留 -->
-            <div class="col-right flex flex-col gap-1.5 w-full md:w-1/2 shrink-0">
+            <div class="col-right flex flex-col gap-1.5 w-full shrink-0">
 
 
 
@@ -1258,25 +1272,25 @@
                      决策列只留结论与依据，一屏之内三列各管一件事。 -->
                 <!-- 底层逻辑：范围自证（自带标题，不再占一个 zone-head） -->
                 <div id="mathProofPanel" class="hidden panel-bg p-2 rounded shadow-inner shrink-0">
-                    <h3 onclick="toggleMathProof()" title="点击展开/收起（分层显示 2026-07-21，默认收起）" class="text-[10px] font-bold text-gray-400 uppercase mb-1.5 border-b border-white/10 pb-0.5 text-center tracking-widest">底层范围自证 (Range Logic)</h3>
+                    <h3 onclick="toggleMathProof()" title="点击展开/收起（分层显示 2026-07-21，默认收起）" class="text-xs font-bold text-gray-400 uppercase mb-1.5 border-b border-white/10 pb-0.5 text-center tracking-widest">底层范围自证 (Range Logic)</h3>
                     <div class="grid grid-cols-3 gap-1.5 text-center mb-2">
                         <div class="bg-black/30 p-1.5 rounded">
-                            <p class="text-[10px] text-gray-400" id="lblBox1">基准参数</p><p id="mathBox1" class="text-sm font-black text-white">0%</p>
+                            <p class="text-xs text-gray-400" id="lblBox1">基准参数</p><p id="mathBox1" class="text-sm font-black text-white">0%</p>
                         </div>
                         <div class="bg-red-900/30 p-1.5 rounded">
-                            <p class="text-[10px] text-red-400" id="lblBox2">范围深度修正</p><p id="mathBox2" class="text-sm font-black text-red-400">+0%</p>
+                            <p class="text-xs text-red-400" id="lblBox2">范围深度修正</p><p id="mathBox2" class="text-sm font-black text-red-400">+0%</p>
                         </div>
                         <div class="bg-yellow-900/30 p-1.5 rounded">
-                            <p class="text-[10px] text-yellow-500" id="lblBox3">最终红线</p><p id="mathBox3" class="text-sm font-black text-yellow-400">0%</p>
+                            <p class="text-xs text-yellow-500" id="lblBox3">最终红线</p><p id="mathBox3" class="text-sm font-black text-yellow-400">0%</p>
                         </div>
                     </div>
                     <div class="space-y-1.5">
                         <div>
-                            <div class="flex justify-between text-[10px] font-bold mb-0.5"><span class="text-blue-400" id="lblBar1">手牌绝对战力</span><span id="mathBar1Text" class="text-blue-400">0%</span></div>
+                            <div class="flex justify-between text-xs font-bold mb-0.5"><span class="text-blue-400" id="lblBar1">手牌绝对战力</span><span id="mathBar1Text" class="text-blue-400">0%</span></div>
                             <div class="data-bar"><div id="mathBar1Fill" class="data-fill bg-blue-500" style="width: 0%"></div></div>
                         </div>
                         <div>
-                            <div class="flex justify-between text-[10px] font-bold mb-0.5"><span class="text-yellow-500">及格门槛</span><span id="mathBar2Text" class="text-yellow-500">0%</span></div>
+                            <div class="flex justify-between text-xs font-bold mb-0.5"><span class="text-yellow-500">及格门槛</span><span id="mathBar2Text" class="text-yellow-500">0%</span></div>
                             <div class="data-bar relative">
                                 <div id="mathBar2Fill" class="data-fill bg-yellow-500/30" style="width: 0%"></div>
                                 <div id="mathBar2Line" class="absolute top-0 bottom-0 w-0.5 bg-yellow-400 shadow-[0_0_3px_#facc15]" style="left: 0%"></div>
@@ -1881,8 +1895,8 @@
             const b = document.getElementById('anteToggle');
             b.innerText = gameConfig.ante ? '开启' : '关闭';
             b.className = gameConfig.ante 
-                ? 'bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded'
-                : 'bg-gray-600 text-white text-[10px] font-bold px-3 py-0.5 rounded';
+                ? 'bg-green-600 text-white text-xs font-bold px-3 py-0.5 rounded'
+                : 'bg-gray-600 text-white text-xs font-bold px-3 py-0.5 rounded';
             renderAnteInfo();
             onConfigChange();
         }
@@ -3500,7 +3514,7 @@
                     btn.style.opacity = '0.3';
                     btn.style.cursor = 'pointer';
                     btn.innerHTML = rank + SUIT_SYMBOLS[suit] +
-                        '<span style="position:absolute;top:1px;right:2px;font-size:10px;color:#fff;font-weight:900;line-height:1;opacity:3">×</span>';
+                        '<span style="position:absolute;top:1px;right:2px;font-size:12px;color:#fff;font-weight:900;line-height:1;opacity:3">×</span>';
                 } else if (isDis) {
                     // 禁用（如 board 已占用该牌）：花色背景，opacity 0.3，禁止点击
                     btn.removeAttribute('data-sel');
@@ -3577,6 +3591,7 @@
         let _pickerOpen = true;
         function setPickerOpen(v) {
             _pickerOpen = !!v;
+            document.body.classList.toggle('picker-open', _pickerOpen);
             const g = document.getElementById('heroPicker');
             const btn = document.getElementById('pickerToggleBtn');
             const hint = document.getElementById('pickerToggleHint');
@@ -3860,6 +3875,11 @@
                             '对手范围：按行动线 + 下注尺度 + 牌面成手强度动态收窄，起点是校准过的翻前范围表。\n' +
                             '下注频率档位（如 67%/33%）：启发式规则，不是 solver 的精确混合频率（已知简化 M4）。' };
             }
+            const _blindMix = document.getElementById('resultPanel')?.dataset.bbMix;
+            if (_blindMix) return {
+                k: `📖 ${_blindMix === 'SB' ? 'SB' : 'BB'} ChipEV 原图`, c: 'ref',
+                t: 'MPT逐格四动作频率；像素提取、整数取整有误差。中间位置/深度及邻近开池尺度为近似；不是ICM解。'
+            };
             const m = currentMode;
             if (m === 'defend') return { k: '🧮 实算', c: 'calc',
                 t: '接全下是全下子博弈，没有翻后，收益函数是确定的。\n' +
@@ -3926,14 +3946,14 @@
                     why = (document.getElementById('actionLogic').innerText || '').replace(/\s+/g, ' ').trim();
                     const pcts = [...document.getElementById('freqLabels').innerText.matchAll(/(\d+)%/g)].map(x => +x[1]);
                     const maxF = pcts.length ? Math.max(...pcts) : 100;
-                    let edge = /边缘|混合/.test(v.innerText);
+                    let edge = /边缘/.test(v.innerText);
                     if (currentMode === 'defend') {
                         const a = parseFloat(document.getElementById('mathBar1Text').innerText);
                         const r = parseFloat(document.getElementById('mathBar2Text').innerText);
                         if (!isNaN(a) && !isNaN(r) && Math.abs(a - r) < 3) edge = true;
                     }
-                    badge = /悖论/.test(action) ? '' : edge ? '边缘' : maxF < 70 ? '混合' : '明确';
-                    sem = /悖论/.test(action) ? 'neutral' : badge === '混合' ? 'mixed' : _hudSemantic(action);
+                    badge = /悖论|未校准/.test(action) ? '' : edge ? '边缘' : /混合/.test(v.innerText) || maxF < 70 ? '混合' : '明确';
+                    sem = /悖论|未校准/.test(action) ? 'neutral' : badge === '混合' ? 'mixed' : _hudSemantic(action);
                 }
             }
             hud.classList.toggle('hud-empty', !action);
@@ -3948,7 +3968,7 @@
             whyEl.style.display = why ? '' : 'none';
             badgeEl.textContent = badge; badgeEl.dataset.level = badge; badgeEl.style.display = badge ? '' : 'none';
             // 来源分级(2026-09-08)：只在真出了建议时显示
-            const hasAdvice = action && !/等待输入|计算中|悖论/.test(action);
+            const hasAdvice = action && !/等待输入|计算中|悖论|未校准/.test(action);
             const srcInfo = hasAdvice ? adviceSourceOf(boardN) : null;
             [document.getElementById('hudSrc'), document.getElementById('decisionSrc')].forEach(el => {
                 if (!el) return;
@@ -4051,7 +4071,7 @@
                     div.innerHTML = `
                         <span style="font-size:16px;font-weight:900;color:white;line-height:1">${rank}</span>
                         <span style="font-size:12px;color:white;line-height:1;margin-top:2px">${SUIT_SYMBOLS[suit]}</span>
-                        <span style="position:absolute;top:2px;right:3px;font-size:10px;color:rgba(255,255,255,0.5);line-height:1">×</span>`;
+                        <span style="position:absolute;top:2px;right:3px;font-size:12px;color:rgba(255,255,255,0.5);line-height:1">×</span>`;
                     div.title = `${rank}${SUIT_SYMBOLS[suit]}（点击取消选中）`;
                     div.addEventListener('mouseenter', () => { div.style.filter = 'brightness(1.15)'; });
                     div.addEventListener('mouseleave', () => { div.style.filter = ''; });
@@ -4060,7 +4080,7 @@
                     div.style.backgroundColor = 'transparent';
                     div.style.border = '2px dashed rgba(255,255,255,0.15)';
                     div.style.cursor = 'default';
-                    div.innerHTML = `<span style="font-size:10px;color:rgba(255,255,255,0.35);text-align:center;line-height:1.3">${label}</span>`;
+                    div.innerHTML = `<span style="font-size:12px;color:rgba(255,255,255,0.35);text-align:center;line-height:1.3">${label}</span>`;
                 }
                 return div;
             };
@@ -4111,16 +4131,16 @@
             if (!el) return;
             if (!heroCard1) {
                 el.textContent = '点击网格选两张底牌';
-                el.className = 'text-[10px] text-gray-400';
+                el.className = 'text-xs text-gray-400';
             } else if (!heroCard2) {
                 el.textContent = '再选一张底牌';
-                el.className = 'text-[10px] text-yellow-400';
+                el.className = 'text-xs text-yellow-400';
             } else if (pickTarget === 'board') {
                 el.textContent = '底牌已锁定 · 网格现在选公共牌（点「底牌」分组可改）';
-                el.className = 'text-[10px] text-gray-400';
+                el.className = 'text-xs text-gray-400';
             } else {
                 el.textContent = '底牌目标：点新牌替换 · 点「公共牌」分组选翻牌';
-                el.className = 'text-[10px] text-gray-400';
+                el.className = 'text-xs text-gray-400';
             }
         }
 
@@ -4139,7 +4159,7 @@
             ];
             const m = msgs[count] || msgs[0];
             el.textContent = m.text;
-            el.className = `text-[10px] font-medium ${m.cls}`; // 融合单页：改为状态行右侧 span，去居中/边距
+            el.className = `text-xs font-medium ${m.cls}`; // 融合单页：改为状态行右侧 span，去居中/边距
         }
 
         // 空壳：analysisBtn 已删除，保留函数避免旧调用报错
@@ -4367,15 +4387,15 @@
                 
                 html = `
                 <div class="panel-bg p-1.5 rounded col-span-2">
-                    <div class="text-[10px] text-red-400 mb-1">我的位置</div>
+                    <div class="text-xs text-red-400 mb-1">我的位置</div>
                     ${renderPosSelector('posHero', globalPosHero, ['BB'], true)}
                 </div>
                 <div class="panel-bg p-1.5 rounded border-red-900/50">
-                    <label class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
+                    <label class="text-xs text-red-400 block mb-1">我的筹码 (BB)</label>
                     <input type="number" id="stackHero" value="${globalHeroStack}" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <label class="text-[10px] text-yellow-500 block mb-1">桌面平均码 (BB)</label>
+                    <label class="text-xs text-yellow-500 block mb-1">桌面平均码 (BB)</label>
                     <input type="number" id="avgStack" value="${avgStackTouched ? globalAvgStack : globalHeroStack}" oninput="avgStackTouched=true" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>`;
             }
@@ -4390,40 +4410,40 @@
                 ).join('');
                 html = `
                 <div class="panel-bg p-1.5 rounded col-span-2">
-                    <div class="text-[10px] mb-1 text-green-400">跛入者（多选，自动计算人数）
+                    <div class="text-xs mb-1 text-green-400">跛入者（多选，自动计算人数）
                         <span class="ml-2 text-yellow-400 font-bold" id="limpCountDisplay">${selectedLimperPositions.length || 1} 人</span>
                     </div>
                     <div class="flex gap-1 flex-wrap">${limpBtns}</div>
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-red-400 mb-1">我的位置</div>
+                    <div class="text-xs text-red-400 mb-1">我的位置</div>
                     ${renderPosSelector('posHero', globalPosHero, [], true)}
                 </div>
                 <div class="panel-bg p-1.5 rounded border-red-900/50">
-                    <label class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
+                    <label class="text-xs text-red-400 block mb-1">我的筹码 (BB)</label>
                     <input type="number" id="stackHero" value="${globalHeroStack}" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
                 </div>`;
             }
             else if (mode === 'faceBet') {
                 html = `
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-green-400 mb-1">加注者位置</div>
+                    <div class="text-xs text-green-400 mb-1">加注者位置</div>
                     ${renderPosSelector('posVillain', globalPosVillain, ['BB'])}
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-red-400 mb-1">我的位置</div>
+                    <div class="text-xs text-red-400 mb-1">我的位置</div>
                     ${renderPosSelector('posHero', globalPosHero, [], true)}
                 </div>
                 <div class="panel-bg p-1.5 rounded border-yellow-700/50">
-                    <label class="text-[10px] text-yellow-500 block mb-1">加注尺度 (BB)</label>
+                    <label class="text-xs text-yellow-500 block mb-1">加注尺度 (BB)</label>
                     <input type="number" id="raiseSize" value="${globalRaiseSize}" step="0.1" min="2" max="5" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <label class="text-[10px] text-green-400 block mb-1">对手筹码 (BB)</label>
+                    <label class="text-xs text-green-400 block mb-1">对手筹码 (BB)</label>
                     <input type="number" id="stackVillain" value="${globalVillainStack}" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded border-red-900/50 col-span-2">
-                    <label class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
+                    <label class="text-xs text-red-400 block mb-1">我的筹码 (BB)</label>
                     <input type="number" id="stackHero" value="${globalHeroStack}" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
                 </div>`;
             }
@@ -4431,27 +4451,27 @@
                 // Squeeze = vs Open + Caller(s)
                 html = `
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-green-400 mb-1">原加注者位置</div>
+                    <div class="text-xs text-green-400 mb-1">原加注者位置</div>
                     ${renderPosSelector('posVillain', globalPosVillain, ['BB','SB','BTN','CO'])}
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-green-400 mb-1">跟注者位置</div>
+                    <div class="text-xs text-green-400 mb-1">跟注者位置</div>
                     ${renderPosSelector('posCaller', globalPosCaller, ['UTG','BB'])}
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-red-400 mb-1">我的位置</div>
+                    <div class="text-xs text-red-400 mb-1">我的位置</div>
                     ${renderPosSelector('posHero', globalPosHero, ['UTG','UTG1','MP'], true)}
                 </div>
                 <div class="panel-bg p-1.5 rounded border-yellow-700/50">
-                    <label class="text-[10px] text-yellow-500 block mb-1">加注尺度 (BB)</label>
+                    <label class="text-xs text-yellow-500 block mb-1">加注尺度 (BB)</label>
                     <input type="number" id="raiseSize" value="${globalRaiseSize}" step="0.1" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <label class="text-[10px] text-green-400 block mb-1">跟注人数</label>
+                    <label class="text-xs text-green-400 block mb-1">跟注人数</label>
                     <input type="number" id="limpCount" value="1" min="1" max="4" step="1" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]" title="全盘审计修复(2026-07-21)：原无此输入，多人 Squeeze 收紧与尺度追加是死代码">
                 </div>
                 <div class="panel-bg p-1.5 rounded border-red-900/50">
-                    <label class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
+                    <label class="text-xs text-red-400 block mb-1">我的筹码 (BB)</label>
                     <input type="number" id="stackHero" value="${globalHeroStack}" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
                 </div>`;
             }
@@ -4459,50 +4479,50 @@
                 // 面对 4-Bet(2026-09-08)：我已 3-Bet，对手再加注。需要两个尺度：我的 3-Bet 与他的 4-Bet
                 html = `
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-green-400 mb-1">4-Bet 者位置</div>
+                    <div class="text-xs text-green-400 mb-1">4-Bet 者位置</div>
                     ${renderPosSelector('posVillain', globalPosVillain, ['UTG'])}
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-red-400 mb-1">我 3-Bet 位</div>
+                    <div class="text-xs text-red-400 mb-1">我 3-Bet 位</div>
                     ${renderPosSelector('posHero', globalPosHero, [], true)}
                 </div>
                 <div class="panel-bg p-1.5 rounded border-yellow-700/50">
-                    <label class="text-[10px] text-yellow-500 block mb-1">我 3-Bet 到 (BB)</label>
+                    <label class="text-xs text-yellow-500 block mb-1">我 3-Bet 到 (BB)</label>
                     <input type="number" id="threeBetSize" value="${globalThreeBetSize}" step="0.5" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded border-yellow-700/50">
-                    <label class="text-[10px] text-yellow-500 block mb-1">他 4-Bet 到 (BB)</label>
+                    <label class="text-xs text-yellow-500 block mb-1">他 4-Bet 到 (BB)</label>
                     <input type="number" id="fourBetSize" value="${globalFourBetSize}" step="0.5" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <label class="text-[10px] text-green-400 block mb-1">4B者筹码 (BB)</label>
+                    <label class="text-xs text-green-400 block mb-1">4B者筹码 (BB)</label>
                     <input type="number" id="stackVillain" value="${globalVillainStack}" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded border-red-900/50">
-                    <label class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
+                    <label class="text-xs text-red-400 block mb-1">我的筹码 (BB)</label>
                     <input type="number" id="stackHero" value="${globalHeroStack}" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
                 </div>`;
             }
             else if (mode === 'face3b') {
                 html = `
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-green-400 mb-1">3-Bet 者位置</div>
+                    <div class="text-xs text-green-400 mb-1">3-Bet 者位置</div>
                     ${renderPosSelector('posVillain', globalPosVillain, ['UTG'])}
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-red-400 mb-1">我 Open 位</div>
+                    <div class="text-xs text-red-400 mb-1">我 Open 位</div>
                     ${renderPosSelector('posHero', globalPosHero, ['BB'], true)}
                 </div>
                 <div class="panel-bg p-1.5 rounded border-yellow-700/50">
-                    <label class="text-[10px] text-yellow-500 block mb-1">3-Bet 尺度 (BB)</label>
+                    <label class="text-xs text-yellow-500 block mb-1">3-Bet 尺度 (BB)</label>
                     <input type="number" id="threeBetSize" value="${globalThreeBetSize}" step="0.5" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <label class="text-[10px] text-green-400 block mb-1">3B者筹码 (BB)</label>
+                    <label class="text-xs text-green-400 block mb-1">3B者筹码 (BB)</label>
                     <input type="number" id="stackVillain" value="${globalVillainStack}" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded border-red-900/50 col-span-2">
-                    <label class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
+                    <label class="text-xs text-red-400 block mb-1">我的筹码 (BB)</label>
                     <input type="number" id="stackHero" value="${globalHeroStack}" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
                 </div>`;
             }
@@ -4510,46 +4530,46 @@
                 // Cold Call：面对 3-Bet 时是否跟注
                 html = `
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-green-400 mb-1">开池者位置</div>
+                    <div class="text-xs text-green-400 mb-1">开池者位置</div>
                     ${renderPosSelector('posVillain', globalPosVillain, ['BB','SB'])}
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-green-400 mb-1">3-Bet者位置</div>
+                    <div class="text-xs text-green-400 mb-1">3-Bet者位置</div>
                     ${renderPosSelector('posCaller', globalPosCaller, ['UTG'])}
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-red-400 mb-1">我的位置</div>
+                    <div class="text-xs text-red-400 mb-1">我的位置</div>
                     ${renderPosSelector('posHero', globalPosHero, [], true)}
                 </div>
                 <div class="panel-bg p-1.5 rounded border-yellow-700/50">
-                    <label class="text-[10px] text-yellow-500 block mb-1">3-Bet尺度 (BB)</label>
+                    <label class="text-xs text-yellow-500 block mb-1">3-Bet尺度 (BB)</label>
                     <input type="number" id="threeBetSize" value="${globalThreeBetSize}" step="0.5" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <label class="text-[10px] text-green-400 block mb-1">3B者筹码 (BB)</label>
+                    <label class="text-xs text-green-400 block mb-1">3B者筹码 (BB)</label>
                     <input type="number" id="stackVillain" value="${globalVillainStack}" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded border-red-900/50 col-span-2">
-                    <label class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
+                    <label class="text-xs text-red-400 block mb-1">我的筹码 (BB)</label>
                     <input type="number" id="stackHero" value="${globalHeroStack}" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
                 </div>`;
             }
             else { // defend (All-in)
                 html = `
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-green-400 mb-1">全下者位置</div>
+                    <div class="text-xs text-green-400 mb-1">全下者位置</div>
                     ${renderPosSelector('posVillain', globalPosVillain)}
                 </div>
                 <div class="panel-bg p-1.5 rounded">
-                    <div class="text-[10px] text-red-400 mb-1">我的位置</div>
+                    <div class="text-xs text-red-400 mb-1">我的位置</div>
                     ${renderPosSelector('posHero', globalPosHero, [], true)}
                 </div>
                 <div class="panel-bg p-1.5 rounded border-yellow-700/50">
-                    <label class="text-[10px] text-green-400 block mb-1">全下者筹码 (BB)</label>
+                    <label class="text-xs text-green-400 block mb-1">全下者筹码 (BB)</label>
                     <input type="number" id="stackVillain" value="${globalVillainStack}" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
                 </div>
                 <div class="panel-bg p-1.5 rounded border-red-900/50">
-                    <label class="text-[10px] text-red-400 block mb-1">我的筹码 (BB)</label>
+                    <label class="text-xs text-red-400 block mb-1">我的筹码 (BB)</label>
                     <input type="number" id="stackHero" value="${globalHeroStack}" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
                 </div>`;
             }
@@ -4588,7 +4608,7 @@
                 renderSizingAdvice(); // M5：对手模型组同步复位渲染
             const b = document.getElementById('anteToggle');
             b.innerText = '开启';
-            b.className = 'bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded';
+            b.className = 'bg-green-600 text-white text-xs font-bold px-3 py-0.5 rounded';
             tlReset(); // 翻前时间线(2026-07-21)
             renderHeroPicker(); syncHeroCardCompat(); switchMode('open');
             // 预存 bug 修复(2026-07-21，环节键 R 测试暴露)：switchMode 内 saveCurrentInputs 会把
@@ -4627,7 +4647,7 @@
                 if (!slot) continue;
                 const labels = ['F1','F2','F3','T','R'];
                 slot.className = 'w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0';
-                slot.innerHTML = `<span class="text-[10px] text-gray-500">${labels[i]}</span>`;
+                slot.innerHTML = `<span class="text-xs text-gray-500">${labels[i]}</span>`;
                 slot.onclick = null;
             }
             const boardPickerEl = document.getElementById('boardPicker');
@@ -5020,6 +5040,64 @@
             const t = bvbTier(effStack);
             return t === '25' ? 3.3 : (t === '15' ? 3.0 : 3.5);
         }
+        // 2026-09-19：MPT PDF383–412/368–371逐格四动作，顺序[跟注,小3-Bet,全下,弃牌]。
+        // 提取/校验/整数频率编译见 regression_tests/review_20260919；不再按列表前55%贴标签。
+        const MPT_BB_MIX = {"BTN_15":{"AA":[100,0,0,0],"AKs":[0,0,100,0],"AQs":[0,0,100,0],"AJs":[0,0,100,0],"ATs":[0,0,100,0],"A9s":[100,0,0,0],"A8s":[4,0,96,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[100,0,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[54,0,46,0],"AKo":[0,0,100,0],"KK":[100,0,0,0],"KQs":[100,0,0,0],"KJs":[100,0,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[33,0,67,0],"K4s":[0,0,100,0],"K3s":[0,0,100,0],"K2s":[100,0,0,0],"AQo":[0,0,100,0],"KQo":[0,0,100,0],"QQ":[0,0,100,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[0,0,100,0],"KJo":[68,0,32,0],"QJo":[36,0,64,0],"JJ":[0,0,100,0],"JTs":[100,0,0,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[0,0,100,0],"KTo":[100,0,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[0,0,100,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[20,0,80,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[0,0,100,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[0,0,100,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[100,0,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[0,0,100,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[38,0,62,0],"K7o":[100,0,0,0],"Q7o":[100,0,0,0],"J7o":[100,0,0,0],"T7o":[100,0,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[0,0,100,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[98,0,2,0],"K6o":[100,0,0,0],"Q6o":[100,0,0,0],"J6o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[0,0,100,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[45,0,55,0],"K5o":[100,0,0,0],"Q5o":[100,0,0,0],"J5o":[100,0,0,0],"65o":[100,0,0,0],"55":[0,0,100,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[0,0,100,0],"K4o":[100,0,0,0],"Q4o":[100,0,0,0],"J4o":[59,0,0,41],"64o":[11,0,0,89],"54o":[100,0,0,0],"44":[0,0,100,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[0,0,100,0],"K3o":[100,0,0,0],"Q3o":[100,0,0,0],"53o":[100,0,0,0],"43o":[100,0,0,0],"33":[0,0,100,0],"32s":[100,0,0,0],"A2o":[0,0,100,0],"K2o":[100,0,0,0],"Q2o":[100,0,0,0],"22":[0,0,100,0]},"CO_15":{"AA":[100,0,0,0],"AKs":[0,0,100,0],"AQs":[0,0,100,0],"AJs":[0,0,100,0],"ATs":[100,0,0,0],"A9s":[28,0,72,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[100,0,0,0],"A4s":[100,0,0,0],"A3s":[0,0,100,0],"A2s":[18,0,82,0],"AKo":[0,0,100,0],"KK":[0,0,100,0],"KQs":[100,0,0,0],"KJs":[100,0,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[48,0,52,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,0,100,0],"KQo":[11,0,89,0],"QQ":[0,0,100,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[0,0,100,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[0,0,100,0],"KJo":[100,0,0,0],"QJo":[100,0,0,0],"JJ":[0,0,100,0],"JTs":[0,0,100,0],"J9s":[72,0,28,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[0,0,100,0],"KTo":[100,0,0,0],"QTo":[100,0,0,0],"JTo":[85,0,15,0],"TT":[0,0,100,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[0,0,100,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[0,0,100,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[85,0,15,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[100,0,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[0,0,100,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[100,0,0,0],"K7o":[100,0,0,0],"Q7o":[100,0,0,0],"J7o":[100,0,0,0],"T7o":[100,0,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[0,0,100,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[100,0,0,0],"K6o":[100,0,0,0],"Q6o":[100,0,0,0],"J6o":[39,0,0,61],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[0,0,100,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[42,0,58,0],"K5o":[100,0,0,0],"Q5o":[100,0,0,0],"J5o":[100,0,0,0],"75o":[100,0,0,0],"65o":[100,0,0,0],"55":[0,0,100,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[0,0,100,0],"K4o":[100,0,0,0],"Q4o":[100,0,0,0],"64o":[100,0,0,0],"54o":[100,0,0,0],"44":[0,0,100,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[0,0,100,0],"K3o":[100,0,0,0],"Q3o":[100,0,0,0],"J3o":[15,0,0,85],"53o":[100,0,0,0],"43o":[96,0,0,4],"33":[0,0,100,0],"32s":[100,0,0,0],"A2o":[32,0,68,0],"K2o":[100,0,0,0],"Q2o":[96,0,0,4],"22":[0,0,100,0]},"LJ_15":{"AA":[100,0,0,0],"AKs":[0,0,100,0],"AQs":[0,0,100,0],"AJs":[0,0,100,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[0,0,100,0],"A6s":[100,0,0,0],"A5s":[0,0,100,0],"A4s":[0,0,100,0],"A3s":[3,0,97,0],"A2s":[100,0,0,0],"AKo":[0,0,100,0],"KK":[0,0,100,0],"KQs":[100,0,0,0],"KJs":[100,0,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,0,100,0],"KQo":[100,0,0,0],"QQ":[0,0,100,0],"QJs":[48,0,52,0],"QTs":[0,0,100,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[0,0,100,0],"KJo":[100,0,0,0],"QJo":[100,0,0,0],"JJ":[0,0,100,0],"JTs":[13,0,87,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[96,0,4,0],"KTo":[100,0,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[0,0,100,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[100,0,0,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[0,0,100,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[100,0,0,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[100,0,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[0,0,100,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[100,0,0,0],"K7o":[100,0,0,0],"Q7o":[100,0,0,0],"J7o":[100,0,0,0],"T7o":[100,0,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[0,0,100,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[100,0,0,0],"K6o":[100,0,0,0],"Q6o":[100,0,0,0],"J6o":[100,0,0,0],"96o":[81,0,0,19],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[0,0,100,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[100,0,0,0],"K5o":[100,0,0,0],"Q5o":[100,0,0,0],"J5o":[60,0,0,40],"75o":[100,0,0,0],"65o":[100,0,0,0],"55":[0,0,100,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[100,0,0,0],"K4o":[100,0,0,0],"Q4o":[100,0,0,0],"64o":[100,0,0,0],"54o":[100,0,0,0],"44":[0,0,100,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[100,0,0,0],"K3o":[100,0,0,0],"Q3o":[100,0,0,0],"53o":[100,0,0,0],"43o":[100,0,0,0],"33":[0,0,100,0],"32s":[100,0,0,0],"A2o":[100,0,0,0],"K2o":[100,0,0,0],"Q2o":[100,0,0,0],"22":[0,0,100,0]},"UTG_15":{"AA":[100,0,0,0],"AKs":[0,0,100,0],"AQs":[0,0,100,0],"AJs":[100,0,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[0,0,100,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[15,0,85,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,0,100,0],"KK":[0,0,100,0],"KQs":[100,0,0,0],"KJs":[22,0,78,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,0,100,0],"KQo":[100,0,0,0],"QQ":[0,0,100,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[100,0,0,0],"KJo":[100,0,0,0],"QJo":[100,0,0,0],"JJ":[0,0,100,0],"JTs":[100,0,0,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[100,0,0,0],"KTo":[100,0,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[0,0,100,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[100,0,0,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[0,0,100,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[100,0,0,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[100,0,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[0,0,100,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[100,0,0,0],"K7o":[100,0,0,0],"Q7o":[100,0,0,0],"J7o":[100,0,0,0],"T7o":[100,0,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[0,0,100,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[100,0,0,0],"K6o":[100,0,0,0],"Q6o":[100,0,0,0],"96o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[100,0,0,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[100,0,0,0],"K5o":[100,0,0,0],"Q5o":[100,0,0,0],"85o":[100,0,0,0],"75o":[100,0,0,0],"65o":[100,0,0,0],"55":[7,0,93,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[100,0,0,0],"K4o":[100,0,0,0],"Q4o":[100,0,0,0],"74o":[100,0,0,0],"64o":[100,0,0,0],"54o":[100,0,0,0],"44":[42,0,58,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[100,0,0,0],"K3o":[100,0,0,0],"Q3o":[85,0,0,15],"63o":[89,0,0,11],"53o":[100,0,0,0],"43o":[100,0,0,0],"33":[67,0,33,0],"32s":[100,0,0,0],"A2o":[100,0,0,0],"K2o":[100,0,0,0],"22":[55,0,45,0]},"BTN_25":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[0,100,0,0],"ATs":[0,100,0,0],"A9s":[89,11,0,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[100,0,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,96,4,0],"KK":[0,100,0,0],"KQs":[93,7,0,0],"KJs":[100,0,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[0,0,100,0],"K6s":[47,0,53,0],"K5s":[65,0,35,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,0,100,0],"KQo":[33,0,67,0],"QQ":[0,100,0,0],"QJs":[88,12,0,0],"QTs":[94,6,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[0,0,100,0],"KJo":[79,0,21,0],"QJo":[100,0,0,0],"JJ":[0,77,23,0],"JTs":[30,70,0,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[0,0,100,0],"KTo":[100,0,0,0],"QTo":[100,0,0,0],"JTo":[81,0,19,0],"TT":[0,0,100,0],"T9s":[24,76,0,0],"T8s":[63,27,10,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[0,0,100,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[92,8,0,0],"T9o":[100,0,0,0],"99":[0,0,100,0],"98s":[52,48,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[85,15,0,0],"K8o":[100,0,0,0],"Q8o":[90,10,0,0],"J8o":[86,14,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[0,0,100,0],"87s":[78,22,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[82,18,0,0],"K7o":[100,0,0,0],"Q7o":[96,4,0,0],"J7o":[88,12,0,0],"T7o":[90,10,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[0,0,100,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[73,27,0,0],"K6o":[92,8,0,0],"Q6o":[87,13,0,0],"J6o":[100,0,0,0],"T6o":[84,16,0,0],"96o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[0,0,100,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[30,14,56,0],"K5o":[86,14,0,0],"Q5o":[81,19,0,0],"J5o":[84,16,0,0],"T5o":[96,4,0,0],"95o":[45,0,0,55],"85o":[100,0,0,0],"75o":[100,0,0,0],"65o":[100,0,0,0],"55":[0,0,100,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[35,11,54,0],"K4o":[81,19,0,0],"Q4o":[78,22,0,0],"J4o":[90,10,0,0],"T4o":[43,0,0,57],"74o":[100,0,0,0],"64o":[100,0,0,0],"54o":[100,0,0,0],"44":[0,0,100,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[42,19,39,0],"K3o":[75,25,0,0],"Q3o":[82,18,0,0],"J3o":[86,14,0,0],"63o":[26,0,0,74],"53o":[100,0,0,0],"43o":[100,0,0,0],"33":[0,0,100,0],"32s":[100,0,0,0],"A2o":[8,12,80,0],"K2o":[99,1,0,0],"Q2o":[92,8,0,0],"J2o":[57,0,0,43],"52o":[19,0,0,81],"22":[0,0,100,0]},"CO_25":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[0,100,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[100,0,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,0,100,0],"KK":[0,100,0,0],"KQs":[100,0,0,0],"KJs":[100,0,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,0,100,0],"KQo":[96,4,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[4,2,94,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[0,0,100,0],"KJo":[100,0,0,0],"QJo":[100,0,0,0],"JJ":[0,0,100,0],"JTs":[24,76,0,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[81,19,0,0],"KTo":[64,0,36,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[0,0,100,0],"T9s":[41,59,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[94,6,0,0],"K9o":[81,19,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[0,2,98,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[77,23,0,0],"K8o":[96,4,0,0],"Q8o":[100,0,0,0],"J8o":[96,4,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[0,0,100,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[88,12,0,0],"K7o":[85,15,0,0],"Q7o":[100,0,0,0],"J7o":[82,18,0,0],"T7o":[94,6,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[0,0,100,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[88,12,0,0],"K6o":[83,17,0,0],"Q6o":[92,8,0,0],"J6o":[100,0,0,0],"T6o":[100,0,0,0],"96o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[0,0,100,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[51,17,32,0],"K5o":[80,20,0,0],"Q5o":[92,8,0,0],"J5o":[90,10,0,0],"85o":[100,0,0,0],"75o":[100,0,0,0],"65o":[100,0,0,0],"55":[0,27,73,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[72,12,16,0],"K4o":[100,0,0,0],"Q4o":[90,10,0,0],"J4o":[100,0,0,0],"74o":[6,0,0,94],"64o":[100,0,0,0],"54o":[100,0,0,0],"44":[0,11,89,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[56,1,43,0],"K3o":[100,0,0,0],"Q3o":[96,4,0,0],"J3o":[43,0,0,57],"53o":[100,0,0,0],"43o":[100,0,0,0],"33":[0,0,100,0],"32s":[100,0,0,0],"A2o":[26,23,51,0],"K2o":[100,0,0,0],"Q2o":[100,0,0,0],"22":[0,0,100,0]},"LJ_25":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[100,0,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[100,0,0,0],"A4s":[69,0,31,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,0,100,0],"KK":[0,100,0,0],"KQs":[100,0,0,0],"KJs":[100,0,0,0],"KTs":[100,0,0,0],"K9s":[76,0,24,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,19,81,0],"KQo":[100,0,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[79,0,21,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[100,0,0,0],"KJo":[100,0,0,0],"QJo":[92,8,0,0],"JJ":[0,36,64,0],"JTs":[31,45,24,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[100,0,0,0],"KTo":[100,0,0,0],"QTo":[96,4,0,0],"JTo":[100,0,0,0],"TT":[0,0,100,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[89,11,0,0],"K9o":[75,25,0,0],"Q9o":[64,36,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[0,0,100,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[85,15,0,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[100,0,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[0,0,100,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[82,18,0,0],"K7o":[100,0,0,0],"Q7o":[100,0,0,0],"J7o":[100,0,0,0],"T7o":[100,0,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[0,32,68,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[96,4,0,0],"K6o":[100,0,0,0],"Q6o":[88,12,0,0],"J6o":[34,0,0,66],"96o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[55,45,0,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[96,4,0,0],"K5o":[100,0,0,0],"Q5o":[88,12,0,0],"85o":[100,0,0,0],"75o":[100,0,0,0],"65o":[100,0,0,0],"55":[67,33,0,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[20,8,72,0],"K4o":[63,37,0,0],"Q4o":[100,0,0,0],"74o":[28,0,0,72],"64o":[100,0,0,0],"54o":[100,0,0,0],"44":[0,0,100,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[86,14,0,0],"K3o":[100,0,0,0],"Q3o":[70,0,0,30],"53o":[100,0,0,0],"43o":[100,0,0,0],"33":[62,0,38,0],"32s":[100,0,0,0],"A2o":[100,0,0,0],"K2o":[100,0,0,0],"Q2o":[11,0,0,89],"22":[100,0,0,0]},"SB_25":{"AA":[100,0,0,0],"AKs":[0,0,100,0],"AQs":[0,0,100,0],"AJs":[100,0,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[100,0,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,0,100,0],"KK":[100,0,0,0],"KQs":[100,0,0,0],"KJs":[100,0,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,0,100,0],"KQo":[100,0,0,0],"QQ":[100,0,0,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[0,0,100,0],"KJo":[100,0,0,0],"QJo":[100,0,0,0],"JJ":[100,0,0,0],"JTs":[100,0,0,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[36,0,64,0],"KTo":[100,0,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[100,0,0,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[21,0,79,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[100,0,0,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[96,0,4,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[100,0,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[100,0,0,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[70,0,0,30],"82s":[45,0,0,55],"A7o":[100,0,0,0],"K7o":[100,0,0,0],"Q7o":[100,0,0,0],"J7o":[77,0,0,23],"T7o":[66,0,0,34],"97o":[59,0,0,41],"87o":[100,0,0,0],"77":[0,0,100,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"A6o":[100,0,0,0],"K6o":[100,0,0,0],"Q6o":[100,0,0,0],"76o":[57,0,0,43],"66":[0,0,100,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[100,0,0,0],"K5o":[84,0,16,0],"Q5o":[43,0,0,57],"65o":[17,0,0,83],"55":[0,0,100,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[26,0,74,0],"K4o":[63,0,37,0],"54o":[87,0,0,13],"44":[0,0,100,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[0,0,100,0],"K3o":[65,0,35,0],"33":[0,0,100,0],"32s":[100,0,0,0],"A2o":[0,0,100,0],"K2o":[36,0,0,64],"22":[0,0,100,0]},"UTG_25":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[100,0,0,0],"AJs":[100,0,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[0,0,100,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,28,72,0],"KK":[0,100,0,0],"KQs":[100,0,0,0],"KJs":[100,0,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[75,25,0,0],"KQo":[96,4,0,0],"QQ":[0,100,0,0],"QJs":[0,0,100,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[100,0,0,0],"KJo":[100,0,0,0],"QJo":[64,36,0,0],"JJ":[0,36,64,0],"JTs":[100,0,0,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[77,23,0,0],"KTo":[72,28,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[0,0,100,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[77,23,0,0],"K9o":[86,14,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[16,84,0,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[100,0,0,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[100,0,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[100,0,0,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[100,0,0,0],"K7o":[100,0,0,0],"Q7o":[100,0,0,0],"J7o":[17,0,0,83],"T7o":[100,0,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[100,0,0,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[100,0,0,0],"K6o":[94,6,0,0],"Q6o":[100,0,0,0],"96o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[100,0,0,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[88,12,0,0],"K5o":[84,16,0,0],"Q5o":[100,0,0,0],"75o":[100,0,0,0],"65o":[100,0,0,0],"55":[31,45,24,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[65,35,0,0],"K4o":[98,2,0,0],"Q4o":[43,0,0,57],"64o":[100,0,0,0],"54o":[100,0,0,0],"44":[100,0,0,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[100,0,0,0],"K3o":[100,0,0,0],"53o":[100,0,0,0],"43o":[100,0,0,0],"33":[100,0,0,0],"32s":[100,0,0,0],"A2o":[100,0,0,0],"K2o":[38,0,0,62],"22":[100,0,0,0]},"BTN_40":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[0,100,0,0],"ATs":[0,100,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[100,0,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[30,70,0,0],"KJs":[79,21,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[82,1,17,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,62,38,0],"KQo":[45,55,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[69,31,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[0,49,51,0],"KJo":[64,36,0,0],"QJo":[77,23,0,0],"JJ":[0,100,0,0],"JTs":[100,0,0,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[75,25,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[47,53,0,0],"KTo":[87,13,0,0],"QTo":[92,8,0,0],"JTo":[84,16,0,0],"TT":[0,100,0,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"T7s":[82,18,0,0],"T6s":[63,37,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[67,33,0,0],"K9o":[100,0,0,0],"Q9o":[92,8,0,0],"J9o":[100,0,0,0],"T9o":[77,23,0,0],"99":[0,100,0,0],"98s":[85,15,0,0],"97s":[76,24,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[77,23,0,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[82,18,0,0],"T8o":[87,13,0,0],"98o":[86,14,0,0],"88":[0,39,61,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[75,25,0,0],"K7o":[86,14,0,0],"Q7o":[90,10,0,0],"J7o":[86,14,0,0],"T7o":[88,12,0,0],"97o":[81,19,0,0],"87o":[100,0,0,0],"77":[0,0,100,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[67,33,0,0],"K6o":[73,27,0,0],"Q6o":[69,31,0,0],"J6o":[100,0,0,0],"T6o":[77,0,0,23],"96o":[64,0,0,36],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[0,0,100,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[46,54,0,0],"K5o":[59,41,0,0],"Q5o":[83,17,0,0],"J5o":[74,0,0,26],"75o":[100,0,0,0],"65o":[100,0,0,0],"55":[0,61,39,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[79,21,0,0],"K4o":[77,23,0,0],"Q4o":[84,16,0,0],"64o":[32,0,0,68],"54o":[100,0,0,0],"44":[75,25,0,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[73,27,0,0],"K3o":[71,29,0,0],"Q3o":[100,0,0,0],"53o":[98,0,0,2],"33":[21,0,79,0],"32s":[100,0,0,0],"A2o":[32,28,40,0],"K2o":[100,0,0,0],"22":[59,0,41,0]},"CO_40":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[0,100,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[100,0,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[100,0,0,0],"KJs":[100,0,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[96,4,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,68,32,0],"KQo":[51,49,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[80,20,0,0],"Q8s":[63,37,0,0],"Q7s":[65,35,0,0],"Q6s":[69,31,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[45,55,0,0],"KJo":[75,25,0,0],"QJo":[100,0,0,0],"JJ":[0,100,0,0],"JTs":[100,0,0,0],"J9s":[100,0,0,0],"J8s":[60,40,0,0],"J7s":[51,49,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[80,20,0,0],"KTo":[78,22,0,0],"QTo":[84,16,0,0],"JTo":[57,43,0,0],"TT":[0,100,0,0],"T9s":[100,0,0,0],"T8s":[91,9,0,0],"T7s":[67,33,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[100,0,0,0],"K9o":[77,23,0,0],"Q9o":[52,48,0,0],"J9o":[100,0,0,0],"T9o":[86,14,0,0],"99":[0,60,40,0],"98s":[50,50,0,0],"97s":[92,8,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[39,61,0,0],"K8o":[64,36,0,0],"Q8o":[86,14,0,0],"J8o":[100,0,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[0,33,67,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[82,18,0,0],"K7o":[88,12,0,0],"Q7o":[100,0,0,0],"J7o":[100,0,0,0],"T7o":[100,0,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[59,41,0,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[94,6,0,0],"K6o":[75,25,0,0],"Q6o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[84,16,0,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[63,37,0,0],"K5o":[100,0,0,0],"Q5o":[53,0,0,47],"65o":[100,0,0,0],"55":[100,0,0,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[96,4,0,0],"K4o":[64,36,0,0],"Q4o":[57,0,0,43],"54o":[100,0,0,0],"44":[75,0,25,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[100,0,0,0],"K3o":[100,0,0,0],"53o":[9,0,0,91],"33":[75,0,25,0],"32s":[100,0,0,0],"A2o":[47,22,31,0],"K2o":[66,0,0,34],"22":[100,0,0,0]},"LJ_40":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[47,53,0,0],"AJs":[100,0,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[82,18,0,0],"A7s":[100,0,0,0],"A6s":[67,33,0,0],"A5s":[88,12,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[94,6,0,0],"AKo":[0,91,9,0],"KK":[0,100,0,0],"KQs":[100,0,0,0],"KJs":[100,0,0,0],"KTs":[87,13,0,0],"K9s":[21,79,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[48,52,0,0],"K5s":[80,20,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[37,63,0,0],"KQo":[100,0,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[57,43,0,0],"Q9s":[86,14,0,0],"Q8s":[88,12,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[75,25,0,0],"KJo":[100,0,0,0],"QJo":[88,12,0,0],"JJ":[0,100,0,0],"JTs":[36,64,0,0],"J9s":[53,47,0,0],"J8s":[65,35,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[100,0,0,0],"KTo":[82,18,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[0,72,28,0],"T9s":[50,50,0,0],"T8s":[75,25,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[67,33,0,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[42,58,0,0],"98s":[83,17,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[85,15,0,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[66,0,0,34],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[62,38,0,0],"87s":[71,29,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[77,23,0,0],"K7o":[100,0,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[100,0,0,0],"76s":[58,42,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[100,0,0,0],"K6o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[100,0,0,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[90,10,0,0],"K5o":[93,0,0,7],"75o":[19,0,0,81],"65o":[100,0,0,0],"55":[100,0,0,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[73,27,0,0],"64o":[15,0,0,85],"54o":[100,0,0,0],"44":[100,0,0,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[85,15,0,0],"53o":[38,0,0,62],"33":[100,0,0,0],"32s":[100,0,0,0],"A2o":[100,0,0,0],"22":[100,0,0,0]},"SB_40":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[69,31,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[100,0,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[100,0,0,0],"KJs":[100,0,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,100,0,0],"KQo":[100,0,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[33,67,0,0],"KJo":[100,0,0,0],"QJo":[100,0,0,0],"JJ":[0,100,0,0],"JTs":[100,0,0,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[83,17,0,0],"ATo":[82,18,0,0],"KTo":[100,0,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[45,55,0,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[88,12,0,0],"T3s":[85,15,0,0],"T2s":[64,36,0,0],"A9o":[100,0,0,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[85,15,0,0],"T9o":[93,7,0,0],"99":[94,6,0,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[72,28,0,0],"93s":[71,29,0,0],"92s":[72,28,0,0],"A8o":[100,0,0,0],"K8o":[100,0,0,0],"Q8o":[86,14,0,0],"J8o":[62,38,0,0],"T8o":[70,30,0,0],"98o":[79,21,0,0],"88":[87,13,0,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[76,0,0,24],"82s":[21,0,0,79],"A7o":[100,0,0,0],"K7o":[100,0,0,0],"Q7o":[90,10,0,0],"J7o":[51,49,0,0],"T7o":[48,52,0,0],"97o":[55,25,0,20],"87o":[100,0,0,0],"77":[68,32,0,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"A6o":[64,36,0,0],"K6o":[82,18,0,0],"Q6o":[51,49,0,0],"76o":[59,0,0,41],"66":[75,25,0,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[96,0,0,4],"A5o":[92,8,0,0],"K5o":[63,37,0,0],"Q5o":[18,47,0,35],"65o":[13,0,0,87],"55":[100,0,0,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[80,20,0,0],"K4o":[49,51,0,0],"54o":[30,0,0,70],"44":[100,0,0,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[65,35,0,0],"K3o":[26,45,0,29],"33":[100,0,0,0],"32s":[100,0,0,0],"A2o":[37,63,0,0],"K2o":[0,15,0,85],"22":[100,0,0,0]},"UTG_40":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[100,0,0,0],"AJs":[100,0,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[75,25,0,0],"A7s":[94,6,0,0],"A6s":[100,0,0,0],"A5s":[85,15,0,0],"A4s":[88,12,0,0],"A3s":[100,0,0,0],"A2s":[77,23,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[100,0,0,0],"KJs":[29,71,0,0],"KTs":[0,100,0,0],"K9s":[65,35,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[76,24,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[71,29,0,0],"KQo":[99,1,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[81,19,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[90,10,0,0],"KJo":[86,14,0,0],"QJo":[77,23,0,0],"JJ":[31,69,0,0],"JTs":[94,6,0,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[58,42,0,0],"KTo":[100,0,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[72,28,0,0],"T9s":[66,34,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[82,18,0,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[100,0,0,0],"98s":[96,4,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[90,10,0,0],"K8o":[49,0,0,51],"T8o":[48,0,0,52],"98o":[98,0,0,2],"88":[100,0,0,0],"87s":[94,6,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[70,0,0,30],"97o":[8,0,0,92],"87o":[100,0,0,0],"77":[100,0,0,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[51,0,0,49],"K6o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[100,0,0,0],"65s":[67,33,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[75,25,0,0],"75o":[34,0,0,66],"65o":[100,0,0,0],"55":[100,0,0,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[81,6,0,13],"64o":[42,0,0,58],"54o":[100,0,0,0],"44":[100,0,0,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"53o":[55,0,0,45],"33":[100,0,0,0],"32s":[100,0,0,0],"22":[100,0,0,0]},"BTN_60":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[0,100,0,0],"ATs":[0,100,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[0,100,0,0],"A4s":[39,61,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[0,100,0,0],"KJs":[45,55,0,0],"KTs":[0,100,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[81,19,0,0],"K6s":[0,100,0,0],"K5s":[46,54,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,100,0,0],"KQo":[0,100,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[47,53,0,0],"Q6s":[68,32,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[0,100,0,0],"KJo":[87,13,0,0],"QJo":[88,12,0,0],"JJ":[0,100,0,0],"JTs":[100,0,0,0],"J9s":[100,0,0,0],"J8s":[0,100,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[13,87,0,0],"KTo":[65,35,0,0],"QTo":[64,36,0,0],"JTo":[100,0,0,0],"TT":[0,100,0,0],"T9s":[0,100,0,0],"T8s":[20,80,0,0],"T7s":[19,81,0,0],"T6s":[39,61,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[51,49,0,0],"K9o":[100,0,0,0],"Q9o":[51,49,0,0],"J9o":[45,55,0,0],"T9o":[100,0,0,0],"99":[0,100,0,0],"98s":[0,100,0,0],"97s":[0,100,0,0],"96s":[0,100,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[100,0,0,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[60,40,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[0,100,0,0],"87s":[0,100,0,0],"86s":[0,100,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[100,0,0,0],"K7o":[100,0,0,0],"Q7o":[100,0,0,0],"J7o":[100,0,0,0],"T7o":[100,0,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[77,23,0,0],"76s":[0,100,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[100,0,0,0],"K6o":[100,0,0,0],"Q6o":[100,0,0,0],"J6o":[100,0,0,0],"T6o":[100,0,0,0],"96o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[100,0,0,0],"65s":[51,49,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[63,37,0,0],"K5o":[100,0,0,0],"Q5o":[100,0,0,0],"J5o":[100,0,0,0],"T5o":[100,0,0,0],"85o":[100,0,0,0],"75o":[100,0,0,0],"65o":[100,0,0,0],"55":[100,0,0,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[100,0,0,0],"K4o":[100,0,0,0],"Q4o":[100,0,0,0],"J4o":[100,0,0,0],"64o":[100,0,0,0],"54o":[100,0,0,0],"44":[100,0,0,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[100,0,0,0],"K3o":[100,0,0,0],"Q3o":[100,0,0,0],"53o":[100,0,0,0],"43o":[100,0,0,0],"33":[100,0,0,0],"32s":[100,0,0,0],"A2o":[100,0,0,0],"K2o":[100,0,0,0],"Q2o":[100,0,0,0],"22":[100,0,0,0]},"CO_60":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[0,100,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[0,100,0,0],"A4s":[0,100,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[0,100,0,0],"KJs":[49,51,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[0,100,0,0],"K7s":[47,53,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,100,0,0],"KQo":[1,99,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[79,21,0,0],"KJo":[59,41,0,0],"QJo":[100,0,0,0],"JJ":[0,100,0,0],"JTs":[100,0,0,0],"J9s":[37,63,0,0],"J8s":[44,56,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[100,0,0,0],"KTo":[42,58,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[0,100,0,0],"T9s":[0,100,0,0],"T8s":[0,100,0,0],"T7s":[0,100,0,0],"T6s":[88,12,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[100,0,0,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[0,100,0,0],"98s":[0,100,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[55,45,0,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[100,0,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[65,35,0,0],"87s":[8,92,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[100,0,0,0],"K7o":[100,0,0,0],"Q7o":[100,0,0,0],"J7o":[100,0,0,0],"T7o":[100,0,0,0],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[100,0,0,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[100,0,0,0],"K6o":[100,0,0,0],"Q6o":[100,0,0,0],"T6o":[100,0,0,0],"96o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[100,0,0,0],"65s":[30,70,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[63,37,0,0],"K5o":[100,0,0,0],"Q5o":[100,0,0,0],"75o":[100,0,0,0],"65o":[100,0,0,0],"55":[100,0,0,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[100,0,0,0],"K4o":[100,0,0,0],"Q4o":[69,0,0,31],"64o":[100,0,0,0],"54o":[100,0,0,0],"44":[100,0,0,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[100,0,0,0],"K3o":[100,0,0,0],"53o":[100,0,0,0],"43o":[51,0,0,49],"33":[100,0,0,0],"32s":[100,0,0,0],"A2o":[100,0,0,0],"K2o":[100,0,0,0],"22":[100,0,0,0]},"LJ_60":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[53,47,0,0],"AJs":[100,0,0,0],"ATs":[100,0,0,0],"A9s":[43,57,0,0],"A8s":[0,100,0,0],"A7s":[100,0,0,0],"A6s":[43,57,0,0],"A5s":[32,68,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[100,0,0,0],"KJs":[26,74,0,0],"KTs":[0,100,0,0],"K9s":[0,100,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[90,10,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[0,100,0,0],"KQo":[100,0,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[0,100,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[100,0,0,0],"KJo":[100,0,0,0],"QJo":[100,0,0,0],"JJ":[0,100,0,0],"JTs":[0,100,0,0],"J9s":[0,100,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[86,14,0,0],"KTo":[100,0,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[39,61,0,0],"T9s":[0,100,0,0],"T8s":[67,33,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[100,0,0,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[100,0,0,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[100,0,0,0],"K8o":[100,0,0,0],"Q8o":[100,0,0,0],"J8o":[100,0,0,0],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[100,0,0,0],"87s":[100,0,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"A7o":[100,0,0,0],"K7o":[85,0,0,15],"97o":[100,0,0,0],"87o":[100,0,0,0],"77":[100,0,0,0],"76s":[100,0,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[100,0,0,0],"K6o":[100,0,0,0],"Q6o":[38,0,0,62],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[100,0,0,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[100,0,0,0],"75o":[100,0,0,0],"65o":[100,0,0,0],"55":[100,0,0,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[100,0,0,0],"64o":[100,0,0,0],"54o":[100,0,0,0],"44":[100,0,0,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[100,0,0,0],"53o":[100,0,0,0],"33":[100,0,0,0],"32s":[100,0,0,0],"A2o":[100,0,0,0],"22":[100,0,0,0]},"SB_60":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[7,93,0,0],"AJs":[72,28,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[100,0,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[100,0,0,0],"KJs":[100,0,0,0],"KTs":[100,0,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[48,52,0,0],"KQo":[92,8,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[96,4,0,0],"Q2s":[92,8,0,0],"AJo":[75,25,0,0],"KJo":[100,0,0,0],"QJo":[84,16,0,0],"JJ":[0,100,0,0],"JTs":[100,0,0,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[82,18,0,0],"J4s":[92,8,0,0],"J3s":[100,0,0,0],"J2s":[84,16,0,0],"ATo":[78,22,0,0],"KTo":[82,18,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[47,53,0,0],"T9s":[98,2,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[89,11,0,0],"T5s":[98,2,0,0],"T4s":[90,10,0,0],"T3s":[84,16,0,0],"T2s":[98,2,0,0],"A9o":[80,20,0,0],"K9o":[100,0,0,0],"Q9o":[77,23,0,0],"J9o":[69,31,0,0],"T9o":[98,2,0,0],"99":[86,14,0,0],"98s":[79,21,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[95,5,0,0],"93s":[79,21,0,0],"92s":[87,13,0,0],"A8o":[100,0,0,0],"K8o":[94,6,0,0],"Q8o":[79,21,0,0],"J8o":[59,41,0,0],"T8o":[77,23,0,0],"98o":[84,16,0,0],"88":[100,0,0,0],"87s":[72,28,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[92,8,0,0],"83s":[84,16,0,0],"82s":[87,13,0,0],"A7o":[88,12,0,0],"K7o":[94,6,0,0],"Q7o":[69,8,0,23],"J7o":[59,31,0,10],"T7o":[73,27,0,0],"97o":[88,12,0,0],"87o":[100,0,0,0],"77":[90,10,0,0],"76s":[80,20,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[96,4,0,0],"72s":[4,0,0,96],"A6o":[75,25,0,0],"K6o":[71,29,0,0],"Q6o":[55,45,0,0],"86o":[22,0,0,78],"76o":[96,0,0,4],"66":[73,27,0,0],"65s":[100,0,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[98,2,0,0],"A5o":[84,16,0,0],"K5o":[76,24,0,0],"Q5o":[33,28,0,39],"65o":[55,0,0,45],"55":[96,4,0,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"A4o":[78,22,0,0],"K4o":[62,38,0,0],"Q4o":[0,15,0,85],"54o":[96,4,0,0],"44":[100,0,0,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"A3o":[77,23,0,0],"K3o":[57,27,0,16],"33":[100,0,0,0],"32s":[100,0,0,0],"A2o":[54,46,0,0],"K2o":[10,17,0,73],"22":[100,0,0,0]},"UTG_60":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[100,0,0,0],"AJs":[100,0,0,0],"ATs":[0,100,0,0],"A9s":[69,31,0,0],"A8s":[64,36,0,0],"A7s":[92,8,0,0],"A6s":[86,14,0,0],"A5s":[5,95,0,0],"A4s":[49,51,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[12,88,0,0],"KK":[0,100,0,0],"KQs":[26,74,0,0],"KJs":[0,100,0,0],"KTs":[41,59,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"K2s":[100,0,0,0],"AQo":[79,21,0,0],"KQo":[100,0,0,0],"QQ":[2,98,0,0],"QJs":[100,0,0,0],"QTs":[31,69,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"Q4s":[100,0,0,0],"Q3s":[100,0,0,0],"Q2s":[100,0,0,0],"AJo":[84,16,0,0],"KJo":[100,0,0,0],"QJo":[100,0,0,0],"JJ":[50,50,0,0],"JTs":[94,6,0,0],"J9s":[38,62,0,0],"J8s":[100,0,0,0],"J7s":[100,0,0,0],"J6s":[100,0,0,0],"J5s":[100,0,0,0],"J4s":[100,0,0,0],"J3s":[100,0,0,0],"J2s":[100,0,0,0],"ATo":[100,0,0,0],"KTo":[100,0,0,0],"QTo":[100,0,0,0],"JTo":[100,0,0,0],"TT":[87,13,0,0],"T9s":[53,47,0,0],"T8s":[100,0,0,0],"T7s":[100,0,0,0],"T6s":[100,0,0,0],"T5s":[100,0,0,0],"T4s":[100,0,0,0],"T3s":[100,0,0,0],"T2s":[100,0,0,0],"A9o":[100,0,0,0],"K9o":[100,0,0,0],"Q9o":[100,0,0,0],"J9o":[100,0,0,0],"T9o":[100,0,0,0],"99":[100,0,0,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"96s":[100,0,0,0],"95s":[100,0,0,0],"94s":[100,0,0,0],"93s":[100,0,0,0],"92s":[100,0,0,0],"A8o":[100,0,0,0],"K8o":[76,0,0,24],"T8o":[100,0,0,0],"98o":[100,0,0,0],"88":[100,0,0,0],"87s":[86,14,0,0],"86s":[100,0,0,0],"85s":[100,0,0,0],"84s":[100,0,0,0],"83s":[100,0,0,0],"82s":[100,0,0,0],"97o":[59,0,0,41],"87o":[100,0,0,0],"77":[100,0,0,0],"76s":[90,10,0,0],"75s":[100,0,0,0],"74s":[100,0,0,0],"73s":[100,0,0,0],"72s":[100,0,0,0],"A6o":[40,0,0,60],"K6o":[100,0,0,0],"86o":[100,0,0,0],"76o":[100,0,0,0],"66":[100,0,0,0],"65s":[78,22,0,0],"64s":[100,0,0,0],"63s":[100,0,0,0],"62s":[100,0,0,0],"A5o":[100,0,0,0],"75o":[64,0,0,36],"65o":[100,0,0,0],"55":[100,0,0,0],"54s":[100,0,0,0],"53s":[100,0,0,0],"52s":[100,0,0,0],"64o":[100,0,0,0],"54o":[100,0,0,0],"44":[100,0,0,0],"43s":[100,0,0,0],"42s":[100,0,0,0],"53o":[100,0,0,0],"33":[100,0,0,0],"32s":[100,0,0,0],"22":[100,0,0,0]}};
+        /** BB 四动作频率。常数来自 MPT 19 图；位置/深度间线性插值仅是近似，不是新解。 */
+        function bbMixedFrequencies(hand, opener, depth, tableSize = gameConfig.tableSize) {
+            if (!ALL_169_HANDS.includes(hand) || !Number.isFinite(depth) || depth < 15 || depth > 60) return null;
+            const depths = opener === 'SB' ? [25, 40, 60] : [15, 25, 40, 60];
+            if (depth < depths[0]) return null;
+            const loD = depths.filter(d => d <= depth).pop(), hiD = depths.find(d => d >= depth);
+            const behind = (BEHIND_OF[tableSize] || {})[opener];
+            const anchors = [['BTN', 0], ['CO', 1], ['LJ', 3], ['UTG', 6]];
+            if (opener !== 'SB' && behind == null) return null;
+            const loP = opener === 'SB' ? ['SB', 0] : anchors.filter(a => a[1] <= behind).pop();
+            const hiP = opener === 'SB' ? loP : anchors.find(a => a[1] >= behind);
+            if (!loP || !hiP) return null;
+            const blend = (a, b, w) => a.map((v, i) => v + (b[i] - v) * w);
+            const at = (p, d) => MPT_BB_MIX[`${p}_${d}`]?.[hand] || [0, 0, 0, 100];
+            const atDepth = p => blend(at(p, loD), at(p, hiD), hiD === loD ? 0 : (depth - loD) / (hiD - loD));
+            const f = blend(atDepth(loP[0]), atDepth(hiP[0]), hiP[1] === loP[1] ? 0 : (behind - loP[1]) / (hiP[1] - loP[1]));
+            // Table 43（PDF296）：20BB以下没有非全下3-Bet；插值不能创造非法尺度。
+            if (depth < 20) { f[2] += f[1]; f[1] = 0; }
+            const rounded = f.map(Math.floor);
+            const order = [0,1,2,3].sort((a,b) => (f[b]-rounded[b]) - (f[a]-rounded[a]));
+            const left = 100 - rounded.reduce((a,b)=>a+b,0);
+            for (let i=0; i<left; i++) rounded[order[i]]++;
+            return { frequencies: rounded, interpolated: loD !== hiD || loP[0] !== hiP[0],
+                     open: opener === 'SB' ? (depth <= 32 ? 3.3 : 3.5) : (depth <= 27 ? 2 : 2.3),
+                     // BB对SB的尺度沿用既有IP规则，明确标为启发式；其余取Table43。
+                     raiseTo: opener === 'SB' ? null : depth < 20 ? null : depth < 24 ? 5.5 : depth < 28 ? 6.5 : depth <= 35 ? 7 : depth <= 45 ? 8 : 9 };
+        }
+        // 2026-09-20：MPT PDF415–444 SB 面对开池逐格四动作，顺序同 BB [跟注,小3-Bet,全下,弃牌]。
+        // 提取/校验/编译见 regression_tests/review_20260920/build_sb_mix.py；原图未覆盖时回退旧 SB 模型并标注。
+        const MPT_SB_MIX = {"BTN_15":{"AA":[0,0,100,0],"AKs":[0,0,100,0],"AQs":[0,0,100,0],"AJs":[0,0,100,0],"ATs":[0,0,100,0],"A9s":[0,0,100,0],"A8s":[0,0,100,0],"A7s":[0,0,100,0],"A6s":[0,0,100,0],"A5s":[0,0,100,0],"A4s":[0,0,100,0],"A3s":[0,0,100,0],"A2s":[0,0,100,0],"AKo":[0,0,100,0],"KK":[0,0,100,0],"KQs":[0,0,100,0],"KJs":[0,0,100,0],"KTs":[0,0,100,0],"K9s":[0,0,100,0],"K8s":[0,0,100,0],"AQo":[0,0,100,0],"KQo":[0,0,100,0],"QQ":[0,0,100,0],"QJs":[0,0,100,0],"QTs":[0,0,100,0],"Q9s":[0,0,100,0],"AJo":[0,0,100,0],"KJo":[0,0,100,0],"QJo":[0,0,100,0],"JJ":[0,0,100,0],"JTs":[0,0,100,0],"J9s":[0,0,100,0],"ATo":[0,0,100,0],"KTo":[0,0,100,0],"QTo":[0,0,39,61],"JTo":[0,0,67,33],"TT":[0,0,100,0],"T9s":[0,0,100,0],"A9o":[0,0,100,0],"99":[0,0,100,0],"A8o":[0,0,100,0],"88":[0,0,100,0],"A7o":[0,0,100,0],"77":[0,0,100,0],"A6o":[0,0,100,0],"66":[0,0,100,0],"A5o":[0,0,100,0],"55":[0,0,100,0],"A4o":[0,0,100,0],"44":[0,0,100,0],"A3o":[0,0,100,0],"33":[0,0,100,0],"A2o":[0,0,100,0],"22":[0,0,100,0]},"CO_15":{"AA":[0,0,100,0],"AKs":[0,0,100,0],"AQs":[0,0,100,0],"AJs":[0,0,100,0],"ATs":[0,0,100,0],"A9s":[0,0,100,0],"A8s":[0,0,100,0],"A7s":[0,0,100,0],"A6s":[0,0,100,0],"A5s":[0,0,100,0],"A4s":[0,0,100,0],"A3s":[0,0,100,0],"A2s":[0,0,100,0],"AKo":[0,0,100,0],"KK":[0,0,100,0],"KQs":[0,0,100,0],"KJs":[0,0,100,0],"KTs":[0,0,100,0],"K9s":[0,0,100,0],"AQo":[0,0,100,0],"KQo":[0,0,100,0],"QQ":[0,0,100,0],"QJs":[0,0,100,0],"QTs":[0,0,100,0],"Q9s":[0,0,100,0],"AJo":[0,0,100,0],"KJo":[0,0,100,0],"QJo":[0,0,100,0],"JJ":[0,0,100,0],"JTs":[0,0,100,0],"J9s":[0,0,100,0],"ATo":[0,0,100,0],"TT":[0,0,100,0],"T9s":[0,0,100,0],"A9o":[0,0,100,0],"99":[0,0,100,0],"A8o":[0,0,100,0],"88":[0,0,100,0],"A7o":[0,0,100,0],"77":[0,0,100,0],"66":[0,0,100,0],"A5o":[0,0,100,0],"55":[0,0,100,0],"A4o":[0,0,17,83],"44":[0,0,100,0],"33":[0,0,100,0],"22":[0,0,100,0]},"LJ_15":{"AA":[23,0,77,0],"AKs":[0,0,100,0],"AQs":[0,0,100,0],"AJs":[0,0,100,0],"ATs":[0,0,100,0],"A9s":[0,0,100,0],"A8s":[0,0,100,0],"A7s":[32,0,68,0],"A6s":[100,0,0,0],"A5s":[17,0,83,0],"A4s":[25,0,75,0],"A3s":[40,0,60,0],"A2s":[69,0,31,0],"AKo":[0,0,100,0],"KK":[0,0,100,0],"KQs":[8,0,92,0],"KJs":[0,0,100,0],"KTs":[81,0,19,0],"K9s":[100,0,0,0],"K8s":[17,0,0,83],"AQo":[0,0,100,0],"KQo":[5,0,95,0],"QQ":[0,0,100,0],"QJs":[0,0,100,0],"QTs":[32,0,68,0],"Q9s":[100,0,0,0],"Q8s":[20,0,0,80],"AJo":[0,0,100,0],"KJo":[83,0,0,17],"QJo":[81,0,0,19],"JJ":[0,0,100,0],"JTs":[0,0,100,0],"J9s":[60,0,0,40],"ATo":[0,0,100,0],"TT":[0,0,100,0],"T9s":[100,0,0,0],"T8s":[43,0,0,57],"A9o":[44,0,56,0],"99":[0,0,100,0],"98s":[37,0,0,63],"88":[0,0,100,0],"87s":[83,0,0,17],"77":[0,0,100,0],"76s":[32,0,0,68],"66":[0,0,100,0],"65s":[36,0,0,64],"55":[25,0,75,0],"54s":[17,0,0,83],"44":[7,0,93,0],"33":[0,0,100,0],"22":[0,0,100,0]},"UTG_15":{"AA":[18,0,82,0],"AKs":[0,0,100,0],"AQs":[0,0,100,0],"AJs":[0,0,100,0],"ATs":[75,0,25,0],"A9s":[100,0,0,0],"A8s":[98,0,2,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[100,0,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,0,100,0],"KK":[0,0,100,0],"KQs":[33,0,67,0],"KJs":[0,0,100,0],"KTs":[0,0,100,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[42,0,0,58],"K6s":[21,0,0,79],"AQo":[0,0,100,0],"KQo":[100,0,0,0],"QQ":[0,0,100,0],"QJs":[71,0,29,0],"QTs":[63,0,37,0],"Q9s":[100,0,0,0],"Q8s":[39,0,0,61],"AJo":[0,0,100,0],"KJo":[100,0,0,0],"QJo":[36,0,0,64],"JJ":[0,0,100,0],"JTs":[65,0,35,0],"J9s":[100,0,0,0],"J8s":[54,0,0,46],"ATo":[93,0,0,7],"TT":[0,0,100,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"99":[0,0,100,0],"98s":[100,0,0,0],"97s":[45,0,0,55],"88":[0,0,100,0],"87s":[100,0,0,0],"86s":[26,0,0,74],"77":[0,0,100,0],"76s":[100,0,0,0],"66":[100,0,0,0],"65s":[100,0,0,0],"55":[36,0,64,0],"54s":[100,0,0,0],"44":[7,0,93,0],"33":[16,0,84,0],"22":[94,0,6,0]},"BTN_25":{"AA":[12,88,0,0],"AKs":[0,100,0,0],"AQs":[0,66,34,0],"AJs":[0,100,0,0],"ATs":[0,71,29,0],"A9s":[17,54,29,0],"A8s":[44,56,0,0],"A7s":[35,1,64,0],"A6s":[1,0,99,0],"A5s":[0,0,100,0],"A4s":[0,0,100,0],"A3s":[10,0,90,0],"A2s":[15,0,85,0],"AKo":[0,9,91,0],"KK":[16,84,0,0],"KQs":[6,15,79,0],"KJs":[25,14,61,0],"KTs":[19,0,81,0],"K9s":[94,6,0,0],"K8s":[69,17,0,14],"K7s":[42,0,0,58],"K6s":[26,0,0,74],"K5s":[13,0,0,87],"AQo":[0,0,100,0],"KQo":[0,0,100,0],"QQ":[2,98,0,0],"QJs":[7,1,92,0],"QTs":[0,0,100,0],"Q9s":[82,18,0,0],"Q8s":[48,0,0,52],"Q7s":[6,0,0,94],"Q6s":[4,0,0,96],"AJo":[0,0,100,0],"KJo":[49,51,0,0],"QJo":[44,38,18,0],"JJ":[0,100,0,0],"JTs":[0,0,100,0],"J9s":[47,0,53,0],"J8s":[28,0,0,72],"ATo":[0,0,100,0],"KTo":[61,39,0,0],"QTo":[44,25,0,31],"JTo":[33,6,0,61],"TT":[0,34,66,0],"T9s":[18,6,76,0],"T8s":[35,0,0,65],"T7s":[8,0,0,92],"A9o":[0,0,100,0],"99":[0,0,100,0],"98s":[32,0,0,68],"97s":[11,0,0,89],"A8o":[12,10,78,0],"88":[0,0,100,0],"87s":[19,0,0,81],"A7o":[8,37,55,0],"77":[0,0,100,0],"76s":[11,0,0,89],"A6o":[28,64,0,8],"66":[0,2,98,0],"65s":[4,0,0,96],"A5o":[23,46,31,0],"55":[0,28,72,0],"A4o":[24,23,0,53],"44":[0,25,75,0],"A3o":[6,4,0,90],"33":[0,0,100,0],"22":[0,0,100,0]},"CO_25":{"AA":[7,93,0,0],"AKs":[0,100,0,0],"AQs":[0,62,38,0],"AJs":[0,93,7,0],"ATs":[26,74,0,0],"A9s":[94,6,0,0],"A8s":[0,0,100,0],"A7s":[35,2,63,0],"A6s":[92,0,8,0],"A5s":[26,0,74,0],"A4s":[55,0,45,0],"A3s":[60,1,39,0],"A2s":[55,0,45,0],"AKo":[0,0,100,0],"KK":[4,96,0,0],"KQs":[40,0,60,0],"KJs":[0,0,100,0],"KTs":[0,0,100,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[88,12,0,0],"K6s":[69,31,0,0],"K5s":[55,0,0,45],"K4s":[11,0,0,89],"AQo":[0,0,100,0],"KQo":[0,0,100,0],"QQ":[0,100,0,0],"QJs":[0,0,100,0],"QTs":[0,0,100,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q6s":[4,0,0,96],"AJo":[0,0,100,0],"KJo":[71,29,0,0],"QJo":[72,28,0,0],"JJ":[0,42,58,0],"JTs":[0,0,100,0],"J9s":[68,0,32,0],"J8s":[87,0,0,13],"ATo":[10,0,90,0],"KTo":[88,12,0,0],"QTo":[70,30,0,0],"JTo":[53,0,0,47],"TT":[0,11,89,0],"T9s":[40,12,48,0],"T8s":[100,0,0,0],"A9o":[46,54,0,0],"99":[0,0,100,0],"98s":[87,0,0,13],"97s":[13,0,0,87],"A8o":[45,55,0,0],"88":[0,0,100,0],"87s":[76,0,0,24],"A7o":[9,43,0,48],"77":[0,6,94,0],"76s":[53,0,0,47],"A6o":[0,4,0,96],"66":[0,15,85,0],"65s":[23,0,0,77],"A5o":[9,33,0,58],"55":[2,15,83,0],"54s":[34,0,0,66],"44":[12,38,50,0],"33":[0,0,100,0],"22":[27,0,73,0]},"LJ_25":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,83,17,0],"AJs":[13,87,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[54,46,0,0],"A6s":[90,10,0,0],"A5s":[100,0,0,0],"A4s":[61,0,39,0],"A3s":[62,38,0,0],"A2s":[65,35,0,0],"AKo":[0,0,100,0],"KK":[0,100,0,0],"KQs":[42,0,58,0],"KJs":[37,0,63,0],"KTs":[0,0,100,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[57,43,0,0],"K6s":[68,32,0,0],"K5s":[49,0,0,51],"AQo":[0,0,100,0],"KQo":[69,31,0,0],"QQ":[0,100,0,0],"QJs":[36,0,64,0],"QTs":[0,0,100,0],"Q9s":[100,0,0,0],"Q8s":[80,20,0,0],"AJo":[0,0,100,0],"KJo":[94,6,0,0],"QJo":[60,40,0,0],"JJ":[0,42,58,0],"JTs":[53,12,35,0],"J9s":[100,0,0,0],"J8s":[74,0,0,26],"ATo":[62,38,0,0],"KTo":[59,6,0,35],"QTo":[32,0,0,68],"TT":[0,28,72,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"A9o":[45,53,0,2],"99":[0,19,81,0],"98s":[100,0,0,0],"97s":[79,0,0,21],"A8o":[0,6,0,94],"88":[0,20,80,0],"87s":[100,0,0,0],"86s":[25,0,0,75],"77":[0,0,100,0],"76s":[100,0,0,0],"66":[69,31,0,0],"65s":[100,0,0,0],"55":[52,24,24,0],"54s":[100,0,0,0],"44":[24,0,76,0],"33":[77,0,23,0],"22":[100,0,0,0]},"UTG_25":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[100,0,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[61,39,0,0],"A6s":[100,0,0,0],"A5s":[63,37,0,0],"A4s":[61,39,0,0],"A3s":[82,18,0,0],"A2s":[73,27,0,0],"AKo":[0,0,100,0],"KK":[0,100,0,0],"KQs":[100,0,0,0],"KJs":[0,0,100,0],"KTs":[18,0,82,0],"K9s":[56,44,0,0],"K8s":[74,26,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[62,0,0,38],"AQo":[0,13,87,0],"KQo":[67,33,0,0],"QQ":[0,100,0,0],"QJs":[0,0,100,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"Q6s":[26,0,0,74],"AJo":[51,49,0,0],"KJo":[88,12,0,0],"QJo":[57,0,0,43],"JJ":[0,59,41,0],"JTs":[100,0,0,0],"J9s":[100,0,0,0],"J8s":[100,0,0,0],"ATo":[17,83,0,0],"QTo":[6,0,0,94],"TT":[0,24,76,0],"T9s":[100,0,0,0],"T8s":[100,0,0,0],"99":[0,0,100,0],"98s":[91,9,0,0],"97s":[100,0,0,0],"88":[100,0,0,0],"87s":[100,0,0,0],"86s":[45,0,0,55],"77":[100,0,0,0],"76s":[100,0,0,0],"66":[100,0,0,0],"65s":[100,0,0,0],"55":[98,2,0,0],"54s":[100,0,0,0],"44":[100,0,0,0],"33":[100,0,0,0],"22":[100,0,0,0]},"BTN_40":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[2,98,0,0],"ATs":[0,100,0,0],"A9s":[100,0,0,0],"A8s":[93,7,0,0],"A7s":[59,41,0,0],"A6s":[48,52,0,0],"A5s":[69,31,0,0],"A4s":[53,36,11,0],"A3s":[45,0,55,0],"A2s":[49,51,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[47,53,0,0],"KJs":[59,21,20,0],"KTs":[58,0,42,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[39,61,0,0],"K6s":[23,77,0,0],"K5s":[47,53,0,0],"K4s":[53,0,0,47],"K3s":[15,0,0,85],"AQo":[0,21,79,0],"KQo":[31,69,0,0],"QQ":[0,100,0,0],"QJs":[55,45,0,0],"QTs":[40,0,60,0],"Q9s":[72,28,0,0],"Q8s":[90,10,0,0],"Q7s":[49,0,0,51],"Q6s":[47,47,0,6],"Q5s":[28,0,0,72],"AJo":[23,57,20,0],"KJo":[32,68,0,0],"QJo":[26,74,0,0],"JJ":[0,100,0,0],"JTs":[38,31,31,0],"J9s":[71,29,0,0],"J8s":[65,35,0,0],"ATo":[58,42,0,0],"KTo":[50,50,0,0],"QTo":[33,67,0,0],"JTo":[59,41,0,0],"TT":[0,100,0,0],"T9s":[44,56,0,0],"T8s":[54,46,0,0],"T7s":[17,0,0,83],"A9o":[14,86,0,0],"99":[11,89,0,0],"98s":[45,55,0,0],"97s":[34,0,0,66],"A8o":[39,61,0,0],"88":[13,49,38,0],"87s":[42,0,0,58],"A7o":[35,65,0,0],"77":[0,30,70,0],"76s":[45,0,0,55],"66":[46,32,22,0],"65s":[11,0,0,89],"A5o":[6,27,0,67],"55":[43,57,0,0],"44":[66,1,33,0],"33":[85,0,15,0],"22":[100,0,0,0]},"CO_40":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[0,100,0,0],"ATs":[100,0,0,0],"A9s":[100,0,0,0],"A8s":[100,0,0,0],"A7s":[59,41,0,0],"A6s":[65,35,0,0],"A5s":[61,39,0,0],"A4s":[86,14,0,0],"A3s":[55,45,0,0],"A2s":[80,20,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[100,0,0,0],"KJs":[48,0,52,0],"KTs":[67,0,33,0],"K9s":[67,33,0,0],"K8s":[60,40,0,0],"K7s":[53,47,0,0],"K6s":[96,4,0,0],"K5s":[94,0,0,6],"K4s":[28,0,0,72],"AQo":[0,49,51,0],"KQo":[9,91,0,0],"QQ":[0,100,0,0],"QJs":[100,0,0,0],"QTs":[100,0,0,0],"Q9s":[39,61,0,0],"Q8s":[60,40,0,0],"Q7s":[9,0,0,91],"AJo":[47,53,0,0],"KJo":[50,50,0,0],"QJo":[63,37,0,0],"JJ":[0,100,0,0],"JTs":[68,12,20,0],"J9s":[61,39,0,0],"J8s":[56,44,0,0],"ATo":[8,92,0,0],"KTo":[67,33,0,0],"QTo":[48,37,0,15],"JTo":[33,16,0,51],"TT":[0,100,0,0],"T9s":[79,21,0,0],"T8s":[57,43,0,0],"T7s":[11,0,0,89],"A9o":[39,61,0,0],"99":[0,100,0,0],"98s":[67,33,0,0],"97s":[30,0,0,70],"A8o":[0,100,0,0],"88":[22,36,42,0],"87s":[100,0,0,0],"77":[42,58,0,0],"76s":[38,0,0,62],"66":[77,23,0,0],"65s":[9,0,0,91],"55":[100,0,0,0],"54s":[2,0,0,98],"44":[100,0,0,0],"33":[100,0,0,0],"22":[100,0,0,0]},"LJ_40":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[100,0,0,0],"ATs":[61,39,0,0],"A9s":[41,59,0,0],"A8s":[42,58,0,0],"A7s":[57,43,0,0],"A6s":[79,21,0,0],"A5s":[59,41,0,0],"A4s":[73,27,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,77,23,0],"KK":[0,100,0,0],"KQs":[82,18,0,0],"KJs":[15,0,85,0],"KTs":[0,100,0,0],"K9s":[24,76,0,0],"K8s":[73,27,0,0],"K7s":[100,0,0,0],"K6s":[65,10,0,25],"K5s":[47,0,0,53],"AQo":[28,36,36,0],"KQo":[61,39,0,0],"QQ":[0,100,0,0],"QJs":[39,26,35,0],"QTs":[63,37,0,0],"Q9s":[100,0,0,0],"Q8s":[46,0,0,54],"AJo":[22,78,0,0],"KJo":[86,14,0,0],"QJo":[19,0,0,81],"JJ":[0,100,0,0],"JTs":[47,53,0,0],"J9s":[94,6,0,0],"J8s":[22,0,0,78],"ATo":[53,47,0,0],"KTo":[34,0,0,66],"TT":[5,60,35,0],"T9s":[61,39,0,0],"T8s":[85,15,0,0],"99":[40,60,0,0],"98s":[71,29,0,0],"97s":[42,0,0,58],"88":[43,57,0,0],"87s":[62,0,0,38],"86s":[17,0,0,83],"77":[80,20,0,0],"76s":[85,15,0,0],"66":[100,0,0,0],"65s":[55,0,0,45],"55":[100,0,0,0],"54s":[68,0,0,32],"44":[100,0,0,0],"33":[100,0,0,0],"22":[100,0,0,0]},"UTG_40":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[100,0,0,0],"AJs":[100,0,0,0],"ATs":[100,0,0,0],"A9s":[71,29,0,0],"A8s":[61,39,0,0],"A7s":[70,30,0,0],"A6s":[98,2,0,0],"A5s":[32,68,0,0],"A4s":[90,10,0,0],"A3s":[100,0,0,0],"A2s":[42,0,0,58],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[77,23,0,0],"KJs":[0,100,0,0],"KTs":[14,86,0,0],"K9s":[98,2,0,0],"K8s":[70,0,0,30],"K7s":[21,0,0,79],"K6s":[100,0,0,0],"K5s":[38,0,0,62],"AQo":[31,69,0,0],"KQo":[96,4,0,0],"QQ":[0,100,0,0],"QJs":[56,44,0,0],"QTs":[78,22,0,0],"Q9s":[100,0,0,0],"AJo":[59,41,0,0],"JJ":[0,100,0,0],"JTs":[86,14,0,0],"J9s":[66,34,0,0],"J8s":[15,0,0,85],"ATo":[16,57,0,27],"TT":[49,51,0,0],"T9s":[77,23,0,0],"T8s":[100,0,0,0],"99":[74,26,0,0],"98s":[72,28,0,0],"88":[100,0,0,0],"87s":[100,0,0,0],"86s":[47,0,0,53],"77":[100,0,0,0],"76s":[100,0,0,0],"66":[100,0,0,0],"65s":[100,0,0,0],"55":[100,0,0,0],"54s":[100,0,0,0],"44":[100,0,0,0],"33":[100,0,0,0],"22":[100,0,0,0]},"BTN_60":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[0,100,0,0],"ATs":[47,53,0,0],"A9s":[70,30,0,0],"A8s":[57,43,0,0],"A7s":[31,69,0,0],"A6s":[0,100,0,0],"A5s":[0,100,0,0],"A4s":[0,100,0,0],"A3s":[37,63,0,0],"A2s":[100,0,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[90,10,0,0],"KJs":[57,43,0,0],"KTs":[12,88,0,0],"K9s":[16,84,0,0],"K8s":[100,0,0,0],"K7s":[0,100,0,0],"K6s":[0,100,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"AQo":[16,84,0,0],"KQo":[37,63,0,0],"QQ":[0,100,0,0],"QJs":[75,25,0,0],"QTs":[100,0,0,0],"Q9s":[100,0,0,0],"Q8s":[61,39,0,0],"Q7s":[100,0,0,0],"Q6s":[100,0,0,0],"Q5s":[100,0,0,0],"AJo":[37,63,0,0],"KJo":[0,100,0,0],"QJo":[37,63,0,0],"JJ":[0,100,0,0],"JTs":[0,100,0,0],"J9s":[55,45,0,0],"J8s":[8,92,0,0],"J7s":[100,0,0,0],"ATo":[0,100,0,0],"KTo":[92,8,0,0],"QTo":[47,53,0,0],"JTo":[100,0,0,0],"TT":[0,100,0,0],"T9s":[0,100,0,0],"T8s":[0,100,0,0],"T7s":[38,62,0,0],"A9o":[0,100,0,0],"K9o":[100,0,0,0],"T9o":[56,0,0,44],"99":[0,100,0,0],"98s":[0,100,0,0],"97s":[67,33,0,0],"A8o":[100,0,0,0],"88":[39,61,0,0],"87s":[39,61,0,0],"86s":[85,15,0,0],"A7o":[100,0,0,0],"77":[37,63,0,0],"76s":[29,71,0,0],"A6o":[91,0,0,9],"66":[100,0,0,0],"65s":[100,0,0,0],"A5o":[49,23,0,28],"55":[100,0,0,0],"54s":[100,0,0,0],"44":[100,0,0,0],"33":[100,0,0,0],"22":[100,0,0,0]},"CO_60":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[100,0,0,0],"ATs":[0,100,0,0],"A9s":[100,0,0,0],"A8s":[0,100,0,0],"A7s":[14,86,0,0],"A6s":[18,82,0,0],"A5s":[0,100,0,0],"A4s":[31,69,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[81,19,0,0],"KJs":[33,67,0,0],"KTs":[0,100,0,0],"K9s":[0,100,0,0],"K8s":[57,43,0,0],"K7s":[100,0,0,0],"K6s":[100,0,0,0],"K5s":[100,0,0,0],"K4s":[100,0,0,0],"K3s":[100,0,0,0],"AQo":[59,41,0,0],"KQo":[0,100,0,0],"QQ":[0,100,0,0],"QJs":[20,80,0,0],"QTs":[48,52,0,0],"Q9s":[6,94,0,0],"Q8s":[100,0,0,0],"AJo":[0,100,0,0],"KJo":[84,16,0,0],"QJo":[100,0,0,0],"JJ":[0,100,0,0],"JTs":[0,100,0,0],"J9s":[41,59,0,0],"J8s":[87,13,0,0],"ATo":[30,70,0,0],"KTo":[63,37,0,0],"QTo":[72,28,0,0],"JTo":[100,0,0,0],"TT":[0,100,0,0],"T9s":[0,100,0,0],"T8s":[23,77,0,0],"T7s":[100,0,0,0],"A9o":[100,0,0,0],"99":[82,18,0,0],"98s":[0,100,0,0],"97s":[100,0,0,0],"A8o":[28,0,0,72],"88":[0,100,0,0],"87s":[96,4,0,0],"86s":[100,0,0,0],"77":[100,0,0,0],"76s":[100,0,0,0],"66":[100,0,0,0],"65s":[100,0,0,0],"55":[100,0,0,0],"54s":[100,0,0,0],"44":[100,0,0,0],"33":[100,0,0,0],"22":[100,0,0,0]},"LJ_60":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[0,100,0,0],"ATs":[0,100,0,0],"A9s":[61,39,0,0],"A8s":[0,100,0,0],"A7s":[100,0,0,0],"A6s":[79,21,0,0],"A5s":[0,100,0,0],"A4s":[98,2,0,0],"A3s":[100,0,0,0],"A2s":[100,0,0,0],"AKo":[0,100,0,0],"KK":[0,100,0,0],"KQs":[0,100,0,0],"KJs":[0,100,0,0],"KTs":[0,100,0,0],"K9s":[44,56,0,0],"K8s":[100,0,0,0],"K7s":[53,0,0,47],"K6s":[100,0,0,0],"AQo":[22,78,0,0],"KQo":[100,0,0,0],"QQ":[0,100,0,0],"QJs":[35,65,0,0],"QTs":[0,100,0,0],"Q9s":[100,0,0,0],"Q8s":[100,0,0,0],"AJo":[100,0,0,0],"KJo":[100,0,0,0],"QJo":[57,0,0,43],"JJ":[90,10,0,0],"JTs":[0,100,0,0],"J9s":[100,0,0,0],"ATo":[100,0,0,0],"TT":[0,100,0,0],"T9s":[13,87,0,0],"T8s":[100,0,0,0],"99":[53,47,0,0],"98s":[100,0,0,0],"97s":[100,0,0,0],"88":[45,55,0,0],"87s":[75,25,0,0],"86s":[100,0,0,0],"77":[100,0,0,0],"76s":[100,0,0,0],"66":[100,0,0,0],"65s":[100,0,0,0],"55":[100,0,0,0],"54s":[100,0,0,0],"44":[100,0,0,0],"33":[100,0,0,0],"22":[100,0,0,0]},"UTG_60":{"AA":[0,100,0,0],"AKs":[0,100,0,0],"AQs":[0,100,0,0],"AJs":[16,84,0,0],"ATs":[0,100,0,0],"A9s":[82,18,0,0],"A8s":[72,28,0,0],"A7s":[100,0,0,0],"A6s":[100,0,0,0],"A5s":[4,96,0,0],"A4s":[100,0,0,0],"A3s":[100,0,0,0],"A2s":[87,0,0,13],"AKo":[14,86,0,0],"KK":[0,100,0,0],"KQs":[0,100,0,0],"KJs":[13,87,0,0],"KTs":[47,53,0,0],"K9s":[100,0,0,0],"K8s":[100,0,0,0],"K7s":[53,0,0,47],"K6s":[100,0,0,0],"K5s":[17,0,0,83],"AQo":[87,13,0,0],"KQo":[94,0,0,6],"QQ":[0,100,0,0],"QJs":[84,16,0,0],"QTs":[81,19,0,0],"Q9s":[100,0,0,0],"AJo":[100,0,0,0],"JJ":[18,82,0,0],"JTs":[92,8,0,0],"J9s":[100,0,0,0],"ATo":[40,0,0,60],"TT":[41,59,0,0],"T9s":[61,39,0,0],"T8s":[100,0,0,0],"99":[100,0,0,0],"98s":[100,0,0,0],"88":[100,0,0,0],"87s":[72,28,0,0],"86s":[79,0,0,21],"77":[100,0,0,0],"76s":[59,41,0,0],"66":[100,0,0,0],"65s":[85,15,0,0],"64s":[13,0,0,87],"55":[100,0,0,0],"54s":[100,0,0,0],"53s":[50,0,0,50],"44":[100,0,0,0],"33":[100,0,0,0],"22":[100,0,0,0]}};
+        /** SB 四动作频率（对非盲位开池）。16 图锚点：BTN/CO/LJ/UTG × 15/25/40/60BB；插值是近似。 */
+        function sbMixedFrequencies(hand, opener, depth, tableSize = gameConfig.tableSize) {
+            if (!ALL_169_HANDS.includes(hand) || !Number.isFinite(depth) || depth < 15 || depth > 60) return null;
+            const behind = (BEHIND_OF[tableSize] || {})[opener];
+            if (behind == null) return null;
+            const depths = [15, 25, 40, 60], anchors = [['BTN', 0], ['CO', 1], ['LJ', 3], ['UTG', 6]];
+            const loD = depths.filter(d => d <= depth).pop(), hiD = depths.find(d => d >= depth);
+            const loP = anchors.filter(a => a[1] <= behind).pop(), hiP = anchors.find(a => a[1] >= behind);
+            if (!loP || !hiP) return null;
+            const blend = (a, b, w) => a.map((v, i) => v + (b[i] - v) * w);
+            const at = (p, d) => MPT_SB_MIX[`${p}_${d}`]?.[hand] || [0, 0, 0, 100];
+            const atDepth = p => blend(at(p, loD), at(p, hiD), hiD === loD ? 0 : (depth - loD) / (hiD - loD));
+            const f = blend(atDepth(loP[0]), atDepth(hiP[0]), hiP[1] === loP[1] ? 0 : (behind - loP[1]) / (hiP[1] - loP[1]));
+            // Table 43（PDF296）SB 列：20BB以下只有全下；插值不能创造非法尺度。
+            if (depth < 20) { f[2] += f[1]; f[1] = 0; }
+            const rounded = f.map(Math.floor);
+            const order = [0,1,2,3].sort((a,b) => (f[b]-rounded[b]) - (f[a]-rounded[a]));
+            const left = 100 - rounded.reduce((a,b)=>a+b,0);
+            for (let i=0; i<left; i++) rounded[order[i]]++;
+            return { frequencies: rounded, interpolated: loD !== hiD || loP[0] !== hiP[0],
+                     open: depth <= 27 ? 2 : 2.3,
+                     // Table 43 SB 列与 BB 列在 ≤65BB 各档相同。
+                     raiseTo: depth < 20 ? null : depth < 24 ? 5.5 : depth < 28 ? 6.5 : depth <= 35 ? 7 : depth <= 45 ? 8 : 9 };
+        }
+
         /** 盲位 3-Bet 集合：MPT 实测手牌序（按深度分档取表）截断到目标宽度 */
         function bbSb3betSet(heroPos, villainPos, effStack) {
             const row = MPT_3BET_PCT[heroPos]; if (!row) return null;
@@ -5322,7 +5400,7 @@
                 out.logic = `跟注后 SPR ${sprAfterCall.toFixed(2)}（深码，还有完整翻后空间）：` +
                     `需补 ${toCall.toFixed(1)}BB、所需胜率 ${reqCall.toFixed(1)}%，对其<b>整个 4-Bet 范围</b>实有 ${eqVsFull.toFixed(1)}% —— 跟注看翻牌，` +
                     `比在这个深度推全下更好（推全下只会被更强的牌跟）。` +
-                    `<br><span class="text-gray-400 text-[10px]">跟注分支为启发式（翻后价值无法精确计算）；全下分支的 EV 是实算的。</span>`;
+                    `<br><span class="text-gray-400 text-xs">跟注分支为启发式（翻后价值无法精确计算）；全下分支的 EV 是实算的。</span>`;
                 return out;
             }
             // ③ 不够深（跟了就是承诺）→ 推/弃二选一，按实算 EV
@@ -5343,7 +5421,7 @@
                     out.logic = `${handStr} 对他的跟注段只有 ${eqVsCall.toFixed(1)}%，而且<b>没有阻断价值</b>` +
                         `（既不挡 AA/KK/AK，也不是同花大牌）—— 5-Bet 诈唬要靠阻断张成立，` +
                         `这手牌推出去只是把筹码送给他的价值段。弃牌。` +
-                        `<br><span class="text-gray-400 text-[10px]">（顺带一提：这类牌本来就不该进 3-Bet 范围）</span>`;
+                        `<br><span class="text-gray-400 text-xs">（顺带一提：这类牌本来就不该进 3-Bet 范围）</span>`;
                     return out;
                 }
                 const jamFreq = isBluffJam ? 55 : 100;
@@ -6252,12 +6330,15 @@
             const seats = st.seats;
 
             // ── 我的位置 ──
-            heroRow.innerHTML = `<div class="text-[10px] text-red-400 font-bold mb-1">我的位置</div><div class="tl-hero-grid">` +
+            heroRow.innerHTML = `<div class="text-xs text-red-400 font-bold mb-1">我的位置</div><div class="tl-hero-grid">` +
                 seats.map(p => `<button class="pos-btn-hero${p === globalPosHero ? ' active' : ''}" data-tlhero="${p}">${tlLbl(p)}</button>`).join('') + `</div>`;
             heroRow.querySelectorAll('[data-tlhero]').forEach(b => b.onclick = () => {
+                if (b.dataset.tlhero === globalPosHero) return;
+                const hadActions = tlActs.length > 0;
                 pushUndo(`我的位置 → ${tlLbl(b.dataset.tlhero)}`);
                 globalPosHero = b.dataset.tlhero;
                 tlActs = [];                      // 换位置＝重新开始这手牌的行动线
+                if (hadActions) showToast('位置已改变，行动线已清空；按 Z 或点撤回可恢复', 'info');
                 tlRebuildLegacy();
                 tlScheduleApply();
             });
@@ -6479,7 +6560,7 @@
                 ub.classList.toggle('active', !chips); uc.classList.toggle('active', chips); }
             const ap = document.getElementById('autoPosToggle');
             if (ap) { ap.innerText = gameConfig.autoAdvancePos ? '开启' : '关闭';
-                ap.className = (gameConfig.autoAdvancePos ? 'bg-green-600' : 'bg-gray-600') + ' text-white text-[10px] font-bold px-3 py-0.5 rounded'; }
+                ap.className = (gameConfig.autoAdvancePos ? 'bg-green-600' : 'bg-gray-600') + ' text-white text-xs font-bold px-3 py-0.5 rounded'; }
             blRenderUnitLabels();
             try { renderAnteInfo(); } catch (e) {}   // 大盲/ante 变了 → 死钱显示同步
         }
@@ -6683,6 +6764,8 @@
         }
 
         function executeEngineCore() {
+            delete document.getElementById('resultPanel').dataset.bbMix;
+            delete document.getElementById('resultPanel').dataset.sbMixFallback;
             saveCurrentInputs();
 
             if (!validatePreFlopInputs()) {
@@ -6778,8 +6861,61 @@
                 }
             }
             // ════════════════════════════════════════════════════
-            // 模式 8: 面对 4-Bet（2026-09-08 新增）
+            // 盲位单次开池：源图四动作，不经过旧价值/诈唬标签
+            // （BB 2026-09-19；SB 2026-09-20，SB 原图未覆盖时回退旧模型并标注——用户决定，见 D-25）
             // ════════════════════════════════════════════════════
+            if (currentMode === 'faceBet' && (posH === 'BB' || posH === 'SB')) {
+                const mix = posH === 'BB' ? bbMixedFrequencies(handStr, posV, effStack)
+                                          : sbMixedFrequencies(handStr, posV, effStack);
+                const [call, raise, jam, fold] = mix ? mix.frequencies : [];
+                const unsupported = !mix ? ''
+                    : gameConfig.stage !== 'normal' || gameConfig.gameType !== 'normal' ? `${posH} ICM / 赛制未校准`
+                    : !gameConfig.ante ? `无 Ante 的 ${posH} 混合未校准`
+                    : gameConfig.playStyle !== 'normal' ? `自定义打法的 ${posH} 混合未校准`
+                    : Math.abs(raiseSize - mix.open) > 0.300001 ? `此开池尺度的 ${posH} 混合未校准`
+                    : raise > 0 && gameConfig.tbSize !== 'auto' ? '自定义 3-Bet 尺度未校准' : '';
+                if (mix && unsupported && posH === 'SB') {
+                    // 不 return：落入下方旧 SB 模型，executeEngine 包装层在理由末尾追加标注
+                    document.getElementById('resultPanel').dataset.sbMixFallback = unsupported;
+                } else if (mix) {
+                    if (unsupported) {
+                        box.style.borderColor = '#e0a83a'; box.style.backgroundColor = 'rgba(224,168,58,.1)';
+                        vText.style.color = '#e0a83a'; vText.innerText = `⚠️ ${unsupported}`;
+                        logicText.innerText = `本节点只有常规期、含 Ante 的 ChipEV 原图（开池约 ${mix.open}BB）。` +
+                            '缺少当前设置的频率依据，暂不输出动作、尺度或频率；不会用列表顺序猜价值/诈唬段。';
+                    } else {
+                        const actions = [
+                            { name:'跟注 (Call)', short:'跟注', f:call, cls:'bg-call' },
+                            { name:'3-Bet', short:'3-Bet', f:raise, cls:'bg-raise' },
+                            { name:'全下 (Re-Jam)', short:'全下', f:jam, cls:'bg-open' },
+                            { name:'弃牌 (Fold)', short:'弃牌', f:fold, cls:'bg-fold' }
+                        ].filter(a => a.f > 0);
+                        const main = [...actions].sort((a,b) => b.f-a.f)[0];
+                        const isMix = actions.length > 1 && main.f < 80;
+                        const color = isMix ? '#e0a83a' : main.short === '弃牌' ? '#8b95ab' : main.short === '跟注' ? '#45d68a' : '#ff7a7d';
+                        box.style.borderColor = color; box.style.backgroundColor = 'var(--surface-2)';
+                        vText.style.color = color;
+                        vText.innerText = isMix ? '🟡 混合策略' : `${main.name} ${main.f}%`;
+                        logicText.innerText = `MPT ${posH} 四动作 ChipEV 基准：${handStr} 对 ${POS_LABEL[posV] || posV}，${effStack}BB。` +
+                            (mix.interpolated ? '位置/深度间按频率线性插值（近似）。' : '保留原图混合，像素提取后取整，存在读图误差。') +
+                            (Math.abs(raiseSize-mix.open)>0.01 ? `开池${raiseSize}BB近似采用${mix.open}BB基准。` : '') +
+                            (posV === 'SB' && raise ? '非全下尺度沿用既有IP规则（启发式）。' : '非全下尺度按MPT Table43；不同动作使用各自尺度。');
+                        const sizes = [];
+                        if (raise) sizes.push(`3-Bet 到 ${(mix.raiseTo ?? raiseSize * getTbMult(true)).toFixed(1)}BB (${raise}%)`);
+                        if (jam) sizes.push(`全下到 ${effStack.toFixed(1)}BB (${jam}%)`);
+                        if (sizes.length) { sizingBox.classList.remove('hidden'); document.getElementById('sizingContent').innerText = sizes.join(' · '); }
+                        freqBox.classList.remove('hidden');
+                        document.getElementById('freqBar').innerHTML = actions.map(a => `<div class="freq-fill ${a.cls}" style="width:${a.f}%;min-width:0;overflow:hidden;white-space:nowrap" title="${a.short} ${a.f}%">${a.short} ${a.f}%</div>`).join('');
+                        document.getElementById('freqLabels').innerHTML = actions.map(a => `<span>${a.short} ${a.f}%</span>`).join('');
+                        document.getElementById('resultPanel').dataset.bbMix = posH;
+                    }
+                    document.getElementById('resultPanel').classList.remove('invisible');
+                    updateCfgSummary();
+                    return;
+                }
+            }
+
+            // 模式 8: 面对 4-Bet（2026-09-08 新增）
             if (currentMode === 'face4b') {
                 if (sH <= 0 || sV <= 0) { alert("筹码须大于 0。"); return; }
                 globalFourBetSize = fourBetSize;
@@ -7061,7 +7197,7 @@
                                 const a0 = _r.agg;
                                 _r = Object.assign({}, _r, { agg: Math.round(Math.min(100, a0 * _aggMult)) });
                                 _r.limp = Math.max(0, 100 - _r.agg);
-                                icmNote = `<br><span class="text-[10px]" style="color:#e0a83a">` +
+                                icmNote = `<br><span class="text-xs" style="color:#e0a83a">` +
                                           `【${((stageOpts.find(o => o.val === gameConfig.stage) || {}).label || gameConfig.stage)} ICM】进攻频率 ` +
                                           `${a0}% → ${_r.agg}%（盲对盲的 ICM 表现是趋向纯跛入/弃牌；大码反向更该施压）</span>`;
                             }
@@ -7174,7 +7310,7 @@
                         logicText.innerHTML =
                             `${handStr} 在 ${POS_LABEL[posH]} 位 ${sH}BB 的 <b>开池全下段</b>内` +
                             `（该位置该深度约 ${_jp.toFixed(1)}% 的组合直接全下）。<br>` +
-                            `<span class="text-[10px] text-gray-400">这个深度的开池是「加注 / 全下 / 弃牌」三个动作。` +
+                            `<span class="text-xs text-gray-400">这个深度的开池是「加注 / 全下 / 弃牌」三个动作。` +
                             `全下的是范围的<b>中段</b>——小对子、中小 A、非同花 broadway：` +
                             `翻后不好打但有阻断和弃牌率。顶端（AA/KK/AKs）反而走小加注，因为要留住对手。` +
                             `数据取自 Modern Poker Theory 第 7 章 15BB 图（频率经图题校验），` +
@@ -7187,7 +7323,7 @@
                         logicText.innerHTML = (isHuSbMixed
                             ? `${handStr} 单挑SB rawEq=${rawEq.toFixed(1)}%，100% 开池。`
                             : `${handStr} 在 ${POS_LABEL[posH]} 位 GTO 开池范围内，100% 入池。`)
-                            + (_jset.size ? `<br><span class="text-[10px] text-gray-400">` +
+                            + (_jset.size ? `<br><span class="text-xs text-gray-400">` +
                                `本深度该位置另有约 ${openJamPct(_jbi, sH).toFixed(1)}% 的组合走开池全下，本手不在其中。</span>` : '');
                         sizingBox.classList.remove('hidden');
                         document.getElementById('sizingContent').innerText = openSize;
@@ -7563,8 +7699,8 @@
                         b = Math.round(b * (2 - sizeMod));
                         if (c + b > 100) { const r = 100/(c+b); c = Math.round(c*r); b = Math.round(b*r); }
                         f = 100 - c - b;
-                        if (sizeMod > 1) logic += ` <span class="text-orange-400 text-[10px]">[${raiseSize}x 大尺度,防守收紧]</span>`;
-                        if (sizeMod < 1) logic += ` <span class="text-green-400 text-[10px]">[${raiseSize}x 小尺度,防守放宽]</span>`;
+                        if (sizeMod > 1) logic += ` <span class="text-orange-400 text-xs">[${raiseSize}x 大尺度,防守收紧]</span>`;
+                        if (sizeMod < 1) logic += ` <span class="text-green-400 text-xs">[${raiseSize}x 小尺度,防守放宽]</span>`;
                     }
 
                     // ── 权益实现率闸门（2026-09-09）────────────────────────
@@ -7586,19 +7722,19 @@
                                     `所需 ${_g.req.toFixed(1)}%），但<b>翻后兑现不了</b>：` +
                                     `${handStr} 在该局面的权益实现率只有 <b>${_g.eqr}%</b>，` +
                                     `而这手跟注需要实现到 <b>${_g.needEqR.toFixed(0)}%</b> 才够本 —— 弃牌。` +
-                                    `<br><span class="text-[10px] text-gray-400">` +
+                                    `<br><span class="text-xs text-gray-400">` +
                                     `EqR 数据：MPT Heatmap（PioSolver，BB 单次加注底池 vs ` +
                                     `${['BTN','CO'].includes(posV) ? 'BN' : 'EP'}，` +
                                     `${effStack <= 25 ? '短码 10-20bb' : '中码 30-75bb'} 档）；` +
                                     `你有位置时实现率更高，此判据偏保守，只会让你少跟不会多跟。</span>`;
                         } else if (_g) {
-                            logic += `<span class="text-[10px] text-gray-400">（EqR 核对：需实现 ` +
+                            logic += `<span class="text-xs text-gray-400">（EqR 核对：需实现 ` +
                                      `${_g.needEqR.toFixed(0)}%，这手实现 ${_g.eqr}%）</span>`;
                         }
                     }
                     // 筹码压制(套牢拦截)：BB 防守 call 不受影响（已处于大盲，无套牢风险）
                     if (effStack < 20 && c > 0 && posH !== 'BB') {
-                        logic += `<br><span class="text-red-400 font-bold text-[10px]">【筹码压制】有效筹码(${effStack}BB)过低,取消平跟避免套牢。</span>`;
+                        logic += `<br><span class="text-red-400 font-bold text-xs">【筹码压制】有效筹码(${effStack}BB)过低,取消平跟避免套牢。</span>`;
                         if (isPair) { f += c; c = 0; } 
                         else { b += Math.floor(c * 0.3); f += Math.ceil(c * 0.7); c = 0; } 
                     }
@@ -7702,7 +7838,7 @@
                                     (pr.eqr != null
                                       ? `，但<b>只能兑现其中的 ${pr.eqr.toFixed(0)}%</b>（实际到手 ` +
                                         `${(pr.eq * pr.eqr / 100).toFixed(1)}% < 所需 ${pr.req.toFixed(1)}%）—— 弃牌。` +
-                                        `<br><span class="text-[10px] text-gray-400">权益实现率取自 MPT 热图（PioSolver），` +
+                                        `<br><span class="text-xs text-gray-400">权益实现率取自 MPT 热图（PioSolver），` +
                                         `并按跟注后 SPR 向 100% 修正（池子越浅越接近全部兑现）。</span>`
                                       : ` —— 价格不划算，弃牌。`);
                             f = 100; c = 0; b = 0; postSizing = '';
@@ -7743,7 +7879,7 @@
                         let reduction = Math.floor(c * (icmPressure - 1) * 0.4);
                         reduction = Math.min(reduction, c);
                         c -= reduction; f += reduction;
-                        logic += `<br><span class="text-red-400 font-bold text-[10px]">【ICM 修正 ×${icmPressure.toFixed(2)}】${reduction}% 平跟转为弃牌保命。</span>`;
+                        logic += `<br><span class="text-red-400 font-bold text-xs">【ICM 修正 ×${icmPressure.toFixed(2)}】${reduction}% 平跟转为弃牌保命。</span>`;
                     }
                 }
                 
@@ -7753,7 +7889,7 @@
                     c += Math.floor(adj * 0.6);
                     b += Math.floor(adj * 0.4);
                     f -= adj;
-                    logic += `<br><span class="text-sky-400 font-bold text-[10px]">【单挑模式】范围大幅放宽。</span>`;
+                    logic += `<br><span class="text-sky-400 font-bold text-xs">【单挑模式】范围大幅放宽。</span>`;
                 }
 
                 if (c+b+f === 0) f = 100;
@@ -7902,7 +8038,7 @@
                 if (icmPressure > 1.5 && sqAction === 'squeeze_bluff' && sq > 0) {
                     const reduction = Math.min(20, Math.floor(sq * (icmPressure - 1) * 0.2));
                     sq -= reduction; f += reduction;
-                    logic += `<br><span class="text-red-400 font-bold text-[10px]">【ICM 收紧 ×${icmPressure.toFixed(2)}】squeeze 频率再下调 ${reduction}%。</span>`;
+                    logic += `<br><span class="text-red-400 font-bold text-xs">【ICM 收紧 ×${icmPressure.toFixed(2)}】squeeze 频率再下调 ${reduction}%。</span>`;
                 }
 
                 f = Math.max(0, 100 - sq - c);
@@ -8063,7 +8199,7 @@
                 if (isBubble && c > 0) {
                     const cut = Math.min(c, Math.floor(c * 0.3));
                     c -= cut; f += cut;
-                    logic += `<br><span class="text-red-400 font-bold text-[10px]">【泡沫期 ICM】Cold Call 频率下调 ${cut}%，保存筹码。</span>`;
+                    logic += `<br><span class="text-red-400 font-bold text-xs">【泡沫期 ICM】Cold Call 频率下调 ${cut}%，保存筹码。</span>`;
                 }
 
                 f = Math.max(0, 100 - c - b);
@@ -8299,27 +8435,27 @@
                     logicText.innerHTML = `胜率 ${actEq}% 与门槛 ${adjustedReqEq.toFixed(1)}% 相差仅 ${Math.abs(netEv).toFixed(1)} 点，` +
                         `已在计算精度（±${moe.toFixed(1)}）之内 —— <b>这是真正的硬币局，接与弃长期收益几乎相同</b>。` +
                         `chipEV 分不出高下时，有 ICM 压力（近奖金圈/决赛桌）应弃牌保命；纯累积筹码期可接。` +
-                        `<br><span class="text-gray-400 text-[10px]">已按 ${simsUsed.toLocaleString()} 次采样精算，再加采样也无法分出胜负</span>` +
-                        (warnings.length ? `<br><span class="text-green-400 text-[10px]">${warnings.join('<br>')}</span>` : '');
+                        `<br><span class="text-gray-400 text-xs">已按 ${simsUsed.toLocaleString()} 次采样精算，再加采样也无法分出胜负</span>` +
+                        (warnings.length ? `<br><span class="text-green-400 text-xs">${warnings.join('<br>')}</span>` : '');
                 } else if (netEv >= 3) {
                     box.style.borderColor = '#2ea86a'; box.style.backgroundColor = 'rgba(46,168,106,0.1)';
                     vText.style.color = '#45d68a'; vText.innerText = '🟢 接全下 (Call)';
                     logicText.innerHTML = `对手 ${POS_LABEL[posV]} ${sV}BB push 范围 ≈ ${villainPushRange.toFixed(0)}%，我方胜率达标。` +
-                        (warnings.length ? `<br><span class="text-green-400 text-[10px]">${warnings.join('<br>')}</span>` : '');
+                        (warnings.length ? `<br><span class="text-green-400 text-xs">${warnings.join('<br>')}</span>` : '');
                 } else if (netEv >= 0) {
                     box.style.borderColor = '#e0a83a'; box.style.backgroundColor = 'rgba(224,168,58,0.1)';
                     vText.style.color = '#e0a83a'; vText.innerText = '🟡 边缘接注';
                     logicText.innerHTML = `胜率 ${actEq}% 高出门槛 ${netEv.toFixed(1)} 点，压线过关但方差大。` +
                         `有 ICM 压力（近奖金圈/决赛桌）时应偏弃牌保命。` +
-                        (razorThin ? `<br><span class="text-gray-400 text-[10px]">已按 ${simsUsed.toLocaleString()} 次采样精算（误差 ±${moe.toFixed(1)} 点）</span>` : '') +
-                        (warnings.length ? `<br><span class="text-green-400 text-[10px]">${warnings.join('<br>')}</span>` : '');
+                        (razorThin ? `<br><span class="text-gray-400 text-xs">已按 ${simsUsed.toLocaleString()} 次采样精算（误差 ±${moe.toFixed(1)} 点）</span>` : '') +
+                        (warnings.length ? `<br><span class="text-green-400 text-xs">${warnings.join('<br>')}</span>` : '');
                 } else {
                     box.style.borderColor = '#5c667f'; box.style.backgroundColor = 'rgba(92,102,127,0.12)';
                     vText.style.color = '#8b95ab'; vText.innerText = '⚪ 弃牌 (Fold)';
                     // 弃牌分支原来只有一句「胜率不足，接注送死」，**把 warnings 整个丢掉了** ——
                     // 多家全下的边池说明、风险溢价档位这些依据在最该看到的分支上反而不显示。
                     logicText.innerHTML = `胜率 ${actEq}% 低于门槛 ${adjustedReqEq.toFixed(1)}%，接注送死。` +
-                        (warnings.length ? `<br><span class="text-green-400 text-[10px]">${warnings.join('<br>')}</span>` : '');
+                        (warnings.length ? `<br><span class="text-green-400 text-xs">${warnings.join('<br>')}</span>` : '');
                 }
 
                 document.getElementById('lblBox1').innerText = "底池赔率";
@@ -8350,6 +8486,15 @@
         // 常驻决策 HUD(2026-07-21)：翻前解析各分支均以 return 结束，包一层统一刷新 HUD
         function executeEngine() {
             executeEngineCore();
+            // SB 原图未覆盖（ICM/无Ante/自定义打法/开池尺度偏离）时，旧模型的结论要带出处标注
+            const _sbFb = document.getElementById('resultPanel').dataset.sbMixFallback;
+            const _lg = document.getElementById('actionLogic');
+            if (_sbFb && _lg && _lg.innerText.trim()) {
+                const n = document.createElement('div');
+                n.className = 'sb-mix-fallback'; n.style.color = '#e0a83a';
+                n.textContent = `⚠️ 旧模型 · 未按原图校准（${_sbFb}）：MPT SB 原图只覆盖常规期、含 Ante、默认打法、开池约 2–2.3BB。`;
+                _lg.appendChild(n);
+            }
             try { updateDecisionHUD(); } catch (e) {}
         }
 
@@ -9739,7 +9884,7 @@
                 const on = i === await_;
                 slot.classList.toggle('slot-await', on);
                 const lbl = slot.querySelector('span');
-                if (lbl) lbl.className = `text-[10px] ${on ? 'text-sky-300 font-bold' : 'text-gray-500'}`;
+                if (lbl) lbl.className = `text-xs ${on ? 'text-sky-300 font-bold' : 'text-gray-500'}`;
             }
         }
 
@@ -9762,7 +9907,7 @@
                     const awaiting = (i === postState.board.filter(c => c !== null).length) && isStreetSettled();
                     slot.className = "w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"
                         + (awaiting ? ' slot-await' : '');
-                    slot.innerHTML = `<span class="text-[10px] ${awaiting ? 'text-sky-300 font-bold' : 'text-gray-500'}">${slotLabels[i]}</span>`;
+                    slot.innerHTML = `<span class="text-xs ${awaiting ? 'text-sky-300 font-bold' : 'text-gray-500'}">${slotLabels[i]}</span>`;
                     slot.onclick = null;
                 }
             }
@@ -10202,7 +10347,7 @@
             const RANKS = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
             const SUITS = ['s','h','d','c'];
             const used = new Set([heroCard1, heroCard2, ...getBoardSafe()].filter(Boolean));
-            let h = '<div class="mini-deal">';
+            let h = '<span class="inline-deal-hint">请在上方选牌网格发牌</span><div class="mini-deal">';
             SUITS.forEach(s => RANKS.forEach(r => {
                 const c = r + s, dis = used.has(c);
                 h += `<button class="md-card md-${s}${dis ? ' md-off' : ''}" ${dis ? 'disabled' : `onclick="dealNextCard('${c}')"`}
@@ -10282,7 +10427,7 @@
                 // 接着要发的翻牌就在这里就地发——不必再回上方把网格叫出来。
                 area.innerHTML = (heroCard1 && heroCard2)
                     ? `<div class="next-cta" style="flex-direction:column;align-items:stretch;gap:6px;">
-                        <span style="text-align:center;">🃏 点下面任意一张发<b>翻牌</b>${count ? `（还差 ${3 - count} 张）` : ''}</span>
+                        <span style="text-align:center;">🃏 发<b>翻牌</b>${count ? `（还差 ${3 - count} 张）` : ''}</span>
                         ${renderInlineDealer()}
                        </div>`
                     : '';
@@ -10351,11 +10496,11 @@
 
             // 顶部信息行（按钮整合 2026-07-14：撤回收敛为此处唯一入口，历史行不再逐行放按钮；
             // 信息去重 2026-07-14：底池/有效筹码上方常驻输入框已有，此处不再重复显示）
-            html += `<div class="text-[10px] text-gray-400 mb-2 flex justify-between items-center gap-2">
+            html += `<div class="text-xs text-gray-400 mb-2 flex justify-between items-center gap-2">
                 <span style="color:var(--accent)" class="font-bold flex-1">${streetLabel}</span>
                 <button onclick="toggleQuickLine()" title="速记补录：一行文本录入整条街行动（进阶功能）"
-                    class="text-[10px] px-2 py-0.5 rounded border font-bold shrink-0 ${_qlOpen() ? 'border-sky-500/50 text-sky-300 bg-sky-900/20' : 'border-white/10 text-gray-400 bg-white/5 hover:bg-white/10'}">⌨ 速记</button>
-                ${streetActions.length > 0 ? `<button onclick="undoLastStep()" class="text-[10px] bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-0.5 rounded border border-gray-500 font-bold shrink-0">↩ 撤回</button>` : ''}
+                    class="text-xs px-2 py-0.5 rounded border font-bold shrink-0 ${_qlOpen() ? 'border-sky-500/50 text-sky-300 bg-sky-900/20' : 'border-white/10 text-gray-400 bg-white/5 hover:bg-white/10'}">⌨ 速记</button>
+                ${streetActions.length > 0 ? `<button onclick="undoLastStep()" class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-0.5 rounded border border-gray-500 font-bold shrink-0">↩ 撤回</button>` : ''}
             </div>`;
 
             // IP/OOP 切换 + 判定依据外露(2026-07-21，用户第1点)：
@@ -10365,7 +10510,7 @@
                 const hp = POS_LABEL[globalPosHero] || globalPosHero || '?';
                 const vpKey = (currentMode === 'coldCall') ? globalPosCaller : globalPosVillain;
                 const vp = POS_LABEL[vpKey] || vpKey || '?';
-                html += `<div class="text-[10px] mb-1.5 px-1 flex items-center gap-2 flex-wrap" style="color:var(--text-muted);">
+                html += `<div class="text-xs mb-1.5 px-1 flex items-center gap-2 flex-wrap" style="color:var(--text-muted);">
                     <span>行动顺序：我 <b style="color:#ff7a7d">${hp}</b> · 对手 <b style="color:#45d68a">${vp}</b>
                     → <b style="color:${heroIsOOP ? '#7cc0ff' : '#45d68a'}">${heroIsOOP ? '我先行动（OOP）' : '对手先行动（我 IP）'}</b></span>
                     <span class="seg-ctl" title="自动判定不对时在此覆盖">
@@ -10380,7 +10525,7 @@
             {
                 const _ex = (postState.extraVillains || []).filter(x => x && x !== globalPosHero && x !== globalPosVillain);
                 if (_ex.length) {
-                    html += `<div class="text-[10px] mb-1.5 px-1 py-1 rounded" style="background:rgba(224,168,58,.10);border:1px dashed rgba(224,168,58,.45);">
+                    html += `<div class="text-xs mb-1.5 px-1 py-1 rounded" style="background:rgba(224,168,58,.10);border:1px dashed rgba(224,168,58,.45);">
                         <span style="color:#e0a83a;font-weight:700;">${_ex.length + 2} 人底池</span>
                         <span class="text-gray-400"> · 我 <b style="color:#ff7a7d">${POS_LABEL[globalPosHero] || globalPosHero}</b>
                         · 主对手 <b style="color:#45d68a">${POS_LABEL[globalPosVillain] || globalPosVillain}</b>（行动线归属）</span>
@@ -10404,7 +10549,7 @@
                             placeholder="按顺序输入本街行动，空格分隔，回车录入" />
                         <button onclick="parseQuickLine()" class="qc-btn" style="flex:0 0 48px;">录入</button>
                     </div>
-                    <div class="text-[10px] text-gray-600 mt-0.5 px-1">x=过牌 · c=跟注 · f=弃牌 · a=全押 · 数字=下注/加注到该额（BB）。例：<span style="font-family:var(--font-mono);color:#8b95ab;">x 5 15</span> = 先手过牌→后手下注5→先手加注到15</div>
+                    <div class="text-xs text-gray-600 mt-0.5 px-1">x=过牌 · c=跟注 · f=弃牌 · a=全押 · 数字=下注/加注到该额（BB）。例：<span style="font-family:var(--font-mono);color:#8b95ab;">x 5 15</span> = 先手过牌→后手下注5→先手加注到15</div>
                 </div>`;
             }
 
@@ -10489,10 +10634,10 @@
                 html += `<div class="border ${frameCls} rounded-lg p-2">
                     <div class="text-sm font-bold ${titleCls} mb-1.5 flex justify-between items-center gap-2">
                         <span>${titleTxt}</span>
-                        ${isHero ? '<span class="text-[10px] text-gray-500 font-normal shrink-0 act-hint">J 过/跟 · K 注 · L 弃 · A 全押 · 1-4 尺度</span>' : ''}
+                        ${isHero ? '<span class="text-xs text-gray-500 font-normal shrink-0 act-hint">J 过/跟 · K 注 · L 弃 · A 全押 · 1-4 尺度</span>' : ''}
                     </div>`;
                 if (isHero && odds !== null) {
-                    html += `<div class="text-[10px] text-yellow-500/80 mb-1.5 px-1">底池赔率 ${odds}%，需胜率 ≥ ${odds}%</div>`;
+                    html += `<div class="text-xs text-yellow-500/80 mb-1.5 px-1">底池赔率 ${odds}%，需胜率 ≥ ${odds}%</div>`;
                 }
 
                 const foldOn = isFacing;
@@ -10543,7 +10688,7 @@
                 //      · 动作行：四键等宽 grid，整组限宽 720px —— 屏幕再宽也不拉伸变形
                 if (isFacingAllin) {
                     const allinAmt = lastAggAct ? lastAggAct.amount : effStack;
-                    html += `<div class="text-[10px] text-orange-400/80 mb-1.5 px-1 font-bold">⚠ 对手全下 ${allinAmt.toFixed(1)}BB，仅可跟注或弃牌</div>`;
+                    html += `<div class="text-xs text-orange-400/80 mb-1.5 px-1 font-bold">⚠ 对手全下 ${allinAmt.toFixed(1)}BB，仅可跟注或弃牌</div>`;
                     html += `<div class="act-row act-row-2">
                         <button onclick="${foldClick}" class="act-btn rounded-md border ${foldCls} active:scale-95 transition-all">${foldStar ? '★ ' : ''}弃牌${isHero ? '<kbd>L</kbd>' : ''}</button>
                         <button onclick="${passClick}" class="act-btn rounded-md border ${passCls} active:scale-95 transition-all">${passiveStar ? '★ ' : ''}${passiveLbl}${isHero ? '<kbd>J</kbd>' : ''}</button>
@@ -10637,11 +10782,11 @@
             );
             const ss = typeof getStreetState === 'function' ? getStreetState(streetActions) : null;
             if (ss && ss.nextToAct === 'hero' && !['street_over','showdown'].includes(ss.phase)) {
-                parts.push(`<span class="text-yellow-500 text-[10px]">⬅ 等待 Hero 决策</span>`);
+                parts.push(`<span class="text-yellow-500 text-xs">⬅ 等待 Hero 决策</span>`);
             }
 
-            area.innerHTML = `<div class="mt-1 px-2 py-1 bg-black/20 rounded text-[10px] flex flex-wrap gap-2 items-center border border-white/5">
-                <span class="text-gray-500 text-[10px]">本街动作：</span>
+            area.innerHTML = `<div class="mt-1 px-2 py-1 bg-black/20 rounded text-xs flex flex-wrap gap-2 items-center border border-white/5">
+                <span class="text-gray-500 text-xs">本街动作：</span>
                 ${parts.join('<span class="text-gray-600 mx-1">→</span>')}
             </div>`;
         }
@@ -10970,8 +11115,8 @@
                 <div id="decisionPanel" class="panel-bg rounded overflow-hidden hidden" style="border: 1px solid var(--glass-border)">
                     <div id="decisionMain" class="px-3 py-2" style="background: linear-gradient(135deg, rgba(87,169,255,0.10), rgba(0,0,0,0.25));">
                         <div class="flex items-baseline justify-between gap-2 mb-1">
-                            <span class="text-[10px] text-gray-400 shrink-0">决策依据</span>
-                            <span class="text-[10px] text-gray-500 shrink-0">答案见上方决策条 ↑</span>
+                            <span class="text-xs text-gray-400 shrink-0">决策依据</span>
+                            <span class="text-xs text-gray-500 shrink-0">答案见上方决策条 ↑</span>
                         </div>
                         <div class="flex items-baseline gap-2 flex-wrap">
                             <span id="decisionAction" class="text-base font-black tracking-wider">--</span>
@@ -10984,15 +11129,15 @@
                     </div>
                     <div class="p-2 grid grid-cols-3 gap-1 text-center bg-black/10" id="decisionMath">
                         <div class="bg-black/20 p-1 rounded">
-                            <div class="text-[10px] text-gray-400">底池赔率</div>
+                            <div class="text-xs text-gray-400">底池赔率</div>
                             <div id="decMathOdds" class="text-xs font-bold text-white">--</div>
                         </div>
                         <div class="bg-black/20 p-1 rounded">
-                            <div class="text-[10px] text-gray-400">MDF</div>
+                            <div class="text-xs text-gray-400">MDF</div>
                             <div id="decMathMdf" class="text-xs font-bold text-white">--</div>
                         </div>
                         <div class="bg-black/20 p-1 rounded">
-                            <div class="text-[10px] text-gray-400">SPR</div>
+                            <div class="text-xs text-gray-400">SPR</div>
                             <div id="decMathSpr" class="text-xs font-bold text-white">--</div>
                         </div>
                     </div>
@@ -11003,24 +11148,24 @@
                 <div id="equityPanel" class="panel-bg p-2 rounded hidden">
                     <div class="flex items-center justify-between mb-2">
                         <div class="text-xs font-bold text-gray-400">胜率分析</div>
-                        <div id="equityAlgoBadge" class="text-[10px] px-1.5 py-0.5 rounded font-bold bg-blue-900/50 text-blue-400 border border-blue-500/30">--</div>
+                        <div id="equityAlgoBadge" class="text-xs px-1.5 py-0.5 rounded font-bold bg-blue-900/50 text-blue-400 border border-blue-500/30">--</div>
                     </div>
                     <div class="grid grid-cols-3 gap-1 mb-2">
                         <div class="bg-black/30 p-2 rounded text-center">
-                            <div class="text-[10px] text-gray-400">胜率</div>
+                            <div class="text-xs text-gray-400">胜率</div>
                             <div id="equityWinVal" class="text-xl font-black text-green-400">--</div>
                         </div>
                         <div class="bg-black/30 p-2 rounded text-center">
-                            <div class="text-[10px] text-gray-400">平率</div>
+                            <div class="text-xs text-gray-400">平率</div>
                             <div id="equityTieVal" class="text-xl font-black text-yellow-300">--</div>
                         </div>
                         <div class="bg-black/30 p-2 rounded text-center">
-                            <div class="text-[10px] text-gray-400">败率</div>
+                            <div class="text-xs text-gray-400">败率</div>
                             <div id="equityLoseVal" class="text-xl font-black text-red-400">--</div>
                         </div>
                     </div>
                     <div class="h-2 rounded overflow-hidden flex mb-2" id="equityColorBar"></div>
-                    <div class="flex justify-between text-[10px] text-gray-400">
+                    <div class="flex justify-between text-xs text-gray-400">
                         <span>样本: <span id="equitySampleCount">--</span></span>
                         <span id="equitySpr" class="hidden"></span>
                     </div>
@@ -11031,16 +11176,16 @@
                     <div class="text-xs font-bold text-gray-400 mb-2">当前牌力</div>
                     <div class="flex items-center justify-between bg-black/30 p-2 rounded mb-2">
                         <div>
-                            <div class="text-[10px] text-gray-400">牌型</div>
+                            <div class="text-xs text-gray-400">牌型</div>
                             <div id="handCardType" class="text-base font-bold text-white mt-0.5">--</div>
                         </div>
                         <div class="text-right">
-                            <div class="text-[10px] text-gray-400">进张数</div>
+                            <div class="text-xs text-gray-400">进张数</div>
                             <div id="handCardOuts" class="text-xl font-black text-blue-400">--</div>
                         </div>
                     </div>
-                    <div class="text-[10px] text-gray-300 mb-1" id="handCardStr"></div>
-                    <div class="flex justify-between text-[10px] text-gray-400 mb-1">
+                    <div class="text-xs text-gray-300 mb-1" id="handCardStr"></div>
+                    <div class="flex justify-between text-xs text-gray-400 mb-1">
                         <span>相对牌力（强过对手范围）</span>
                         <span id="handCardRelStr" class="text-yellow-400 font-bold">--</span>
                     </div>
@@ -11051,18 +11196,18 @@
 
                 <!-- 卡片5：对手范围估算（默认展开） -->
                 <div id="postRangeCard" class="panel-bg rounded overflow-hidden hidden" style="border: 1px solid rgba(107,70,109,0.3)">
-                    <button onclick="togglePostRange()" class="w-full px-2 py-1.5 flex items-center justify-between text-[10px] text-gray-400 hover:text-gray-200 bg-black/20">
+                    <button onclick="togglePostRange()" class="w-full px-2 py-1.5 flex items-center justify-between text-xs text-gray-400 hover:text-gray-200 bg-black/20">
                         <span class="font-bold">对手范围估算</span>
                         <span id="postRangeToggle">▼</span>
                     </button>
                     <div id="postRangeBody" class="p-2">
                         <!-- 翻后对手位置补录（复用翻前数据，可手动修正） -->
                         <div id="postVillainPosRow" class="mb-2">
-                            <div class="text-[10px] text-green-400 mb-1">对手位置（影响范围估算）</div>
+                            <div class="text-xs text-green-400 mb-1">对手位置（影响范围估算）</div>
                             <div id="postVillainPosButtons" class="block"></div>
                         </div>
                         <div id="rangeDesc" class="text-xs text-yellow-300 mb-1">等待计算...</div>
-                        <div class="flex justify-between text-[10px] text-gray-400 mb-1">
+                        <div class="flex justify-between text-xs text-gray-400 mb-1">
                             <span>组合数: <span id="rangeCombos">-</span></span>
                             <span>范围宽度: <span id="rangePct">-</span>%</span>
                         </div>
@@ -11080,12 +11225,12 @@
 
                 <!-- 卡片7：调试数据（默认折叠） -->
                 <div id="postDebugCard" class="panel-bg rounded overflow-hidden hidden" style="border: 1px solid rgba(107,70,109,0.4)">
-                    <button onclick="togglePostDebug()" class="w-full px-3 py-2 flex items-center justify-between text-[10px] text-gray-500 hover:text-gray-300 bg-black/20">
+                    <button onclick="togglePostDebug()" class="w-full px-3 py-2 flex items-center justify-between text-xs text-gray-500 hover:text-gray-300 bg-black/20">
                         <span>调试数据 (Audit)</span>
                         <span id="postDebugToggle">▶</span>
                     </button>
                     <div id="postDebugBody" class="hidden p-2">
-                        <div id="postAuditContent" class="text-[10px]"></div>
+                        <div id="postAuditContent" class="text-xs"></div>
                     </div>
                 </div>`;
             // 决策前置(2026-09-11)：重建后把决策卡搬回左列的决策槽
@@ -11115,14 +11260,14 @@
             let html = '';
             if (errors && errors.length > 0) {
                 html += `<div class="p-2 rounded mb-1" style="border: 1px solid rgba(239,68,68,0.5); background: rgba(127,29,29,0.2)">`;
-                html += `<div class="text-[10px] font-bold text-red-400 mb-1">数据验证错误（分析已停止）</div>`;
-                errors.forEach(e => { html += `<div class="text-[10px] text-red-300 py-0.5">• ${e}</div>`; });
+                html += `<div class="text-xs font-bold text-red-400 mb-1">数据验证错误（分析已停止）</div>`;
+                errors.forEach(e => { html += `<div class="text-xs text-red-300 py-0.5">• ${e}</div>`; });
                 html += `</div>`;
             }
             if (warnings && warnings.length > 0) {
                 html += `<div class="p-2 rounded" style="border: 1px solid rgba(234,179,8,0.5); background: rgba(78,52,0,0.3)">`;
-                html += `<div class="text-[10px] font-bold text-yellow-400 mb-1">数据警告（分析继续）</div>`;
-                warnings.forEach(w => { html += `<div class="text-[10px] text-yellow-300 py-0.5">• ${w}</div>`; });
+                html += `<div class="text-xs font-bold text-yellow-400 mb-1">数据警告（分析继续）</div>`;
+                warnings.forEach(w => { html += `<div class="text-xs text-yellow-300 py-0.5">• ${w}</div>`; });
                 html += `</div>`;
             }
             panel.innerHTML = html;
@@ -11604,7 +11749,7 @@
             if (calcStatusEl) {
                 const algHint = count === 5 ? '精准穷举' : 'Monte Carlo';
                 calcStatusEl.textContent = `⏳ 正在计算胜率 (${algHint})...`;
-                calcStatusEl.className = 'text-[10px] text-yellow-400 animate-pulse';
+                calcStatusEl.className = 'text-xs text-yellow-400 animate-pulse';
             }
 
             calculatePostflopEquity(
@@ -11618,10 +11763,10 @@
                     if (result && !result.error) {
                         const algDone = result.method === 'exact' ? '精准穷举 ✓' : `MC×${result.sampleCount||'?'} ✓`;
                         calcStatusEl.textContent = algDone;
-                        calcStatusEl.className = 'text-[10px] text-green-400';
+                        calcStatusEl.className = 'text-xs text-green-400';
                     } else {
                         calcStatusEl.textContent = '计算失败 ✗';
-                        calcStatusEl.className = 'text-[10px] text-red-400';
+                        calcStatusEl.className = 'text-xs text-red-400';
                     }
                 }
 
@@ -11782,7 +11927,7 @@
                 const suited  = hands.filter(h => h.endsWith('s'));
                 const offsuit = hands.filter(h => h.endsWith('o'));
 
-                const tagCls = 'text-[10px] bg-white/10 px-1 py-0.5 rounded mr-0.5 mb-0.5 inline-block text-gray-300';
+                const tagCls = 'text-xs bg-white/10 px-1 py-0.5 rounded mr-0.5 mb-0.5 inline-block text-gray-300';
                 const MAX_SHOW = 30;
 
                 const renderRow = (arr, label, color) => {
@@ -11790,9 +11935,9 @@
                     const shown = arr.slice(0, MAX_SHOW);
                     const overflow = arr.length - MAX_SHOW;
                     let html = `<div class="w-full mb-1">
-                        <span class="text-[10px] ${color} mr-1">${label}</span>`;
+                        <span class="text-xs ${color} mr-1">${label}</span>`;
                     shown.forEach(h => { html += `<span class="${tagCls}">${h}</span>`; });
-                    if (overflow > 0) html += `<span class="text-[10px] text-gray-400">…等 ${overflow} 种</span>`;
+                    if (overflow > 0) html += `<span class="text-xs text-gray-400">…等 ${overflow} 种</span>`;
                     html += `</div>`;
                     return html;
                 };
@@ -11822,16 +11967,16 @@
             else if (analysis.wetness >= 0.3) wetText = "微干";
 
             let flushTag = '';
-            if (analysis.flushThreat === 'flush_draw') flushTag = `<span class="bg-blue-900/50 text-blue-400 text-[10px] px-1.5 py-0.5 rounded border border-blue-500/30">同花听牌</span>`;
-            else if (analysis.flushThreat === 'monotone' || analysis.flushThreat === 'flush') flushTag = `<span class="bg-blue-900/50 text-blue-400 text-[10px] px-1.5 py-0.5 rounded border border-blue-500/30">同花面</span>`;
+            if (analysis.flushThreat === 'flush_draw') flushTag = `<span class="bg-blue-900/50 text-blue-400 text-xs px-1.5 py-0.5 rounded border border-blue-500/30">同花听牌</span>`;
+            else if (analysis.flushThreat === 'monotone' || analysis.flushThreat === 'flush') flushTag = `<span class="bg-blue-900/50 text-blue-400 text-xs px-1.5 py-0.5 rounded border border-blue-500/30">同花面</span>`;
 
             let straightTag = '';
-            if (analysis.straightThreat === 1) straightTag = `<span class="bg-yellow-900/50 text-yellow-400 text-[10px] px-1.5 py-0.5 rounded border border-yellow-500/30">顺子听牌</span>`;
-            else if (analysis.straightThreat >= 2) straightTag = `<span class="bg-yellow-900/50 text-yellow-400 text-[10px] px-1.5 py-0.5 rounded border border-yellow-500/30">顺子面</span>`;
+            if (analysis.straightThreat === 1) straightTag = `<span class="bg-yellow-900/50 text-yellow-400 text-xs px-1.5 py-0.5 rounded border border-yellow-500/30">顺子听牌</span>`;
+            else if (analysis.straightThreat >= 2) straightTag = `<span class="bg-yellow-900/50 text-yellow-400 text-xs px-1.5 py-0.5 rounded border border-yellow-500/30">顺子面</span>`;
 
             let pairedTag = '';
-            if (analysis.trips) pairedTag = `<span class="bg-sky-900/50 text-sky-400 text-[10px] px-1.5 py-0.5 rounded border border-sky-500/30">三条面</span>`;
-            else if (analysis.paired) pairedTag = `<span class="bg-sky-900/50 text-sky-400 text-[10px] px-1.5 py-0.5 rounded border border-sky-500/30">配对面</span>`;
+            if (analysis.trips) pairedTag = `<span class="bg-sky-900/50 text-sky-400 text-xs px-1.5 py-0.5 rounded border border-sky-500/30">三条面</span>`;
+            else if (analysis.paired) pairedTag = `<span class="bg-sky-900/50 text-sky-400 text-xs px-1.5 py-0.5 rounded border border-sky-500/30">配对面</span>`;
 
             const rangeColor = analysis.rangeAdvantage === 'Raiser' ? 'text-green-400' : (analysis.rangeAdvantage === 'Caller' ? 'text-red-400' : 'text-gray-400');
             const rangeIcon = analysis.rangeAdvantage === 'Raiser' ? '▲' : (analysis.rangeAdvantage === 'Caller' ? '▼' : '●');
@@ -11845,8 +11990,8 @@
                 </div>
                 <div class="flex justify-between items-center bg-black/30 p-2 rounded mb-2">
                     <div>
-                        <div class="text-[10px] text-gray-500">湿润度</div>
-                        <div class="text-sm font-bold text-white mt-0.5">${wetText} <span class="text-[10px] font-normal text-gray-400">(${(analysis.wetness*100).toFixed(0)}%)</span></div>
+                        <div class="text-xs text-gray-500">湿润度</div>
+                        <div class="text-sm font-bold text-white mt-0.5">${wetText} <span class="text-xs font-normal text-gray-400">(${(analysis.wetness*100).toFixed(0)}%)</span></div>
                     </div>
                     <div class="flex gap-1 flex-col items-end">
                         ${pairedTag}
@@ -11854,13 +11999,13 @@
                     </div>
                 </div>
                 <div class="flex flex-col gap-1.5 mb-2">
-                    <div class="flex items-center gap-2 text-[10px]">
+                    <div class="flex items-center gap-2 text-xs">
                         <span class="text-gray-400 w-14">湿润度</span>
                         <div class="flex-1 h-1.5 bg-gray-700 rounded overflow-hidden">
                             <div class="h-full bg-blue-500 transition-all" style="width: ${analysis.wetness * 100}%"></div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 text-[10px]">
+                    <div class="flex items-center gap-2 text-xs">
                         <span class="text-gray-400 w-14">连贯性</span>
                         <div class="flex-1 h-1.5 bg-gray-700 rounded overflow-hidden">
                             <div class="h-full bg-green-500 transition-all" style="width: ${analysis.connectedness * 10}%"></div>
@@ -11869,11 +12014,11 @@
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div class="bg-black/20 p-2 rounded flex flex-col items-center border border-white/5">
-                        <span class="text-[10px] text-gray-400">范围优势</span>
+                        <span class="text-xs text-gray-400">范围优势</span>
                         <span class="text-xs font-bold ${rangeColor} mt-1">${rangeIcon} ${analysis.rangeAdvantage}</span>
                     </div>
                     <div class="bg-black/20 p-2 rounded flex flex-col items-center border border-white/5">
-                        <span class="text-[10px] text-gray-400">坚果优势</span>
+                        <span class="text-xs text-gray-400">坚果优势</span>
                         <span class="text-xs font-bold ${nutColor} mt-1">${nutIcon} ${analysis.nutAdvantage}</span>
                     </div>
                 </div>`;
@@ -12334,7 +12479,7 @@
                 if (tieEl) tieEl.innerText = '...';
                 if (loseEl) loseEl.innerText = '...';
                 if (barEl) barEl.innerHTML = '';
-                if (badgeEl) { badgeEl.innerText = '计算中'; badgeEl.className = 'text-[10px] px-1.5 py-0.5 rounded font-bold bg-gray-700 text-gray-400'; }
+                if (badgeEl) { badgeEl.innerText = '计算中'; badgeEl.className = 'text-xs px-1.5 py-0.5 rounded font-bold bg-gray-700 text-gray-400'; }
                 return;
             }
 
@@ -12364,10 +12509,10 @@
             if (badge) {
                 if (result.method === 'exact') {
                     badge.innerText = '精准穷举';
-                    badge.className = 'text-[10px] px-1.5 py-0.5 rounded font-bold bg-green-900/50 text-green-400 border border-green-500/30';
+                    badge.className = 'text-xs px-1.5 py-0.5 rounded font-bold bg-green-900/50 text-green-400 border border-green-500/30';
                 } else {
                     badge.innerText = 'MC×' + (result.sampleCount || result.validSims || '?');
-                    badge.className = 'text-[10px] px-1.5 py-0.5 rounded font-bold bg-blue-900/50 text-blue-400 border border-blue-500/30';
+                    badge.className = 'text-xs px-1.5 py-0.5 rounded font-bold bg-blue-900/50 text-blue-400 border border-blue-500/30';
                 }
             }
 
@@ -13604,8 +13749,8 @@
                          原本大字动作+尺度+频率条与 HUD 逐项重复（实测面板 255px 全是重复内容），现收敛为一行上下文标签。 -->
                     <div id="decisionMain" class="px-3 py-2" style="background: linear-gradient(135deg, rgba(87,169,255,0.10), rgba(0,0,0,0.25));">
                         <div class="flex items-baseline justify-between gap-2 mb-1">
-                            <span class="text-[10px] text-gray-400 shrink-0">决策依据</span>
-                            <span class="text-[10px] text-gray-500 shrink-0">答案见上方决策条</span>
+                            <span class="text-xs text-gray-400 shrink-0">决策依据</span>
+                            <span class="text-xs text-gray-500 shrink-0">答案见上方决策条</span>
                         </div>
                         <div class="flex items-baseline gap-2 flex-wrap">
                             <span id="decisionAction" class="text-base font-black tracking-wider">--</span>
@@ -13619,15 +13764,15 @@
                     <!-- 底层数据 -->
                     <div class="p-2 grid grid-cols-3 gap-1 text-center bg-black/10" id="decisionMath">
                         <div class="bg-black/20 p-1 rounded">
-                            <div class="text-[10px] text-gray-400">底池赔率</div>
+                            <div class="text-xs text-gray-400">底池赔率</div>
                             <div id="decMathOdds" class="text-xs font-bold text-white">--</div>
                         </div>
                         <div class="bg-black/20 p-1 rounded">
-                            <div class="text-[10px] text-gray-400">MDF</div>
+                            <div class="text-xs text-gray-400">MDF</div>
                             <div id="decMathMdf" class="text-xs font-bold text-white">--</div>
                         </div>
                         <div class="bg-black/20 p-1 rounded">
-                            <div class="text-[10px] text-gray-400">SPR</div>
+                            <div class="text-xs text-gray-400">SPR</div>
                             <div id="decMathSpr" class="text-xs font-bold text-white">--</div>
                         </div>
                     </div>
@@ -13731,7 +13876,7 @@
             };
             (result.warnings || []).forEach(w => {
                 const div = document.createElement('div');
-                div.className = 'text-[10px] px-2 py-1 rounded border ' + _warnStyle(w);
+                div.className = 'text-xs px-2 py-1 rounded border ' + _warnStyle(w);
                 // 警示文案里带 <b> 强调（如"多人底池：<b>纯诈唬一律关闭</b>"），
                 // 用 innerText 会把标签当字面量原样显示出来（用户截图可见）。内容全是引擎里的常量，非用户输入。
                 div.innerHTML = w;
@@ -14679,10 +14824,10 @@ function appendThumbnail(id, base64url) {
     div.style.cssText = 'position:relative;width:120px;height:72px;border-radius:var(--radius-sm);overflow:hidden;cursor:pointer;border:2px solid transparent;flex-shrink:0;background:#1f2937;';
     div.innerHTML = `
         <img src="${base64url}" style="width:100%;height:100%;object-fit:cover;">
-        <div style="position:absolute;top:3px;left:3px;background:rgba(0,0,0,0.7);color:white;font-size:10px;font-weight:bold;padding:1px 5px;border-radius:var(--radius-xs);">#${id}</div>
+        <div style="position:absolute;top:3px;left:3px;background:rgba(0,0,0,0.7);color:white;font-size:12px;font-weight:bold;padding:1px 5px;border-radius:var(--radius-xs);">#${id}</div>
         <div id="thumb-status-${id}" style="position:absolute;top:20px;right:3px;font-size:12px;">🟡</div>
         <div onclick="deleteVisionRecord(${id},event)" style="position:absolute;top:2px;right:2px;width:16px;height:16px;background:rgba(0,0,0,0.75);color:white;font-size:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;line-height:1;">×</div>
-        <div id="thumb-summary-${id}" style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.75);color:white;font-size:10px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">识别中...</div>`;
+        <div id="thumb-summary-${id}" style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.75);color:white;font-size:12px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">识别中...</div>`;
     container.appendChild(div);
 }
 
@@ -14746,9 +14891,9 @@ function renderVisionReviewCard(payload) {
     // editKey 不为空 → 整格可点编辑（用于数字/位置）；牌格的编辑入口在 chip 上
     const cellWrap = (label, innerHTML, isNull, sub, editKey) =>
         `<div ${editKey ? `data-edit="${editKey}"` : ''} style="${isNull ? NULL_BG : NORMAL_BG}padding:6px 8px;border-radius:var(--radius-sm);overflow:hidden;${editKey ? 'cursor:pointer;' : ''}">
-            <div style="font-size:10px;color:#9ca3af;margin-bottom:3px;">${label}${editKey ? ' <span style="color:var(--accent-hover);">✎</span>' : ''}</div>
+            <div style="font-size:12px;color:#9ca3af;margin-bottom:3px;">${label}${editKey ? ' <span style="color:var(--accent-hover);">✎</span>' : ''}</div>
             <div style="font-size:1rem;font-weight:900;color:#fff;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${innerHTML}</div>
-            ${sub ? `<div style="font-size:10px;color:#6b7280;margin-top:2px;">${sub}</div>` : ''}
+            ${sub ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;">${sub}</div>` : ''}
         </div>`;
 
     // 牌 chip（可点编辑；2026-07-21 增大到 44×52 并外露花色校验状态）
@@ -14774,7 +14919,7 @@ function renderVisionReviewCard(payload) {
             : { t: '？', col: '#ff7a7d', bd: '#e5484d', tip: '花色未经像素校验（该区域不够清晰）——请人工确认' };
         return `<span data-edit="${editKey}" title="${mark.tip}｜点击可改" style="${base}${active}border:1.5px solid ${mark.bd};background:${suitBg[s]||'#2d2c3a'};color:#fff;padding:2px 4px;">
             <span>${r}${SYM[s]||''}</span>
-            <span style="font-size:13px;font-weight:900;color:${mark.col};line-height:1;margin-top:2px;">${mark.t}</span></span>`;
+            <span style="font-size:14px;font-weight:900;color:${mark.col};line-height:1;margin-top:2px;">${mark.t}</span></span>`;
     };
     // 花色校验汇总：有未校验的牌就把它顶到最前面提醒
     const allCards = [p.card1, p.card2, ...board].filter(Boolean);
@@ -14844,10 +14989,10 @@ function renderVisionReviewCard(payload) {
     box.innerHTML =
         `<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-                <span style="font-size:10px;font-weight:bold;color:var(--accent-hover);">📋 识别结果核对</span>
-                <span style="font-size:10px;color:#6b7280;">${streetTag}</span>
-                ${suitBanner ? '' : '<span style="font-size:10px;color:#45d68a;">✓ 花色全部经像素校验</span>'}
-                <span style="font-size:10px;color:#6b7280;">· ✓已验 ✎已改 ？未验 · 点牌/数字即改</span>
+                <span style="font-size:12px;font-weight:bold;color:var(--accent-hover);">📋 识别结果核对</span>
+                <span style="font-size:12px;color:#6b7280;">${streetTag}</span>
+                ${suitBanner ? '' : '<span style="font-size:12px;color:#45d68a;">✓ 花色全部经像素校验</span>'}
+                <span style="font-size:12px;color:#6b7280;">· ✓已验 ✎已改 ？未验 · 点牌/数字即改</span>
             </div>
             ${suitBanner}${multiWarn}
             <div class="grid grid-cols-2 md:grid-cols-3" style="gap:6px;">${cells}</div>
@@ -14893,7 +15038,7 @@ function renderVisionReviewCard(payload) {
         w.style.cssText = 'margin-top:8px;padding:8px;border:1px solid var(--accent);border-radius:6px;background:rgba(0,0,0,0.3);';
         const head = document.createElement('div');
         head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
-        head.innerHTML = `<span style="font-size:10px;color:var(--accent-hover);font-weight:bold;">${titleHTML}</span>`;
+        head.innerHTML = `<span style="font-size:12px;color:var(--accent-hover);font-weight:bold;">${titleHTML}</span>`;
         const close = document.createElement('button');
         close.textContent = '✕ 关闭';
         close.style.cssText = 'font-size:12px;color:#9ca3af;background:none;border:1px solid var(--border-primary);border-radius:4px;padding:2px 8px;cursor:pointer;';
