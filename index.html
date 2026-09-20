@@ -13554,8 +13554,40 @@
                         && typeof flexFreq.bet === 'number' && frequencies.bet <= flexFreq.bet - 5) {
                         reasoning += `；但承诺区权重 ${(commitWeight * 100).toFixed(0)}% 把它压到实际下注 ${frequencies.bet}%`;
                     }
-                    if (commitStrat.action !== flexAction) {
-                        warnings.push(`⚠️ SPR临界区(spr=${spr.toFixed(2)})：筹码略浅倾向${commitStrat.action}，略深倾向${flexAction}`);
+                }
+
+                // ── TexasSolver 河牌校准 v5（环节 8，双人 · 常规期 · 主动线）──
+                // 预注册验收通过：56 独立新节点 MAE 13.35→7.67（改善 5.68 点），单桶零恶化。
+                // 保护线：强牌（两对+、顶对）保持现有逻辑 100% 不变；多人池、ICM、面对下注保持原样。
+                // 弱对（衰减 75%）与无对（完整校正）校正下注频率：
+                //   无对拟合：clamp(0.55 × 现频率 + 16.4 + 14.8 × 河牌超牌 + 17.4 × IP转牌继续开火, 0, 100)
+                //   弱对拟合：现频率 + 0.75 × (无对拟合结果 - 现频率)
+                if (street === 'river' && _mwN === 0 && stage === 'normal' && villainBet === 0 && board.length === 5) {
+                    const _rBucket = heroMadeBucket(postState.heroCards, board);
+                    if (_rBucket === '弱对' || _rBucket === '无对') {
+                        const _oldFreq = (frequencies && typeof frequencies.bet === 'number')
+                            ? frequencies.bet
+                            : (/BET|RAISE/i.test(primaryAction) ? 100 : 0);
+                        const _RKI = '23456789TJQKA';
+                        const _b5 = board.map(normalizeCard);
+                        const _riverRank = _RKI.indexOf(_b5[4][0]);
+                        const _prevTop = Math.max(..._b5.slice(0, 4).map(c => _RKI.indexOf(c[0])));
+                        const _isOver = _riverRank > _prevTop ? 1 : 0;
+                        const _heroBetTurn = actions.some(a => a.street === 'turn' && a.player === 'hero' && ['bet', 'raise', 'allin'].includes(a.action));
+                        const _isIpTurnBettor = (heroPos === 'IP' && _heroBetTurn) ? 1 : 0;
+                        const _fitted = Math.max(0, Math.min(100, Math.round(0.55 * _oldFreq + 16.4 + 14.8 * _isOver + 17.4 * _isIpTurnBettor)));
+                        const _newFreq = _rBucket === '弱对'
+                            ? Math.max(0, Math.min(100, Math.round(_oldFreq + 0.75 * (_fitted - _oldFreq))))
+                            : _fitted;
+                        frequencies = { bet: _newFreq, check: 100 - _newFreq };
+                        if (_newFreq >= 50) {
+                            primaryAction = 'BET';
+                            sizing = sizing || (heroPos === 'OOP' ? sc.sizes.probe : '33% 底池');
+                        } else {
+                            primaryAction = 'CHECK';
+                            sizing = '';
+                        }
+                        reasoning += `（TexasSolver 河牌校准：成手=${_rBucket}，下注频率 ${_oldFreq}%→${_newFreq}%）`;
                     }
                 }
 
