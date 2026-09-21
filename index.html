@@ -5049,7 +5049,7 @@
                 const row = MPT_BB_MIX[`${p}_${d}`]?.[hand];
                 if (!Array.isArray(row) || row.length !== 4) return [0, 0, 0, 100];
                 const sum = row.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-                if (sum <= 0 || !Number.isFinite(sum)) return [0, 0, 0, 100];
+                if (sum <= 0 || !Number.isFinite(sum) || !row.every(v => Number.isFinite(v) && v >= 0) || Math.abs(sum - 100) > 1) return [0, 0, 0, 100];
                 return row.map(v => Number.isFinite(v) ? v : 0);
             };
             const atDepth = p => blend(at(p, loD), at(p, hiD), hiD === loD ? 0 : (depth - loD) / (hiD - loD));
@@ -5084,7 +5084,7 @@
                 const row = MPT_SB_MIX[`${p}_${d}`]?.[hand];
                 if (!Array.isArray(row) || row.length !== 4) return [0, 0, 0, 100];
                 const sum = row.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-                if (sum <= 0 || !Number.isFinite(sum)) return [0, 0, 0, 100];
+                if (sum <= 0 || !Number.isFinite(sum) || !row.every(v => Number.isFinite(v) && v >= 0) || Math.abs(sum - 100) > 1) return [0, 0, 0, 100];
                 return row.map(v => Number.isFinite(v) ? v : 0);
             };
             const atDepth = p => blend(at(p, loD), at(p, hiD), hiD === loD ? 0 : (depth - loD) / (hiD - loD));
@@ -5240,7 +5240,7 @@
                             const pctVal = (targetCombos / 1326 * 100).toFixed(1);
                             return {
                                 hands: out,
-                                note: `${blindPos} 跟注段 (vs ${openerPos}，${pctVal}%，MPT 组合加权实测，剔除他的 3-Bet/全下段)`
+                                note: `${blindPos} 跟注段 (vs ${openerPos}，${pctVal}%，MPT 组合加权实测)`
                             };
                         }
                     }
@@ -6906,32 +6906,41 @@
             // 盲位单次开池：源图四动作，不经过旧价值/诈唬标签
             // （BB 2026-09-19；SB 2026-09-20，SB 原图未覆盖时回退旧模型并标注——用户决定，见 D-25）
             // ════════════════════════════════════════════════════
-            if (currentMode === 'faceBet' && (posH === 'BB' || posH === 'SB') && raiseSize < effStack) {
-                const mix = posH === 'BB' ? bbMixedFrequencies(handStr, posV, effStack)
-                                          : sbMixedFrequencies(handStr, posV, effStack);
-                const [call, raise, jam, fold] = mix ? mix.frequencies : [];
-                const unsupported = !mix ? ''
-                    : gameConfig.stage !== 'normal' || gameConfig.gameType !== 'normal' ? `${posH} ICM / 赛制未校准`
-                    : !gameConfig.ante ? `无 Ante 的 ${posH} 混合未校准`
-                    : gameConfig.playStyle !== 'normal' ? `自定义打法的 ${posH} 混合未校准`
-                    : Math.abs(raiseSize - mix.open) > 0.300001 ? `此开池尺度的 ${posH} 混合未校准`
-                    : raise > 0 && gameConfig.tbSize !== 'auto' ? '自定义 3-Bet 尺度未校准' : '';
-                if (!mix) {
+            if (currentMode === 'faceBet' && (posH === 'BB' || posH === 'SB')) {
+                if (raiseSize >= effStack) {
                     const rp = document.getElementById('resultPanel');
                     if (rp) {
-                        const reason = '深度/位置超出原图覆盖（15–60BB）';
+                        const reason = '面对全下开池';
                         rp.dataset.mixFallback = `${posH}:${reason}`;
                         rp.dataset.sbMixFallback = reason;
                     }
-                } else if (unsupported) {
-                    // 不 return：落入下方旧 BB/SB 模型，executeEngine 包装层在理由末尾追加标注
-                    const rp = document.getElementById('resultPanel');
-                    if (rp) {
-                        rp.dataset.mixFallback = `${posH}:${unsupported}`;
-                        rp.dataset.sbMixFallback = unsupported;
-                        if (mix.open) rp.dataset.mixOpen = mix.open;
-                    }
                 } else {
+                    const mix = posH === 'BB' ? bbMixedFrequencies(handStr, posV, effStack)
+                                              : sbMixedFrequencies(handStr, posV, effStack);
+                    const [call, raise, jam, fold] = mix ? mix.frequencies : [];
+                    const unsupported = !mix ? ''
+                        : gameConfig.stage !== 'normal' || gameConfig.gameType !== 'normal' ? `${posH} ICM / 赛制未校准`
+                        : !gameConfig.ante ? `无 Ante 的 ${posH} 混合未校准`
+                        : gameConfig.playStyle !== 'normal' ? `自定义打法的 ${posH} 混合未校准`
+                        : Math.abs(raiseSize - mix.open) > 0.300001 ? `此开池尺度的 ${posH} 混合未校准`
+                        : raise > 0 && gameConfig.tbSize !== 'auto' ? '自定义 3-Bet 尺度未校准' : '';
+                    if (!mix) {
+                        const rp = document.getElementById('resultPanel');
+                        if (rp) {
+                            const covRange = (posH === 'BB' && posV === 'SB') ? '25–60BB' : '15–60BB';
+                            const reason = `深度/位置超出原图覆盖（${covRange}）`;
+                            rp.dataset.mixFallback = `${posH}:${reason}`;
+                            rp.dataset.sbMixFallback = reason;
+                        }
+                    } else if (unsupported) {
+                        // 不 return：落入下方旧 BB/SB 模型，executeEngine 包装层在理由末尾追加标注
+                        const rp = document.getElementById('resultPanel');
+                        if (rp) {
+                            rp.dataset.mixFallback = `${posH}:${unsupported}`;
+                            rp.dataset.sbMixFallback = unsupported;
+                            if (mix.open) rp.dataset.mixOpen = mix.open;
+                        }
+                    } else {
                         const actions = [
                             { name:'跟注 (Call)', short:'跟注', f:call, cls:'bg-call' },
                             { name:'3-Bet', short:'3-Bet', f:raise, cls:'bg-raise' },
@@ -8545,9 +8554,15 @@
                 const [p, reason] = idx !== -1 ? [_mixFb.slice(0, idx), _mixFb.slice(idx + 1)] : ['SB', _mixFb];
                 const n = document.createElement('div');
                 n.className = 'sb-mix-fallback'; n.style.color = '#e0a83a'; n.style.marginTop = '4px';
+                const eff = (typeof globalHeroStack !== 'undefined' && typeof globalVillainStack !== 'undefined')
+                    ? Math.min(globalHeroStack, globalVillainStack) : (typeof globalHeroStack !== 'undefined' ? globalHeroStack : 40);
                 const openDesc = rp.dataset.mixOpen ? `开池约 ${rp.dataset.mixOpen}BB` : (p === 'BB' && typeof globalPosVillain !== 'undefined' && globalPosVillain === 'SB' ? '开池约 3.3–3.5BB' : '开池约 2–2.3BB');
-                const jamNote = (typeof globalHeroStack !== 'undefined' && globalHeroStack > 25) ? '；旧模型在 >25BB 无全下段、价值/诈唬标签为近似' : '';
-                n.textContent = `⚠️ 旧模型 · 未按原图校准（${reason}）：MPT ${p} 原图只覆盖常规期、含 Ante、默认打法、${openDesc}${jamNote}。`;
+                const jamNote = eff > 25 ? '；旧模型在 >25BB 无全下段、价值/诈唬标签为近似' : '';
+                if (reason === '面对全下开池') {
+                    n.textContent = `⚠️ 旧模型 · 未按原图校准（${reason}）：MPT ${p} 原图不覆盖面对全下开池，回退旧模型防守段近似（${eff > 25 ? '>25BB 无全下段、' : ''}建议按底池赔率审慎决策）。`;
+                } else {
+                    n.textContent = `⚠️ 旧模型 · 未按原图校准（${reason}）：MPT ${p} 原图只覆盖常规期、含 Ante、默认打法、${openDesc}${jamNote}。`;
+                }
                 _lg.appendChild(n);
             }
             try { updateDecisionHUD(); } catch (e) {}
@@ -9249,7 +9264,7 @@
                 if (villainPos === 'BB') {
                     const _bc = blindCallRange('BB', heroPos, tableSize, _vDepth);
                     if (_bc && _bc.hands.length >= 20) {
-                        baseHands = _bc.hands; vActionLabel = _bc.note;
+                        baseHands = _bc.hands; vActionLabel = `${_bc.note}，剔除他的 3-Bet/全下段`;
                     } else {
                         baseHands = BB_DEFENSE_RANGES[tableSize]?.['vs_' + heroPos] || [];
                         vActionLabel = `BB 防守 (vs ${heroPos})`;
@@ -9266,7 +9281,7 @@
                     // 用 20 会把浅档挡在外面、掉回 62% 的旧代理范围（本轮实测发现的断崖）
                     const _sc = blindCallRange('SB', heroPos, tableSize, _vDepth);
                     if (_sc && _sc.hands.length >= 8) {
-                        baseHands = _sc.hands; vActionLabel = _sc.note;
+                        baseHands = _sc.hands; vActionLabel = `${_sc.note}，剔除他的 3-Bet/全下段`;
                     } else {
                         const sbBase = BB_DEFENSE_RANGES[tableSize]?.['vs_' + heroPos] || [];
                         baseHands = sbBase.filter(h => getRawEquity(h) < 67.0);
