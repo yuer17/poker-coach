@@ -4754,6 +4754,14 @@
             const postRightContent = document.getElementById('postRightContent');
             if (postRightContent) postRightContent.innerHTML =
                 '<div id="analysisLoading" class="hidden text-center text-gray-400 text-sm py-3 panel-bg rounded">⏳ 正在计算胜率...</div>';
+            const _dpNext = document.getElementById('decisionPanel');
+            if (_dpNext) _dpNext.classList.add('hidden');
+            const _slotNext = document.getElementById('postDecisionSlot');
+            if (_slotNext) _slotNext.style.display = 'none';
+            initPotTracker();
+            updatePotUI();
+            updateFlowStage();
+            updateStreetStatusBar();
 
             // 刷新 switchMode（保留当前场景）；完成后把保留的筹码写回新渲染的 input
             const savedHero = globalHeroStack, savedVillain = globalVillainStack;
@@ -5499,17 +5507,18 @@
          * 这里统一算出：所需胜率（真实赔率）与我方对 3-Bet 者范围的实时 MC 胜率。
          * @returns {{req:number, eq:number, toCall:number, pot:number}|null} 数据不足时 null
          */
-        function threeBetCallPrice(heroCards, threeBetterPos, heroPos, invested, threeBetSize, extraDead, effStackForPrice) {
+        function threeBetCallPrice(heroCards, threeBetterPos, targetPos, invested, threeBetSize, extraDead, effStackForPrice, heroActualPos) {
             if (!(threeBetSize > 0) || typeof Hand === 'undefined') return null;
             let range = null;
+            const heroPos = heroActualPos || targetPos;
             // 一致性（2026-09-09）：3-Bet 者是盲位时，用与 getThreeBetAction / rangeEstimator
             // 同一张 MPT 实测表估他的范围——否则同一个模型里会出现三套宽度。
             if (threeBetterPos === 'BB' || threeBetterPos === 'SB') {
-                const r3 = bbSb3betSet(threeBetterPos, heroPos, Math.max(0, effStackForPrice || 0));
+                const r3 = bbSb3betSet(threeBetterPos, targetPos, Math.max(0, effStackForPrice || 0));
                 if (r3 && r3.set.size >= 8) range = [...r3.set];
             }
             if (!range) {
-                const key = `${threeBetterPos}_vs_${heroPos}`;
+                const key = `${threeBetterPos}_vs_${targetPos}`;
                 const tbl = THREBET_RANGES[gameConfig.tableSize] || THREBET_RANGES['9max'] || {};
                 const entry = tbl[key] || (THREBET_RANGES['9max'] || {})[key];
                 // THREBET_RANGES 的值是 { value:[...], bluff:[...] } 而非裸数组——
@@ -6808,6 +6817,14 @@
             delete document.getElementById('resultPanel').dataset.sbMixFallback;
             delete document.getElementById('resultPanel').dataset.mixFallback;
             delete document.getElementById('resultPanel').dataset.mixOpen;
+            // 翻前状态防御：公共牌不足 3 张时，确保翻后决策卡与挂载槽严格隐藏，防止跨局/翻后历史残留
+            if (!postState.board || postState.board.filter(c => c !== null).length < 3) {
+                const _dp = document.getElementById('decisionPanel');
+                if (_dp) _dp.classList.add('hidden');
+                const _slot = document.getElementById('postDecisionSlot');
+                if (_slot) _slot.style.display = 'none';
+                postState.decisionResult = null;
+            }
             saveCurrentInputs();
 
             if (!validatePreFlopInputs()) {
@@ -8240,11 +8257,13 @@
                 // 19BB 的 3-Bet 都输出 Cold Call 100%。Hero 尚未投入，需补全额 3-Bet；
                 // 开池者那份加注是死钱。跟注后剩余筹码不足 ~10BB 时也没有买 Set 的隐含赔率。
                 if (c > 0) {
-                    const pr = threeBetCallPrice([heroCard1, heroCard2], globalPosCaller || posV, posH,
-                                                 0, threeBetSize, raiseSize, effStack);
-                    const leftAfter = effStack - threeBetSize;
+                    const heroInvested = (posH === 'BB' ? 1.0 : (posH === 'SB' ? 0.5 : 0.0));
+                    const toCall = Math.max(0, threeBetSize - heroInvested);
+                    const pr = threeBetCallPrice([heroCard1, heroCard2], globalPosCaller || posV, posV,
+                                                 heroInvested, threeBetSize, raiseSize, effStack, posH);
+                    const leftAfter = effStack - toCall;
                     if (pr && pr.eq < pr.req - 3) {
-                        logic = `面对 ${threeBetSize}BB 3-Bet 需补全额，所需胜率 ${pr.req.toFixed(1)}%，` +
+                        logic = `面对 ${threeBetSize}BB 3-Bet 需补 ${toCall.toFixed(1)}BB，所需胜率 ${pr.req.toFixed(1)}%，` +
                                 `而 ${handStr} 对 3-Bet 范围仅 ${pr.eq.toFixed(1)}% —— 价格不划算，弃牌。`;
                         c = 0; b = 0; f = 100;
                     } else if (isPair && leftAfter < 10) {
@@ -9997,6 +10016,7 @@
             postState.equityResult = null;
             postState.decisionResult = null;
             postState._pendingVillainBet = null; // O3：清牌即清 Vision 预填
+            initPotTracker();
             recalculatePot();
             renderBoard();
             renderBoardPicker();
@@ -10005,6 +10025,10 @@
             // 隐藏右侧分析结果（公共牌已清空）
             const dc = document.getElementById('decisionPanel');
             if (dc) dc.classList.add('hidden');
+            const slot = document.getElementById('postDecisionSlot');
+            if (slot) slot.style.display = 'none';
+            updateFlowStage();
+            updateStreetStatusBar();
             try { updateDecisionHUD(); } catch (e) {} // 常驻决策 HUD(2026-07-21)
         }
 
@@ -10084,12 +10108,20 @@
                 const slot = document.getElementById('postDecisionSlot');
                 const dp = document.getElementById('decisionPanel');
                 if (slot && dp && dp.parentElement !== slot) slot.appendChild(dp);
+                const cnt = postState.board ? postState.board.filter(c => c !== null).length : 0;
+                const inPost = cnt >= 3;
+                if (!inPost) {
+                    if (slot) slot.style.display = 'none';
+                    if (dp) dp.classList.add('hidden');
+                } else {
+                    if (slot) slot.style.display = '';
+                }
             } catch (e) {}
         }
 
         function updateFlowStage() {
             try {
-                const cnt = postState.board.filter(c => c !== null).length;
+                const cnt = postState.board ? postState.board.filter(c => c !== null).length : 0;
                 const inPost = cnt >= 3;
                 if (!inPost) { _preZoneUserOpen = false; _preDecUserOpen = false; }
                 const pre = document.getElementById('scenarioZone');
@@ -10108,6 +10140,14 @@
                 const colR = document.querySelector('.col-right');
                 if (colR) colR.classList.toggle('pre-stage', !inPost);
                 mountDecision();   // 翻后决策卡挂到左列同一个槽位
+                const slot = document.getElementById('postDecisionSlot');
+                const dp = document.getElementById('decisionPanel');
+                if (!inPost) {
+                    if (slot) slot.style.display = 'none';
+                    if (dp) dp.classList.add('hidden');
+                } else {
+                    if (slot) slot.style.display = '';
+                }
                 // 进翻后：翻前决策收起（翻后决策接管同一位置）；自证卡在右列不受影响
                 const foldDec = inPost && !_preDecUserOpen;
                 const rp = document.getElementById('resultPanel');
@@ -13571,7 +13611,7 @@
                     } else if (sc.canRangeBet && iHaveRangeAdv && equity >= 35) {
                         // 探测性范围下注（仅翻牌）：胜率≥35%+范围优势
                         primaryAction = 'BET'; sizing = sc.sizes.probe;
-                        frequencies = { bet: 40, check: 60 };
+                        frequencies = { bet: 55, check: 45 };
                         reasoning = `翻牌范围优势，胜率${equity.toFixed(0)}%≥35%，25%底池探测下注`;
                     } else {
                         // ── 空气桶不再一刀切过牌（2026-09-10，TexasSolver 校准 · 环节 3）──
@@ -13763,14 +13803,14 @@
                 // ── 跟注：赔率达标（不同街道的跟注容差不同）──
                 else if (equity >= potOdds && equityMargin >= sc.callMargin) {
                     primaryAction = 'CALL'; sizing = '';
-                    const callFreq = Math.min(80, Math.max(40, Math.round(mdf - (icmTighten - 1) * 20)));
+                    const callFreq = Math.min(80, Math.max(50, Math.round(mdf - (icmTighten - 1) * 20)));
                     frequencies = { call: callFreq, fold: 100 - callFreq };
                     reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，MDF=${mdf.toFixed(0)}%，${streetCN}跟注（需超${sc.callMargin}%容差）`;
                 }
                 // ── 进张跟注（仅翻牌/转牌，河牌禁止）──
                 else if (street !== 'river' && outs >= sc.semiBluffOuts && equity >= 20) {
                     primaryAction = 'CALL'; sizing = '';
-                    const drawFreq = Math.min(70, Math.max(30, Math.round(mdf * 0.8)));
+                    const drawFreq = Math.min(75, Math.max(50, Math.round(mdf * 0.8)));
                     frequencies = { call: drawFreq, fold: 100 - drawFreq };
                     reasoning = `${outs}张进张，${streetCN}隐含赔率跟注（MDF=${mdf.toFixed(0)}%，需≥${sc.semiBluffOuts}张出路）`;
                 }
@@ -13783,8 +13823,7 @@
                 // ── 赔率不足，弃牌 ──
                 else {
                     primaryAction = 'FOLD'; sizing = '';
-                    const foldFreq = Math.round(Math.min(90, (100 - mdf) * icmTighten));
-                    frequencies = { fold: foldFreq, call: 100 - foldFreq };
+                    frequencies = { fold: 100 };
                     reasoning = `胜率${equity.toFixed(0)}% < 赔率${potOdds.toFixed(0)}%${street === 'river' ? '（河牌无进张）' : ''}，MDF=${mdf.toFixed(0)}%，弃牌`;
                 }
 
