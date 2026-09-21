@@ -118,115 +118,106 @@
              ② 翻前区（时间线 289px + 翻前决策 325px）在翻后仍然全量占位（已由流程轴折叠解决）。
            这里修 ①：大屏把外框钉成一屏高，两列各自内部滚动，页面本身不再滚。
            矮窗口（<760px 高）与手机不套用——那里整页滚动才是对的。 */
+        /* ══════════ 大屏一屏化(2026-09-10 / 2026-09-21 R6 重构) ══════════
+           修整：大屏把外框钉成一屏高，两主列各自内部滚动，页面本身不再滚。
+           矮窗口（<760px 高）与手机不套用——整页滚动。 */
         @media (min-width: 1280px) and (min-height: 760px) {
             body { overflow: hidden; }
             .app-container { height: calc(100vh - 2rem); min-height: 0; }
             .scroll-area { flex: 1 1 auto; min-height: 0; }
-            /* ⚠ 特异性必须高过后面那条 `@media (min-width:768px) { .col-left { overflow: visible } }` ——
-               它在源码里排在本块之后，同特异性会赢。2026-09-11 实测踩到：列的 overflow-y 一直是
-               visible，而外框又是 height:100vh + overflow:clip，**超出的内容直接被裁掉且滚不到**
-               （1512×950 上左列 948px 内容只露出 731px，"↻ 重算"整个够不着）。 */
-            .scroll-area > .col-left, .scroll-area > .col-right, .scroll-area > .col-dec {
+            .scroll-area > .col-left, .scroll-area > .col-right {
                 overflow-y: auto; overflow-x: hidden; min-height: 0;
                 overscroll-behavior: contain; scrollbar-width: thin; }
-            .scroll-area > .col-left::-webkit-scrollbar, .scroll-area > .col-right::-webkit-scrollbar,
-            .scroll-area > .col-dec::-webkit-scrollbar { width: 8px; }
-            .scroll-area > .col-left::-webkit-scrollbar-thumb, .scroll-area > .col-right::-webkit-scrollbar-thumb,
-            .scroll-area > .col-dec::-webkit-scrollbar-thumb {
+            .scroll-area > .col-left::-webkit-scrollbar, .scroll-area > .col-right::-webkit-scrollbar { width: 8px; }
+            .scroll-area > .col-left::-webkit-scrollbar-thumb, .scroll-area > .col-right::-webkit-scrollbar-thumb {
                 background: rgba(255,255,255,.12); border-radius: 4px; }
             #postRightContent { overflow: visible; }
-            /* 翻前：右列还没有翻后分析，隐藏那个空标题；决策卡保持自然高度——
-               试过让它撑满可用高度，但 actionBox 内容会贴到卡片下缘（空框更难看），故不拉伸 */
             .col-right.pre-stage > #postAnalysisHead { display: none; }
         }
 
-        /* ══════════ 三列布局(2026-09-11 交互审计 P0-2) ══════════
-           实测：决策区夹在左列中间时，结论条 y=432、行动条 y=1046，固定相隔 490px；
-           而并排窗口（1280×800 / 1512×950，主屏跑扑克客户端时的常态）可视高只有 581~731，
-           于是**每手都要多滚一次**才能从"看结论"走到"点行动条"。
-           独立成决策列后两者水平相邻，垂直距离归零。
-           三档：
-             ≥1600  三列   操作 | 决策 | 参考   —— 决策居中，是视线自然落点
-             768-1599 两列  操作 | (决策在上 / 参考在下) —— 窄到放不下三列时，
-                            决策仍与行动条同屏（一个在左、一个在右上，都在视口内）
-             <768   单列堆叠（手机）：决策由贴底 HUD 承担 */
+        /* ══════════ R6 布局重构：置顶决策大卡片 + 双主列架构 (2026-09-21) ══════════
+           核心原则：答案第一，输入第二，解释第三，技术细节第四。
+           1. 弃用空荡荡的中间独立决策列（消灭横向撕裂与无意义留白）。
+           2. 决策大卡片横跨置顶（牌面输入上方），作为全屏最吸睛视觉焦点。
+           3. 下方双主列流：
+              左列 (~54%)：牌面输入 + 翻前时间线 + 翻后行动线
+              右列 (~46%)：Range + Equity + 牌面分析 + 底层自证 */
         @media (min-width: 768px) {
-            .scroll-area { display: grid; padding: 1rem; gap: 1rem; align-items: stretch; }
-            .col-left, .col-dec, .col-right {
-                height: auto; max-height: none; overflow: visible;
-                display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
-            /* ⚠ 三列踩坑(2026-09-11 实测)：这三个 div 身上还挂着两列时代的 Tailwind
-               `md:w-1/2` —— 作为 grid item，width:50% 是**网格轨道宽度的一半**，于是
-               2560 上左列只有 347px（轨道 694）、右列 417px（轨道 803），列与列之间
-               裂出 276~362px 的空白带。用后代选择器提高特异性压掉它（Tailwind CDN 的
-               样式表注入顺序不可靠，同特异性不一定赢）。 */
+            .scroll-area {
+                display: grid;
+                grid-template-columns: 54% 1fr;
+                grid-template-rows: auto auto minmax(0, 1fr);
+                padding: 0.75rem;
+                gap: 0.75rem;
+                align-items: stretch;
+            }
+            .top-status-hud {
+                grid-column: 1 / -1;
+                grid-row: 1;
+            }
+            .col-dec {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                width: 100%;
+                max-width: none;
+                flex-shrink: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .col-left {
+                grid-column: 1;
+                grid-row: 3;
+                width: 100%;
+                max-width: none;
+                flex-shrink: 1;
+                align-self: stretch;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 0.6rem;
+                min-width: 0;
+            }
+            .col-right {
+                grid-column: 2;
+                grid-row: 3;
+                width: 100%;
+                max-width: none;
+                flex-shrink: 1;
+                align-self: stretch;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 0.75rem;
+                min-width: 0;
+            }
             .scroll-area > .col-left, .scroll-area > .col-dec, .scroll-area > .col-right {
-                width: 100%; max-width: none; flex-shrink: 1; }
-            .col-right { gap: 0.75rem; }
-        }
-        /* 两列：左＝操作（跨两行），右上＝决策，右下＝参考 */
-        @media (min-width: 768px) and (max-width: 1599.98px) {
-            .scroll-area { grid-template-columns: 48% 1fr; grid-template-rows: auto 1fr; }
-            .col-left  { grid-column: 1; grid-row: 1 / span 2; }
-            .col-dec   { grid-column: 2; grid-row: 1; }
-            .col-right { grid-column: 2; grid-row: 2; min-height: 0; }
-        }
-        @media (min-width: 1280px) and (max-width: 1599.98px) {
-            .scroll-area { grid-template-columns: 52% 1fr; }
-        }
-        /* 三列：操作 | 决策 | 参考 */
-        @media (min-width: 1600px) {
-            .scroll-area { grid-template-columns: 34% 30% 1fr; grid-template-rows: 1fr; }
-            .col-left { grid-column: 1; } .col-dec { grid-column: 2; } .col-right { grid-column: 3; }
+                width: 100%; max-width: none; flex-shrink: 1;
+            }
         }
 
-        /* ══════════ UI 响应式 Step1：放开宽度 + 两栏优化（笔记本屏一屏看全关键区）══════════
-           只改布局/尺寸/间距，不动配色、不动 HTML/id/onclick/函数。
-           关键区（decisionPanel / equityPanel / SPR-赔率-MDF）字号一律不缩；
-           腾空间只靠收紧列间距 + 次要面板限高内部滚动，绝不缩关键区。
-           ≥1920 三栏留待 Step2，此处暂同两栏 1400。 */
-        /* 1) 放开 max-width（横向）——覆盖基底 .app-container 的 1200 上限 */
+        /* 容器宽度适配：全屏/2-3屏/半屏 */
         @media (max-width: 1279.98px) {
             .app-container { max-width: 100%; }
         }
-        @media (min-width: 1280px) and (max-width: 1439.98px) {
-            .app-container { max-width: 1240px; }
+        @media (min-width: 1280px) and (max-width: 1599.98px) {
+            .app-container { max-width: 1380px; }
         }
-        @media (min-width: 1440px) {
-            /* 宽度利用(2026-07-14)：1400→1560，MBP14/16 满幅使用 */
-            .app-container { max-width: 1560px; }
+        @media (min-width: 1600px) {
+            .app-container { max-width: 1680px; }
         }
-        /* 2) 笔记本断点（768–1439）：收紧两栏间距 + 次要面板限高内部滚动 */
         @media (min-width: 768px) and (max-width: 1439.98px) {
-            /* 融合单页(2026-07-14)：两列统一收紧（原仅翻后页收紧） */
             .col-left, .col-dec, .col-right { gap: 0.5rem; }
-            /* 次要面板内边距收紧（不动关键面板 decisionPanel/equityPanel） */
             #postHandCard, #postTextureCard { padding: 0.4rem; }
-            /* 对手范围/牌面结构的内部滚动已移除（zone2-B）：内容完全展开，靠整页滚动看全 */
         }
-        /* 3) 更紧一档（1280–1439）：仅「当前牌力」保留限高内部滚动；
-           对手范围(#postRangeBody)/牌面结构(#postTextureCard)的限高已移除（zone2-B） */
         @media (min-width: 1280px) and (max-width: 1439.98px) {
-            #postHandCard  { max-height: 190px; overflow-y: auto; }
+            #postHandCard { max-height: 190px; overflow-y: auto; }
         }
 
-        /* ══════════ UI 响应式 Step2：≥1920 三栏（2K/4K 一屏铺开）══════════
-           纯 CSS，不动 JS/HTML/id/onclick/配色；不碰 <1920 的 Step1 断点。
-           关键：initPostRightCards() 用 innerHTML 重建 #postRightContent 的 7 卡为扁平直接子节点，
-           任何插入其内的包裹 div 都会被清除 → 改用纯 CSS 把 #postRightContent 变 2 列网格，
-           按卡 id 分配关键/次要列；id 选择器在每次 innerHTML 重建后仍命中，JS 插入目标不受影响。
-           融合单页后：输入列(.col-left 34%) | 输出列内 #postRightContent 双列均衡。 */
+        /* ≥1920 宽屏（2K/4K 优雅铺开，右区卡片双列均衡） */
         @media (min-width: 1920px) {
-            /* 容器放宽，2K/4K 铺开（宽度利用 2026-07-14：2000→2200） */
-            .app-container { max-width: 2200px; }
-            /* 融合单页(2026-07-14)：输入列收窄，输出列放宽（原 postLeft/postRight 比例迁移到主两列） */
-            /* 2026-09-11：三列后比例由 grid-template-columns 给（flex 属性对 grid item 无效）。
-               2K/4K 上参考列可以再宽些，让它内部的双列卡不至于太挤。 */
-            .scroll-area { grid-template-columns: 32% 28% 1fr; }
-            /* 右区内部：column-count 高度均衡双列（替代刚性 grid）
-               —— 修复旧 grid 的两病：① fit-content 在内容稀疏时把次要列收成窄条；
-               ② 关键区 2 卡 vs 次要区 4 卡的列高失衡导致中栏下方大片空白。
-               column 按总高自动均衡两列、等宽，决策卡(首子)仍在左上最显眼，信息铺满不浪费。 */
+            .app-container { max-width: 1800px; }
+            .scroll-area { grid-template-columns: 52% 1fr; }
             #postRightContent {
                 display: block;
                 column-count: 2;
@@ -303,13 +294,10 @@
            正解不是隐藏，是让它**随屏幕换形态**：大屏是决策区顶部的卡片（一屏不滚，不必浮动），
            窄屏才是固定贴底的条。角色始终是"结论"，位置随形态变。 */
         @media (min-width: 1280px) {
-            /* 列内 sticky：往下滚去点行动条时，结论仍钉在视野顶部 —— 结论与执行同屏，
-               这正是 HUD 当初存在的理由，只是位置从"右列顶"回到了"决策区顶"。 */
             #decisionHUD { position: sticky; top: 0; z-index: 30; padding: 10px 14px; }
             #decisionHUD .hud-action { font-size: var(--fs-display); line-height: 1.05; }
-            /* 桌面上理由只由下面的「决策依据」出一次 —— 结论条只回答"做什么"，
-               依据卡回答"为什么"。窄屏相反：那里依据卡可能滚出视野，贴底的结论条要自带理由。 */
-            #decisionHUD .hud-why { display: none; }
+            /* R6：决策卡保留 1 句核心依据，恢复 clamp 截断 */
+            #decisionHUD .hud-why { display: -webkit-box !important; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         }
         .dec-src { font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0; text-transform: none;
                    border: 1px solid var(--border-primary); border-radius: 4px; padding: 0 5px; color: var(--text-muted); }
@@ -601,12 +589,57 @@
             .scroll-area { padding: 0.4rem; }
         }
 
-        /* ══════════ 常驻决策 HUD + 环节快捷键条 + 分层显示（2026-07-21）══════════ */
+        /* ══════════ ① 顶部赛事 HUD 状态条 (2026-09-21 R6) ══════════ */
+        .top-status-hud {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            background: rgba(255,255,255,0.025);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            font-size: var(--fs-micro);
+            flex-wrap: wrap;
+            min-height: 30px;
+        }
+        .hud-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.06);
+            padding: 2px 7px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+        .hud-chip .chip-label {
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .hud-chip .chip-val {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+        .hud-chip .street-badge {
+            background: var(--accent);
+            color: #082744;
+            padding: 1px 7px;
+            border-radius: 3px;
+            font-weight: 800;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+        }
+
+        /* ══════════ 常驻决策 Hero 卡片 + 环节快捷键条 + 分层显示（2026-07-21 / 2026-09-21 R6）══════════ */
         #decisionHUD {
             position: sticky; top: 0; z-index: 30;
-            background: var(--bg-surface-2, #171a21);
+            background: linear-gradient(135deg, rgba(22, 27, 34, 0.95) 0%, rgba(13, 17, 23, 0.98) 100%);
             border: 1px solid var(--accent); border-radius: var(--radius-md, 8px);
-            padding: 8px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+            padding: 8px 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            transition: border-color .15s, box-shadow .15s;
         }
         #decisionHUD.hud-empty { border-color: var(--glass-border); box-shadow: none; opacity: 0.8; }
         .hud-top { display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-micro); color: var(--text-muted); letter-spacing: .08em; }
@@ -622,13 +655,16 @@
         .hud-src[data-src="ref"]  { background: rgba(87,169,255,.12);  color: #7cc0ff; border-color: rgba(87,169,255,.30); }
         .hud-src[data-src="calc"] { background: rgba(46,168,106,.12);  color: #45d68a; border-color: rgba(46,168,106,.30); }
         .hud-src[data-src="mix"]  { background: rgba(224,168,58,.12);  color: #e0a83a; border-color: rgba(224,168,58,.30); }
-        .hud-action { font-family: var(--font-mono); font-size: var(--fs-display); font-weight: 900; line-height: 1.15; margin-top: 2px; color: var(--text-primary); }
+        .hud-main-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
+        .hud-action { font-family: var(--font-mono); font-size: var(--fs-display); font-weight: 900; line-height: 1.15; color: var(--text-primary); letter-spacing: 0.02em; }
         #decisionHUD[data-sem="attack"]  .hud-action { color: #ff7a7d; }
         #decisionHUD[data-sem="passive"] .hud-action { color: #45d68a; }
         #decisionHUD[data-sem="fold"]    .hud-action { color: #8b95ab; }
         #decisionHUD[data-sem="mixed"]   .hud-action { color: #e0a83a; }
-        .hud-sizing { font-family: var(--font-mono); color: var(--gold); font-weight: 700; font-size: var(--fs-body); margin-top: 1px; }
-        .hud-freq { margin-top: 5px; }
+        .hud-sizing { font-family: var(--font-mono); color: var(--gold); font-weight: 700; font-size: 14px;
+                      background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.35);
+                      padding: 2px 8px; border-radius: 4px; }
+        .hud-freq { flex: 1; min-width: 140px; max-width: 300px; margin-top: 0; }
         .hud-why { font-size: var(--fs-caption); color: var(--text-secondary); margin-top: 4px; line-height: 1.35;
                    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .macro-strip { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
@@ -673,8 +709,11 @@
         #visionHistoryBar.vbar-collapsed #visionThumbnails { display: none !important; }
         #visionHistoryBar.vbar-collapsed > div:first-child { margin-bottom: 0 !important; }
         @media (max-width: 767.98px) {
-            #decisionHUD { position: fixed; left: 6px; right: 6px; bottom: 6px; top: auto; z-index: 60; }
-            .scroll-area { padding-bottom: 150px !important; }
+            .scroll-area > .col-dec { display: contents !important; }
+            #decisionHUD { position: sticky; top: 0; z-index: 50; padding: 6px 10px; background: #141820; border: 1px solid var(--accent); box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
+            #decisionHUD .hud-action { font-size: 20px; }
+            #decisionHUD .hud-sizing { font-size: 13px; padding: 1px 6px; }
+            #decisionHUD .hud-main-row { gap: 8px; }
             .macro-btn kbd { display: none; }
         }
         /* ══════════ 翻前行动时间线 + 翻后行动条突出（2026-07-21）══════════ */
@@ -1043,7 +1082,47 @@
         <!-- ═══ End Vision History Bar ═══ -->
 
         <div class="scroll-area">
-            
+
+            <!-- ══════════ ① 顶部赛事 HUD 状态条 ══════════ -->
+            <div id="topStatusHUD" class="top-status-hud">
+                <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
+                <div class="hud-chip hud-chip-stage"><span class="chip-label">阶段</span><span id="topHudStage" class="chip-val">常规期</span></div>
+                <div class="hud-chip hud-chip-bubble" id="topHudBubbleBox" style="display:none;"><span class="chip-label">钱圈</span><span id="topHudBubble" class="chip-val">距钱圈 590人</span></div>
+                <div class="hud-chip hud-chip-stack"><span class="chip-label">筹码</span><span id="topHudStack" class="chip-val">40BB</span></div>
+                <div class="hud-chip hud-chip-pot"><span class="chip-label">底池</span><span id="topHudPot" class="chip-val">1.5BB</span></div>
+                <div class="hud-chip hud-chip-street ml-auto"><span id="topHudStreet" class="chip-val street-badge">翻前</span></div>
+            </div>
+
+            <!-- ══════════ ② 决策建议大卡片 (横跨置顶，全屏视觉焦点) ══════════ -->
+            <div class="col-dec flex flex-col gap-1.5 w-full shrink-0">
+                <div class="zone-head" id="preDecisionHead"><span>决策</span><span id="decisionSrc" class="dec-src" style="display:none"></span><span id="preDecisionSummary" style="display:none" hidden></span><button id="preDecisionToggle" onclick="togglePreDecision()" class="macro-btn" style="display:none" title="展开/收起决策详情">展开 ▾</button></div>
+                <div id="decisionHUD" class="decision-hero hud-empty" data-sem="neutral">
+                    <div class="hud-top"><span id="hudStage" class="hud-stage">翻前</span><span id="hudSrc" class="hud-src" style="display:none"></span><span id="hudBadge" class="hud-badge" style="display:none"></span></div>
+                    <div class="hud-main-row">
+                        <div id="hudAction" class="hud-action">等待输入</div>
+                        <div id="hudSizing" class="hud-sizing" style="display:none"></div>
+                        <div id="hudFreq" class="freq-bar hud-freq" style="display:none"></div>
+                    </div>
+                    <div id="hudWhy" class="hud-why" style="display:none"></div>
+                </div>
+                <div id="resultPanel" class="flex flex-col gap-1.5 w-full invisible shrink-0">
+                    <div id="actionBox" class="flex flex-col items-center justify-center p-2 rounded border-2 text-center shadow-lg flex-1 min-h-[140px] overflow-hidden">
+                        <h2 id="actionVerdict" class="text-xs font-bold mb-1" style="letter-spacing:.04em;opacity:.85;"></h2>
+                        <p id="actionLogic" class="text-xs font-medium px-1 text-gray-200 overflow-y-auto"></p>
+                        <div id="sizingBox" class="w-full mt-2 hidden shrink-0">
+                            <div class="text-xs text-gray-400 mb-1">建议尺度</div>
+                            <div id="sizingContent" class="text-sm font-bold text-yellow-300"></div>
+                        </div>
+                        <div id="freqBox" class="w-full max-w-sm mt-2 hidden shrink-0">
+                            <div class="flex justify-between text-xs font-bold text-gray-300 mb-0.5" id="freqLabels"></div>
+                            <div class="freq-bar" id="freqBar"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="postDecisionSlot"></div>
+            </div>
+
+            <!-- ══════════ ③ 操作主列 (左列 ~54%：牌面输入 + 翻前时间线 + 翻后行动线) ══════════ -->
             <div class="col-left flex flex-col gap-1.5 w-full shrink-0">
 
                 <!-- 配置上移(2026-07-14b)：赛事配置面板已迁往 header ⚙ 配置 下拉
@@ -1213,58 +1292,25 @@
                 </div>
             </div>
 
-            <!-- 决策列(2026-09-11 交互审计 P0-2)：并排窗口（1280×800 / 1512×950）下，
-                 决策区夹在左列中间会把行动条推出视口 —— 实测结论条 y=432、行动条 y=1046，
-                 相隔 490px 而可视高只有 581~731，每手都要多滚一次。
-                 独立成列后两者水平相邻，垂直距离归零。 -->
-            <div class="col-dec flex flex-col gap-1.5 w-full shrink-0">
-                <!-- 决策前置(2026-09-11，用户：决策放到牌面输入与对局流程中间)：
-                     这里是视线中心——看完自己的牌，紧接着就是"该怎么打"，再往下才是录行动。
-                     翻后的 decisionPanel 由 mountDecision() 搬到同一个位置，保证"一个窗口只有一处结论"。 -->
-                <div class="zone-head" id="preDecisionHead"><span>决策</span><span id="decisionSrc" class="dec-src" style="display:none"></span><span id="preDecisionSummary" style="display:none" hidden></span><button id="preDecisionToggle" onclick="togglePreDecision()" class="macro-btn" style="display:none" title="展开/收起决策详情">展开 ▾</button></div>
-                <!-- 结论层(2026-09-11 第四轮)：HUD 不是"另一个面板"，是**结论本身**。
-                     大屏它是决策区顶部的卡片（一屏不滚，无需浮动）；窄屏它固定贴底（内容要滚，必须钉住）。
-                     位置随屏幕形态变，角色不变 —— 这样 decisionPanel 里那句「答案见上方决策条 ↑」两种形态都成立。 -->
-                <div id="decisionHUD" class="hud-empty" data-sem="neutral">
-                    <div class="hud-top"><span id="hudStage" class="hud-stage">翻前</span><span id="hudSrc" class="hud-src" style="display:none"></span><span id="hudBadge" class="hud-badge" style="display:none"></span></div>
-                    <div id="hudAction" class="hud-action">等待输入</div>
-                    <div id="hudSizing" class="hud-sizing" style="display:none"></div>
-                    <div id="hudFreq" class="freq-bar hud-freq" style="display:none"></div>
-                    <div id="hudWhy" class="hud-why" style="display:none"></div>
-                </div>
-                <div id="resultPanel" class="flex flex-col gap-1.5 w-full invisible shrink-0">
-
-                <div id="actionBox" class="flex flex-col items-center justify-center p-2 rounded border-2 text-center shadow-lg flex-1 min-h-[160px] overflow-hidden">
-                    <!-- 2026-09-11：降级为上下文标签 —— 大字结论由上方结论条统一出，
-                         这里与翻后的 decisionPanel 一样只做"依据"（同一信息不出现两次）。 -->
-                    <h2 id="actionVerdict" class="text-xs font-bold mb-1" style="letter-spacing:.04em;opacity:.85;"></h2>
-                    <p id="actionLogic" class="text-xs font-medium px-1 text-gray-200 overflow-y-auto"></p>
-
-                    <div id="sizingBox" class="w-full mt-2 hidden shrink-0">
-                        <div class="text-xs text-gray-400 mb-1">建议尺度</div>
-                        <div id="sizingContent" class="text-sm font-bold text-yellow-300"></div>
-                    </div>
-
-                    <div id="freqBox" class="w-full max-w-sm mt-2 hidden shrink-0">
-                        <div class="flex justify-between text-xs font-bold text-gray-300 mb-0.5" id="freqLabels"></div>
-                        <div class="freq-bar" id="freqBar"></div>
-                    </div>
-                </div>
-                </div>
-                <div id="postDecisionSlot"></div>
-            </div>
-
-
-            <!-- 布局R3(2026-07-14b)：输出列改为纯翻后流——行动线（录入）在上、分析（结果）在下，
-                 视线自上而下：录完行动即在正下方看决策。postActionZone/postRight 的 id/内部结构全部保留 -->
+            <!-- ══════════ ④ 参考与分析主列 (右列 ~46%：翻后分析 + 底层自证) ══════════ -->
             <div class="col-right flex flex-col gap-1.5 w-full shrink-0">
+                <div class="zone-head" id="postAnalysisHead"><span>分析 · 翻后</span><button id="postDetailsToggle" onclick="togglePostDetails()" class="macro-btn" title="展开/收起对手范围、牌面纹理、手型与调试卡（分层显示 2026-07-21）">详情 ▸</button></div>
+                <!-- 翻后分析区（原翻后页右栏迁移，id/结构保留；initPostRightCards 仍重建 postRightContent） -->
+                <div id="postRight" class="flex flex-col gap-1.5 w-full shrink-0">
+                    <!-- SPR仅在决策面板中显示，此处隐藏 -->
+                    <div id="postRightSummary" class="hidden">
+                        <span id="sumSpr">0.0</span>
+                    </div>
+                    <!-- 分析结果区域（牌面分析，由 JS 动态填充） -->
+                    <div id="postRightContent" class="flex flex-col gap-1.5 w-full min-h-0">
+                        <!-- 计算中 loading 条 -->
+                        <div id="analysisLoading" class="hidden text-center text-gray-400 text-sm py-3 panel-bg rounded">
+                            ⏳ 正在计算胜率...
+                        </div>
+                    </div>
+                </div>
 
-
-
-                <!-- 三列(2026-09-11)：自证属"参考"不属"决策" —— 用户第四轮明确要求
-                     「画面右边显示底层范围、自证等逻辑内容」。放在参考列顶部，
-                     决策列只留结论与依据，一屏之内三列各管一件事。 -->
-                <!-- 底层逻辑：范围自证（自带标题，不再占一个 zone-head） -->
+                <!-- 底层逻辑：范围自证（放在右列底部） -->
                 <div id="mathProofPanel" class="hidden panel-bg p-2 rounded shadow-inner shrink-0">
                     <h3 onclick="toggleMathProof()" title="点击展开/收起（分层显示 2026-07-21，默认收起）" class="text-xs font-bold text-gray-400 uppercase mb-1.5 border-b border-white/10 pb-0.5 text-center tracking-widest">底层范围自证 (Range Logic)</h3>
                     <div class="grid grid-cols-3 gap-1.5 text-center mb-2">
@@ -1289,21 +1335,6 @@
                                 <div id="mathBar2Fill" class="data-fill bg-yellow-500/30" style="width: 0%"></div>
                                 <div id="mathBar2Line" class="absolute top-0 bottom-0 w-0.5 bg-yellow-400 shadow-[0_0_3px_#facc15]" style="left: 0%"></div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="zone-head" id="postAnalysisHead"><span>分析 · 翻后</span><button id="postDetailsToggle" onclick="togglePostDetails()" class="macro-btn" title="展开/收起对手范围、牌面纹理、手型与调试卡（分层显示 2026-07-21）">详情 ▸</button></div>
-                <!-- 翻后分析区（原翻后页右栏迁移，id/结构保留；initPostRightCards 仍重建 postRightContent） -->
-                <div id="postRight" class="flex flex-col gap-1.5 w-full shrink-0">
-                    <!-- SPR仅在决策面板中显示，此处隐藏 -->
-                    <div id="postRightSummary" class="hidden">
-                        <span id="sumSpr">0.0</span>
-                    </div>
-                    <!-- 分析结果区域（牌面分析，由 JS 动态填充） -->
-                    <div id="postRightContent" class="flex flex-col gap-1.5 w-full min-h-0">
-                        <!-- 计算中 loading 条 -->
-                        <div id="analysisLoading" class="hidden text-center text-gray-400 text-sm py-3 panel-bg rounded">
-                            ⏳ 正在计算胜率...
                         </div>
                     </div>
                 </div>
@@ -1915,9 +1946,102 @@
             if (el) el.innerText = `${gt} · ${ts} · ${st}${ante}${psLabel}${vmLabel}${cuLabel}${tbLabel}`;
             try { renderStageAdvice(); } catch (e) {} // 阶段×码量建议随配置/筹码变化刷新
             try { updateDecisionHUD(); } catch (e) {} // 常驻决策 HUD(2026-07-21)：重置/下一手/配置变更后同步
+            try { updateTopStatusHUD(); } catch (e) {} // 顶部赛事状态条同步
             // 配置上移(2026-07-14b)：同步 header 阶段快捷下拉（配置面板内改 stage 时保持一致）
             const sq = document.getElementById('stageQuickSelect');
             if (sq && sq.value !== gameConfig.stage) sq.value = gameConfig.stage;
+        }
+
+        /**
+         * 顶部赛事 HUD 状态条(2026-09-21 R6)：
+         * 极简横向流动：模式/人数 · 赛事阶段/钱圈 · 当前筹码/有效筹码 · 当前底池/SPR · 对局街
+         */
+        function updateTopStatusHUD() {
+            const hud = document.getElementById('topStatusHUD');
+            if (!hud) return;
+
+            // 1. 赛制与模型
+            const ts = (tableSizeOpts.find(o => o.val === gameConfig.tableSize) || {}).label || '9-Max';
+            const vm = gameConfig.villainModel === 'gto' ? 'GTO' : '剥削';
+            const gameEl = document.getElementById('topHudGame');
+            if (gameEl) gameEl.textContent = `${ts} ${vm}`;
+
+            // 2. 赛事阶段与钱圈
+            const st = (stageOpts.find(o => o.val === gameConfig.stage) || {}).label || '常规期';
+            const stageEl = document.getElementById('topHudStage');
+            if (stageEl) stageEl.textContent = st;
+
+            const t = gameConfig.tourney || {};
+            const bubbleBox = document.getElementById('topHudBubbleBox');
+            const bubbleEl = document.getElementById('topHudBubble');
+            if (bubbleBox && bubbleEl) {
+                if (t.toBubble != null) {
+                    bubbleBox.style.display = '';
+                    bubbleEl.textContent = t.toBubble === 0 ? '已进钱' : `距钱圈 ${t.toBubble}人`;
+                } else {
+                    bubbleBox.style.display = 'none';
+                }
+            }
+
+            // 3. 筹码与有效筹码
+            const stackEl = document.getElementById('topHudStack');
+            if (stackEl) {
+                let heroStack = 40;
+                try {
+                    const hInput = document.getElementById('tlStackHero');
+                    if (hInput && hInput.value) heroStack = parseFloat(hInput.value) || 40;
+                    else if (typeof globalHeroStack !== 'undefined' && globalHeroStack) heroStack = globalHeroStack;
+                } catch (e) {}
+                let eff = heroStack;
+                try {
+                    const eInput = document.getElementById('effDirectInput');
+                    if (eInput && eInput.value && parseFloat(eInput.value) > 0) {
+                        eff = parseFloat(eInput.value);
+                    }
+                } catch (e) {}
+                if (eff !== heroStack && eff > 0) {
+                    stackEl.textContent = `${heroStack}BB (有效 ${eff}BB)`;
+                } else {
+                    stackEl.textContent = `${heroStack}BB`;
+                }
+            }
+
+            // 4. 底池与 SPR
+            const potEl = document.getElementById('topHudPot');
+            if (potEl) {
+                let pot = 1.5;
+                try {
+                    if (typeof postState !== 'undefined' && postState._entered && postState.potTracker && postState.potTracker.currentPot) {
+                        pot = postState.potTracker.currentPot;
+                    } else if (typeof tlState === 'function') {
+                        const _tls = tlState();
+                        pot = _tls.pot || 1.5;
+                    } else {
+                        const pInput = document.getElementById('potDirectInput');
+                        if (pInput && pInput.value && parseFloat(pInput.value) > 0) {
+                            pot = parseFloat(pInput.value);
+                        }
+                    }
+                } catch (e) {}
+
+                let sprText = '';
+                try {
+                    const sprEl = document.getElementById('sprInline');
+                    if (sprEl && sprEl.textContent && sprEl.textContent.trim()) {
+                        sprText = ` · ${sprEl.textContent.trim()}`;
+                    }
+                } catch (e) {}
+                potEl.textContent = `${pot}BB${sprText}`;
+            }
+
+            // 5. 对局街
+            const streetEl = document.getElementById('topHudStreet');
+            if (streetEl) {
+                let boardN = 0;
+                try { boardN = postState.board.filter(c => c !== null).length; } catch (e) {}
+                const stageName = boardN === 0 ? '翻前' : boardN < 3 ? '选牌中' : boardN === 3 ? '翻牌' : boardN === 4 ? '转牌' : '河牌';
+                streetEl.textContent = stageName;
+            }
         }
 
         // ============================================================
@@ -3957,10 +4081,14 @@
             actEl.textContent = action || '等待输入';
             sizeEl.textContent = sizing; sizeEl.style.display = sizing ? '' : 'none';
             freqEl.innerHTML = freqHTML; freqEl.style.display = freqHTML ? '' : 'none';
-            // 窄屏贴底条会显示这一行；引擎文案里的 **强调** 用 textContent 会原样带星号
-            // （2026-09-12 与 decisionReason 同批修）。这里不需要粗体，直接去掉标记。
-            whyEl.textContent = String(why).replace(/\*\*([^*]+)\*\*/g, '$1');
-            whyEl.style.display = why ? '' : 'none';
+            // 提取第一句核心依据供大卡片展示（R6：答案第一，输入第二，解释第三，技术细节第四）
+            let coreWhy = String(why).replace(/<[^>]+>/g, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
+            if (coreWhy) {
+                const m = coreWhy.match(/^([^。！？\n]+[。！？]?)/);
+                if (m && m[1]) coreWhy = m[1].trim();
+            }
+            whyEl.textContent = coreWhy;
+            whyEl.style.display = coreWhy ? '' : 'none';
             badgeEl.textContent = badge; badgeEl.dataset.level = badge; badgeEl.style.display = badge ? '' : 'none';
             // 来源分级(2026-09-08)：只在真出了建议时显示
             const hasAdvice = action && !/等待输入|计算中|悖论|未校准/.test(action);
@@ -3972,6 +4100,7 @@
             });
             // 流程轴(2026-09-10)：HUD 是"状态一变就刷新"的统一钩子，摘要/折叠跟着它走
             try { updateFlowStage(); } catch (e) {}
+            try { updateTopStatusHUD(); } catch (e) {}
         }
 
         // ══════════ 分层显示(2026-07-21)：默认只看牌局状态 + 决策 + 理由 ══════════
@@ -4765,15 +4894,16 @@
             if (_dpNext) _dpNext.classList.add('hidden');
             const _slotNext = document.getElementById('postDecisionSlot');
             if (_slotNext) _slotNext.style.display = 'none';
+            // 翻前时间线(2026-07-21)：下一手座位带回到"前方全部弃牌"（场景随之回 open），位置/筹码/赛制仍保留
+            tlReset();
             initPotTracker();
             updatePotUI();
             updateFlowStage();
             updateStreetStatusBar();
+            updateTopStatusHUD();
 
             // 刷新 switchMode（保留当前场景）；完成后把保留的筹码写回新渲染的 input
             const savedHero = globalHeroStack, savedVillain = globalVillainStack;
-            // 翻前时间线(2026-07-21)：下一手座位带回到"前方全部弃牌"（场景随之回 open），位置/筹码/赛制仍保留
-            tlReset();
             // 自动移位(2026-07-21)：按钮每手顺时针移一位 → 我的位置往前退一格
             let _np = null;
             if (gameConfig.autoAdvancePos !== false && !_undoRestoring) {
@@ -9734,6 +9864,7 @@
             const f = document.getElementById('potInfoFlop'); if (f) f.innerText = infoStr;
             const t = document.getElementById('potInfoTurn'); if (t) t.innerText = infoStr;
             const r = document.getElementById('potInfoRiver'); if (r) r.innerText = infoStr;
+            try { updateTopStatusHUD(); } catch (e) {}
         }
 
 
