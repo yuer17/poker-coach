@@ -680,9 +680,11 @@
         /* ══════════ 翻前行动时间线 + 翻后行动条突出（2026-07-21）══════════ */
         /* 自适应修订(2026-07-21，用户照片实锤溢出)：座位带与"我的位置"改 CSS grid 自动等宽换行，
            任何宽度/缩放下都不冲出卡片；加注额输入在格内独占一行 */
-        .tl-ribbon { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 4px; }
-        .tl-hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(50px, 1fr)); gap: 4px; }
-        .tl-hero-grid .pos-btn-hero { width: 100%; }
+        /* 架构重构(2026-09-21)：我的位置按钮与座位行动卡片垂直绑定（同一列容器 .tl-seat-col），
+           从几何物理上根绝双网格断点不同导致的跑版串行与错位；宽屏均分铺满，窄屏成列整体换行 */
+        .tl-ribbon { display: grid; grid-template-columns: repeat(var(--tl-seat-count, 9), minmax(0, 1fr)); gap: 4px; width: 100%; }
+        .tl-seat-col { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .tl-seat-col .pos-btn-hero { width: 100%; min-width: 0; }
         .tl-seat { min-width: 0; border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
                    padding: 5px 2px; text-align: center; cursor: pointer; background: rgba(255,255,255,.03); user-select: none;
                    transition: background .12s, border-color .12s; overflow: hidden; }
@@ -799,7 +801,8 @@
         @media (max-width: 767.98px) {
             .act-btn kbd, .qc-btn kbd, .act-hint { display: none; }
             .act-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .tl-ribbon { gap: 3px; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); }
+            .tl-ribbon { gap: 3px; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
+            .tl-seat-col .pos-btn-hero { min-height: 44px; min-width: 44px; }
             .tl-seat { padding: 4px 1px; }
             .tl-seat .tl-act { font-size: var(--fs-micro); }
         }
@@ -1123,8 +1126,10 @@
                         <!-- 收起入口(2026-09-11)：展开后必须能收回去（原来只有折叠态的摘要行能点开，展开后没有出口） -->
                         <button id="tlFoldBtn" onclick="togglePreflopZone()" class="macro-btn shrink-0" style="display:none;" title="收起翻前时间线，把空间留给翻后">收起 ▴</button>
                     </div>
-                    <div id="tlHeroRow" class="mb-1.5"></div>
-                    <div id="tlRibbon" class="tl-ribbon"></div>
+                    <div id="tlHeroRow" class="mb-1.5">
+                        <div class="text-xs text-red-400 font-bold mb-1">我的位置（上排点选） / 位置行动（下排记录）</div>
+                        <div id="tlRibbon" class="tl-ribbon"></div>
+                    </div>
                     <!-- 顺序写在明面上(2026-09-11)：轮到谁、需跟多少、底池多少、几个人在池 -->
                     <div id="tlTurnBar" class="tl-turnbar"></div>
                     <div id="tlPopover" class="tl-pop" style="display:none"></div>
@@ -3754,6 +3759,7 @@
             b.title = n ? `撤回：${undoStack[n - 1].label}（Z / Backspace）` : '没有可撤回的操作';
         }
         function undoLastStep() {
+            if (typeof _tlTimer !== 'undefined') clearTimeout(_tlTimer);
             const entry = undoStack.pop();
             _updateUndoBtn();
             if (!entry) { showToast('没有可撤回的操作', 'warn'); return; }
@@ -4714,6 +4720,7 @@
         })();
 
         function nextHand() {
+            if (typeof _tlTimer !== 'undefined') clearTimeout(_tlTimer);
             pushUndo('下一手'); // 全局撤回栈(2026-07-21)
             try { setPickerOpen(true); } catch (e) {}   // 新一手要选底牌，网格展开(2026-09-11)
             // 清底牌
@@ -6021,7 +6028,7 @@
             const m = gameConfig.tbSize === 'auto' ? 3.4 : gameConfig.tbSize;
             return Math.max(openAmt + 2, Math.round(openAmt * m * 2) / 2);
         }
-        function tlReset() { tlActs = []; tlEvents = {}; tlHero = null; _tlLegacySig = JSON.stringify({ e: {}, h: null }); }
+        function tlReset() { if (typeof _tlTimer !== 'undefined') clearTimeout(_tlTimer); tlActs = []; tlEvents = {}; tlHero = null; _tlLegacySig = JSON.stringify({ e: {}, h: null }); }
         const tlLbl = p => p === 'UTG1' ? 'U+1' : (POS_LABEL[p] || p);
 
         /**
@@ -6369,7 +6376,7 @@
         }
 
         /** 座位带 + 我的位置行 + 筹码行 渲染 */
-        /** 座位带 + 我的位置行 + 筹码行 渲染（2026-09-11 按动作流水重写） */
+        /** 座位带 + 我的位置行 + 筹码行 渲染（2026-09-21 重构为垂直绑定复合列） */
         function renderTimeline() {
             const ribbon = document.getElementById('tlRibbon');
             const heroRow = document.getElementById('tlHeroRow');
@@ -6377,24 +6384,11 @@
             const _foc = _saveFocus();   // 重渲保焦：座位内嵌金额框正被滚轮/键盘编辑时不能丢焦点
             const st = tlState();
             const seats = st.seats;
+            ribbon.style.setProperty('--tl-seat-count', seats.length);
 
-            // ── 我的位置 ──
-            heroRow.innerHTML = `<div class="text-xs text-red-400 font-bold mb-1">我的位置</div><div class="tl-hero-grid">` +
-                seats.map(p => `<button class="pos-btn-hero${p === globalPosHero ? ' active' : ''}" data-tlhero="${p}">${tlLbl(p)}</button>`).join('') + `</div>`;
-            heroRow.querySelectorAll('[data-tlhero]').forEach(b => b.onclick = () => {
-                if (b.dataset.tlhero === globalPosHero) return;
-                const hadActions = tlActs.length > 0;
-                pushUndo(`我的位置 → ${tlLbl(b.dataset.tlhero)}`);
-                globalPosHero = b.dataset.tlhero;
-                tlActs = [];                      // 换位置＝重新开始这手牌的行动线
-                if (hadActions) showToast('位置已改变，行动线已清空；按 Z 或点撤回可恢复', 'info');
-                tlRebuildLegacy();
-                tlScheduleApply();
-            });
-
-            // ── 座位带 ──
-            // 每格显示：位置 · 最后一个动作（含就地可改的金额）· 多次行动时补一行"共投 X"。
-            // 轮到谁，谁高亮并写"● 该他了"；还没轮到且没动过的座位置灰（按顺序来）。
+            // ── 座位带 + 我的位置垂直绑定列 ──
+            // 每个座位作为一个垂直列 .tl-seat-col，上排为"我的位置"点选按钮，下排为"座位行动卡片"。
+            // 从物理结构上 100% 杜绝因屏幕变窄换行时位置与行动错位串行。
             const amtInput = (p, amt) => `<input class="tl-amt-inline" type="number" step="0.1" min="0.5" value="${amt}" data-tlamtpos="${p}" title="就地改额，回车确认">`;
             // 加注按"第几次"命名（开池 / 3-Bet / 4-Bet…），比笼统的"加注"有用，也与场景标签口径一致
             const _raiseSeqAll = tlActs.filter(a => a.a === 'raise' || a.a === 'allin');
@@ -6402,7 +6396,6 @@
             ribbon.innerHTML = seats.map(p => {
                 const acts = tlActsOf(p);
                 const last = acts.length ? acts[acts.length - 1] : null;
-                const lastManual = acts.filter(x => !x.auto).length > 0;
                 const isHero = p === globalPosHero;
                 const isTurn = st.nextToAct === p;
                 const folded = st.folded.has(p);
@@ -6432,10 +6425,26 @@
                               : last ? '已行动：单击改动作（其后的行动会一并清掉重录）· 右键/长按选具体动作'
                                      : '点他即记录他的行动，他前面没动过的人自动记为弃牌')
                     : '我还没表态 —— 先点我的座位，后面的人才能行动';
-                return `<div class="tl-seat ${cls}${editable ? '' : ' disabled'}" data-tlseat="${p}" title="${title}">
-                    <div class="tl-pos">${isHero ? '我 · ' : ''}${tlLbl(p)}</div>
-                    <div class="tl-act">${actTxt}</div>${sub}</div>`;
+                return `<div class="tl-seat-col" data-seatcol="${p}">
+                    <button class="pos-btn-hero${isHero ? ' active' : ''}" data-tlhero="${p}" title="设为我的位置（${tlLbl(p)}）">${tlLbl(p)}</button>
+                    <div class="tl-seat ${cls}${editable ? '' : ' disabled'}" data-tlseat="${p}" title="${title}">
+                        <div class="tl-pos">${isHero ? '我 · ' : ''}${tlLbl(p)}</div>
+                        <div class="tl-act">${actTxt}</div>${sub}
+                    </div>
+                </div>`;
             }).join('');
+
+            // ── 我的位置按钮交互 ──
+            ribbon.querySelectorAll('[data-tlhero]').forEach(b => b.onclick = () => {
+                if (b.dataset.tlhero === globalPosHero) return;
+                const hadActions = tlActs.length > 0;
+                pushUndo(`我的位置 → ${tlLbl(b.dataset.tlhero)}`);
+                globalPosHero = b.dataset.tlhero;
+                tlActs = [];                      // 换位置＝重新开始这手牌的行动线
+                if (hadActions) showToast('位置已改变，行动线已清空；按 Z 或点撤回可恢复', 'info');
+                tlRebuildLegacy();
+                tlScheduleApply();
+            });
 
             // 座位交互：单击循环 / 右键·长按弹层
             ribbon.querySelectorAll('[data-tlseat]').forEach(el => {
@@ -8791,10 +8800,15 @@
             try {
                 if (typeof tlActs !== 'undefined' && tlActs.length) {
                     const _tl = tlState();
-                    if (_tl.closed && _tl.contenders.length >= 2 && _tl.contenders.includes(heroPos)) {
+                    // 健壮底池判定(2026-09-21)：
+                    // 只要在翻前已有至少两位玩家匹配了当前下注（_tl.contenders.length >= 2）且包含 Hero，
+                    // 说明已有真实的对手跟注入池（如截图1中 HJ/BTN 跟注 Hero 开池），即使盲注位尚未点弃牌（未闭合），
+                    // 也直接以桌面真实总额 _tl.pot + getAnteBB() 记账；
+                    // 反之若只有 Hero 一人加注而无人跟注（contenders.length === 1），进翻后则按 open 场景公式假定对手跟注。
+                    if (_tl.contenders.length >= 2 && _tl.contenders.includes(heroPos)) {
                         const myCommit = _tl.committed[heroPos] || 0;
                         const vPos = _tl.contenders.includes(villPos) ? villPos
-                                   : _tl.contenders.find(x => x !== heroPos);
+                                   : (_tl.contenders.find(x => x !== heroPos) || villPos);
                         const vCommit = _tl.committed[vPos] || myCommit;
                         const pPotX = _tl.pot + getAnteBB();      // 盲注已在流水里，ante 另计
                         postState.potTracker.preflopPot = pPotX;
