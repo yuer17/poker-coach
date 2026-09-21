@@ -161,9 +161,50 @@
                 width: 100%;
                 max-width: none;
                 flex-shrink: 1;
+                display: grid !important;
+                grid-template-columns: 54% 1fr;
+                gap: 0.75rem;
+                align-items: stretch;
+            }
+            #preDecisionHead {
+                grid-column: 1 / -1;
+            }
+            #decisionHUD {
+                grid-column: 1;
+                grid-row: 2;
+                height: 100%;
                 display: flex;
                 flex-direction: column;
-                gap: 0.5rem;
+                justify-content: center;
+            }
+            #resultPanel {
+                grid-column: 2;
+                grid-row: 2;
+                height: 100%;
+                min-width: 0;
+            }
+            #postDecisionSlot {
+                grid-column: 2;
+                grid-row: 2;
+                height: 100%;
+                min-width: 0;
+            }
+            #resultPanel:not(.zone-fold) ~ #postDecisionSlot:not([style*="none"]) {
+                grid-column: 2;
+                grid-row: 3;
+            }
+            #actionBox {
+                min-height: 0;
+                height: 100%;
+            }
+            #decisionPanel {
+                height: 100%;
+                margin-bottom: 0 !important;
+                display: flex;
+                flex-direction: column;
+            }
+            #decisionMain {
+                flex: 1;
             }
             .col-left {
                 grid-column: 1;
@@ -218,6 +259,7 @@
         @media (min-width: 1920px) {
             .app-container { max-width: 1800px; }
             .scroll-area { grid-template-columns: 52% 1fr; }
+            .col-dec { grid-template-columns: 52% 1fr; }
             #postRightContent {
                 display: block;
                 column-count: 2;
@@ -1094,7 +1136,7 @@
             </div>
 
             <!-- ══════════ ② 决策建议大卡片 (横跨置顶，全屏视觉焦点) ══════════ -->
-            <div class="col-dec flex flex-col gap-1.5 w-full shrink-0">
+            <div class="col-dec w-full shrink-0">
                 <div class="zone-head" id="preDecisionHead"><span>决策</span><span id="decisionSrc" class="dec-src" style="display:none"></span><span id="preDecisionSummary" style="display:none" hidden></span><button id="preDecisionToggle" onclick="togglePreDecision()" class="macro-btn" style="display:none" title="展开/收起决策详情">展开 ▾</button></div>
                 <div id="decisionHUD" class="decision-hero hud-empty" data-sem="neutral">
                     <div class="hud-top"><span id="hudStage" class="hud-stage">翻前</span><span id="hudSrc" class="hud-src" style="display:none"></span><span id="hudBadge" class="hud-badge" style="display:none"></span></div>
@@ -1153,7 +1195,7 @@
                             <div id="heroSlots" class="flex gap-1"></div>
                         </div>
                         <div id="boardSlotsBox" class="pick-target-box" onclick="setPickTarget('board')" style="flex:1;">
-                            <div class="pick-target-label">公共牌 · 翻牌｜转牌｜河牌</div>
+                            <div class="pick-target-label">公共牌</div>
                             <div class="flex items-center gap-1">
                                 <div id="boardSlot0" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">F1</span></div>
                                 <div id="boardSlot1" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">F2</span></div>
@@ -1171,7 +1213,7 @@
                     <div id="heroPicker" class="cpg-wrap"></div>
                     <div id="pickerToggleRow" class="flex items-center gap-2 mt-1">
                         <button id="pickerToggleBtn" onclick="togglePicker()" class="macro-btn" title="展开/收起 52 张选牌网格">收起 ▴</button>
-                        <span id="pickerToggleHint" class="text-xs text-gray-500">选完会自动收起，把空间留给决策</span>
+                        <span id="pickerToggleHint" style="display:none"></span>
                     </div>
                     <div class="flex justify-between items-center mt-1" style="min-height:14px;">
                         <!-- 对比度(2026-09-11 审计)：10px 文字用 gray-500 实测仅 3.71:1，低于 WCAG AA 的 4.5。
@@ -1206,7 +1248,6 @@
                         <button id="tlFoldBtn" onclick="togglePreflopZone()" class="macro-btn shrink-0" style="display:none;" title="收起翻前时间线，把空间留给翻后">收起 ▴</button>
                     </div>
                     <div id="tlHeroRow" class="mb-1.5">
-                        <div class="text-xs text-red-400 font-bold mb-1">我的位置（上排点选） / 位置行动（下排记录）</div>
                         <div id="tlRibbon" class="tl-ribbon"></div>
                     </div>
                     <!-- 顺序写在明面上(2026-09-11)：轮到谁、需跟多少、底池多少、几个人在池 -->
@@ -1233,7 +1274,6 @@
                         <!-- 解析按钮降级(2026-09-11，用户第4点)：选牌与座位带改动现在都会自动出决策，
                              它只剩"改了传统输入框想强制重算"这一条路径，故从全宽金色大按钮收成次要键。 -->
                         <button onclick="executeEngine()" class="macro-btn" title="强制重新解析（回车 ↵ 同样触发）；正常情况下改动即自动出决策，无需点它">↻ 重算 ↵</button>
-                        <span class="text-xs text-gray-600">改牌/改行动即自动出决策</span>
                     </div>
                     <div id="legacyScenario" style="display:none">
                     <!-- 翻前节点 Tabs (7 个) -->
@@ -11372,7 +11412,6 @@
                     <div id="decisionMain" class="px-3 py-2" style="background: linear-gradient(135deg, rgba(87,169,255,0.10), rgba(0,0,0,0.25));">
                         <div class="flex items-baseline justify-between gap-2 mb-1">
                             <span class="text-xs text-gray-400 shrink-0">决策依据</span>
-                            <span class="text-xs text-gray-500 shrink-0">答案见上方决策条 ↑</span>
                         </div>
                         <div class="flex items-baseline gap-2 flex-wrap">
                             <span id="decisionAction" class="text-base font-black tracking-wider">--</span>
@@ -14043,7 +14082,6 @@
                     <div id="decisionMain" class="px-3 py-2" style="background: linear-gradient(135deg, rgba(87,169,255,0.10), rgba(0,0,0,0.25));">
                         <div class="flex items-baseline justify-between gap-2 mb-1">
                             <span class="text-xs text-gray-400 shrink-0">决策依据</span>
-                            <span class="text-xs text-gray-500 shrink-0">答案见上方决策条</span>
                         </div>
                         <div class="flex items-baseline gap-2 flex-wrap">
                             <span id="decisionAction" class="text-base font-black tracking-wider">--</span>
