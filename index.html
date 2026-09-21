@@ -146,18 +146,14 @@
             .scroll-area {
                 display: grid;
                 grid-template-columns: 54% 1fr;
-                grid-template-rows: auto auto minmax(0, 1fr);
+                grid-template-rows: auto minmax(0, 1fr);
                 padding: 0.75rem;
                 gap: 0.75rem;
                 align-items: stretch;
             }
-            .top-status-hud {
-                grid-column: 1 / -1;
-                grid-row: 1;
-            }
             .col-dec {
                 grid-column: 1 / -1;
-                grid-row: 2;
+                grid-row: 1;
                 width: 100%;
                 max-width: none;
                 flex-shrink: 1;
@@ -208,7 +204,7 @@
             }
             .col-left {
                 grid-column: 1;
-                grid-row: 3;
+                grid-row: 2;
                 width: 100%;
                 max-width: none;
                 flex-shrink: 1;
@@ -221,7 +217,7 @@
             }
             .col-right {
                 grid-column: 2;
-                grid-row: 3;
+                grid-row: 2;
                 width: 100%;
                 max-width: none;
                 flex-shrink: 1;
@@ -386,7 +382,7 @@
         
         /* 频率条：解算器语义色（进攻红 / 被动绿 / 弃牌灰蓝），条内 mono 数字 */
         .freq-bar { height: 16px; border-radius: var(--radius-xs); overflow: hidden; display: flex; margin-top: 4px; width: 100%; border: 1px solid var(--glass-border); background: var(--bg-deep); }
-        .freq-fill { display: flex; align-items: center; justify-content: center; font-size: var(--fs-micro); font-weight: 700; font-family: var(--font-mono); }
+        .freq-fill { display: flex; align-items: center; justify-content: center; font-size: var(--fs-micro); font-weight: 700; font-family: var(--font-mono); min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1; padding: 0 4px; }
         .bg-call { background-color: var(--act-passive); color: #06281a; }   /* call = 被动绿 */
         .bg-raise { background-color: var(--act-aggr); color: #fff; }        /* raise/bet = 进攻红 */
         .bg-fold { background-color: var(--act-fold); color: #fff; }
@@ -636,13 +632,8 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            padding: 5px 10px;
-            background: rgba(255,255,255,0.025);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
             font-size: var(--fs-micro);
             flex-wrap: wrap;
-            min-height: 30px;
         }
         .hud-chip {
             display: inline-flex;
@@ -706,7 +697,7 @@
         .hud-sizing { font-family: var(--font-mono); color: var(--gold); font-weight: 700; font-size: 14px;
                       background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.35);
                       padding: 2px 8px; border-radius: 4px; }
-        .hud-freq { flex: 1; min-width: 140px; max-width: 300px; margin-top: 0; }
+        .hud-freq { width: 100%; min-width: 0; max-width: 100%; height: 20px; margin-top: 6px; margin-bottom: 3px; border-radius: var(--radius-xs, 4px); }
         .hud-why { font-size: var(--fs-caption); color: var(--text-secondary); margin-top: 4px; line-height: 1.35;
                    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .macro-strip { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
@@ -833,9 +824,33 @@
         /* 行动区排版重做(2026-09-10)：动作四键等宽 grid + 独立尺度行，整组限宽，大屏不拉伸 */
         .act-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 720px; }
         .act-row.act-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 420px; }
-        .act-row .act-btn { width: 100%; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .act-btn.act-allin { color: #ff7a7d; border-color: rgba(229,72,77,.4); background: rgba(214,57,64,.10); }
-        .act-btn.act-allin:hover { background: rgba(214,57,64,.22); }
+        .act-row .act-btn { width: 100%; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+
+        /* ─── 翻后行动按钮色彩体系 (2026-09-21) ─── */
+        /* 我方行动：清晰区分 弃牌(冷灰岩石) · 过牌/跟注(翠绿稳健) · 下注/加注(皇家蓝进取) · 全押(高能赤红) */
+        .act-btn-fold { background: rgba(71, 85, 105, 0.28) !important; border: 1px solid rgba(148, 163, 184, 0.45) !important; color: #cbd5e1 !important; }
+        .act-btn-fold:hover:not(:disabled) { background: rgba(100, 116, 139, 0.48) !important; border-color: rgba(203, 213, 225, 0.7) !important; color: #ffffff !important; }
+        .act-btn-fold:disabled { background: rgba(255, 255, 255, 0.03) !important; border-color: rgba(255, 255, 255, 0.08) !important; color: #475569 !important; cursor: not-allowed; }
+
+        .act-btn-checkcall { background: rgba(16, 149, 88, 0.34) !important; border: 1px solid rgba(52, 211, 153, 0.65) !important; color: #6ee7b7 !important; }
+        .act-btn-checkcall:hover { background: rgba(5, 150, 105, 0.55) !important; border-color: #34d399 !important; color: #ffffff !important; }
+
+        .act-btn-betraise { background: rgba(30, 64, 175, 0.38) !important; border: 1px solid rgba(96, 165, 250, 0.65) !important; color: #bfdbfe !important; }
+        .act-btn-betraise:hover { background: rgba(29, 78, 216, 0.58) !important; border-color: #60a5fa !important; color: #ffffff !important; }
+
+        .act-btn.act-allin { color: #fecaca !important; border: 1px solid rgba(248, 113, 113, 0.75) !important; background: rgba(185, 28, 28, 0.38) !important; }
+        .act-btn.act-allin:hover { background: rgba(220, 38, 38, 0.60) !important; border-color: #ef4444 !important; color: #ffffff !important; }
+
+        /* 对手行动框与按钮专属配色 (2026-09-21)：突出"记录对手打法"，暖琥珀底色与警示边框，视觉彻底与我方割离 */
+        .frame-villain { border: 2px solid rgba(245, 158, 11, 0.65) !important; background: rgba(120, 53, 15, 0.18) !important; box-shadow: 0 0 16px rgba(245, 158, 11, 0.10); }
+        .villain-act-btn.act-btn-fold { background: rgba(68, 64, 60, 0.35) !important; border: 1px solid rgba(168, 162, 158, 0.4) !important; color: #e7e5e4 !important; }
+        .villain-act-btn.act-btn-fold:hover:not(:disabled) { background: rgba(87, 83, 78, 0.55) !important; border-color: #d6d3d1 !important; color: #fff !important; }
+        .villain-act-btn.act-btn-checkcall { background: rgba(236, 72, 153, 0.28) !important; border: 1px solid rgba(244, 114, 182, 0.65) !important; color: #fbcfe8 !important; }
+        .villain-act-btn.act-btn-checkcall:hover { background: rgba(219, 39, 119, 0.52) !important; border-color: #f472b6 !important; color: #ffffff !important; }
+        .villain-act-btn.act-btn-betraise { background: rgba(194, 65, 12, 0.38) !important; border: 1px solid rgba(251, 146, 60, 0.72) !important; color: #ffedd5 !important; }
+        .villain-act-btn.act-btn-betraise:hover { background: rgba(234, 88, 12, 0.58) !important; border-color: #fb923c !important; color: #ffffff !important; }
+        .villain-act-btn.act-allin { background: rgba(159, 18, 57, 0.38) !important; border: 1px solid rgba(251, 113, 133, 0.72) !important; color: #ffe4e6 !important; }
+        .villain-act-btn.act-allin:hover { background: rgba(190, 18, 60, 0.60) !important; border-color: #f43f5e !important; color: #ffffff !important; }
         /* 尺度行与动作行同宽、一起撑满(2026-09-11，用户第6点"按钮没排满")：
            快捷键均分剩余宽度；对手一侧没有快捷键，就让金额框自己撑开 */
         .size-row { display: flex; align-items: center; gap: 6px; max-width: 720px; margin-bottom: 8px; }
@@ -915,7 +930,15 @@
                  sessionStorage 持久 + 浏览器标签 emoji 前缀，一眼分清哪个窗口对哪张桌） -->
             <div id="windowColorChips" style="display:flex;gap:5px;margin-left:8px;align-items:center;"></div>
 
-            <!-- 融合单页(2026-07-14)：翻前/翻后页签移除——两阶段同页展示，无需切换 -->
+            <!-- 赛事状态信息：显示在几个圆点点和常规期中间 (2026-09-21) -->
+            <div id="topStatusHUD" class="top-status-hud flex items-center" style="margin-left:4px;">
+                <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
+                <div class="hud-chip hud-chip-stack"><span class="chip-label">筹码</span><span id="topHudStack" class="chip-val">40BB</span></div>
+                <div class="hud-chip hud-chip-pot"><span class="chip-label">底池</span><span id="topHudPot" class="chip-val">1.5BB</span></div>
+                <div class="hud-chip hud-chip-bubble" id="topHudBubbleBox" style="display:none;"><span class="chip-label">钱圈</span><span id="topHudBubble" class="chip-val">距钱圈 590人</span></div>
+                <div class="hud-chip hud-chip-street"><span id="topHudStreet" class="chip-val street-badge">翻前</span></div>
+                <span id="topHudStage" style="display:none;">常规期</span>
+            </div>
 
             <!-- 右组：操作按钮，推到最右（交互梳理R2：主行动「下一手」放最右收尾位） -->
             <div class="flex items-center" style="gap:8px;margin-left:auto;">
@@ -1063,6 +1086,33 @@
                         </div>
                     </div>
                 </div>
+                <!-- 截图上移与配置并列(2026-09-21)：截图非必选项，整合进顶部「📷 截图」下拉，彻底释放主视口纵向高度 -->
+                <div style="position:relative;">
+                    <button onclick="toggleVisionDropdown()" id="visionToggleBtn" title="截图识别（Ctrl+V 自动识别）" class="nav-phase-btn" style="padding:6px 10px;">📷 截图<span id="visionBadge" style="display:none;background:#3b82f6;color:white;font-size:10px;font-weight:bold;padding:1px 5px;border-radius:10px;margin-left:4px;">0</span></button>
+                    <div id="visionDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;z-index:9000;width:min(440px, calc(100vw - 24px));max-height:calc(100vh - 72px);overflow-y:auto;overscroll-behavior:contain;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:0 12px 32px rgba(0,0,0,0.55);text-align:left;">
+                        <!-- ═══ Vision History Bar ═══ -->
+                        <div id="visionHistoryBar" style="padding:10px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:6px;">
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <span style="font-size:12px;color:var(--accent-hover);font-weight:bold;">📷 截图识别</span>
+                                    <span id="visionStatus" style="font-size:11px;color:#8b95ab;">Ctrl+V 粘贴自动识别</span>
+                                </div>
+                                <button onclick="toggleVisionDropdown(false)" title="关闭" style="font-size:14px;color:var(--text-muted);background:transparent;border:none;cursor:pointer;padding:2px 6px;">✕</button>
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+                                <button onclick="pickVisionImage()" style="font-size:12px;color:var(--text-primary);background:rgba(255,255,255,0.08);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">📷 选择图片</button>
+                                <button id="visionBarToggle" onclick="toggleVisionBar()" title="收起/展开截图栏（记住选择）" style="font-size:12px;color:var(--text-secondary);background:transparent;border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">收起 ▴</button>
+                                <button onclick="clearVisionHistory()" title="清空截图历史与识别结果" style="font-size:12px;color:#ff8589;background:transparent;border:1px solid rgba(229,72,77,0.35);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;margin-left:auto;">清截图</button>
+                                <input type="file" id="visionFileInput" accept="image/*" style="display:none">
+                            </div>
+                            <div id="visionThumbnails" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+                                <div id="visionEmptyHint" style="font-size:12px;color:var(--text-muted);display:none;align-items:center;">暂无截图，Ctrl+V 粘贴开始识别</div>
+                            </div>
+                            <div id="visionReviewCard" style="display:none;margin-top:8px;"></div>
+                        </div>
+                        <!-- ═══ End Vision History Bar ═══ -->
+                    </div>
+                </div>
                 <button onclick="toggleHelp()" title="使用帮助（Esc 关闭）" class="nav-phase-btn" style="padding:6px 10px;">帮助</button>
                 <button onclick="resetAll()" title="彻底重置全部配置与状态" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-1 px-3 rounded shadow">↻ 重置</button>
                 <button onclick="nextHand()" title="清牌开新一手，保留筹码/位置/赛制（快捷键 N）" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded shadow">下一手</button>
@@ -1098,44 +1148,10 @@
                 <div style="margin-top:12px;font-size:12px;color:var(--text-muted);">提示：「决策」区的大字给出动作，金色文字给出尺度；「参考」区用于核对对手范围与牌面。</div>
             </div>
         </div>
-        
-        <!-- ═══ Vision History Bar ═══ -->
-        <div id="visionHistoryBar" style="background:rgba(0,0,0,0.25);border-bottom:1px solid rgba(255,255,255,0.08);padding:8px 12px;flex-shrink:0;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                <span style="font-size:12px;color:#6b7280;font-weight:bold;">📷 截图识别</span>
-                <div style="display:flex;gap:10px;align-items:center;">
-                    <span id="visionStatus" style="font-size:12px;color:#6b7280;">Ctrl+V 粘贴截图自动识别</span>
-                    <button onclick="pickVisionImage()" style="font-size:12px;color:var(--text-secondary);background:transparent;border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">📷 选择图片</button>
-                    <button id="visionBarToggle" onclick="toggleVisionBar()" title="收起/展开截图栏（记住选择）" style="font-size:12px;color:var(--text-secondary);background:transparent;border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">收起 ▴</button>
-                    <button onclick="clearVisionHistory()" title="清空截图历史与识别结果" style="font-size:12px;color:#ff8589;background:transparent;border:1px solid rgba(229,72,77,0.35);border-radius:var(--radius-sm);cursor:pointer;padding:4px 10px;">清截图</button>
-                </div>
-                <input type="file" id="visionFileInput" accept="image/*" style="display:none">
-            </div>
-            <!-- 空态紧凑(2026-09-11 交互审计)：没有截图时这里白占 52px，而里面那句
-                 "暂无截图，Ctrl+V 粘贴开始识别" 与上面 #visionStatus 的文字完全重复。
-                 实测 1280×800（并排窗口常态）下，省掉这块正好让行动条回到视口内。
-                 有截图时恢复原高度，缩略图不受影响。 -->
-            <div id="visionThumbnails" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-                <div id="visionEmptyHint" style="font-size:12px;color:var(--text-muted);display:none;align-items:center;">暂无截图，Ctrl+V 粘贴开始识别</div>
-            </div>
-            <!-- 识别结果一览卡（只读展示 + null 标黄，由 renderVisionReviewCard 填充） -->
-            <div id="visionReviewCard" style="display:none"></div>
-        </div>
-        <!-- ═══ End Vision History Bar ═══ -->
 
         <div class="scroll-area">
 
-            <!-- ══════════ ① 顶部赛事 HUD 状态条 ══════════ -->
-            <div id="topStatusHUD" class="top-status-hud">
-                <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
-                <div class="hud-chip hud-chip-stage"><span class="chip-label">阶段</span><span id="topHudStage" class="chip-val">常规期</span></div>
-                <div class="hud-chip hud-chip-bubble" id="topHudBubbleBox" style="display:none;"><span class="chip-label">钱圈</span><span id="topHudBubble" class="chip-val">距钱圈 590人</span></div>
-                <div class="hud-chip hud-chip-stack"><span class="chip-label">筹码</span><span id="topHudStack" class="chip-val">40BB</span></div>
-                <div class="hud-chip hud-chip-pot"><span class="chip-label">底池</span><span id="topHudPot" class="chip-val">1.5BB</span></div>
-                <div class="hud-chip hud-chip-street ml-auto"><span id="topHudStreet" class="chip-val street-badge">翻前</span></div>
-            </div>
-
-            <!-- ══════════ ② 决策建议大卡片 (横跨置顶，全屏视觉焦点) ══════════ -->
+            <!-- ══════════ ① 决策建议大卡片 (横跨置顶，全屏视觉焦点) ══════════ -->
             <div class="col-dec w-full shrink-0">
                 <div class="zone-head" id="preDecisionHead"><span>决策</span><span id="decisionSrc" class="dec-src" style="display:none"></span><span id="preDecisionSummary" style="display:none" hidden></span><button id="preDecisionToggle" onclick="togglePreDecision()" class="macro-btn" style="display:none" title="展开/收起决策详情">展开 ▾</button></div>
                 <div id="decisionHUD" class="decision-hero hud-empty" data-sem="neutral">
@@ -1143,8 +1159,8 @@
                     <div class="hud-main-row">
                         <div id="hudAction" class="hud-action">等待输入</div>
                         <div id="hudSizing" class="hud-sizing" style="display:none"></div>
-                        <div id="hudFreq" class="freq-bar hud-freq" style="display:none"></div>
                     </div>
+                    <div id="hudFreq" class="freq-bar hud-freq" style="display:none"></div>
                     <div id="hudWhy" class="hud-why" style="display:none"></div>
                 </div>
                 <div id="resultPanel" class="flex flex-col gap-1.5 w-full invisible shrink-0">
@@ -1597,6 +1613,8 @@
         function toggleConfig() {
             const d = document.getElementById('cfgDropdown');
             if (!d) return;
+            const vd = document.getElementById('visionDropdown');
+            if (vd) vd.style.display = 'none';
             const opening = d.style.display === 'none';
             d.style.display = opening ? 'block' : 'none';
             if (opening) {
@@ -1614,6 +1632,31 @@
                 if (lft < 8) d.style.right = (lft - 8) + 'px';
             }
         }
+        window.toggleVisionDropdown = function(force) {
+            const d = document.getElementById('visionDropdown');
+            if (!d) return;
+            const cfgD = document.getElementById('cfgDropdown');
+            if (cfgD && force !== false) cfgD.style.display = 'none';
+            const opening = force !== undefined ? !!force : (d.style.display === 'none' || (window.getComputedStyle && window.getComputedStyle(d).display === 'none'));
+            d.style.display = opening ? 'block' : 'none';
+            if (opening) {
+                d.style.maxHeight = Math.max(240, window.innerHeight - d.getBoundingClientRect().top - 12) + 'px';
+                d.style.right = '0px';
+                const lft = d.getBoundingClientRect().left;
+                if (lft < 8) d.style.right = (lft - 8) + 'px';
+            }
+        };
+        window.updateVisionBadge = function() {
+            const b = document.getElementById('visionBadge');
+            if (!b) return;
+            const count = (typeof visionHistory !== 'undefined' && Array.isArray(visionHistory)) ? visionHistory.length : 0;
+            if (count > 0) {
+                b.textContent = count;
+                b.style.display = 'inline-block';
+            } else {
+                b.style.display = 'none';
+            }
+        };
         // 点击下拉外部区域自动关闭
         // 配置弹窗误关修复(2026-09-08，用户反馈"选完赛事类型/桌型/阶段弹窗就消失")：
         // 这些按钮的 onclick 会调 renderCfgGroup 重建整组按钮，**被点的按钮在事件冒泡到
@@ -1729,8 +1772,13 @@
 
         document.addEventListener('click', (e) => {
             const d = document.getElementById('cfgDropdown');
-            if (!d || d.style.display === 'none') return;
-            if (!e.target.closest('#cfgDropdown') && !e.target.closest('#cfgToggleBtn')) d.style.display = 'none';
+            if (d && d.style.display !== 'none') {
+                if (!e.target.closest('#cfgDropdown') && !e.target.closest('#cfgToggleBtn')) d.style.display = 'none';
+            }
+            const vd = document.getElementById('visionDropdown');
+            if (vd && vd.style.display !== 'none') {
+                if (!e.target.closest('#visionDropdown') && !e.target.closest('#visionToggleBtn')) vd.style.display = 'none';
+            }
         }, true);
         // 配置上移(2026-07-14b)：header 常驻比赛阶段下拉（高频调整项），与配置面板内 grpStage 双向同步
         function onStageQuickChange(v) {
@@ -2071,7 +2119,8 @@
                         sprText = ` · ${sprEl.textContent.trim()}`;
                     }
                 } catch (e) {}
-                potEl.textContent = `${pot}BB${sprText}`;
+                const potDisp = Number.isFinite(pot) ? (+pot.toFixed(1)) : pot;
+                potEl.textContent = `${potDisp}BB${sprText}`;
             }
 
             // 5. 对局街
@@ -4082,7 +4131,12 @@
                     const fr = d.frequencies || {};
                     const cls = { bet: 'bg-raise', raise: 'bg-raise', call: 'bg-call', check: 'bg-call', fold: 'bg-fold' };
                     freqHTML = ['bet', 'raise', 'call', 'check', 'fold'].filter(k => fr[k] > 0)
-                        .map(k => `<div class="freq-fill ${cls[k]}" style="width:${fr[k]}%">${CN[k.toUpperCase()]} ${fr[k]}%</div>`).join('');
+                        .map(k => {
+                            const pct = fr[k];
+                            const label = `${CN[k.toUpperCase()]} ${pct}%`;
+                            const txt = pct < 6 ? '' : pct < 15 ? `${pct}%` : label;
+                            return `<div class="freq-fill ${cls[k]}" style="width:${pct}%;" title="${label}">${txt}</div>`;
+                        }).join('');
                     why = d.reasoning || '';
                     const maxF = Math.max(0, ...Object.values(fr));
                     const m = d.math || {};
@@ -10914,23 +10968,23 @@
                 const posLbl   = isHero ? (POS_LABEL[globalPosHero] || globalPosHero || '')
                                         : (POS_LABEL[globalPosVillain] || globalPosVillain || '');
                 const who      = isHero ? '我方' : '对手';
-                // 翻后突出(2026-07-21)：当前行动方用 2px 身份色描边 + 底色，标题升 body 档
-                const frameCls = isHero ? 'border-2 border-blue-500/50 bg-blue-900/10' : 'border-2 border-emerald-500/50 bg-emerald-900/10';
-                const titleCls = isHero ? 'text-blue-300' : 'text-emerald-300';
+                // 翻后突出(2026-07-21, 2026-09-21)：我方行动用蓝色边框底色，轮到对手用暖琥珀警告边框+独立配色
+                const frameCls = isHero ? 'border-2 border-blue-500/50 bg-blue-900/10' : 'border-2 frame-villain';
+                const titleCls = isHero ? 'text-blue-300' : 'text-amber-300';
                 const toCall   = isHero ? toCallHero : toCallVillain;
                 const inputId  = isHero ? 'heroBetInput' : 'villainBetInput';
                 const aggrWord = isFacing ? '加注' : '下注';
                 const aggrType = isFacing ? 'raise' : 'bet';
                 const playerKey = isHero ? 'hero' : 'villain';
 
-                const titleTxt = isFacing
-                    ? `轮到${who} · ${posLbl} · 面对下注 ${lastBet.toFixed(1)}BB`
-                    : `轮到${who} · ${posLbl}`;
+                const titleTxt = isHero
+                    ? (isFacing ? `轮到我方 · ${posLbl} · 面对下注 ${lastBet.toFixed(1)}BB` : `轮到我方 · ${posLbl}`)
+                    : (isFacing ? `⚡ 轮到对手 · ${posLbl} · 面对下注 ${lastBet.toFixed(1)}BB` : `⚡ 轮到对手 · ${posLbl}`);
 
                 html += `<div class="border ${frameCls} rounded-lg p-2">
                     <div class="text-sm font-bold ${titleCls} mb-1.5 flex justify-between items-center gap-2">
                         <span>${titleTxt}</span>
-                        ${isHero ? '<span class="text-xs text-gray-500 font-normal shrink-0 act-hint">J 过/跟 · K 注 · L 弃 · A 全押 · 1-4 尺度</span>' : ''}
+                        ${isHero ? '<span class="text-xs text-gray-400 font-normal shrink-0 act-hint">J 过/跟 · K 注 · L 弃 · A 全押 · 1-4 尺度</span>' : '<span class="text-xs text-amber-400/80 font-normal shrink-0">记录对手打法</span>'}
                     </div>`;
                 if (isHero && odds !== null) {
                     html += `<div class="text-xs text-yellow-500/80 mb-1.5 px-1">底池赔率 ${odds}%，需胜率 ≥ ${odds}%</div>`;
@@ -10957,19 +11011,18 @@
                               : (!isHero && postState._pendingVillainBet) ? postState._pendingVillainBet
                               : heroDefault;
 
-                // ★ 建议键带上语义(2026-09-11)：弃=fold / 过牌·跟注=passive / 下注·加注·全押=attack，
-                // 与上方结论条同一套色。看到绿色结论，下面那个绿键就是要点的那个。
+                // ★ 建议键带上语义(2026-09-11, 2026-09-21)：按钮底色按动作鲜明区分，对手一侧采用暖琥珀色系
                 const foldCls = !foldOn
-                    ? 'border-white/5 bg-white/[0.02] text-gray-700 cursor-not-allowed'
+                    ? 'act-btn-fold'
                     : foldStar ? 'act-star act-sem-fold font-bold'
-                    : 'border-red-700/40 bg-red-900/10 text-red-300 hover:bg-red-900/30';
+                    : (isHero ? 'act-btn-fold' : 'villain-act-btn act-btn-fold');
                 const passCls = passiveStar
                     ? 'act-star act-sem-passive font-bold'
-                    : 'border-green-700/40 bg-green-900/10 text-green-300 hover:bg-green-900/30';
+                    : (isHero ? 'act-btn-checkcall' : 'villain-act-btn act-btn-checkcall');
                 const aggrCls = aggrStar
                     ? 'act-star act-sem-attack border font-bold'
-                    : (isHero ? 'bg-blue-900/30 border border-blue-700/30 text-blue-300 hover:bg-blue-900/50'
-                              : 'bg-emerald-900/30 border border-emerald-700/30 text-emerald-300 hover:bg-emerald-900/50');
+                    : (isHero ? 'act-btn-betraise' : 'villain-act-btn act-btn-betraise');
+                const allinCls = isHero ? 'act-allin' : 'villain-act-btn act-allin';
 
                 const foldClick = foldOn ? (isHero ? 'recordHeroFold()' : "setActionRecord('villain','fold',0)") : '';
                 const passClick = isFacing ? (isHero ? 'recordHeroCall()' : "setActionRecord('villain','call',0)")
@@ -11015,8 +11068,8 @@
                     html += `<div class="act-row">
                         <button ${foldOn ? `onclick="${foldClick}"` : 'disabled'} class="act-btn rounded-md border ${foldCls} active:scale-95 transition-all">${foldStar ? '★ ' : ''}弃牌${isHero ? '<kbd>L</kbd>' : ''}</button>
                         <button onclick="${passClick}" class="act-btn rounded-md border ${passCls} active:scale-95 transition-all">${passiveStar ? '★ ' : ''}${passiveLbl}${isHero ? '<kbd>J</kbd>' : ''}</button>
-                        <button onclick="commitCustomAction('${playerKey}','${inputId}','${aggrType}')" class="act-btn rounded-md ${aggrCls} active:scale-95 transition-all"><span id="aggrBtnLabel" data-star="${aggrStar ? 1 : 0}">${aggrStar ? '★ ' : ''}${aggrLabel}</span>${isHero ? '<kbd>K</kbd>' : ''}</button>
-                        <button onclick="quickCommit('${playerKey}','${aggrType}','allin')" class="act-btn act-allin rounded-md border active:scale-95 transition-all">全押${isHero ? '<kbd>A</kbd>' : ''}</button>
+                        <button onclick="commitCustomAction('${playerKey}','${inputId}','${aggrType}')" class="act-btn rounded-md border ${aggrCls} active:scale-95 transition-all"><span id="aggrBtnLabel" data-star="${aggrStar ? 1 : 0}">${aggrStar ? '★ ' : ''}${aggrLabel}</span>${isHero ? '<kbd>K</kbd>' : ''}</button>
+                        <button onclick="quickCommit('${playerKey}','${aggrType}','allin')" class="act-btn ${allinCls} rounded-md border active:scale-95 transition-all">全押${isHero ? '<kbd>A</kbd>' : ''}</button>
                     </div>`;
                 }
                 html += `</div>`;
@@ -14371,6 +14424,8 @@ async function analyzeVisionFile(file) {
             const id = ++visionCounter;
             currentVisionId = id;
             visionHistory.push({ id, base64url, data: null });
+            if (typeof window.updateVisionBadge === 'function') window.updateVisionBadge();
+            if (typeof window.toggleVisionDropdown === 'function') window.toggleVisionDropdown(true);
 
             appendThumbnail(id, base64url);
             selectThumb(id);
@@ -15330,6 +15385,11 @@ function renderVisionReviewCard(payload) {
             <div id="vrcEditor"></div>
         </div>`;
     box.style.display = 'block';
+    const vd = document.getElementById('visionDropdown');
+    if (vd && (vd.style.display === 'none' || !vd.style.display)) {
+        if (typeof window.toggleVisionDropdown === 'function') window.toggleVisionDropdown(true);
+        else vd.style.display = 'block';
+    }
 
     // ── 编辑交互（事件委托，全部复用现有 handler）──────────────
     const openEditor = (key) => { _vrcEdit = (_vrcEdit === key) ? null : key; renderVisionReviewCard(); };
@@ -15532,6 +15592,7 @@ window._visionRestore = function (v) {
     const rc = document.getElementById('visionReviewCard');
     if (rc) { rc.innerHTML = v.reviewHTML; rc.style.display = v.reviewDisplay; }
     updateVisionStatus(`已恢复 ${visionHistory.length} 张截图`);
+    if (typeof window.updateVisionBadge === 'function') window.updateVisionBadge();
 };
 window.clearVisionHistory = function(opts) {
     const cap = captureVisionState();
@@ -15555,6 +15616,7 @@ window.clearVisionHistory = function(opts) {
     const rc = document.getElementById('visionReviewCard');
     if (rc) { rc.style.display = 'none'; rc.innerHTML = ''; }
     updateVisionStatus('Ctrl+V 粘贴截图自动识别');
+    if (typeof window.updateVisionBadge === 'function') window.updateVisionBadge();
 };
 
 // ─── 挂载到 resetAll ───────────────────────────────────
