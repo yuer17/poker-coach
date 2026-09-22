@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.0 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.1 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -193,11 +193,14 @@
                 min-height: 0;
                 height: 100%;
             }
-            #decisionPanel {
+            #postDecisionSlot > #decisionPanel {
                 height: 100%;
                 margin-bottom: 0 !important;
                 display: flex;
                 flex-direction: column;
+            }
+            #decisionPanel.hidden {
+                display: none !important;
             }
             #decisionMain {
                 flex: 1;
@@ -926,9 +929,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 28px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:28px;height:28px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.0 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.1 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.0 正式版</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.1</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -3872,14 +3875,27 @@
 
         // 查询手牌是否在 Iso-raise 范围内（含多人跛入收窄 + 打法风格缩放）
         function isHandInIsoRange(handStr, heroPos, tableSize, limpCount) {
-            let range = ISO_RAISE_RANGES[tableSize]?.[heroPos];
+            // Pokercode 核心强手牌（TT+、大高张 AK/AQ/AJ/KQ）无论跛入人数多少都强制 100% 暴力隔离
+            const premiumAlways = [
+                'AA','KK','QQ','JJ','TT',
+                'AKs','AKo','AQs','AQo','AJs','AJo','KQs','KQo'
+            ];
+            if (premiumAlways.includes(handStr)) return true;
+
+            // 多人跛入时（或 BB 位面对单人跛入时），小对子与边缘投机连张转为平跟/过牌控池，不进行 Iso
+            if (limpCount >= 2 || heroPos === 'BB') {
+                const speculativeOverlimp = ['22','33','44','55','66','65s','54s','64s','75s','86s'];
+                if (speculativeOverlimp.includes(handStr)) return false;
+            }
+
+            const ts = tableSize || '9max';
+            let range = ISO_RAISE_RANGES[ts]?.[heroPos];
             if (!range) {
-                range = GTO_RANGES[tableSize]?.[heroPos]?.open || [];
+                // BB 面对跛入已在大盲位无需额外投入，仅核心强牌强制 Iso，不借用 SB 宽开池表
+                if (heroPos === 'BB') return false;
+                range = GTO_RANGES[ts]?.[heroPos]?.open || ISO_RAISE_RANGES[ts]?.['SB'] || [];
             }
             if (!range.includes(handStr)) return false;
-            // 顶级手牌（AQ+、KK+）无论跛入人数多少都必须 ISO
-            const premiumAlways = ['AA','KK','QQ','JJ','AKs','AKo','AQs','AQo'];
-            if (premiumAlways.includes(handStr)) return true;
             const handRank = range.indexOf(handStr);
             const scale = getPlayStyleScale();
             const percentile = handRank / range.length;
@@ -5090,6 +5106,13 @@
             const postRightContent = document.getElementById('postRightContent');
             if (postRightContent) postRightContent.innerHTML =
                 '<div id="analysisLoading" class="hidden text-center text-gray-400 text-sm py-3 panel-bg rounded">⏳ 正在计算胜率...</div>';
+            const _dpReset = document.getElementById('decisionPanel');
+            if (_dpReset) _dpReset.classList.add('hidden');
+            const _slotReset = document.getElementById('postDecisionSlot');
+            if (_slotReset) {
+                _slotReset.style.display = 'none';
+                _slotReset.innerHTML = '';
+            }
             // 更新底池/有效/SPR 显示为零
             const sumSpr = document.getElementById('sumSpr');
             if (sumSpr) sumSpr.textContent = '0.0';
@@ -5127,7 +5150,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.0 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.1 正式版';
             renderWindowColorChips(key);
         };
 
@@ -5201,6 +5224,7 @@
             postState.potTracker._manualOverride = false; // 重置手动标记，让下一手重新初始化底池
             postState._pendingVillainBet = null; // O3：下一手清 Vision 预填
             postState.extraVillains = []; // 多人底池(2026-07-14)：下一手清额外对手
+            postState.opponentProfiles = {}; // R-02 下一手清席位画像缓存，保留 postState.villainProfile 全局偏好
 
             // 融合单页(2026-07-14)：无页面切换，重置阶段标记 + 刷新公共牌槽/共享网格
             postState._entered = false;
@@ -5228,7 +5252,10 @@
             const _dpNext = document.getElementById('decisionPanel');
             if (_dpNext) _dpNext.classList.add('hidden');
             const _slotNext = document.getElementById('postDecisionSlot');
-            if (_slotNext) _slotNext.style.display = 'none';
+            if (_slotNext) {
+                _slotNext.style.display = 'none';
+                _slotNext.innerHTML = '';
+            }
             // 翻前时间线(2026-07-21)：下一手座位带回到"前方全部弃牌"（场景随之回 open），位置/筹码/赛制仍保留
             tlReset();
             initPotTracker();
@@ -7972,6 +7999,12 @@
                 // 且对手跛入范围极宽，该狠狠 iso。
                 const _bvbLimp = (posH === 'BB' && posV === 'SB' && limpCount <= 1)
                     ? bbVsLimpAction(handStr, effStack) : null;
+                // E-01: 计算 Hero 翻后相对于所有 Limper 的相对位置 (IP vs OOP)
+                const limpersList = (currentMode === 'vsLimp' && selectedLimperPositions && selectedLimperPositions.length > 0)
+                    ? selectedLimperPositions
+                    : (posV ? [posV] : ['UTG']);
+                const isHeroOopVsLimpers = limpersList.some(lp => (POSTFLOP_ORDER[posH] || 5) < (POSTFLOP_ORDER[lp] || 5));
+
                 if (_bvbLimp) {
                     const _bl = (_bvbLimp && _bvbLimp.act === 'mix') ? _bvbLimp : null;
                     const _blAct = _bl ? 'mix' : _bvbLimp;
@@ -8010,10 +8043,28 @@
                     }
                 } else if (inIsoRange) {
                     isoPct = 100; foldPct = 0;
-                    logic = `${limpCount} 名跛入者，${POS_LABEL[posH]} 位在 Iso 范围内，剥削弱范围主动加注。`;
+                    const isPremium = ['AA','KK','QQ','JJ','TT','AKs','AKo','AQs','AQo','AJs','AJo','KQs','KQo'].includes(handStr);
+                    logic = `${limpCount} 名跛入者${isHeroOopVsLimpers ? '（翻后OOP）' : '（翻后IP）'}，${POS_LABEL[posH]} 位持 ${handStr}` +
+                            (isPremium ? ` 属于 Pokercode 核心强牌，强制 100% 暴力隔离加注，收割死钱或制造单挑。`
+                                       : ` 在 Iso 范围内，剥削弱范围主动加注。`);
+                } else if ((cat === 'LowPair' || cat === 'SuitedConn' || cat === 'SuitedBroad') && effStack >= 15 && limpCount >= 2) {
+                    // 多人 Limp 时的便宜溜入（Over-limp）控池
+                    if (posH === 'BB') {
+                        checkPct = 100; foldPct = 0;
+                        logic = `面对 ${limpCount} 人平跟底池，BB 位无需额外投入，免费过牌看翻牌。`;
+                    } else {
+                        callPct = 100; foldPct = 0;
+                        const deadMoney = limpCount * 1.0 + 1.5 + getAnteBB();
+                        logic = `面对 ${limpCount} 人平跟底池死钱充裕（约 ${deadMoney.toFixed(1)}BB），${handStr} 投机买 Set/高胜率听牌赔率极佳，便宜溜入（Over-limp）控池。`;
+                    }
                 } else if ((cat === 'LowPair' || cat === 'SuitedConn') && effStack >= 15) {
-                    callPct = 100; foldPct = 0;
-                    logic = '投机平跟，不够强 Iso，买 Set 或听牌。';
+                    if (posH === 'BB') {
+                        checkPct = 100; foldPct = 0;
+                        logic = 'BB 已在大盲位，可免费过牌看翻牌。';
+                    } else {
+                        callPct = 100; foldPct = 0;
+                        logic = '投机平跟，不够强 Iso，买 Set 或听牌。';
+                    }
                 } else if (posH === 'BB') {
                     // BB 已在大盲位，无需额外投入，免费过牌看翻牌
                     checkPct = 100; foldPct = 0;
@@ -8023,11 +8074,11 @@
                     logic = '不在 Iso 范围，弃牌。';
                 }
 
-                // Iso 尺度：3BB + 每个 limper 1BB（含上限检查）
+                // Iso 尺度：Pokercode 动态隔离公式：3BB + N * 1BB + (OOP ? 1BB : 0)
                 // 盲对盲另计：MPT 图题 15bb "Raise 3x" · 25bb "3.3x" · 40/60bb "3.5x"
                 const isoAmt = _bvbLimp
                     ? (_bvbLimp === 'jam' ? sH : sbBvbRaiseX(effStack))   /* mix/raise 同用盲对盲尺度 */
-                    : 3 + limpCount;   // 盲对盲：MPT 图题 15bb 3x · 25bb 3.3x · 40/60bb 3.5x
+                    : (3 + limpCount + (isHeroOopVsLimpers ? 1 : 0));
                 const isoSize = (sH > 0 && isoAmt >= sH * 0.85)
                     ? `${sH.toFixed(1)}BB All-in`
                     : isoAmt.toFixed(1) + 'BB Iso-raise';
@@ -8036,7 +8087,7 @@
                 const _blMix = _bvbLimp && _bvbLimp.act === 'mix';
                 let color = _blMix ? 'mix' : isoPct > 0 ? 'green' : checkPct > 0 ? 'blue' : callPct > 0 ? 'yellow' : 'red';
                 let verdict = _blMix ? `🟡 混合：加注 ${isoPct}% / 过牌 ${checkPct}%`
-                            : isoPct > 0 ? '🔴 加注隔离 (Iso)' : checkPct > 0 ? '🟢 过牌 (Check)' : callPct > 0 ? '🟢 平跟博底池' : '⚪ 弃牌';
+                            : isoPct > 0 ? '🔴 加注隔离 (Iso)' : checkPct > 0 ? '🟢 过牌 (Check)' : callPct > 0 ? (limpCount >= 2 ? '🟢 便宜平跟 (Over-limp)' : '🟢 平跟博底池') : '⚪ 弃牌';
 
                 // 解算器语义色：green(Iso)=进攻红 / blue(Check)+yellow(Call)=被动绿 / red(Fold)=灰蓝
                 box.style.borderColor = color==='mix'?'#e0a83a':color==='green'?'#e5484d':color==='blue'?'#2ea86a':color==='yellow'?'#2ea86a':'#5c667f';
@@ -8063,9 +8114,9 @@
                     (foldPct>0?`<span class="text-gray-400">Fold ${foldPct}%</span>`:'');
 
                 // 数学面板
-                const isoRange = ISO_RAISE_RANGES[gameConfig.tableSize]?.[posH] || [];
+                const isoRange = ISO_RAISE_RANGES[gameConfig.tableSize]?.[posH] || (posH === 'BB' ? ['AA','KK','QQ','JJ','TT','AKs','AKo','AQs','AQo','AJs','AJo','KQs','KQo'] : []);
                 document.getElementById('lblBox1').innerText = `${POS_LABEL[posH]} Iso 总范围`;
-                document.getElementById('mathBox1').innerText = isoRange.length + ' 手';
+                document.getElementById('mathBox1').innerText = (posH === 'BB' ? '13 手 (核心强牌)' : isoRange.length + ' 手');
                 document.getElementById('lblBox2').innerText = '跛入人数收窄';
                 document.getElementById('mathBox2').innerText = limpCount >= 3 ? '前 60%' : limpCount === 2 ? '前 75%' : '无收窄';
                 document.getElementById('lblBox3').innerText = '范围判断';
@@ -9351,6 +9402,9 @@
             heroPosition: 'IP',
             // 是否正在计算中（用于按钮加载状态）
             isAnalyzing: false,
+            // R-02 对手画像与节点锁定偏转 (Nodelocking & Exploit Engine)
+            opponentProfiles: {},
+            villainProfile: 'balanced',
             potTracker: {
                 preflopPot: 0,
                 currentPot: 0,
@@ -10989,8 +11043,15 @@
         function mountDecision() {
             try {
                 const slot = document.getElementById('postDecisionSlot');
-                const dp = document.getElementById('decisionPanel');
-                if (slot && dp && dp.parentElement !== slot) slot.appendChild(dp);
+                const container = document.getElementById('postRightContent');
+                if (container && slot) {
+                    const dpInContainer = container.querySelector('#decisionPanel');
+                    if (dpInContainer) {
+                        slot.innerHTML = '';
+                        slot.appendChild(dpInContainer);
+                    }
+                }
+                const dp = slot ? slot.querySelector('#decisionPanel') : document.getElementById('decisionPanel');
                 const cnt = postState.board ? postState.board.filter(c => c !== null).length : 0;
                 const inPost = cnt >= 3;
                 if (!inPost) {
@@ -10998,6 +11059,7 @@
                     if (dp) dp.classList.add('hidden');
                 } else {
                     if (slot) slot.style.display = '';
+                    if (dp) dp.classList.remove('hidden');
                 }
             } catch (e) {}
         }
@@ -11024,12 +11086,13 @@
                 if (colR) colR.classList.toggle('pre-stage', !inPost);
                 mountDecision();   // 翻后决策卡挂到左列同一个槽位
                 const slot = document.getElementById('postDecisionSlot');
-                const dp = document.getElementById('decisionPanel');
+                const dp = slot ? slot.querySelector('#decisionPanel') : document.getElementById('decisionPanel');
                 if (!inPost) {
                     if (slot) slot.style.display = 'none';
                     if (dp) dp.classList.add('hidden');
                 } else {
                     if (slot) slot.style.display = '';
+                    if (dp) dp.classList.remove('hidden');
                 }
                 // 进翻后：翻前决策收起（翻后决策接管同一位置）；自证卡在右列不受影响
                 const foldDec = inPost && !_preDecUserOpen;
@@ -11724,6 +11787,11 @@
                 </div>`;
             }
 
+            // R-02 对手画像与节点锁定偏转切换器
+            if (typeof renderVillainProfileSelector === 'function') {
+                html += renderVillainProfileSelector();
+            }
+
             // 跨街行动线(2026-07-21，用户要求"进入新街要保留之前的动作")：
             // 原本只列当前街，进转牌后翻牌的行动就看不见了——而"对手翻牌过牌、我下注被跟"
             // 恰恰是判断转牌怎么打的关键信息。现在每条街一行，已结束的街淡化但完整可读，
@@ -12160,6 +12228,143 @@
         }
 
         /**
+         * ════════════════════════════════════════════════════════════════
+         * R-02 对手节点锁定与剥削决策偏转器 (Nodelocking & Exploit Engine)
+         * 理论依据：Pokercode 剥削加权模型与《Modern Poker Theory》节点锁定理论
+         * ════════════════════════════════════════════════════════════════
+         */
+        const VILLAIN_PROFILES = {
+            balanced: {
+                id: 'balanced',
+                name: 'GTO 均衡',
+                icon: '⚖️',
+                desc: '标准博弈论均衡，无偏向防守',
+                cbetBias: 0,
+                bluffBias: 0,
+                callMarginBias: 0,
+                trapBias: 0
+            },
+            fold_heavy: {
+                id: 'fold_heavy',
+                name: '弃牌过多 (Fit-or-Fold)',
+                icon: '🐟',
+                desc: '极度尊重下注，高频弃牌，少抓诈',
+                cbetBias: 25,
+                bluffBias: 30,
+                callMarginBias: 5,
+                trapBias: -10
+            },
+            calling_station: {
+                id: 'calling_station',
+                name: '跟注站 (Calling Station)',
+                icon: '🦹',
+                desc: '不信邪，极度厌恶弃牌，高频抓诈到底',
+                cbetBias: -15,
+                bluffBias: -100, // 纯诈唬归零
+                callMarginBias: -3,
+                trapBias: 15
+            },
+            passive: {
+                id: 'passive',
+                name: '过于被动 (Passive / Rock)',
+                icon: '🛡️',
+                desc: '极少主动进攻，一旦开火强烈偏坚果',
+                cbetBias: 15,
+                bluffBias: 15,
+                callMarginBias: 7,
+                trapBias: 0
+            },
+            maniac: {
+                id: 'maniac',
+                name: '激进狂徒 (Maniac / Over-bluff)',
+                icon: '🦈',
+                desc: '超频下注加注，诈唬严重超标，频繁超池施压',
+                cbetBias: -10,
+                bluffBias: -20,
+                callMarginBias: -6,
+                trapBias: 35
+            }
+        };
+
+        function getVillainProfile(pos) {
+            if (pos && typeof postState !== 'undefined' && postState && postState.opponentProfiles && postState.opponentProfiles[pos]) {
+                return postState.opponentProfiles[pos];
+            }
+            if (typeof postState !== 'undefined' && postState && postState.villainProfile) {
+                return postState.villainProfile;
+            }
+            if (typeof gameConfig !== 'undefined' && gameConfig.villainProfile) {
+                return gameConfig.villainProfile;
+            }
+            return 'balanced';
+        }
+
+        window.getVillainProfile = getVillainProfile;
+        window.VILLAIN_PROFILES = VILLAIN_PROFILES;
+
+        window.setVillainProfile = function(profileId, pos = null) {
+            const pId = VILLAIN_PROFILES[profileId] ? profileId : 'balanced';
+            let targetPos = pos;
+            if (!targetPos) {
+                const hPos = typeof globalPosHero !== 'undefined' ? globalPosHero : 'BTN';
+                targetPos = (typeof globalPosVillain !== 'undefined' && globalPosVillain !== hPos)
+                    ? globalPosVillain
+                    : (hPos === 'BB' ? 'BTN' : 'BB');
+            }
+            if (typeof postState !== 'undefined' && postState) {
+                if (!postState.opponentProfiles) postState.opponentProfiles = {};
+                postState.opponentProfiles[targetPos] = pId;
+                postState.villainProfile = pId;
+            }
+            if (typeof gameConfig !== 'undefined') gameConfig.villainProfile = pId;
+
+            if (typeof renderBettingPanel === 'function') renderBettingPanel();
+            if (typeof autoTriggerAnalysis === 'function') autoTriggerAnalysis();
+        };
+
+        function renderVillainProfileSelector() {
+            const hPos = typeof globalPosHero !== 'undefined' ? globalPosHero : 'BTN';
+            const oppPos = (typeof globalPosVillain !== 'undefined' && globalPosVillain !== hPos)
+                ? globalPosVillain
+                : (hPos === 'BB' ? 'BTN' : 'BB');
+            const oppLabel = (typeof POS_LABEL !== 'undefined' && POS_LABEL[oppPos]) ? POS_LABEL[oppPos] : (oppPos || '对手');
+            const curProfileKey = getVillainProfile(oppPos);
+            const curProf = VILLAIN_PROFILES[curProfileKey] || VILLAIN_PROFILES.balanced;
+
+            const profileList = [
+                { id: 'balanced', label: '均衡', icon: '⚖️' },
+                { id: 'fold_heavy', label: '过弃', icon: '🐟' },
+                { id: 'calling_station', label: '跟注站', icon: '🦹' },
+                { id: 'passive', label: '被动', icon: '🛡️' },
+                { id: 'maniac', label: '狂徒', icon: '🦈' }
+            ];
+
+            const btns = profileList.map(p => {
+                const isActive = (curProfileKey === p.id);
+                const activeStyle = isActive
+                    ? 'background:rgba(87,169,255,0.28);border-color:#57a9ff;color:#ffffff;font-weight:700;box-shadow:0 0 6px rgba(87,169,255,0.35);'
+                    : 'background:rgba(0,0,0,0.35);border-color:rgba(255,255,255,0.12);color:#9ca3af;';
+                const pInfo = VILLAIN_PROFILES[p.id] || {};
+                return `<button type="button" class="v-prof-btn" data-prof="${p.id}" onclick="setVillainProfile('${p.id}', '${oppPos}')"
+                    style="padding:2px 6px;font-size:11px;border-radius:4px;border:1px solid;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:all .15s;${activeStyle}"
+                    title="${pInfo.name}：${pInfo.desc}">
+                    <span>${p.icon}</span><span>${p.label}</span>
+                </button>`;
+            }).join('');
+
+            return `<div id="villainProfileSelector" class="flex items-center justify-between gap-1 mb-2 px-2 py-1 rounded" style="background:rgba(0,0,0,0.22);border:1px solid rgba(87,169,255,0.25);">
+                <div class="flex items-center gap-1 shrink-0">
+                    <span class="text-xs text-gray-400">对手倾向 [${oppLabel}]:</span>
+                    <span class="text-xs font-semibold" style="color:var(--accent);">${curProf.icon} ${curProf.name.split(' ')[0]}</span>
+                </div>
+                <div class="flex items-center gap-1 flex-wrap justify-end">
+                    ${btns}
+                </div>
+            </div>`;
+        }
+        window.renderVillainProfileSelector = renderVillainProfileSelector;
+
+        /**
          * Pokercode 下注几何学与 3 街 SPR 规划引擎 (R-01 Bet Sizing Geometry Engine)
          * 理论依据：Pokercode 核心理论“Geometric Sizing（几何尺度）”与《Modern Poker Theory》
          *
@@ -12276,10 +12481,15 @@
             const nutAdv = options.nutAdvantage || 'neutral';
             const wetness = Number(options.wetness) || 0;
             const isMultiway = !!options.isMultiway;
+            const vProf = options.villainProfile || 'balanced';
 
             let recommendedProfile = 'standard';
             if (isMultiway) {
                 recommendedProfile = 'blocker';
+            } else if (vProf === 'calling_station' && spr >= 1.2) {
+                recommendedProfile = 'overbet'; // 面对跟注站单挑，超池满额榨取
+            } else if (vProf === 'fold_heavy') {
+                recommendedProfile = 'blocker'; // 面对过弃，小注即可收割弃牌率
             } else if (topoCat === 'PAIRED_BOARD' || topoCat === 'MONOTONE_DYNAMIC') {
                 recommendedProfile = 'blocker';
             } else if (nutAdv === 'Raiser' && spr >= 1.5) {
@@ -12536,6 +12746,7 @@
                         <div class="flex items-baseline gap-2 flex-wrap">
                             <span id="decisionAction" class="text-base font-black tracking-wider">--</span>
                             <span id="decisionSizing" class="text-xs font-bold" style="color:var(--gold)"></span>
+                            <span id="decisionExploitBadge" class="text-xs font-bold px-1.5 py-0.5 rounded hidden" style="background:rgba(87,169,255,0.18);border:1px solid rgba(87,169,255,0.4);color:#7cc0ff;"></span>
                         </div>
                         <div id="decisionReason" class="text-xs text-gray-300 mt-1.5" style="line-height:1.5"></div>
                     </div>
@@ -14678,6 +14889,38 @@
                 warnings.push('⚠ ' + (stage === 'bubble' ? '泡沫期' : '决赛桌') + '：避免边缘 bluff 和 bluff catch');
             }
 
+            // ── R-02 对手画像与节点锁定偏转 (Nodelocking & Exploit Engine) ──
+            const hPosActual = heroPos || (typeof globalPosHero !== 'undefined' ? globalPosHero : 'BTN');
+            const defaultOppPos = (typeof globalPosVillain !== 'undefined' && globalPosVillain !== hPosActual)
+                ? globalPosVillain
+                : (hPosActual === 'BB' ? 'BTN' : 'BB');
+            const targetOppPos = ss.lastBetPlayer === 'villain'
+                ? (ss.lastAggressorPos || defaultOppPos)
+                : defaultOppPos;
+            const villainProfileKey = (typeof getVillainProfile === 'function')
+                ? getVillainProfile(targetOppPos)
+                : (gameConfig.villainProfile || 'balanced');
+            const vProfile = (typeof VILLAIN_PROFILES !== 'undefined' && VILLAIN_PROFILES[villainProfileKey])
+                ? VILLAIN_PROFILES[villainProfileKey]
+                : (typeof VILLAIN_PROFILES !== 'undefined' ? VILLAIN_PROFILES.balanced : { id: 'balanced', name: 'GTO 均衡', icon: '⚖️', desc: '标准博弈论均衡', cbetBias: 0, bluffBias: 0, callMarginBias: 0, trapBias: 0 });
+
+            // ICM 3-1-3 规避淘汰硬屏障 (Survival Posture Safeguard)
+            const isSurvival = (icm313 && icm313.posture === 'survival');
+            let effCallMarginBias = vProfile.callMarginBias || 0;
+            let effCbetBias = vProfile.cbetBias || 0;
+            let effBluffBias = vProfile.bluffBias || 0;
+
+            if (isSurvival) {
+                // 规避淘汰硬屏障：抑制激进高方差偏转（不盲目抓诈或高频轻偷）
+                if (effCallMarginBias < 0) effCallMarginBias = 0;
+                if (effCbetBias > 0) effCbetBias = Math.round(effCbetBias * 0.4);
+                if (effBluffBias > 0) effBluffBias = Math.round(effBluffBias * 0.3);
+            }
+
+            if (effCallMarginBias !== 0) {
+                sc.callMargin = Math.max(2, sc.callMargin + effCallMarginBias);
+            }
+
             let primaryAction = '', sizing = '', frequencies = {}, reasoning = '';
 
             // ════════════════════════════════════════════════════
@@ -15051,6 +15294,14 @@
                             frequencies = { bet: drawFreq, check: 100 - drawFreq };
                             reasoning = `${outs}张进张，翻牌半诈唬（湿润面${(wetness*100).toFixed(0)}%）`;
                         }
+                    } else if (!isMultiway && heroIsPFA && ba?.pokercodeTopology?.category === 'DRY_HIGH' && (ba.straightThreat || 0) === 0 && (wetness || 0) <= 0.3 && !isSurvival && (!vProfile || vProfile.id !== 'calling_station')) {
+                        // E-02: Pokercode 2-1-2 干燥高牌面开池方空气桶攻击性释放
+                        primaryAction = 'BET';
+                        sizing = sc.sizes.probe || '25% 底池';
+                        frequencies = { bet: 70, check: 30 };
+                        const _airRef = flopAirBetFreq(spr, _mwN);
+                        const _sdRef = _airRef ? _airRef.sd : null;
+                        reasoning = `💡 Pokercode 2-1-2 [干燥高牌面]：开池方享有统治级范围优势${_sdRef !== null ? `（范围强度差 ${_sdRef >= 0 ? '+' : ''}${_sdRef.toFixed(1)} 点，TexasSolver 校准）` : ''}，即便未成强牌（胜率${equity.toFixed(0)}%），仍赋予 70% 高频极小尺度（${sizing}）持续施压收割死钱`;
                     } else if (sc.canRangeBet && iHaveRangeAdv && equity >= 35) {
                         // 探测性范围下注（仅翻牌）：胜率≥35%+范围优势
                         primaryAction = 'BET'; sizing = sc.sizes.probe;
@@ -15075,7 +15326,7 @@
                         const _sd = _air ? _air.sd : null;
                         const _paired = _air ? _air.paired : 0;
                         const _airFreq = _air ? _air.freq : null;
-                        if (_airFreq && _airFreq >= 10) {
+                        if (_airFreq && _airFreq >= 10 && !isSurvival) {
                             primaryAction = _airFreq >= 50 ? 'BET' : 'CHECK';
                             sizing = _airFreq >= 50 ? sc.sizes.probe : '';
                             frequencies = { bet: _airFreq, check: 100 - _airFreq };
@@ -15086,9 +15337,11 @@
                         } else {
                             primaryAction = 'CHECK'; sizing = '';
                             frequencies = { check: 100 };
-                            reasoning = _mwN > 0
-                                ? `翻牌胜率${equity.toFixed(0)}%、进张${outs}张不足，且 ${_mwN + 1} 人在局 —— 多人底池不做纯诈唬，过牌`
-                                : `翻牌胜率${equity.toFixed(0)}%（门槛${sc.betThresh}%），进张${outs}张不足，过牌`;
+                            reasoning = isSurvival
+                                ? `翻牌胜率${equity.toFixed(0)}%、进张${outs}张不足，🛡️ ICM 规避淘汰（Survival 姿态）：空气牌绝不冒险诈唬，强制过牌控池`
+                                : (_mwN > 0
+                                    ? `翻牌胜率${equity.toFixed(0)}%、进张${outs}张不足，且 ${_mwN + 1} 人在局 —— 多人底池不做纯诈唬，过牌`
+                                    : `翻牌胜率${equity.toFixed(0)}%（门槛${sc.betThresh}%），进张${outs}张不足，过牌`);
                         }
                     }
                 }
@@ -15414,6 +15667,136 @@
             }
 
             // ════════════════════════════════════════════════════════════
+            // R-02 对手节点锁定与剥削决策偏转器 (Nodelocking & Exploit Engine)
+            // ════════════════════════════════════════════════════════════
+            let exploitApplied = false;
+            let exploitNote = '';
+
+            if (vProfile && vProfile.id !== 'balanced') {
+                const eqMarginR02 = equity - potOdds;
+                const isAir = (equity < 38 && outs < 7);
+                const isStrongValue = isMultiway
+                    ? (equity >= Math.max(sc.strongThresh, 68))
+                    : (equity >= sc.strongThresh || equity >= 68);
+
+                // 1. 🦹 跟注站 (calling_station)
+                if (vProfile.id === 'calling_station') {
+                    if (villainBet === 0) {
+                        if (isAir) {
+                            // 纯诈唬彻底归零
+                            primaryAction = 'CHECK';
+                            sizing = '';
+                            frequencies = { check: 100 };
+                            exploitApplied = true;
+                            exploitNote = '对手高频抓诈不弃牌，纯诈唬期望为负，纯诈唬归零 (0%)，过牌控池';
+                        } else if (isStrongValue) {
+                            // 价值牌偏向下注榨取，尺度放大至满额超池/强注（多人底池遵守 mwCap 控池）
+                            const mwCap = (typeof mwTotalCount === 'number' && mwTotalCount >= 4) ? 25 : 35;
+                            const betFreq = (isMultiway && street === 'flop') ? mwCap : 100;
+                            primaryAction = (betFreq >= 50) ? 'BET' : 'CHECK';
+                            sizing = (betFreq >= 50)
+                                ? ((iHaveNutAdv || sprZone === 'deep') ? sc.sizes.nut : (sc.sizes.strong || '75% 底池'))
+                                : '';
+                            frequencies = (betFreq === 100) ? { bet: 100 } : { bet: betFreq, check: 100 - betFreq };
+                            exploitApplied = true;
+                            exploitNote = isMultiway
+                                ? `对手极度厌恶弃牌，价值牌偏向下注榨取（多人池兼顾控池频率 ${betFreq}%）`
+                                : '对手极度厌恶弃牌，价值牌 100% 满额超池下注压榨，杜绝免费看牌';
+                        }
+                    }
+                }
+                // 2. 🐟 弃牌过多 (fold_heavy)
+                else if (vProfile.id === 'fold_heavy' && !isSurvival) {
+                    if (villainBet === 0) {
+                        if (primaryAction === 'CHECK' && (heroIsPFA || iHaveRangeAdv || (blk && blk.edge > 0)) && equity >= 18) {
+                            primaryAction = 'BET';
+                            sizing = (street === 'turn' ? (sc.sizes.small || '33% 底池') : (sc.sizes.probe || '25% 底池'));
+                            frequencies = { bet: 75, check: 25 };
+                            exploitApplied = true;
+                            exploitNote = `对手过弃率极高，小注(${sizing})即可收获最大弃牌率，启动高频持续下注剥削`;
+                        } else if (primaryAction === 'BET') {
+                            if (sizing === sc.sizes.strong || sizing === sc.sizes.medium) {
+                                sizing = (street === 'turn' ? (sc.sizes.small || '33% 底池') : (sc.sizes.probe || '25% 底池'));
+                            }
+                            frequencies.bet = Math.min(95, (frequencies.bet || 70) + 25);
+                            frequencies.check = 100 - frequencies.bet;
+                            exploitApplied = true;
+                            exploitNote = `面对过弃对手调小施压尺度至 ${sizing}，低成本榨取高额弃牌死钱`;
+                        }
+                    } else if (villainBet > 0) {
+                        if (primaryAction === 'CALL' && eqMarginR02 < sc.callMargin + 4) {
+                            primaryAction = 'FOLD';
+                            sizing = '';
+                            frequencies = { fold: 100 };
+                            exploitApplied = true;
+                            exploitNote = '紧弱过弃型对手主动下注极度偏成牌，胜率优势不足安全阈值，果断弃牌止损';
+                        } else if (primaryAction === 'FOLD') {
+                            exploitApplied = true;
+                            exploitNote = '过弃型对手主动下注高度偏成牌，胜率不足坚决弃牌止损';
+                        }
+                    }
+                }
+                // 3. 🛡️ 过于被动 (passive)
+                else if (vProfile.id === 'passive') {
+                    if (villainBet === 0) {
+                        if (primaryAction === 'CHECK' && equity >= 25 && heroPos === 'IP') {
+                            primaryAction = 'BET';
+                            sizing = sc.sizes.probe || '33% 底池';
+                            frequencies = { bet: 70, check: 30 };
+                            exploitApplied = true;
+                            exploitNote = '被动型对手过牌范围极度封顶，后位探测下注偷取死钱';
+                        }
+                    } else if (villainBet > 0) {
+                        // 被动出击必坚果：当且仅当对手非极小注（potOdds >= 20%）且我方非极强坚果（equity < 65%）时果断弃牌止损；
+                        // 面对超小注（potOdds < 20%）赔率极优时不盲目过弃，避免被反向剥削；全下由底层 commit/all-in 引擎接管
+                        const isAllinShove = effStack > 0 && villainBet >= effStack * 0.95;
+                        if (primaryAction === 'CALL' && equity < 65 && potOdds >= 20 && !isAllinShove) {
+                            primaryAction = 'FOLD';
+                            sizing = '';
+                            frequencies = { fold: 100 };
+                            exploitApplied = true;
+                            exploitNote = '被动型对手罕见主动出击，其范围几乎必为强成牌或坚果，边缘抓诈直接弃牌';
+                        } else if (primaryAction === 'FOLD') {
+                            exploitApplied = true;
+                            exploitNote = '被动型对手进攻范围高度偏坚果，果断弃牌止损';
+                        }
+                    }
+                }
+                // 4. 🦈 激进狂徒 (maniac)
+                else if (vProfile.id === 'maniac') {
+                    if (villainBet === 0) {
+                        if (isStrongValue && wetness < 0.55) {
+                            primaryAction = 'CHECK';
+                            sizing = '';
+                            frequencies = { check: 80, bet: 20 };
+                            exploitApplied = true;
+                            exploitNote = '持顶级成牌面对激进狂徒，高频过牌埋伏设套，引诱其过度诈唬施压';
+                        }
+                    } else if (villainBet > 0) {
+                        if (primaryAction === 'CALL') {
+                            exploitApplied = true;
+                            exploitNote = '对手诈唬频率严重超标，放宽抓诈门槛坚决抓诈跟注';
+                        } else if (!isSurvival && primaryAction === 'FOLD' && equity >= potOdds && equity >= 35) {
+                            primaryAction = 'CALL';
+                            sizing = '';
+                            frequencies = { call: 70, fold: 30 };
+                            exploitApplied = true;
+                            exploitNote = '对手诈唬频率严重超标，放宽抓诈门槛坚决抓诈跟注';
+                        }
+                    }
+                }
+
+                if (exploitNote) {
+                    reasoning += `\n🎯 节点锁定剥削 [${vProfile.icon} ${vProfile.name.split(' ')[0]}]：${exploitNote}`;
+                    warnings.push(`🎯 节点锁定剥削：${exploitNote}`);
+                }
+            }
+
+            if (isSurvival && vProfile && vProfile.id !== 'balanced') {
+                warnings.push('🛡️ ICM 风险硬屏障：规避淘汰姿态抑制激进高方差剥削，守卫筹码生命');
+            }
+
+            // ════════════════════════════════════════════════════════════
             // Pokercode 3 街 SPR 下注几何学引擎 (R-01 Bet Sizing Geometry)
             // ════════════════════════════════════════════════════════════
             const geometry = (typeof calcGeometricSizing === 'function')
@@ -15424,13 +15807,22 @@
                     wetness,
                     isMultiway,
                     mwTotalCount,
-                    villainBet
+                    villainBet,
+                    villainProfile: vProfile ? vProfile.id : 'balanced'
                 }) : null;
 
             return {
                 primaryAction, sizing, frequencies, reasoning,
                 warnings, street,
                 geometry,
+                villainProfile: vProfile,
+                exploitOffset: {
+                    profile: vProfile ? vProfile.id : 'balanced',
+                    applied: exploitApplied,
+                    note: exploitNote,
+                    callMarginBias: effCallMarginBias,
+                    isSurvivalSuppressed: isSurvival && (vProfile.id === 'maniac' || vProfile.id === 'fold_heavy')
+                },
                 math: {
                     pot, effStack, spr, villainBet,
                     requiredEq: potOdds,
@@ -15464,6 +15856,7 @@
                         <div class="flex items-baseline gap-2 flex-wrap">
                             <span id="decisionAction" class="text-base font-black tracking-wider">--</span>
                             <span id="decisionSizing" class="text-xs font-bold" style="color:var(--gold)"></span>
+                            <span id="decisionExploitBadge" class="text-xs font-bold px-1.5 py-0.5 rounded hidden" style="background:rgba(87,169,255,0.18);border:1px solid rgba(87,169,255,0.4);color:#7cc0ff;"></span>
                         </div>
                         <div id="decisionReason" class="text-xs text-gray-300 mt-1.5" style="line-height:1.5"></div>
                     </div>
@@ -15498,6 +15891,8 @@
                 document.getElementById('decisionAction').innerText = '计算中...';
                 document.getElementById('decisionAction').className = 'text-base font-black text-gray-400';
                 document.getElementById('decisionSizing').innerText = '';
+                const _bEl = document.getElementById('decisionExploitBadge');
+                if (_bEl) _bEl.classList.add('hidden');
                 document.getElementById('decisionReason').innerText = '';
                 document.getElementById('decisionFreqBar').innerHTML = '';
                 document.getElementById('decisionFreqLabels').innerHTML = '';
@@ -15506,6 +15901,18 @@
             }
 
             panel.classList.remove('hidden');
+
+            // 节点锁定剥削徽章
+            const badgeEl = document.getElementById('decisionExploitBadge');
+            if (badgeEl) {
+                if (result.exploitOffset && result.exploitOffset.profile && result.exploitOffset.profile !== 'balanced') {
+                    const prof = result.villainProfile || (typeof VILLAIN_PROFILES !== 'undefined' && VILLAIN_PROFILES[result.exploitOffset.profile]);
+                    badgeEl.innerText = `🎯 节点锁定 [${prof ? prof.icon + ' ' + prof.name.split(' ')[0] : result.exploitOffset.profile}]`;
+                    badgeEl.classList.remove('hidden');
+                } else {
+                    badgeEl.classList.add('hidden');
+                }
+            }
 
             // 主动作 + 颜色
             const actionEl = document.getElementById('decisionAction');
