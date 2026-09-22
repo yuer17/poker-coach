@@ -4346,6 +4346,13 @@
                         }).join('');
                     why = d.reasoning || '';
                     const maxF = Math.max(0, ...Object.values(fr));
+                    const curSt = boardN === 3 ? 'flop' : boardN === 4 ? 'turn' : 'river';
+                    const curSa = (postState.potTracker.actions || []).filter(a => a.street === curSt);
+                    const curSs = (typeof getMultiwayStreetState === 'function') ? getMultiwayStreetState(curSa) : null;
+                    if (curSs && !curSs.isHeroNext && !['street_over', 'showdown'].includes(curSs.phase)) {
+                        const oppLabel = curSs.nextActorLabel || (POS_LABEL[curSs.nextActorPos] || curSs.nextActorPos || '对手');
+                        why = `⏳ 等待 ${oppLabel} 表态（当前建议供预备）：` + why;
+                    }
                     const m = d.math || {};
                     const eqv = postState.equityResult ? postState.equityResult.equity : null;
                     const nearOdds = m.villainBet > 0 && eqv !== null && Math.abs(eqv - m.requiredEq) < 4;
@@ -9238,15 +9245,16 @@
             if (ss.phase === 'street_over' || ss.phase === 'showdown') return;
             const actor = ss.nextToAct;
             const isFacing = ['waiting_second_response', 'waiting_first_response'].includes(ss.phase);
+            const actPos = ss.nextActorPos || (actor === 'hero' ? globalPosHero : (globalPosVillain || 'BB'));
             if (k === 'x' && !isFacing) {
                 e.preventDefault();
-                if (actor === 'hero') recordHeroCheck(); else recordVillainCheck();
+                if (actor === 'hero') recordHeroCheck(); else recordVillainCheck(actPos);
             } else if (k === 'c' && isFacing) {
                 e.preventDefault();
-                if (actor === 'hero') recordHeroCall(); else setActionRecord('villain', 'call', 0);
+                if (actor === 'hero') recordHeroCall(); else setActionRecord('villain', 'call', ss.highestBet || 0, actPos);
             } else if (k === 'f' && isFacing) {
                 e.preventDefault();
-                if (actor === 'hero') recordHeroFold(); else setActionRecord('villain', 'fold', 0);
+                if (actor === 'hero') recordHeroFold(); else setActionRecord('villain', 'fold', 0, actPos);
             } else if (k === 'b' || k === 'k') {
                 e.preventDefault(); // 防止字母被打进刚聚焦的输入框
                 const inp = document.getElementById(actor === 'hero' ? 'heroBetInput' : 'villainBetInput');
@@ -9258,14 +9266,14 @@
             //   且是 All-in 的首字母。旧的 M 保留为提示（见下），不再执行动作。
             } else if (k === 'j') {
                 e.preventDefault();
-                if (isFacing) { if (actor === 'hero') recordHeroCall(); else setActionRecord('villain', 'call', 0); }
-                else          { if (actor === 'hero') recordHeroCheck(); else recordVillainCheck(); }
+                if (isFacing) { if (actor === 'hero') recordHeroCall(); else setActionRecord('villain', 'call', ss.highestBet || 0, actPos); }
+                else          { if (actor === 'hero') recordHeroCheck(); else recordVillainCheck(actPos); }
             } else if (k === 'l' && isFacing) {
                 e.preventDefault();
-                if (actor === 'hero') recordHeroFold(); else setActionRecord('villain', 'fold', 0);
+                if (actor === 'hero') recordHeroFold(); else setActionRecord('villain', 'fold', 0, actPos);
             } else if (k === 'a') {
                 e.preventDefault();
-                quickCommit(actor, isFacing ? 'raise' : 'bet', 'allin');
+                quickCommit(actor, isFacing ? 'raise' : 'bet', 'allin', actPos);
             } else if (k === 'm') {
                 // 旧键位：不执行动作，只告诉用户改到哪了（肌肉记忆需要一次明确纠正，
                 // 静默无反应会让人以为程序卡了、然后去点鼠标——那才是真的浪费时间）
@@ -9481,7 +9489,10 @@
          */
         function getMultiwayContext() {
             const heroPos = globalPosHero || 'BTN';
-            const mainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+            let mainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+            if (mainV === heroPos) {
+                mainV = (heroPos === 'BB') ? 'BTN' : 'BB';
+            }
             const extras = (postState.extraVillains || []).filter(p => p && p !== heroPos && p !== mainV);
             
             const rawContenders = Array.from(new Set([heroPos, mainV, ...extras]));
@@ -9544,93 +9555,260 @@
          *   waiting_first_response  后手加注，先手面对（需 Call/Fold/Re-raise）
          *   street_over            本街结束（双方 Check / 有人 Call / 有人 Fold）
          */
-        function getStreetState(streetActions) {
-            const first  = postState.firstToAct;   // 'hero' | 'villain'
-            const second = first === 'hero' ? 'villain' : 'hero';
+        /**
+         * 多人底池瀑布流动作引擎：根据行动日志推导当前街道阶段与当前行动席位 (Phase 5)
+         */
+        function getMultiwayStreetState(streetActions) {
+            const validCards = postState.board.filter(c => c !== null);
+            const count = validCards.length;
+            const currentStreet = count === 3 ? 'flop' : count === 4 ? 'turn' : 'river';
+            const sa = (streetActions || []).filter(a => !a.street || a.street === currentStreet);
 
-            if (streetActions.length === 0) {
-                return { phase: 'waiting_first', nextToAct: first, lastBet: 0, lastBetPlayer: null, villainBet: 0, heroBet: 0 };
+            const mw = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
+            const heroPos = globalPosHero || 'BTN';
+            let curMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+            if (curMainV === heroPos) {
+                curMainV = (heroPos === 'BB') ? 'BTN' : 'BB';
+            }
+            
+            const allPlayers = (mw && mw.players && mw.players.length > 0) ? mw.players : [
+                { pos: curMainV, label: POS_LABEL[curMainV] || curMainV || '对手', isHero: false, order: 0 },
+                { pos: heroPos, label: POS_LABEL[heroPos] || heroPos || '我方', isHero: true, order: 1 }
+            ];
+
+            const isMultiway = allPlayers.length >= 3;
+
+            // 找出在当前街道前已弃牌的玩家
+            const priorFolds = new Set(
+                (postState.potTracker.actions || [])
+                    .filter(a => a.street && a.street !== currentStreet && a.action === 'fold')
+                    .map(a => a.pos || (a.player === 'hero' ? heroPos : curMainV))
+            );
+
+            // 当前街道活跃在池玩家（按翻后行动顺位 POSTFLOP_ORDER 排序）
+            const inHandPlayers = allPlayers.filter(p => !priorFolds.has(p.pos));
+
+            const committed = {};
+            const hasActed = {};
+            const hasFolded = {};
+            const isAllin = {};
+            inHandPlayers.forEach(p => {
+                committed[p.pos] = 0;
+                hasActed[p.pos] = false;
+                hasFolded[p.pos] = false;
+                isAllin[p.pos] = false;
+            });
+
+            let highestBet = 0;
+            let lastAggressorPos = null;
+            let lastAggAct = null;
+            let betCount = 0;
+            let callersAfterBet = [];
+
+            for (const a of sa) {
+                const pPos = a.pos || (a.player === 'hero' ? heroPos : curMainV);
+                hasActed[pPos] = true;
+
+                if (a.action === 'fold') {
+                    hasFolded[pPos] = true;
+                } else if (a.action === 'check') {
+                    // committed 保持
+                } else if (a.action === 'call') {
+                    const callAmt = (typeof a.amount === 'number' && a.amount > 0) ? a.amount : highestBet;
+                    committed[pPos] = callAmt;
+                    if (highestBet > 0 && pPos !== lastAggressorPos) {
+                        callersAfterBet.push(pPos);
+                    }
+                } else if (['bet', 'raise', 'allin'].includes(a.action)) {
+                    committed[pPos] = a.amount;
+                    if (a.amount > highestBet) {
+                        highestBet = a.amount;
+                        lastAggressorPos = pPos;
+                        lastAggAct = a;
+                        betCount++;
+                        callersAfterBet = [];
+                    }
+                    if (a.action === 'allin') isAllin[pPos] = true;
+                }
             }
 
-            let phase = 'waiting_first';
-            let lastBet = 0;
-            let lastBetPlayer = null;
+            const remaining = inHandPlayers.filter(p => !hasFolded[p.pos]);
 
-            for (const act of streetActions) {
-                const isAgg  = ['bet','raise','allin'].includes(act.action);
-                const isEnd  = ['fold','call'].includes(act.action);
-                const isPas  = act.action === 'check';
+            const lastBetPlayer = lastAggAct
+                ? (lastAggAct.player || (lastAggAct.pos === heroPos ? 'hero' : 'villain'))
+                : (lastAggressorPos ? (lastAggressorPos === heroPos ? 'hero' : 'villain') : null);
+            const villainBet = lastBetPlayer === 'villain' ? highestBet : 0;
+            const heroBet = lastBetPlayer === 'hero' ? highestBet : 0;
 
-                if (phase === 'waiting_first') {
-                    if (isPas) {
-                        phase = 'waiting_second';
-                    } else if (isAgg) {
-                        lastBet = act.amount; lastBetPlayer = act.player;
-                        phase = 'waiting_second_response';
-                    }
-                } else if (phase === 'waiting_second') {
-                    if (isPas) {
-                        phase = 'street_over';
-                    } else if (isAgg) {
-                        lastBet = act.amount; lastBetPlayer = act.player;
-                        phase = 'waiting_first_response';
-                    }
-                } else if (phase === 'waiting_second_response') {
-                    if (isEnd) {
-                        phase = 'street_over';
-                    } else if (isAgg) {
-                        lastBet = act.amount; lastBetPlayer = act.player;
-                        phase = 'waiting_first_response';
-                    }
-                } else if (phase === 'waiting_first_response') {
-                    if (isEnd) {
-                        phase = 'street_over';
-                    } else if (isAgg) {
-                        lastBet = act.amount; lastBetPlayer = act.player;
-                        phase = 'waiting_second_response';
+            if (remaining.length <= 1) {
+                return {
+                    phase: 'street_over',
+                    nextToAct: null,
+                    nextActorPos: null,
+                    nextActorLabel: '',
+                    isHeroNext: false,
+                    lastBet: highestBet,
+                    lastBetPlayer,
+                    lastAggressorPos,
+                    villainBet,
+                    heroBet,
+                    highestBet,
+                    committed,
+                    toCall: 0,
+                    facingCallers: 0,
+                    facingSummary: '其余玩家已弃牌',
+                    remainingPlayers: remaining,
+                    isOneLeft: true
+                };
+            }
+
+            // 检查全员平水且均已表态
+            const activeNonAllin = remaining.filter(p => !isAllin[p.pos]);
+            const allMatched = activeNonAllin.every(p => hasActed[p.pos] && Math.abs((committed[p.pos] || 0) - highestBet) < 0.01);
+            const allActed = remaining.every(p => hasActed[p.pos]);
+
+            if (allActed && allMatched) {
+                const anyAllin = remaining.some(p => isAllin[p.pos]);
+                const phase = anyAllin ? 'showdown' : 'street_over';
+                return {
+                    phase,
+                    nextToAct: null,
+                    nextActorPos: null,
+                    nextActorLabel: '',
+                    isHeroNext: false,
+                    lastBet: highestBet,
+                    lastBetPlayer,
+                    lastAggressorPos,
+                    villainBet,
+                    heroBet,
+                    highestBet,
+                    committed,
+                    toCall: 0,
+                    facingCallers: 0,
+                    facingSummary: '本街行动完毕',
+                    remainingPlayers: remaining
+                };
+            }
+
+            // 确定下一个行动者
+            let nextActor = null;
+            if (sa.length === 0) {
+                if (!isMultiway) {
+                    const firstPos = postState.firstToAct === 'hero' ? heroPos : curMainV;
+                    nextActor = inHandPlayers.find(p => p.pos === firstPos) || inHandPlayers[0];
+                } else {
+                    nextActor = inHandPlayers[0];
+                }
+            } else {
+                const lastAct = sa[sa.length - 1];
+                const lastPos = lastAct.pos || (lastAct.player === 'hero' ? heroPos : curMainV);
+                const lastIdx = inHandPlayers.findIndex(p => p.pos === lastPos);
+                const startIdx = lastIdx >= 0 ? lastIdx : 0;
+                for (let i = 1; i <= inHandPlayers.length; i++) {
+                    const cand = inHandPlayers[(startIdx + i) % inHandPlayers.length];
+                    if (hasFolded[cand.pos] || isAllin[cand.pos]) continue;
+                    if (!hasActed[cand.pos] || Math.abs((committed[cand.pos] || 0) - highestBet) >= 0.01) {
+                        nextActor = cand;
+                        break;
                     }
                 }
-                // street_over：不再处理后续动作
             }
 
-            let nextToAct = null;
-            if (phase === 'waiting_first')            nextToAct = first;
-            else if (phase === 'waiting_second')      nextToAct = second;
-            else if (phase === 'waiting_second_response') nextToAct = second;
-            else if (phase === 'waiting_first_response')  nextToAct = first;
-
-            // P1-4：allin + call → 摊牌终局
-            if (phase === 'street_over') {
-                const hasAllin = streetActions.some(a => a.action === 'allin');
-                const lastAct  = streetActions[streetActions.length - 1];
-                if (hasAllin && lastAct?.action === 'call') phase = 'showdown';
+            if (!nextActor) {
+                return {
+                    phase: 'street_over',
+                    nextToAct: null,
+                    nextActorPos: null,
+                    nextActorLabel: '',
+                    isHeroNext: false,
+                    lastBet: highestBet,
+                    lastBetPlayer,
+                    lastAggressorPos,
+                    villainBet,
+                    heroBet,
+                    highestBet,
+                    committed,
+                    toCall: 0,
+                    facingCallers: 0,
+                    facingSummary: '本街行动完毕',
+                    remainingPlayers: remaining
+                };
             }
 
-            // 兼容旧字段
-            const villainBet = lastBetPlayer === 'villain' ? lastBet : 0;
-            const heroBet    = lastBetPlayer === 'hero'    ? lastBet : 0;
+            const nextActorPos = nextActor.pos;
+            const isHeroNext = nextActor.isHero;
+            const toCall = Math.max(0, highestBet - (committed[nextActorPos] || 0));
 
-            return { phase, nextToAct, lastBet, lastBetPlayer, villainBet, heroBet };
+            let phase = 'waiting_first';
+            if (highestBet === 0) {
+                phase = sa.length === 0 ? 'waiting_first' : 'waiting_second';
+            } else {
+                phase = (sa.length <= 2 && betCount === 1) ? 'waiting_second_response' : 'waiting_first_response';
+            }
+
+            let facingSummary = '';
+            if (highestBet === 0) {
+                facingSummary = sa.length === 0 ? '先手行动' : '前方已过牌';
+            } else {
+                const callerCount = callersAfterBet.length;
+                if (callerCount > 0) {
+                    facingSummary = `面对 1 注 ${callerCount} 跟（需跟 ${toCall.toFixed(1)}BB）`;
+                } else {
+                    facingSummary = `面对下注 ${highestBet.toFixed(1)}BB（需跟 ${toCall.toFixed(1)}BB）`;
+                }
+            }
+
+            return {
+                phase,
+                nextToAct: isHeroNext ? 'hero' : 'villain',
+                nextActor,
+                nextActorPos,
+                nextActorLabel: nextActor.label,
+                isHeroNext,
+                lastBet: highestBet,
+                lastBetPlayer,
+                lastAggressorPos,
+                villainBet,
+                heroBet,
+                highestBet,
+                committed,
+                toCall,
+                facingCallers: callersAfterBet.length,
+                facingSummary,
+                remainingPlayers: remaining
+            };
+        }
+
+        function getStreetState(streetActions) {
+            return getMultiwayStreetState(streetActions);
         }
 
         /**
-         * 记录动作到 postState.potTracker.actions，刷新面板
+         * 记录动作到 postState.potTracker.actions，刷新面板 (支持指定真实席位 pos)
          * @param {string} player - 'hero' | 'villain'
          * @param {string} action - 动作类型
          * @param {number} amount - 金额 BB（0=无金额）
+         * @param {string|null} pos - 动作席位代码（如 UTG, HJ...）
          */
-        function setActionRecord(player, action, amount = 0) {
+        function setActionRecord(player, action, amount = 0, pos = null) {
             const validCards = postState.board.filter(c => c !== null);
             const count = validCards.length;
             if (count < 3) return;
             const street = count === 3 ? 'flop' : count === 4 ? 'turn' : 'river';
+            let curMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+            const heroPos = globalPosHero || 'BTN';
+            if (curMainV === heroPos) {
+                curMainV = (heroPos === 'BB') ? 'BTN' : 'BB';
+            }
+            const actPos = pos || (player === 'hero' ? heroPos : curMainV);
 
             // 顺序追加，不覆盖（回退由 undoLastAction 弹出最后一条）
             if (action !== 'none') {
                 // 全局撤回栈(2026-07-21)：录行动前压快照
                 const _cn = { check: '过牌', bet: '下注', call: '跟注', raise: '加注', fold: '弃牌', allin: '全下' }[action] || action;
-                pushUndo(`${player === 'hero' ? '我方' : '对手'}${_cn}${amount > 0 ? ' ' + amount + 'BB' : ''}`);
-                postState.potTracker.actions.push({ street, player, action, amount });
+                const pLabel = actPos ? (POS_LABEL[actPos] || actPos) : (player === 'hero' ? '我方' : '对手');
+                pushUndo(`${pLabel}${_cn}${amount > 0 ? ' ' + amount + 'BB' : ''}`);
+                postState.potTracker.actions.push({ street, player, pos: actPos, action, amount });
             }
             // O3(2026-07)：对手任一动作已记录，Vision 预填值即消费/失效
             if (player === 'villain') postState._pendingVillainBet = null;
@@ -9661,11 +9839,18 @@
         }
 
         // 对手行动快捷函数
-        function recordVillainCheck()          { setActionRecord('villain', 'check', 0); }
+        function recordVillainCheck(pos = null) { setActionRecord('villain', 'check', 0, pos); }
         // Hero 行动快捷函数（bet/raise/allin 由 commitCustomAction 直接调 setActionRecord 处理）
-        function recordHeroCheck()             { setActionRecord('hero', 'check', 0); }
-        function recordHeroFold()              { setActionRecord('hero', 'fold',  0); }
-        function recordHeroCall()              { setActionRecord('hero', 'call',  0); }
+        function recordHeroCheck()              { setActionRecord('hero', 'check', 0, globalPosHero || 'BTN'); }
+        function recordHeroFold()               { setActionRecord('hero', 'fold',  0, globalPosHero || 'BTN'); }
+        function recordHeroCall() {
+            const vc = postState.board.filter(c => c !== null);
+            const street = vc.length === 3 ? 'flop' : vc.length === 4 ? 'turn' : 'river';
+            const sa = (postState.potTracker.actions || []).filter(a => a.street === street);
+            const ss = getMultiwayStreetState(sa);
+            const callAmt = (ss && ss.highestBet > 0) ? ss.highestBet : 0;
+            setActionRecord('hero', 'call', callAmt, globalPosHero || 'BTN');
+        }
 
         // 撤回最后一条动作记录（时序栈弹出）
         function undoLastAction() {
@@ -9719,20 +9904,24 @@
 
             ['flop', 'turn', 'river'].forEach((street, idx) => {
                 const sa = actions.filter(a => a.street === street);
-                let villainIn = 0, heroIn = 0;
+                const pIn = {};
+                let curMax = 0;
                 sa.forEach(a => {
-                    if (a.action === 'bet' || a.action === 'raise' || a.action === 'allin') {
-                        if (a.player === 'villain') villainIn = a.amount;
-                        else heroIn = a.amount;
+                    const pKey = a.pos || (a.player === 'hero' ? (globalPosHero || 'BTN') : (globalPosVillain || 'BB'));
+                    if (['bet', 'raise', 'allin'].includes(a.action)) {
+                        pIn[pKey] = a.amount;
+                        if (a.amount > curMax) curMax = a.amount;
                     } else if (a.action === 'call') {
-                        // 跟注方投入等于对手当前最大下注额
-                        if (a.player === 'villain') villainIn = heroIn;
-                        else heroIn = villainIn;
+                        pIn[pKey] = (typeof a.amount === 'number' && a.amount > 0) ? a.amount : curMax;
                     }
-                    // check / fold 不增加底池
                 });
-                pot += villainIn + heroIn;
-                if (idx >= baseIdx && idx < curIdx) spent += Math.min(villainIn, heroIn);
+                const streetTotal = Object.values(pIn).reduce((acc, v) => acc + (v || 0), 0);
+                pot += streetTotal;
+                const hKey = globalPosHero || 'BTN';
+                const hIn = pIn[hKey] || pIn['hero'] || 0;
+                const vIns = Object.entries(pIn).filter(([k]) => k !== hKey && k !== 'hero').map(e => e[1]);
+                const maxV = vIns.length ? Math.max(...vIns) : 0;
+                if (idx >= baseIdx && idx < curIdx) spent += Math.min(hIn, maxV);
             });
 
             if (typeof pt.effStackBase === 'number') pt.effStack = Math.max(0, pt.effStackBase - spent);
@@ -10887,8 +11076,8 @@
             renderActionSummary();
         }
 
-        // 提交自定义动作：下注额 >= effStack*0.95 自动识别为 All-in
-        function commitCustomAction(player, inputId, defaultAction) {
+        // 提交自定义动作：下注额 >= effStack*0.95 自动识别为 All-in (支持指定席位 pos)
+        function commitCustomAction(player, inputId, defaultAction, pos = null) {
             const inputEl = document.getElementById(inputId);
             const amt = parseFloat(inputEl?.value || 0);
             const eff = postState.potTracker.effStack || 0;
@@ -10905,32 +11094,29 @@
                 if (inputEl) { inputEl.style.borderColor = '#ef4444'; setTimeout(() => { inputEl.style.borderColor = ''; }, 1500); }
                 return;
             }
-            // Codex交叉测试修复①(2026-07-13)：面对未跟平的下注/加注时，校验最小合法
-            // 加注额（对手总额 + 上一次加注增量）。原缺失：对手 Bet 10 时输入 0.5 会被
-            // 当合法 raise 记账，污染底池/SPR/赔率并把行动权错交回对手。
-            // 全押不足最小加注仍放行（all-in for less 规则）；amount 语义=本街投入总额。
+            // 面对未跟平的下注/加注时，校验最小合法加注额
             {
                 const _vc = postState.board.filter(c => c !== null);
                 const isAllinIntent = eff > 0 && amt >= eff * 0.95;
                 if (_vc.length >= 3 && !isAllinIntent) {
                     const _street = _vc.length === 3 ? 'flop' : _vc.length === 4 ? 'turn' : 'river';
                     const _sa = (postState.potTracker.actions || []).filter(a => a.street === _street);
-                    let _heroIn = 0, _villainIn = 0; const _aggTotals = [];
+                    const _ss = (typeof getMultiwayStreetState === 'function') ? getMultiwayStreetState(_sa) : null;
+                    const _aggTotals = [];
                     _sa.forEach(a => {
-                        if (a.action === 'bet' || a.action === 'raise' || a.action === 'allin') {
-                            if (a.player === 'villain') _villainIn = a.amount; else _heroIn = a.amount;
+                        if (['bet', 'raise', 'allin'].includes(a.action)) {
                             _aggTotals.push(a.amount);
-                        } else if (a.action === 'call') {
-                            if (a.player === 'villain') _villainIn = _heroIn; else _heroIn = _villainIn;
                         }
                     });
-                    const _oppIn  = player === 'hero' ? _villainIn : _heroIn;
-                    const _selfIn = player === 'hero' ? _heroIn : _villainIn;
-                    if (_oppIn > _selfIn) {
+                    const curMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+                    const myPos = pos || (player === 'hero' ? (globalPosHero || 'BTN') : curMainV);
+                    const highest = _ss ? (_ss.highestBet || 0) : (_aggTotals.length ? Math.max(..._aggTotals) : 0);
+                    const myCommitted = _ss && _ss.committed ? (_ss.committed[myPos] || 0) : 0;
+                    if (highest > myCommitted) {
                         const _prevAgg = _aggTotals.length >= 2 ? _aggTotals[_aggTotals.length - 2] : 0;
-                        const _minRaiseTo = _oppIn + (_oppIn - _prevAgg);
+                        const _minRaiseTo = highest + Math.max(0.5, highest - _prevAgg);
                         if (amt < _minRaiseTo) {
-                            showToast(`加注不合法：面对 ${_oppIn}BB 最少加注到 ${_minRaiseTo.toFixed(1)}BB（全押除外）`, 'error');
+                            showToast(`加注不合法：面对 ${highest.toFixed(1)}BB 最少加注到 ${_minRaiseTo.toFixed(1)}BB（全押除外）`, 'error');
                             if (inputEl) { inputEl.style.borderColor = '#ef4444'; setTimeout(() => { inputEl.style.borderColor = ''; }, 1500); }
                             return;
                         }
@@ -10940,20 +11126,20 @@
             // 超出有效筹码：截断为全下 + 提示
             if (eff > 0 && amt > eff) {
                 showToast(`下注超出有效筹码，按全下 ${eff.toFixed(1)}BB 计算`, 'warn');
-                setActionRecord(player, 'allin', eff);
+                setActionRecord(player, 'allin', eff, pos);
                 return;
             }
             // 接近全下（≥95%）自动转全下
             if (eff > 0 && amt >= eff * 0.95) {
-                setActionRecord(player, 'allin', eff);
+                setActionRecord(player, 'allin', eff, pos);
             } else {
-                setActionRecord(player, defaultAction, amt);
+                setActionRecord(player, defaultAction, amt, pos);
             }
         }
 
         // 快捷尺度提交(2026-07-14)：一键按底池比例/加注倍数提交行动，
         // 复用 commitCustomAction 的全部校验（最小加注/全押截断/0.5BB 下限）
-        function quickCommit(player, action, spec) {
+        function quickCommit(player, action, spec, pos = null) {
             const inputId = player === 'hero' ? 'heroBetInput' : 'villainBetInput';
             const pot = postState.potTracker.currentPot || 0;
             const eff = postState.potTracker.effStack || 0;
@@ -10974,7 +11160,7 @@
             if (eff > 0 && amt > eff) amt = eff;
             const el = document.getElementById(inputId);
             if (el) el.value = amt;
-            commitCustomAction(player, inputId, action);
+            commitCustomAction(player, inputId, action, pos);
         }
 
         // 实时尺度反推(2026-07-14)：输入下注额即时显示"= X% 底池"——用户从牌桌
@@ -11031,18 +11217,19 @@
                 const ss = getStreetState(sa);
                 if (['street_over', 'showdown'].includes(ss.phase)) { showToast('本街行动已结束，剩余速记忽略', 'warn'); break; }
                 const actor = ss.nextToAct;
+                const actPos = ss.nextActorPos || (actor === 'hero' ? globalPosHero : (globalPosVillain || 'BB'));
                 const facing = ['waiting_second_response', 'waiting_first_response'].includes(ss.phase);
                 if (t === 'x' || t === 'k') {
                     if (facing) { showToast('面对下注不能过牌（用 c/f/数字）', 'error'); break; }
-                    setActionRecord(actor, 'check', 0);
+                    setActionRecord(actor, 'check', 0, actPos);
                 } else if (t === 'c') {
                     if (!facing) { showToast('无人下注不能跟注（用 x 或数字）', 'error'); break; }
-                    setActionRecord(actor, 'call', 0);
+                    setActionRecord(actor, 'call', ss.highestBet || 0, actPos);
                 } else if (t === 'f') {
                     if (!facing) { showToast('无人下注无需弃牌', 'error'); break; }
-                    setActionRecord(actor, 'fold', 0);
+                    setActionRecord(actor, 'fold', 0, actPos);
                 } else if (t === 'a') {
-                    setActionRecord(actor, 'allin', postState.potTracker.effStack || 0);
+                    setActionRecord(actor, 'allin', postState.potTracker.effStack || 0, actPos);
                 } else if (!isNaN(parseFloat(t))) {
                     const inputId = actor === 'hero' ? 'heroBetInput' : 'villainBetInput';
                     let ie = document.getElementById(inputId);
@@ -11050,7 +11237,7 @@
                     if (!ie) { showToast('当前轮次无法下注', 'error'); break; }
                     const before = postState.potTracker.actions.length;
                     ie.value = t;
-                    commitCustomAction(actor, inputId, facing ? 'raise' : 'bet');
+                    commitCustomAction(actor, inputId, facing ? 'raise' : 'bet', actPos);
                     if (postState.potTracker.actions.length === before) break; // 校验拒绝，中断
                 } else {
                     showToast(`无法识别速记 "${t}"`, 'error');
@@ -11141,6 +11328,8 @@
 
         function renderStreetTimeline(curStreet) {
             const acts = postState.potTracker.actions || [];
+            const mwCtx = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
+            const isMw = mwCtx && mwCtx.isMultiway;
             const STREETS = [['flop', '翻牌'], ['turn', '转牌'], ['river', '河牌']];
             const curIdx = STREETS.findIndex(s => s[0] === curStreet);
             const CN = { check: '过牌', bet: '下注', call: '跟注', raise: '加注', fold: '弃牌', allin: '全下' };
@@ -11156,20 +11345,29 @@
                     const isH = a.player === 'hero';
                     const amt = a.amount > 0 ? ` ${a.amount.toFixed(1)}` : '';
                     const col = isH ? 'color:#7cc0ff' : 'color:#45d68a';
-                    return `<span style="${col}"><b>${isH ? '我' : '对手'}</b> ${CN[a.action] || a.action}${amt}</span>`;
+                    const pName = isH
+                        ? (isMw && a.pos ? `我 (${POS_LABEL[a.pos] || a.pos})` : '我')
+                        : (isMw && a.pos ? (POS_LABEL[a.pos] || a.pos) : '对手');
+                    return `<span style="${col}"><b>${pName}</b> ${CN[a.action] || a.action}${amt}</span>`;
                 }).join('<span style="color:#4b5563;margin:0 5px;">→</span>');
                 rows.push(`<div class="st-row${isCur ? ' cur' : ''}">
                     <span class="st-name">${cn}</span>
                     <span class="st-pot">${potAt.toFixed(1)}BB</span>
                     <span class="st-chain">${chain || '<span style="color:#6b7280;">尚无行动</span>'}</span>
                 </div>`);
-                // 累加该街双方匹配投入，作为下一街起始底池
-                let h = 0, v = 0;
+                // 累加该街各席位实际投入，作为下一街起始底池
+                const pIns = {};
+                let streetMax = 0;
                 sa.forEach(a => {
-                    if (['bet', 'raise', 'allin'].includes(a.action)) { if (a.player === 'hero') h = a.amount; else v = a.amount; }
-                    else if (a.action === 'call') { if (a.player === 'hero') h = v; else v = h; }
+                    const pk = a.pos || a.player;
+                    if (['bet', 'raise', 'allin'].includes(a.action)) {
+                        pIns[pk] = a.amount;
+                        if (a.amount > streetMax) streetMax = a.amount;
+                    } else if (a.action === 'call') {
+                        pIns[pk] = a.amount > 0 ? a.amount : streetMax;
+                    }
                 });
-                potAt += h + v;
+                potAt += Object.values(pIns).reduce((acc, v) => acc + (v || 0), 0);
             });
             if (!rows.length) return '';
             return `<div class="st-timeline mb-2">${rows.join('')}</div>`;
@@ -11216,10 +11414,59 @@
         };
         window.dropExtraVillain = window.foldMultiwayPlayer; // 保持既有测试与接口 100% 兼容
 
-        /** 多人底池快捷操作：前方对手全员过牌至我方 (Phase 4) */
+        /** 多人底池快捷操作：前方对手全员过牌至我方 (Phase 5 瀑布流) */
         window.multiwayCheckToHero = function() {
+            const validCards = postState.board.filter(c => c !== null);
+            const count = validCards.length;
+            if (count < 3) return;
+            const street = count === 3 ? 'flop' : count === 4 ? 'turn' : 'river';
+            const mwCtx = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
+            const heroPos = globalPosHero || 'BTN';
+            const curMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+
+            if (!mwCtx || !mwCtx.isMultiway || !mwCtx.players || mwCtx.players.length < 3) {
+                if (typeof pushUndo === 'function') pushUndo('对手过牌');
+                setActionRecord('villain', 'check', 0);
+                return;
+            }
+
+            const sa = (postState.potTracker.actions || []).filter(a => a.street === street);
+            const ss = getMultiwayStreetState(sa);
+            if (ss.isHeroNext || ss.phase === 'street_over' || ss.phase === 'showdown') return;
+
             if (typeof pushUndo === 'function') pushUndo('多人底池：前方全员过牌');
-            setActionRecord('villain', 'check', 0);
+
+            const inHand = ss.remainingPlayers || mwCtx.players;
+            const heroIdx = inHand.findIndex(p => p.isHero || p.pos === heroPos);
+            const startIdx = inHand.findIndex(p => p.pos === ss.nextActorPos);
+
+            if (startIdx >= 0 && heroIdx > startIdx) {
+                for (let i = startIdx; i < heroIdx; i++) {
+                    const p = inHand[i];
+                    postState.potTracker.actions.push({ street, player: 'villain', pos: p.pos, action: 'check', amount: 0 });
+                }
+            } else {
+                for (const p of inHand) {
+                    if (p.isHero || p.pos === heroPos) break;
+                    const alreadyActed = sa.some(a => (a.pos || (a.player === 'hero' ? heroPos : curMainV)) === p.pos);
+                    if (!alreadyActed) {
+                        postState.potTracker.actions.push({ street, player: 'villain', pos: p.pos, action: 'check', amount: 0 });
+                    }
+                }
+            }
+
+            recalculatePot();
+            if (typeof rangeEstimator === 'function') {
+                postState.villainRange = rangeEstimator();
+                if (typeof renderRangePanel === 'function') renderRangePanel(postState.villainRange);
+            }
+            if (postState.equityResult && typeof postEngine === 'function') {
+                const decision = postEngine();
+                postState.decisionResult = decision;
+                if (typeof renderPostEnginePanel === 'function') renderPostEnginePanel(decision);
+            }
+            renderBettingPanel();
+            renderActionSummary();
             if (typeof showToast === 'function') showToast('已记录前方全员过牌，轮到我方行动', 'info');
         };
 
@@ -11333,7 +11580,7 @@
                 const _ex = (postState.extraVillains || []).filter(x => x && x !== globalPosHero && x !== _curMainV);
                 if (mwCtx && mwCtx.isMultiway) {
                     const heroBadge = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold ${mwCtx.badgeClass}">${mwCtx.roleLabel}</span>`;
-                    const showCheckToHero = (!heroIsOOP || mwCtx.relativeRole === 'ABSOLUTE_IP') && ss.phase === 'waiting_first';
+                    const showCheckToHero = (ss.highestBet === 0 && !ss.isHeroNext && !['showdown', 'street_over'].includes(ss.phase));
                     
                     html += `<div class="text-xs mb-1.5 px-2 py-1.5 rounded" style="background:rgba(224,168,58,.08);border:1px solid rgba(224,168,58,.35);">
                         <div class="flex items-center justify-between gap-1 flex-wrap mb-1">
@@ -11346,20 +11593,50 @@
                         <div class="flex items-center gap-1.5 flex-wrap text-gray-300">
                             <span class="text-gray-400">在池席位（行动顺位）：</span>
                             ${mwCtx.players.map(p => {
-                                if (p.isHero) {
-                                    return `<span class="px-1.5 py-0.5 rounded bg-rose-950/40 text-rose-300 border border-rose-500/40 font-bold">我 (${p.label})</span>`;
+                                const isActNow = (p.pos === ss.nextActorPos);
+                                const pActs = streetActions.filter(a => (a.pos || (a.player === 'hero' ? globalPosHero : _curMainV)) === p.pos);
+                                const lastA = pActs.length > 0 ? pActs[pActs.length - 1] : null;
+                                const isFolded = (ss.committed && ss.committed[p.pos] === undefined && pActs.some(a => a.action === 'fold')) ||
+                                                 (postState.potTracker.actions || []).some(a => a.action === 'fold' && (a.pos || (a.player === 'hero' ? globalPosHero : _curMainV)) === p.pos);
+                                
+                                let actDesc = '';
+                                if (isFolded) {
+                                    actDesc = '已弃牌';
+                                } else if (isActNow) {
+                                    actDesc = '行动中 ⚡';
+                                } else if (lastA) {
+                                    const _cn = { check: '过牌', bet: '下注', call: '跟注', raise: '加注', fold: '弃牌', allin: '全押' }[lastA.action] || lastA.action;
+                                    actDesc = (lastA.amount > 0 && ['bet', 'raise', 'allin'].includes(lastA.action)) ? `${_cn} ${lastA.amount.toFixed(1)}` : (lastA.action === 'call' && (lastA.amount || ss.committed[p.pos]) > 0 ? `${_cn} ${(lastA.amount || ss.committed[p.pos]).toFixed(1)}` : _cn);
                                 }
-                                return `<span class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 flex items-center gap-1">
-                                    <span style="color:${p.isMainV ? '#45d68a' : '#e0a83a'};font-weight:700;">${p.label}</span>
-                                    ${p.isMainV ? '<span class="text-[10px] text-emerald-400/80">(主)</span>' : ''}
-                                    <button onclick="dropExtraVillain('${p.pos}')" title="该对手弃牌：点击从底池移除并降维"
-                                        style="border:1px solid rgba(224,168,58,.5);border-radius:3px;padding:0 4px;cursor:pointer;background:transparent;color:#e0a83a;font-size:11px;">弃牌</button>
+
+                                if (p.isHero) {
+                                    const cls = isActNow
+                                        ? 'bg-blue-900/60 text-blue-200 border-blue-400 font-black animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.6)]'
+                                        : 'bg-rose-950/40 text-rose-300 border border-rose-500/40 font-bold';
+                                    return `<span class="px-2 py-0.5 rounded border ${cls} flex items-center gap-1">
+                                        <span>我 (${p.label})</span>
+                                        ${actDesc ? `<span class="text-[10px] text-sky-300 font-normal">· ${actDesc}</span>` : ''}
+                                    </span>`;
+                                }
+
+                                const cls = isFolded
+                                    ? 'opacity-40 line-through border-gray-700 bg-white/5 text-gray-400'
+                                    : isActNow
+                                    ? 'bg-amber-950/70 text-amber-200 border-amber-400 font-black animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+                                    : 'bg-white/5 border-white/10 text-gray-300';
+
+                                return `<span class="px-2 py-0.5 rounded border ${cls} flex items-center gap-1.5">
+                                    <span style="color:${isFolded ? '#888' : p.isMainV ? '#45d68a' : '#e0a83a'};font-weight:700;">${p.label}</span>
+                                    ${p.isMainV && !isFolded ? '<span class="text-[10px] text-emerald-400/80">(主)</span>' : ''}
+                                    ${actDesc && !isFolded ? `<span class="text-[10px] ${isActNow ? 'text-amber-300 font-bold' : 'text-gray-400'}">· ${actDesc}</span>` : ''}
+                                    ${!isFolded ? `<button onclick="dropExtraVillain('${p.pos}')" title="该对手弃牌：点击从底池移除并降维"
+                                        style="border:1px solid rgba(224,168,58,.5);border-radius:3px;padding:0 3px;cursor:pointer;background:transparent;color:#e0a83a;font-size:10px;">弃</button>` : ''}
                                 </span>`;
                             }).join('')}
                         </div>
                         <div class="text-[11px] text-gray-400 mt-1 flex items-center justify-between flex-wrap gap-1">
                             <span>💡 ${mwCtx.roleTactics || '多人底池纯诈唬归零，价值门槛已收紧'}</span>
-                            <span class="text-gray-500">（主对手记行动线，点击弃牌可降维）</span>
+                            <span class="text-gray-500">（瀑布流按顺位轮转，点击席位“弃”可提前弃牌）</span>
                         </div>
                     </div>`;
                 } else if (_ex.length) {
@@ -11424,27 +11701,19 @@
             } else {
                 const actor     = ss.nextToAct;
                 const isHeroAct = actor === 'hero';
+                const actorPos  = ss.nextActorPos || (isHeroAct ? (globalPosHero || 'BTN') : (globalPosVillain || 'BB'));
+                const posLbl    = ss.nextActorLabel || (POS_LABEL[actorPos] || actorPos || '');
+                const toCall    = (typeof ss.toCall === 'number') ? ss.toCall : 0;
                 // 是否正面对一个激进行动（需要 Fold/Call/Raise）
-                const isFacing  = ['waiting_second_response','waiting_first_response'].includes(ss.phase);
-                const lastBet   = ss.lastBet || 0;
-                // 审计修复#8(2026-09-08)：odds 移到 _si（本街投入）之后计算——见下方。
-                // 检测对手是否全下（最后一条激进动作为 allin）
+                const isFacing  = toCall > 0;
+                const lastBet   = ss.highestBet || ss.lastBet || 0;
+                // 检测对手是否全下（最后一条激进动作为 allin 且不是当前行动者）
                 const lastAggAct = [...streetActions].reverse().find(a => ['bet','raise','allin'].includes(a.action));
-                const isFacingAllin = isFacing && lastAggAct && lastAggAct.action === 'allin' && lastAggAct.player !== 'hero';
-                // 输入减负(2026-07-14)：重放本街投入 → 跟注按钮直接显示"补多少"
-                const _si = (() => { let h = 0, v = 0; streetActions.forEach(a => {
-                    if (['bet','raise','allin'].includes(a.action)) { if (a.player === 'villain') v = a.amount; else h = a.amount; }
-                    else if (a.action === 'call') { if (a.player === 'villain') v = h; else h = v; }
-                }); return { h, v }; })();
-                const toCallHero    = Math.max(0, _si.v - _si.h);
-                const toCallVillain = Math.max(0, _si.h - _si.v);
-                // 审计修复#8(2026-09-08)：原用 `lastBet /(pot+lastBet)`，lastBet 是**加注到**的
-                // 总额，而 pot 已含 Hero 本街已投入的部分 —— 面对加注时把"还需补的差额"
-                // 算成了对手的全额。实测同屏出现两个互相矛盾的红线：postEngine 给 25%，
-                // 面板给 33%（虚高 8.3 点），用户可能据面板手动过弃。
+                const isFacingAllin = isFacing && lastAggAct && lastAggAct.action === 'allin' && (lastAggAct.pos ? lastAggAct.pos !== actorPos : lastAggAct.player !== (isHeroAct ? 'hero' : 'villain'));
+
                 // 与引擎 E3 同一公式：所需胜率 = 补注额 /（当前底池 + 补注额）。
-                const odds = isFacing && toCallHero > 0 && pot > 0
-                    ? ((toCallHero / (pot + toCallHero)) * 100).toFixed(0) : null;
+                const odds = (isHeroAct && isFacing && toCall > 0 && pot > 0)
+                    ? ((toCall / (pot + toCall)) * 100).toFixed(0) : null;
 
                 // ════ 统一行动条(2026-07-14)：扑克客户端三键位 ════
                 // 抛弃"我方/对手两套布局"——固定槽位 [弃牌][过牌/跟注][金额+下注/加注][全押]，
@@ -11452,21 +11721,18 @@
                 // 肌肉记忆零成本）；不可用槽位置灰禁用而非隐藏，布局永不跳动。
                 {
                 const isHero   = isHeroAct;
-                const posLbl   = isHero ? (POS_LABEL[globalPosHero] || globalPosHero || '')
-                                        : (POS_LABEL[globalPosVillain] || globalPosVillain || '');
                 const who      = isHero ? '我方' : '对手';
                 // 翻后突出(2026-07-21, 2026-09-21)：我方行动用蓝色边框底色，轮到对手用暖琥珀警告边框+独立配色
                 const frameCls = isHero ? 'border-2 border-blue-500/50 bg-blue-900/10' : 'border-2 frame-villain';
                 const titleCls = isHero ? 'text-blue-300' : 'text-amber-300';
-                const toCall   = isHero ? toCallHero : toCallVillain;
                 const inputId  = isHero ? 'heroBetInput' : 'villainBetInput';
-                const aggrWord = isFacing ? '加注' : '下注';
-                const aggrType = isFacing ? 'raise' : 'bet';
+                const aggrWord = (lastBet > 0) ? '加注' : '下注';
+                const aggrType = (lastBet > 0) ? 'raise' : 'bet';
                 const playerKey = isHero ? 'hero' : 'villain';
 
                 const titleTxt = isHero
-                    ? (isFacing ? `轮到我方 · ${posLbl} · 面对下注 ${lastBet.toFixed(1)}BB` : `轮到我方 · ${posLbl}`)
-                    : (isFacing ? `⚡ 轮到对手 · ${posLbl} · 面对下注 ${lastBet.toFixed(1)}BB` : `⚡ 轮到对手 · ${posLbl}`);
+                    ? (isFacing ? `轮到我方 · ${posLbl} · ${ss.facingSummary || `面对下注 ${lastBet.toFixed(1)}BB`}` : `轮到我方 · ${posLbl}`)
+                    : (isFacing ? `⚡ 轮到对手 · ${posLbl} · ${ss.facingSummary || `面对下注 ${lastBet.toFixed(1)}BB`}` : `⚡ 轮到对手 · ${posLbl}`);
 
                 html += `<div class="border ${frameCls} rounded-lg p-2">
                     <div class="text-sm font-bold ${titleCls} mb-1.5 flex justify-between items-center gap-2">
@@ -11511,9 +11777,9 @@
                     : (isHero ? 'act-btn-betraise' : 'villain-act-btn act-btn-betraise');
                 const allinCls = isHero ? 'act-allin' : 'villain-act-btn act-allin';
 
-                const foldClick = foldOn ? (isHero ? 'recordHeroFold()' : "setActionRecord('villain','fold',0)") : '';
-                const passClick = isFacing ? (isHero ? 'recordHeroCall()' : "setActionRecord('villain','call',0)")
-                                           : (isHero ? 'recordHeroCheck()' : 'recordVillainCheck()');
+                const foldClick = foldOn ? (isHero ? 'recordHeroFold()' : `setActionRecord('villain','fold',0,'${actorPos}')`) : '';
+                const passClick = isFacing ? (isHero ? 'recordHeroCall()' : `setActionRecord('villain','call',${lastBet},'${actorPos}')`)
+                                           : (isHero ? 'recordHeroCheck()' : `recordVillainCheck('${actorPos}')`);
 
                 // ══ 行动区排版重做(2026-09-10，用户第4点：「弃牌过牌在一起、下注在另一边、
                 //    全押又在另一边，中间一个完全不对称的输入框格子」) ══
@@ -11535,18 +11801,18 @@
                     html += `<div class="size-row${isHero ? '' : ' size-row-villain'}">
                         <span class="size-lbl">${isHero ? '尺度' : '对手下注（照牌桌上的数字填）'}</span>
                         ${isHero ? (!isFacing ? `
-                        <button onclick="quickCommit('hero','bet',0.33)" class="qc-btn qc-size">33%池<kbd>1</kbd></button>
-                        <button onclick="quickCommit('hero','bet',0.5)" class="qc-btn qc-size">半池<kbd>2</kbd></button>
-                        <button onclick="quickCommit('hero','bet',0.75)" class="qc-btn qc-size">75%池<kbd>3</kbd></button>
-                        <button onclick="quickCommit('hero','bet',1.0)" class="qc-btn qc-size">满池<kbd>4</kbd></button>` : `
-                        <button onclick="quickCommit('hero','raise',{mult:2.5})" class="qc-btn qc-size">2.5x<kbd>1</kbd></button>
-                        <button onclick="quickCommit('hero','raise',{mult:3})" class="qc-btn qc-size">3x<kbd>2</kbd></button>
-                        <button onclick="quickCommit('hero','raise',{mult:4})" class="qc-btn qc-size">4x<kbd>3</kbd></button>`) : ''}
+                        <button onclick="quickCommit('hero','bet',0.33,'${actorPos}')" class="qc-btn qc-size">33%池<kbd>1</kbd></button>
+                        <button onclick="quickCommit('hero','bet',0.5,'${actorPos}')" class="qc-btn qc-size">半池<kbd>2</kbd></button>
+                        <button onclick="quickCommit('hero','bet',0.75,'${actorPos}')" class="qc-btn qc-size">75%池<kbd>3</kbd></button>
+                        <button onclick="quickCommit('hero','bet',1.0,'${actorPos}')" class="qc-btn qc-size">满池<kbd>4</kbd></button>` : `
+                        <button onclick="quickCommit('hero','raise',{mult:2.5},'${actorPos}')" class="qc-btn qc-size">2.5x<kbd>1</kbd></button>
+                        <button onclick="quickCommit('hero','raise',{mult:3},'${actorPos}')" class="qc-btn qc-size">3x<kbd>2</kbd></button>
+                        <button onclick="quickCommit('hero','raise',{mult:4},'${actorPos}')" class="qc-btn qc-size">4x<kbd>3</kbd></button>`) : ''}
                         <div class="amt-box">
                             <button class="step-btn" onclick="stepBet('${inputId}',-1)" tabindex="-1" title="减一档（约 10% 底池）">−</button>
                             <input id="${inputId}" type="number" min="0.5" step="0.5" value="${prefill}" data-word="${aggrWord}"
                                 oninput="updateBetPct(this)"
-                                onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();commitCustomAction('${playerKey}','${inputId}','${aggrType}');}"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();commitCustomAction('${playerKey}','${inputId}','${aggrType}','${actorPos}');}"
                                 placeholder="BB" />
                             <button class="step-btn" onclick="stepBet('${inputId}',1)" tabindex="-1" title="加一档（约 10% 底池）">+</button>
                         </div>
@@ -11555,8 +11821,8 @@
                     html += `<div class="act-row">
                         <button ${foldOn ? `onclick="${foldClick}"` : 'disabled'} class="act-btn rounded-md border ${foldCls} active:scale-95 transition-all">${foldStar ? '★ ' : ''}弃牌${isHero ? '<kbd>L</kbd>' : ''}</button>
                         <button onclick="${passClick}" class="act-btn rounded-md border ${passCls} active:scale-95 transition-all">${passiveStar ? '★ ' : ''}${passiveLbl}${isHero ? '<kbd>J</kbd>' : ''}</button>
-                        <button onclick="commitCustomAction('${playerKey}','${inputId}','${aggrType}')" class="act-btn rounded-md border ${aggrCls} active:scale-95 transition-all"><span id="aggrBtnLabel" data-star="${aggrStar ? 1 : 0}">${aggrStar ? '★ ' : ''}${aggrLabel}</span>${isHero ? '<kbd>K</kbd>' : ''}</button>
-                        <button onclick="quickCommit('${playerKey}','${aggrType}','allin')" class="act-btn ${allinCls} rounded-md border active:scale-95 transition-all">全押${isHero ? '<kbd>A</kbd>' : ''}</button>
+                        <button onclick="commitCustomAction('${playerKey}','${inputId}','${aggrType}','${actorPos}')" class="act-btn rounded-md border ${aggrCls} active:scale-95 transition-all"><span id="aggrBtnLabel" data-star="${aggrStar ? 1 : 0}">${aggrStar ? '★ ' : ''}${aggrLabel}</span>${isHero ? '<kbd>K</kbd>' : ''}</button>
+                        <button onclick="quickCommit('${playerKey}','${aggrType}','allin','${actorPos}')" class="act-btn ${allinCls} rounded-md border active:scale-95 transition-all">全押${isHero ? '<kbd>A</kbd>' : ''}</button>
                     </div>`;
                 }
                 html += `</div>`;
@@ -11609,16 +11875,21 @@
             };
 
             // 摘要顺序修复(2026-07-13)：按时间序完整展示本街行动线。
-            // 原实现"对手|我方"固定顺序各取最新一条——check-raise 线（对手过牌→
-            // 我方下注→对手加注）会显示成"对手：加注 | 我方：下注"，时间序颠倒误导用户。
-            let parts = streetActions.map(a =>
-                a.player === 'villain'
-                    ? `<span class="text-emerald-300">对手：${descAction(a)}</span>`
-                    : `<span style="color:var(--accent-hover)">我方：${descAction(a)}</span>`
-            );
+            let parts = streetActions.map(a => {
+                const pPos = a.pos || (a.player === 'hero' ? (globalPosHero || 'BTN') : (globalPosVillain || 'BB'));
+                const pLabel = POS_LABEL[pPos] || pPos;
+                const isHero = a.player === 'hero';
+                return isHero
+                    ? `<span style="color:var(--accent-hover)">我方(${pLabel})：${descAction(a)}</span>`
+                    : `<span class="text-emerald-300">${pLabel}：${descAction(a)}</span>`;
+            });
             const ss = typeof getStreetState === 'function' ? getStreetState(streetActions) : null;
-            if (ss && ss.nextToAct === 'hero' && !['street_over','showdown'].includes(ss.phase)) {
-                parts.push(`<span class="text-yellow-500 text-xs">⬅ 等待 Hero 决策</span>`);
+            if (ss && !['street_over','showdown'].includes(ss.phase)) {
+                if (ss.isHeroNext) {
+                    parts.push(`<span class="text-yellow-500 text-xs font-bold">⬅ 轮到我方决策</span>`);
+                } else {
+                    parts.push(`<span class="text-amber-400 text-xs">⬅ 等待 ${ss.nextActorLabel || ss.nextActorPos || '对手'} 表态</span>`);
+                }
             }
 
             area.innerHTML = `<div class="mt-1 px-2 py-1 bg-black/20 rounded text-xs flex flex-wrap gap-2 items-center border border-white/5">
@@ -14780,6 +15051,11 @@
                 // 河牌纯胜率提示
                 if (street === 'river' && primaryAction === 'CALL') {
                     warnings.push('ℹ 河牌无进张，跟注纯粹基于当前胜率 vs 赔率');
+                }
+                // 多人底池面对下注+跟注时补充上下文透出
+                if (isMultiway && ss.facingCallers > 0) {
+                    const aggLabel = ss.lastAggressorPos ? (POS_LABEL[ss.lastAggressorPos] || ss.lastAggressorPos) : '对手';
+                    reasoning = `面对 ${aggLabel} 下注 ${villainBet.toFixed(1)}BB + ${ss.facingCallers} 人跟注（底池 ${pot.toFixed(1)}BB）：` + reasoning;
                 }
             }
 
