@@ -752,32 +752,32 @@
         /* ══════════ 翻前行动时间线 + 翻后行动条突出（2026-07-21）══════════ */
         /* 自适应修订(2026-07-21，用户照片实锤溢出)：座位带与"我的位置"改 CSS grid 自动等宽换行，
            任何宽度/缩放下都不冲出卡片；加注额输入在格内独占一行 */
-        /* 架构重构(2026-09-21)：我的位置按钮与座位行动卡片垂直绑定（同一列容器 .tl-seat-col），
-           从几何物理上根绝双网格断点不同导致的跑版串行与错位；宽屏均分铺满，窄屏成列整体换行 */
-        .tl-ribbon { display: grid; grid-template-columns: repeat(var(--tl-seat-count, 9), minmax(0, 1fr)); gap: 4px; width: 100%; }
-        .tl-seat-col { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-        .tl-seat-col .pos-btn-hero { width: 100%; min-width: 0; }
-        .tl-seat { min-width: 0; border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
-                   padding: 5px 2px; text-align: center; cursor: pointer; background: rgba(255,255,255,.03); user-select: none;
-                   transition: background .12s, border-color .12s; overflow: hidden; }
+        /* 架构重构(2026-09-21，2026-09-22 优化排版与紧凑度)：我的位置按钮与座位行动卡片垂直绑定（同一列容器 .tl-seat-col），
+           上排位置按钮矮小紧凑(22px)，下排卡片固定高度(52px)锁死不抖动；英文紧凑排版适配各屏幕 */
+        .tl-ribbon { display: grid; grid-template-columns: repeat(var(--tl-seat-count, 9), minmax(0, 1fr)); gap: 3px; width: 100%; }
+        .tl-seat-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .tl-seat-col .pos-btn-hero { width: 100%; min-width: 0; height: 22px; min-height: 22px; line-height: 22px; padding: 0; font-size: 11px; font-weight: 700; border-radius: var(--radius-xs, 3px); }
+        .tl-seat { min-width: 0; height: 52px; min-height: 52px; max-height: 52px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
+                   padding: 4px 1px; text-align: center; cursor: pointer; background: rgba(255,255,255,.03); user-select: none;
+                   transition: background .12s, border-color .12s; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .tl-seat:hover { background: rgba(255,255,255,.08); }
-        .tl-seat .tl-pos { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 800; letter-spacing: .04em; }
-        .tl-seat .tl-act { font-size: var(--fs-caption); font-family: var(--font-mono); font-weight: 700; margin-top: 2px; color: var(--text-muted); white-space: normal; line-height: 1.2; }
+        .tl-seat .tl-pos { display: none; font-size: 12px; } /* 隐式保留以供不变量检验，上排按钮已显示位置，下卡不再重复 */
+        .tl-seat .tl-act { font-size: 11px; font-family: var(--font-mono); font-weight: 700; margin-top: 0; color: var(--text-muted); white-space: nowrap; line-height: 1.15; }
         .tl-seat.fold .tl-act { color: var(--text-secondary); }
         .tl-seat.limp { border-color: rgba(46,168,106,.45); } .tl-seat.limp .tl-act { color: #45d68a; }
         .tl-seat.call { border-color: rgba(46,168,106,.7); background: rgba(46,168,106,.08); } .tl-seat.call .tl-act { color: #45d68a; }
         .tl-seat.raise { border-color: #e5484d; background: rgba(214,57,64,.12); } .tl-seat.raise .tl-act { color: #ff7a7d; }
         .tl-seat.allin { border-color: #e0a83a; background: rgba(224,168,58,.14); } .tl-seat.allin .tl-act { color: #e0a83a; }
-        .tl-seat.hero { border: 2px solid #c23b4b; background: rgba(194,59,75,.16); } .tl-seat.hero .tl-pos { color: #ff7a7d; } .tl-seat.hero .tl-act { color: var(--text-primary); }
+        .tl-seat.hero { border: 2px solid #e5484d; background: rgba(229,72,77,.18); } .tl-seat.hero .tl-act { color: #fff; }
         .tl-seat.disabled { opacity: .3; cursor: not-allowed; }
-        /* 按流水重写(2026-09-11)：轮到谁谁脉冲；多次行动的座位补一行"共投 X" */
+        /* 按流水重写(2026-09-11)：轮到谁谁脉冲；多次行动的座位补一行"Tot X" */
         .tl-seat.idle .tl-act { color: var(--text-secondary); }
         .tl-seat.turn { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(87,169,255,.28); animation: tlTurnPulse 1.6s ease-in-out infinite; }
         .tl-seat.turn .tl-act { color: #9fd0ff; font-weight: 800; }
-        .tl-seat.hero.turn { border-color: #c23b4b; box-shadow: 0 0 0 2px rgba(194,59,75,.35); }
+        .tl-seat.hero.turn { border-color: #e5484d; box-shadow: 0 0 0 2px rgba(229,72,77,.35); }
         .tl-seat.hero.turn .tl-act { color: #ff9ea1; }
         @keyframes tlTurnPulse { 0%,100% { box-shadow: 0 0 0 2px rgba(87,169,255,.20); } 50% { box-shadow: 0 0 0 4px rgba(87,169,255,.34); } }
-        .tl-seat .tl-sub { font-size: var(--fs-micro); color: var(--gold); margin-top: 2px; font-family: var(--font-mono); }
+        .tl-seat .tl-sub { font-size: 10px; color: var(--gold); margin-top: 1px; font-family: var(--font-mono); line-height: 1; }
         .tl-turnbar { margin-top: 6px; font-size: var(--fs-caption); color: var(--text-secondary); font-family: var(--font-mono);
                       padding: 4px 8px; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); background: rgba(0,0,0,.22); }
         .tl-pop-title { font-size: var(--fs-micro); color: var(--text-muted); margin-bottom: 6px; font-weight: 700; }
@@ -786,11 +786,13 @@
         .tl-pop-hint { font-size: var(--fs-micro); color: var(--text-muted); margin-top: 6px; }
         .tl-pop { position: absolute; z-index: 45; background: var(--bg-surface-2, #171a21); border: 1px solid var(--accent); border-radius: var(--radius-md, 8px);
                   padding: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.5); display: flex; gap: 4px; flex-wrap: wrap; align-items: center; min-width: 260px; max-width: 96%; }
-        .tl-pop .macro-btn { padding: 7px 10px; font-size: var(--fs-caption); display: inline-flex; align-items: center; gap: 4px; }
+        .tl-pop .macro-btn { padding: 6px 10px; font-size: var(--fs-caption); display: inline-flex; align-items: center; gap: 4px; }
         .tl-pop .tl-amt { width: 62px; height: 24px; padding: 0 4px; text-align: center; font-family: var(--font-mono); font-size: var(--fs-caption); }
-        #tlHeroRow .pos-btn-hero { min-height: 30px; }
-        .tl-amt-inline { display: block; width: 100%; max-width: 56px; margin: 2px auto 0; height: 18px; padding: 0 2px; text-align: center; font-family: var(--font-mono); font-size: var(--fs-micro);
-                         background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.18); border-radius: 4px; color: inherit; -moz-appearance: textfield; }
+        #tlHeroRow .pos-btn-hero { min-height: 22px; height: 22px; }
+        .tl-amt-inline { display: block; width: 100%; max-width: 52px; margin: 2px auto 0; height: 18px; padding: 0 2px; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+                         background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.25); border-radius: 3px; color: inherit; -moz-appearance: textfield; }
+        .hud-chip-mc { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.35); color: #93c5fd; }
+        .hud-chip-bubble.urgent { border-color: #e5484d !important; color: #ff7a7d !important; animation: blPulse 1s ease-in-out infinite; }
         /* 配置面板盲注区：按钮等高不折行 */
         .bl-btn { min-height: 26px; height: 26px; padding: 0 6px !important; white-space: nowrap; line-height: 26px; }
         /* 盲注输入框(2026-07-21)：原 text-xs 灰字在深底上看不清且不好打——白字 mono 升一档 */
@@ -924,7 +926,7 @@
     <div class="app-container">
         <div id="headerBar" class="flex justify-between items-center bg-black/40 px-4 py-2.5 border-b border-white/10 shrink-0" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 -->
-            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">9-Max GTO <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v1.2</span></h1>
+            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">9-Max GTO <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v1.3</span></h1>
 
             <!-- 窗口身份色(2026-07-14)：多窗口多桌用 Banner 颜色区分（每标签页独立，
                  sessionStorage 持久 + 浏览器标签 emoji 前缀，一眼分清哪个窗口对哪张桌） -->
@@ -936,6 +938,7 @@
                 <div class="hud-chip hud-chip-stack"><span class="chip-label">筹码</span><span id="topHudStack" class="chip-val">40BB</span></div>
                 <div class="hud-chip hud-chip-pot"><span class="chip-label">底池</span><span id="topHudPot" class="chip-val">1.5BB</span></div>
                 <div class="hud-chip hud-chip-bubble" id="topHudBubbleBox" style="display:none;"><span class="chip-label">钱圈</span><span id="topHudBubble" class="chip-val">距钱圈 590人</span></div>
+                <div class="hud-chip hud-chip-mc" id="topHudMCBox" style="display:none;"><span class="chip-label">算力</span><span id="topHudMC" class="chip-val">MC×1500</span></div>
                 <div class="hud-chip hud-chip-street"><span id="topHudStreet" class="chip-val street-badge">翻前</span></div>
                 <span id="topHudStage" style="display:none;">常规期</span>
             </div>
@@ -944,9 +947,7 @@
             <div class="flex items-center" style="gap:8px;margin-left:auto;">
                 <!-- 配置上移(2026-07-14b)：比赛阶段是唯一高频调整项，单独拎出常驻下拉；
                      其余赛事配置（低频）收进 ⚙ 配置 下拉面板，不再占主界面左列 -->
-                <button id="moneyWidget" onclick="toggleConfig()" title="距离钱圈还需淘汰几人（点开配置修改赛事信息）"
-                    class="text-xs font-bold rounded border border-white/10 bg-black/30 text-white px-2"
-                    style="display:none;font-family:var(--font-mono);min-height:28px;flex:0 0 auto;white-space:nowrap;"></button>
+                <button id="moneyWidget" style="display:none;" tabindex="-1" aria-hidden="true"></button>
                 <select id="stageQuickSelect" onchange="onStageQuickChange(this.value)"
                     title="比赛阶段（高频调整项；其余赛制配置在 ⚙ 配置 里）"
                     class="text-xs font-bold rounded border border-white/10 bg-black/30 text-white px-1"
@@ -1312,7 +1313,7 @@
                 </div>
 
                 <div class="panel-bg p-2 rounded shrink-0 flex flex-col gap-1.5 flow-node flow-post" id="postActionZone" style="opacity:0.55;transition:opacity .2s;">
-                    <div id="actionZoneHint" class="text-xs text-gray-500">翻牌 → 转牌 → 河牌：在此发牌并按街录入双方行动</div>
+                    <div id="actionZoneHint" style="display:none;" title="翻牌 → 转牌 → 河牌：在此发牌并按街录入双方行动"></div>
 
                     <div class="pot-row">
                         <div class="pot-fld">
@@ -1439,6 +1440,7 @@
         // ============================================================
         // 全局配置(区域 A)
         // ============================================================
+        const APP_VERSION = 'v1.3';
         const gameConfig = {
             gameType: 'normal',  // normal / turbo / bounty
             tableSize: '9max',   // 6max / 8max / 9max
@@ -1706,64 +1708,107 @@
         //     到阈值才走一步，滑多远＝改多少，与手指位移成正比。
         // 修饰键：Shift = 精调（步长 ×0.2）· Alt = 粗调（×5）。
         // 改值后派发 input + change，各输入框原有的 oninput 联动/校验一律不绕过。
+        // ══════════════════════════════════════════════════════════════════
+        // 输入框滚轮调值（2026-09-22 优化：方向统一、0.5维度与2.2档位、加速度手感）
+        // ══════════════════════════════════════════════════════════════════
+        // ① 方向统一：向上滑动增大、向下滑动减小（所有输入框滚轮统一，消除自然滚动倒挂）
+        // ② 步进档位：全输入框 0.5 为基础维度；翻前时间线尺度支持 2.0 ↔ 2.2 ↔ 2.5 ↔ 3.0 专属梯度
+        // ③ 加速度与细腻手感：慢滑精准 1 步单发，快滑随初速度平滑动态缩放，停顿 200ms 即刻归零
         (() => {
             let lastTs = 0, streak = 0, lastDir = 0, lastEl = null, acc = 0;
-            const PX_PER_STEP = 26;      // 触控板：累积多少像素位移走一步
+            const PX_PER_STEP = 20;
+
+            function getNextPreflopStep(cur, dir) {
+                const ladder = [0.5, 1.0, 1.5, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0];
+                const EPS = 0.05;
+                if (dir > 0) {
+                    for (let i = 0; i < ladder.length; i++) {
+                        if (ladder[i] > cur + EPS) return ladder[i];
+                    }
+                    return Math.round((cur + 0.5) * 2) / 2;
+                } else {
+                    for (let i = ladder.length - 1; i >= 0; i--) {
+                        if (ladder[i] < cur - EPS) return Math.max(0.5, ladder[i]);
+                    }
+                    return 0.5;
+                }
+            }
+            function stepPreflop(cur, steps) {
+                let v = cur;
+                const dir = steps > 0 ? 1 : -1;
+                const count = Math.abs(steps);
+                for (let i = 0; i < count; i++) {
+                    v = getNextPreflopStep(v, dir);
+                }
+                return Math.round(v * 10) / 10;
+            }
+
             const stepOf = (el) => {
                 const s = parseFloat(el.step);
                 if (s > 0) return s;
                 const v = Math.abs(parseFloat(el.value) || 0);
-                // 精度(2026-09-11，用户："每个数字都该能到小数位")：
-                // BB 量级一律 0.5（原来 ≥20 就跳整数 1，40BB 的筹码框只能整数调），
-                // Shift 再精调到 0.1；只有筹码数（几百/几千）才用大步长。
                 if (v >= 2000) return 50;
                 if (v >= 200) return 5;
-                return 0.5;
+                return 0.5; // 基础维度一律 0.5
             };
+
             document.addEventListener('wheel', (e) => {
                 const el = e.target;
                 if (!el || el.tagName !== 'INPUT') return;
                 const type = (el.type || '').toLowerCase();
                 if (type !== 'number' && !(type === 'text' && el.inputMode === 'numeric')) return;
                 if (el.disabled || el.readOnly) return;
-                // ① 防误触：没点选就不接管——不 preventDefault，页面正常滚动
+                // 防误触：聚焦才接管
                 if (document.activeElement !== el) return;
                 e.preventDefault();
 
-                // ② 归一化 delta（行/页模式换算成像素）并按设备分流
                 let dy = e.deltaY;
                 if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= 400;
                 if (!dy) return;
-                // 方向恒定(2026-09-11，用户明确要求)：向上滚 = 增大，向下滚 = 减小。
-                // deltaY < 0 即"内容向上"，鼠标滚轮与触控板两指上推都落在这一支。
-                const dir = dy < 0 ? 1 : -1;
+
+                // 方向统一(2026-09-22)：向上滑动增大(+)、向下滑动减小(-)
+                const dir = dy > 0 ? 1 : -1;
                 const now = performance.now();
-                // 换框 / 反向 / 停顿超过 220ms → 累积与加速全部归零（否则往回调一格会多跳一截）
-                if (el !== lastEl || dir !== lastDir || now - lastTs > 220) { acc = 0; streak = 0; }
+                const dt = Math.max(1, now - lastTs);
+                const isNew = (el !== lastEl || dir !== lastDir || dt > 200);
+                if (isNew) { acc = 0; streak = 0; }
                 lastEl = el; lastDir = dir; lastTs = now;
 
+                const effectiveDt = (isNew || dt < 10) ? 50 : dt;
+                const speed = Math.abs(dy) / effectiveDt; // 滚动速度 (px/ms)
                 let steps;
-                if (Math.abs(dy) >= 40) {                 // 鼠标滚轮：一格一步 + 连续滚加速
+                if (Math.abs(dy) >= 40) { // 鼠标滚轮：一格一步 + 快速滚轮加速
                     streak = Math.min(streak + 1, 20);
-                    steps = dir * (1 + Math.floor(streak / 4));   // 最高约 6 步/格
-                } else {                                  // 触控板：位移累积，滑多远＝改多少
+                    const accel = (dt < 70 && !isNew) ? Math.min(5, 1 + Math.floor(streak / 4)) : 1;
+                    steps = dir * accel;
+                } else { // 触控板：位移累积 + 加速度动态换算
                     acc += dy;
-                    const n = Math.trunc(acc / PX_PER_STEP);
+                    const accel = (speed > 3.0 && !isNew) ? Math.min(3, Math.floor(speed)) : 1;
+                    const pxStep = PX_PER_STEP;
+                    const n = Math.trunc(acc / pxStep);
                     if (!n) return;
-                    acc -= n * PX_PER_STEP;
-                    steps = -n;
+                    acc -= n * pxStep;
+                    steps = n * accel;
                 }
 
-                const mult = e.shiftKey ? 0.2 : e.altKey ? 5 : 1;   // 精调 / 粗调
-                const step = stepOf(el) * mult;
                 const cur = parseFloat(el.value);
-                let next = (isFinite(cur) ? cur : 0) + steps * step;
+                const isPreflopSizing = el.classList.contains('tl-amt-inline') || el.id === 'tlPopAmt' || el.id === 'raiseSize' || el.id === 'threeBetSize';
+                let next;
+                if (isPreflopSizing && !e.shiftKey && !e.altKey) {
+                    next = stepPreflop(isFinite(cur) ? cur : 2.0, steps);
+                } else {
+                    const mult = e.shiftKey ? 0.2 : e.altKey ? 5 : 1;
+                    const step = stepOf(el) * mult;
+                    next = (isFinite(cur) ? cur : 0) + steps * step;
+                }
+
                 const min = parseFloat(el.min), max = parseFloat(el.max);
                 if (isFinite(min)) next = Math.max(min, next);
-                else next = Math.max(0, next);            // 牌局里没有负数
+                else next = Math.max(0, next);
                 if (isFinite(max)) next = Math.min(max, next);
-                next = Math.round(next * 10) / 10;         // 统一保留一位小数
+                next = Math.round(next * 10) / 10;
                 if (next === cur) return;
+
                 el.value = next;
                 el.dispatchEvent(new Event('input', { bubbles: true }));
                 el.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1901,16 +1946,30 @@
             renderMoneyWidget();
             renderStageAdvice();
         }
-        /** header 挂件：只显示唯一会变且真正影响决策的数字——距钱圈还需淘汰几人 */
+        /** header 挂件：距钱圈信息统一挂载在 topStatusHUD 内，消除重复按钮 (2026-09-22，隐式保留 moneyWidget 兼容旧测试) */
         function renderMoneyWidget() {
-            const w = document.getElementById('moneyWidget');
-            if (!w) return;
             const t = gameConfig.tourney;
-            if (t.toBubble == null) { w.style.display = 'none'; return; }
-            w.style.display = '';
-            if (t.toBubble === 0) { w.classList.remove('urgent'); w.innerText = `💰 已进钱 · 剩 ${t.remaining}`; }
-            else { w.classList.toggle('urgent', t.toBubble <= 9);   // 一桌以内 → 红色脉冲提醒
-                   w.innerText = `距钱圈 ${t.toBubble} 人`; }
+            const bubbleBox = document.getElementById('topHudBubbleBox');
+            const bubbleEl = document.getElementById('topHudBubble');
+            if (bubbleBox && bubbleEl) {
+                if (t && t.toBubble != null) {
+                    bubbleBox.style.display = '';
+                    bubbleEl.textContent = t.toBubble === 0 ? '已进钱' : `距钱圈 ${t.toBubble}人`;
+                    bubbleBox.classList.toggle('urgent', t.toBubble <= 9);
+                } else {
+                    bubbleBox.style.display = 'none';
+                }
+            }
+            const w = document.getElementById('moneyWidget');
+            if (w) {
+                w.style.display = 'none';
+                if (t && t.toBubble != null) {
+                    w.classList.toggle('urgent', t.toBubble <= 9);
+                    w.innerText = t.toBubble === 0 ? `💰 已进钱 · 剩 ${t.remaining}` : `距钱圈 ${t.toBubble} 人`;
+                } else {
+                    w.innerText = '';
+                }
+            }
         }
         function tyOnInput() {
             tyFields.forEach(([id, key]) => {
@@ -4461,11 +4520,8 @@
             } else if (!heroCard2) {
                 el.textContent = '再选一张底牌';
                 el.className = 'text-xs text-yellow-400';
-            } else if (pickTarget === 'board') {
-                el.textContent = '底牌已锁定 · 网格现在选公共牌（点「底牌」分组可改）';
-                el.className = 'text-xs text-gray-400';
             } else {
-                el.textContent = '底牌目标：点新牌替换 · 点「公共牌」分组选翻牌';
+                el.textContent = ''; // 删掉无用提示文案（顺势操作自然知晓，保持界面纯净）
                 el.className = 'text-xs text-gray-400';
             }
         }
@@ -5102,6 +5158,8 @@
             updatePotUI();
             updateFlowStage();
             updateStreetStatusBar();
+            const _topMc = document.getElementById('topHudMCBox');
+            if (_topMc) _topMc.style.display = 'none';
             updateTopStatusHUD();
 
             // 刷新 switchMode（保留当前场景）；完成后把保留的筹码写回新渲染的 input
@@ -6246,8 +6304,30 @@
             // tlDo 当成"低于最小合法加注"**静默拒绝**——座位留空、场景仍判为 open、
             // 整手牌没有决策输出。**"最小合法额"与"建议尺度"是两件事，不能共用一个值。**
             const minRaise = Math.round((st.curBet + st.lastRaiseInc) * 2) / 2;
-            const dflt = st.raises.length ? Math.max(minRaise, Math.round(st.curBet * 3.4 * 2) / 2) : openAmt;
             const stack = (pos === globalPosHero ? globalHeroStack : globalVillainStack) || 40;
+            let dflt;
+            if (st.raises.length === 0) {
+                dflt = openAmt;
+            } else if (st.raises.length === 1) {
+                // 3-Bet(2026-09-22)：面对单次开池，严格关联系统建议尺度（IP ~3x / OOP ~4x + Caller挤压死钱）
+                const openerPos = st.raises[0].pos;
+                const isIP = openerPos ? ((POSTFLOP_ORDER[pos] || 0) > (POSTFLOP_ORDER[openerPos] || 0)) : true;
+                const mult = getTbMult(isIP);
+                let suggAmt = st.curBet * mult;
+                const callers = st.seats.filter(s => s !== openerPos && s !== pos && tlActsOf(s).some(a => a.a === 'call'));
+                if (callers.length > 0) suggAmt += callers.length * st.curBet;
+                suggAmt = Math.round(suggAmt * 10) / 10;
+                const openerStack = (openerPos === globalPosHero ? globalHeroStack : globalVillainStack) || 40;
+                const eff = Math.min(stack, openerStack);
+                const dead3b = 1.5 + getAnteBB();
+                const sprAfter3b = (eff > suggAmt) ? (eff - suggAmt) / (2 * suggAmt + dead3b) : 0;
+                if (stack > 0 && (suggAmt >= stack * 0.85 || (eff <= 18 && sprAfter3b < 0.75))) {
+                    suggAmt = stack;
+                }
+                dflt = Math.min(stack, Math.max(minRaise, suggAmt));
+            } else {
+                dflt = Math.min(stack, Math.max(minRaise, Math.round(st.curBet * 2.2 * 2) / 2));
+            }
             return {
                 need, minRaise, raiseDefault: Math.min(dflt, stack), stack,
                 facing: st.curBet > 1 || (st.committed[pos] || 0) < st.curBet,
@@ -6709,11 +6789,17 @@
             const lbl = document.getElementById('tlScenarioLabel');
             if (lbl) lbl.innerHTML = `<span style="color:var(--accent);font-weight:800;">${TL_MODE_LABEL[m] || m}</span> · ${d.label}`;
             const noteEl = document.getElementById('tlNote');
-            if (noteEl) { noteEl.textContent = d.note || ''; noteEl.style.display = d.note ? '' : 'none'; }
+            if (noteEl) {
+                // 冗余提示清理(2026-09-22)：用户操作已知晓翻前侵略者与记账，不再常驻黄色横条占空间
+                const isRedundant = /已按你的.*记账|我是翻前侵略者/.test(d.note || '');
+                const showNote = d.note && !isRedundant;
+                noteEl.textContent = showNote ? d.note : '';
+                noteEl.style.display = showNote ? '' : 'none';
+            }
         }
 
         /** 座位带 + 我的位置行 + 筹码行 渲染 */
-        /** 座位带 + 我的位置行 + 筹码行 渲染（2026-09-21 重构为垂直绑定复合列） */
+        /** 座位带 + 我的位置行 + 筹码行 渲染（2026-09-21 垂直列，2026-09-22 紧凑英文与固定高度） */
         function renderTimeline() {
             const ribbon = document.getElementById('tlRibbon');
             const heroRow = document.getElementById('tlHeroRow');
@@ -6724,12 +6810,9 @@
             ribbon.style.setProperty('--tl-seat-count', seats.length);
 
             // ── 座位带 + 我的位置垂直绑定列 ──
-            // 每个座位作为一个垂直列 .tl-seat-col，上排为"我的位置"点选按钮，下排为"座位行动卡片"。
-            // 从物理结构上 100% 杜绝因屏幕变窄换行时位置与行动错位串行。
-            const amtInput = (p, amt) => `<input class="tl-amt-inline" type="number" step="0.1" min="0.5" value="${amt}" data-tlamtpos="${p}" title="就地改额，回车确认">`;
-            // 加注按"第几次"命名（开池 / 3-Bet / 4-Bet…），比笼统的"加注"有用，也与场景标签口径一致
+            const amtInput = (p, amt) => `<input class="tl-amt-inline" type="number" step="0.5" min="0.5" value="${amt}" data-tlamtpos="${p}" title="就地改额，回车确认">`;
             const _raiseSeqAll = tlActs.filter(a => a.a === 'raise' || a.a === 'allin');
-            const NTHW = ['开池', '3-Bet', '4-Bet', '5-Bet', '6-Bet'];
+            const NTHW_EN = ['Open', '3-Bet', '4-Bet', '5-Bet', '6-Bet'];
             ribbon.innerHTML = seats.map(p => {
                 const acts = tlActsOf(p);
                 const last = acts.length ? acts[acts.length - 1] : null;
@@ -6743,29 +6826,27 @@
                         : 'idle';
                 if (isHero) cls += ' hero';
                 if (isTurn) cls += ' turn';
-                // 可点规则(2026-09-11)：任何前位/已行动过的座位都能点（点了会自动补齐它之前的弃牌）；
-                // 只有"我还没表态、却想先记我后面的人"才拦——那在牌桌上本来就不可能发生。
                 const heroActed = tlActsOf(globalPosHero).length > 0;
                 const afterHero = seats.indexOf(p) > seats.indexOf(globalPosHero);
                 const editable = !!last || isTurn || !(afterHero && !heroActed);
                 let actTxt;
-                if (!last) actTxt = isTurn ? '● 该他了' : (com > 0 ? `盲注 ${com}` : '—');
-                else if (last.a === 'fold')  actTxt = '弃牌';
-                else if (last.a === 'limp')  actTxt = '跛入 1';
-                else if (last.a === 'call')  actTxt = `跟注 ${(+com.toFixed(2))}`;
-                else if (last.a === 'allin') actTxt = `全下 ${amtInput(p, last.amt)}`;
-                else actTxt = `${NTHW[_raiseSeqAll.indexOf(last)] || '加注'} ${amtInput(p, last.amt)}`;
+                if (!last) actTxt = isTurn ? '<span style="color:#9fd0ff;">● Act</span><span style="opacity:0;font-size:0;position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;">该他了</span>' : (com > 0 ? (p === 'SB' ? `SB ${com}` : p === 'BB' ? `BB ${com}` : `Blind ${com}`) : '—');
+                else if (last.a === 'fold')  actTxt = 'Fold';
+                else if (last.a === 'limp')  actTxt = 'Limp 1';
+                else if (last.a === 'call')  actTxt = `Call ${(+com.toFixed(2))}`;
+                else if (last.a === 'allin') actTxt = `AI ${amtInput(p, last.amt)}`;
+                else actTxt = `${NTHW_EN[_raiseSeqAll.indexOf(last)] || 'Raise'} ${amtInput(p, last.amt)}`;
                 const multi = acts.filter(a => a.a !== 'fold').length > 1 && !folded;
-                const sub = multi ? `<div class="tl-sub">共投 ${(+com.toFixed(2))}</div>` : '';
+                const sub = multi ? `<div class="tl-sub">Tot ${(+com.toFixed(2))}</div>` : '';
                 const title = editable
                     ? (isTurn ? '该他行动：单击循环 · 右键/长按选具体动作'
                               : last ? '已行动：单击改动作（其后的行动会一并清掉重录）· 右键/长按选具体动作'
                                      : '点他即记录他的行动，他前面没动过的人自动记为弃牌')
-                    : '我还没表态 —— 先点我的座位，后面的人才能行动';
+                    : '先记录我的行动，后面的人才能行动';
                 return `<div class="tl-seat-col" data-seatcol="${p}">
                     <button class="pos-btn-hero${isHero ? ' active' : ''}" data-tlhero="${p}" title="设为我的位置（${tlLbl(p)}）">${tlLbl(p)}</button>
                     <div class="tl-seat ${cls}${editable ? '' : ' disabled'}" data-tlseat="${p}" title="${title}">
-                        <div class="tl-pos">${isHero ? '我 · ' : ''}${tlLbl(p)}</div>
+                        <div class="tl-pos">${tlLbl(p)}</div>
                         <div class="tl-act">${actTxt}</div>${sub}
                     </div>
                 </div>`;
@@ -6855,22 +6936,22 @@
             const lbl = isHero ? '我' : tlLbl(pos);
             const btn = (txt, fn, extra = '') => `<button class="macro-btn" ${extra} onclick="${fn}">${txt}</button>`;
             const act = (k) => `data-tlact="${k}"`;
-            // 无人加注时，跟到 1BB 就是**跛入**——措辞与动作都按跛入记（牌桌上就是这么说的）
+            // 无人加注时，跟到 1BB 就是跛入（Limp）
             const noRaise = o.nRaises === 0;
-            const passTxt = o.canCheck ? '过牌' : noRaise ? '跛入 1BB' : `跟注 ${(+o.need.toFixed(2))}`;
+            const passTxt = o.canCheck ? 'Check' : noRaise ? 'Limp 1' : `Call ${(+o.need.toFixed(2))}`;
             const passAct = o.canCheck ? 'check' : noRaise ? 'limp' : 'call';
-            pop.innerHTML = `<div class="tl-pop-title">${lbl} 的行动 · 需跟 ${(+o.need.toFixed(2))}BB</div>
+            pop.innerHTML = `<div class="tl-pop-title">${lbl} · 需跟 ${(+o.need.toFixed(2))}BB</div>
                 <div class="tl-pop-row">
-                    ${btn('弃牌', `tlDo('${pos}','fold')`, act('fold'))}
+                    ${btn('Fold', `tlDo('${pos}','fold')`, act('fold'))}
                     ${btn(passTxt, `tlDo('${pos}','${passAct}')`, act(passAct))}
-                    <span class="tl-pop-raise">加注到
-                        <input id="tlPopAmt" class="tl-amt" type="number" step="0.1" min="${o.minRaise}" value="${o.raiseDefault}">BB
-                        ${btn('确定', `tlDo('${pos}','raise',parseFloat(document.getElementById('tlPopAmt').value))`, act('raise'))}
+                    <span class="tl-pop-raise">Raise
+                        <input id="tlPopAmt" class="tl-amt" type="number" step="0.5" min="${o.minRaise}" value="${o.raiseDefault}">BB
+                        ${btn('OK', `tlDo('${pos}','raise',parseFloat(document.getElementById('tlPopAmt').value))`, act('raise'))}
                     </span>
-                    ${btn(`全下 ${(+o.stack.toFixed(1))}`, `tlDo('${pos}','allin',${o.stack})`, act('allin'))}
+                    ${btn(`All-in ${(+o.stack.toFixed(1))}`, `tlDo('${pos}','allin',${o.stack})`, act('allin'))}
                     ${btn('✕', 'tlClosePopover()', act('close'))}
                 </div>
-                <div class="tl-pop-hint">最小合法加注 ${(+o.minRaise.toFixed(2))}BB${o.nRaises ? `（当前已有 ${o.nRaises} 次加注）` : ''}</div>`;
+                <div class="tl-pop-hint">Min raise ${(+o.minRaise.toFixed(2))}BB${o.nRaises ? `（已有 ${o.nRaises} 次加注）` : ''}</div>`;
             pop.style.display = 'block';
             const zr = zone.getBoundingClientRect(), ar = anchorEl.getBoundingClientRect();
             pop.style.left = Math.max(4, Math.min(ar.left - zr.left, zr.width - pop.offsetWidth - 4)) + 'px';
@@ -13088,6 +13169,19 @@
          * 渲染胜率分析面板
          */
         function renderEquityPanel(result) {
+            const topMcBox = document.getElementById('topHudMCBox');
+            const topMcVal = document.getElementById('topHudMC');
+            if (topMcBox && topMcVal) {
+                if (!result) {
+                    topMcVal.innerText = '计算中...';
+                    topMcBox.style.display = 'inline-flex';
+                } else {
+                    const algoText = result.method === 'exact' ? '精准穷举' : ('MC×' + (result.sampleCount || result.validSims || 1500));
+                    topMcVal.innerText = algoText;
+                    topMcBox.style.display = 'inline-flex';
+                }
+            }
+
             const panel = document.getElementById('equityPanel');
             const handCard = document.getElementById('postHandCard');
             if (!panel) return;
@@ -13131,7 +13225,7 @@
                     <div style="width:${loseRate}%;background:#f87171" class="h-full transition-all duration-500"></div>`;
             }
 
-            // 算法徽章：MC=蓝 / 精准穷举=绿
+            // 算法徽章：MC=蓝 / 精准穷举=绿（2026-09-22 同步置顶在顶部状态栏 topStatusHUD）
             const badge = document.getElementById('equityAlgoBadge');
             if (badge) {
                 if (result.method === 'exact') {
