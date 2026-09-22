@@ -9476,6 +9476,66 @@
         }
 
         /**
+         * Pokercode 多人底池席位与相对位置上下文 (Phase 4)
+         * 计算当前在池所有玩家列表、翻后行动顺位、以及 Hero 的相对位置角色 (ABSOLUTE_OOP / SANDWICH / ABSOLUTE_IP)
+         */
+        function getMultiwayContext() {
+            const heroPos = globalPosHero || 'BTN';
+            const mainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+            const extras = (postState.extraVillains || []).filter(p => p && p !== heroPos && p !== mainV);
+            
+            const rawContenders = Array.from(new Set([heroPos, mainV, ...extras]));
+            const sortedPlayers = rawContenders.map(pos => ({
+                pos,
+                label: POS_LABEL[pos] || pos,
+                order: POSTFLOP_ORDER[pos] || 5,
+                isHero: pos === heroPos,
+                isMainV: pos === mainV
+            })).sort((a, b) => a.order - b.order);
+
+            const totalCount = sortedPlayers.length;
+            const heroIndex = sortedPlayers.findIndex(p => p.isHero);
+            
+            let relativeRole = 'HEADS_UP';
+            let roleLabel = '单挑底池';
+            let badgeClass = 'text-gray-300';
+            let roleTactics = '';
+
+            if (totalCount >= 3) {
+                if (heroIndex === 0) {
+                    relativeRole = 'ABSOLUTE_OOP';
+                    roleLabel = '第一顺位 (OOP)';
+                    badgeClass = 'text-sky-400 border border-sky-500/40 bg-sky-950/40';
+                    roleTactics = '第一顺位防守：高频全范围过牌控池，切忌无脑 C-Bet；面对下注承受最大挤压风险。';
+                } else if (heroIndex === totalCount - 1) {
+                    relativeRole = 'ABSOLUTE_IP';
+                    roleLabel = '绝对有利位置 (IP)';
+                    badgeClass = 'text-emerald-400 border border-emerald-500/40 bg-emerald-950/40';
+                    roleTactics = '最后位置优势：前方全过牌时，享有极高翻后信息优势；适度小尺度（25%~33%）价值搜刮。';
+                } else {
+                    relativeRole = 'SANDWICH';
+                    roleLabel = '夹心饼干位 (Sandwich)';
+                    badgeClass = 'text-amber-400 border border-amber-500/40 bg-amber-950/40';
+                    roleTactics = '高危夹心位：前方已行动且身后仍有玩家未表态；浮动跟注与投机听牌彻底归零，非极强牌严禁做大底池。';
+                }
+            } else if (totalCount === 2) {
+                relativeRole = heroIndex === 0 ? 'HU_OOP' : 'HU_IP';
+                roleLabel = heroIndex === 0 ? '单挑 OOP' : '单挑 IP';
+            }
+
+            return {
+                totalCount,
+                isMultiway: totalCount >= 3,
+                players: sortedPlayers,
+                heroIndex,
+                relativeRole,
+                roleLabel,
+                badgeClass,
+                roleTactics
+            };
+        }
+
+        /**
          * 顺序状态机：根据行动日志推导当前街道阶段
          * streetPhase 四态：
          *   waiting_first          先手等待行动
@@ -10343,8 +10403,9 @@
             //   coldCall开池者/vsLimp最早跛入者/face3b 3-Bet者）
             if (_firstEntry && typeof currentMode !== 'undefined') {
                 if (!Array.isArray(postState.extraVillains)) postState.extraVillains = [];
+                const currentMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : globalPosVillain;
                 const _addExtra = p => {
-                    if (p && p !== globalPosHero && p !== globalPosVillain &&
+                    if (p && p !== globalPosHero && p !== currentMainV &&
                         !postState.extraVillains.includes(p)) postState.extraVillains.push(p);
                 };
                 // 翻前→翻后多人底池(2026-09-08，用户："BTN 开池、SB 和 BB 都进来了，
@@ -10368,6 +10429,7 @@
                     Object.keys(tlEvents).forEach(pos => {
                         const en = tlEvents[pos] || {};
                         if (en.resp && en.resp.action === 'fold') return;
+                        if (currentMode === 'coldCall' && pos === globalPosVillain) return; // 传统单挑coldCall下开池者默认按死钱弃牌
                         if (en.action && en.action !== 'fold') _addExtra(pos);
                     });
                 }
@@ -10402,18 +10464,19 @@
             // 额外对手区独立琥珀底色卡，与主对手区视觉分层
             // 翻前↔翻后同步(2026-07-14b)：标签直接显示当前主对手位置（翻前场景选定的
             // 加注者/开池者位置经 globalPosVillain 自动带入，无需重复选择）
+            const currentMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : globalPosVillain;
             let html = `<div style="display:flex;flex-direction:column;gap:3px;">
                 <div class="posv-label">主对手（行动线归属）· 当前：<span style="color:#2ea86a;font-weight:800;">${currentMode === 'coldCall' ? lbl(globalPosCaller) + '（3-Bet者）· 开池者 ' + lbl(globalPosVillain) : lbl(globalPosVillain)}</span></div>
                 <div class="posv-grid">`;
             positions.forEach(p => {
-                html += `<button class="posv-btn${p === globalPosVillain ? ' primary' : ''}" data-vpos="${p}">${lbl(p)}</button>`;
+                html += `<button class="posv-btn${p === currentMainV ? ' primary' : ''}" data-vpos="${p}">${lbl(p)}</button>`;
             });
             html += `</div>
                 <div class="posv-extra-box">
                     <div class="posv-label" style="color:#e0a83a;margin-top:0;">多人底池 · 额外对手（可多选，胜率按全部对手计算）</div>
                     <div class="posv-grid">`;
             positions.forEach(p => {
-                const blocked = p === globalPosVillain || p === globalPosHero;
+                const blocked = p === currentMainV || p === globalPosHero;
                 const on = postState.extraVillains.includes(p);
                 html += `<button class="posv-btn${on ? ' extra' : ''}" data-xpos="${p}" ${blocked ? 'disabled style="opacity:0.25;cursor:not-allowed;"' : ''}>${lbl(p)}</button>`;
             });
@@ -10422,8 +10485,13 @@
             container.style.display = 'block';
             container.querySelectorAll('[data-vpos]').forEach(btn => {
                 btn.onclick = () => {
-                    globalPosVillain = btn.dataset.vpos;
-                    postState.extraVillains = postState.extraVillains.filter(x => x !== globalPosVillain);
+                    const newV = btn.dataset.vpos;
+                    if (currentMode === 'coldCall' && globalPosCaller) {
+                        globalPosCaller = newV;
+                    } else {
+                        globalPosVillain = newV;
+                    }
+                    postState.extraVillains = postState.extraVillains.filter(x => x !== newV);
                     renderPostVillainPosSelector();
                     if (postState.equityResult && typeof checkStreetAnalysis === 'function') checkStreetAnalysis();
                 };
@@ -11107,15 +11175,52 @@
             return `<div class="st-timeline mb-2">${rows.join('')}</div>`;
         }
 
-        /** 额外对手弃牌：从多人底池移除并立即重算（2026-09-08） */
-        window.dropExtraVillain = function(pos) {
-            if (!Array.isArray(postState.extraVillains)) return;
+        /** 多人底池玩家弃牌：支持主对手或额外对手弃牌，一键降维并立即重算 (Phase 4) */
+        window.foldMultiwayPlayer = function(pos) {
             if (typeof pushUndo === 'function') pushUndo(`多人底池：${POS_LABEL[pos] || pos} 弃牌`);
-            postState.extraVillains = postState.extraVillains.filter(x => x !== pos);
+            const pLabel = POS_LABEL[pos] || pos;
+            const isCurrentMainV = (pos === globalPosVillain) || (currentMode === 'coldCall' && pos === globalPosCaller);
+            if (isCurrentMainV) {
+                const extras = (postState.extraVillains || []).filter(x => x && x !== globalPosHero && x !== pos);
+                if (extras.length > 0) {
+                    // 主对手弃牌，晋升首位额外对手为新主对手
+                    const nextV = extras.shift();
+                    if (currentMode === 'coldCall' && pos === globalPosCaller) {
+                        globalPosCaller = nextV;
+                    } else {
+                        globalPosVillain = nextV;
+                    }
+                    postState.extraVillains = extras;
+                    const fa = determineFirstToAct();
+                    postState.firstToAct = fa;
+                    postState.heroPosition = fa === 'hero' ? 'OOP' : 'IP';
+                    if (typeof showToast === 'function') showToast(`${pLabel} 已弃牌，当前主对手切换为 ${POS_LABEL[nextV] || nextV}，现为 ${extras.length + 2} 人底池`, 'info');
+                } else {
+                    // 无额外对手，单挑对手弃牌
+                    postState.extraVillains = [];
+                    setActionRecord('villain', 'fold', 0);
+                    if (typeof showToast === 'function') showToast(`${pLabel} 弃牌，我方赢得底池`, 'success');
+                    renderBettingPanel();
+                    return;
+                }
+            } else {
+                if (Array.isArray(postState.extraVillains)) {
+                    postState.extraVillains = postState.extraVillains.filter(x => x !== pos);
+                }
+                const remCount = (postState.extraVillains || []).length + 2;
+                if (typeof showToast === 'function') showToast(`${pLabel} 已弃牌，现为 ${remCount} 人底池`, 'info');
+            }
             try { renderPostVillainPosSelector(); } catch (e) {}
             renderBettingPanel();
             try { if (postState.board.filter(c => c !== null).length >= 3) checkStreetAnalysis(); } catch (e) {}
-            if (typeof showToast === 'function') showToast(`${POS_LABEL[pos] || pos} 已弃牌，现为 ${(postState.extraVillains.length) + 2} 人底池`, 'info');
+        };
+        window.dropExtraVillain = window.foldMultiwayPlayer; // 保持既有测试与接口 100% 兼容
+
+        /** 多人底池快捷操作：前方对手全员过牌至我方 (Phase 4) */
+        window.multiwayCheckToHero = function() {
+            if (typeof pushUndo === 'function') pushUndo('多人底池：前方全员过牌');
+            setActionRecord('villain', 'check', 0);
+            if (typeof showToast === 'function') showToast('已记录前方全员过牌，轮到我方行动', 'info');
         };
 
         function renderBettingPanel() {
@@ -11221,21 +11326,50 @@
                         <button class="${!heroIsOOP ? 'on' : ''}" onclick="overrideFirstActor('IP')">对手先 IP</button>
                     </span></div>`;
             }
-            // 多人底池在行动区可见(2026-09-08，用户反复提出)：原来无论几人进池，
-            // 这里永远只显示"我 + 对手"两个人，中间跟注进来的第三家在翻后完全不可见
-            //（他只影响胜率与门槛，界面上没有任何痕迹）。现在把在池的每一位都列出来，
-            // 并给一个「弃牌」快捷键——他一弃，人数立刻变回去，门槛与诈唬开关同步跟着变。
+            // 多人底池席位态势与动态流转 (Phase 4)
             {
-                const _ex = (postState.extraVillains || []).filter(x => x && x !== globalPosHero && x !== globalPosVillain);
-                if (_ex.length) {
+                const mwCtx = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
+                const _curMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : globalPosVillain;
+                const _ex = (postState.extraVillains || []).filter(x => x && x !== globalPosHero && x !== _curMainV);
+                if (mwCtx && mwCtx.isMultiway) {
+                    const heroBadge = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold ${mwCtx.badgeClass}">${mwCtx.roleLabel}</span>`;
+                    const showCheckToHero = (!heroIsOOP || mwCtx.relativeRole === 'ABSOLUTE_IP') && ss.phase === 'waiting_first';
+                    
+                    html += `<div class="text-xs mb-1.5 px-2 py-1.5 rounded" style="background:rgba(224,168,58,.08);border:1px solid rgba(224,168,58,.35);">
+                        <div class="flex items-center justify-between gap-1 flex-wrap mb-1">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span style="color:#e0a83a;font-weight:800;">${mwCtx.totalCount} 人底池</span>
+                                ${heroBadge}
+                            </div>
+                            ${showCheckToHero ? `<button onclick="multiwayCheckToHero()" class="text-xs px-2 py-0.5 rounded font-bold border border-emerald-500/50 text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 cursor-pointer" title="前方对手全部过牌，轮到我方行动">✓ 前方全过牌</button>` : ''}
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-wrap text-gray-300">
+                            <span class="text-gray-400">在池席位（行动顺位）：</span>
+                            ${mwCtx.players.map(p => {
+                                if (p.isHero) {
+                                    return `<span class="px-1.5 py-0.5 rounded bg-rose-950/40 text-rose-300 border border-rose-500/40 font-bold">我 (${p.label})</span>`;
+                                }
+                                return `<span class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 flex items-center gap-1">
+                                    <span style="color:${p.isMainV ? '#45d68a' : '#e0a83a'};font-weight:700;">${p.label}</span>
+                                    ${p.isMainV ? '<span class="text-[10px] text-emerald-400/80">(主)</span>' : ''}
+                                    <button onclick="dropExtraVillain('${p.pos}')" title="该对手弃牌：点击从底池移除并降维"
+                                        style="border:1px solid rgba(224,168,58,.5);border-radius:3px;padding:0 4px;cursor:pointer;background:transparent;color:#e0a83a;font-size:11px;">弃牌</button>
+                                </span>`;
+                            }).join('')}
+                        </div>
+                        <div class="text-[11px] text-gray-400 mt-1 flex items-center justify-between flex-wrap gap-1">
+                            <span>💡 ${mwCtx.roleTactics || '多人底池纯诈唬归零，价值门槛已收紧'}</span>
+                            <span class="text-gray-500">（主对手记行动线，点击弃牌可降维）</span>
+                        </div>
+                    </div>`;
+                } else if (_ex.length) {
                     html += `<div class="text-xs mb-1.5 px-1 py-1 rounded" style="background:rgba(224,168,58,.10);border:1px dashed rgba(224,168,58,.45);">
                         <span style="color:#e0a83a;font-weight:700;">${_ex.length + 2} 人底池</span>
                         <span class="text-gray-400"> · 我 <b style="color:#ff7a7d">${POS_LABEL[globalPosHero] || globalPosHero}</b>
-                        · 主对手 <b style="color:#45d68a">${POS_LABEL[globalPosVillain] || globalPosVillain}</b>（行动线归属）</span>
+                        · 主对手 <b style="color:#45d68a">${POS_LABEL[_curMainV] || _curMainV}</b></span>
                         ${_ex.map(x => `<span class="ml-1" style="color:#e0a83a;">· ${POS_LABEL[x] || x}
                             <button onclick="dropExtraVillain('${x}')" title="他弃牌了：从底池移除，人数与门槛立即重算"
                                 style="border:1px solid rgba(224,168,58,.5);border-radius:3px;padding:0 4px;margin-left:2px;cursor:pointer;background:transparent;color:#e0a83a;">弃牌</button></span>`).join('')}
-                        <br><span class="text-gray-500">额外对手只影响胜率与门槛，不单独记行动线（其下注请记在主对手上）</span>
                     </div>`;
                 }
             }
@@ -12758,11 +12892,21 @@
                     <span class="text-amber-400 font-bold">💡 Pokercode 拓扑策略：</span>${topo.tactics}
                 </div>` : '';
 
+            const mwCtx = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
+            const mwBadge = (mwCtx && mwCtx.isMultiway)
+                ? `<span class="text-xs px-2 py-0.5 rounded font-semibold ${mwCtx.badgeClass}">${mwCtx.totalCount}人底池 · ${mwCtx.roleLabel}</span>`
+                : '';
+            const mwTactics = (mwCtx && mwCtx.isMultiway && mwCtx.roleTactics) ? `
+                <div class="mt-2 text-xs text-gray-300 bg-white/5 p-2 rounded border border-white/10">
+                    <span class="text-sky-400 font-bold">💡 Pokercode 多人底池：</span>${mwCtx.roleTactics}
+                </div>` : '';
+
             content.innerHTML = `
                 <div class="text-xs font-bold text-gray-400 mb-2 flex justify-between items-center">
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center gap-1.5 flex-wrap">
                         <span>牌面结构</span>
                         ${topoBadge}
+                        ${mwBadge}
                     </div>
                     <span style="color: var(--accent);">${title}</span>
                 </div>
@@ -12799,7 +12943,7 @@
                         <span class="text-xs text-gray-400">坚果优势</span>
                         <span class="text-xs font-bold ${nutColor} mt-1">${nutIcon} ${analysis.nutAdvantage}</span>
                     </div>
-                </div>${topoTactics}`;
+                </div>${topoTactics}${mwTactics}`;
             card.classList.remove('hidden');
         }
 
@@ -13873,17 +14017,25 @@
                     }
                 }
             };
-            // 多人底池(2026-07-14)：每 +1 名额外对手，价值下注/加注门槛 +4、
-            // 强牌线 +3、跟注容差 +2（胜率已按多人 MC 口径覆盖，诈唬成功率
-            // 随人数下降、被反超概率上升，阈值同步收紧）
-            const _mwN = (postState.extraVillains || []).length;
+            // ── 多人底池与相对位置上下文 (Phase 4 Pokercode 进阶) ──
+            const mwCtx = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
+            const mwTotalCount = mwCtx ? mwCtx.totalCount : ((postState.extraVillains || []).length + 2);
+            const isMultiway = mwCtx ? mwCtx.isMultiway : (mwTotalCount >= 3);
+            const _mwN = Math.max(0, mwTotalCount - 2); // 额外对手数量：单挑=0, 3人=1, 4人=2
+            const isSandwich = isMultiway && mwCtx && mwCtx.relativeRole === 'SANDWICH';
+
+            // 多人底池 MDF 稀释分摊系数：单挑 1.0，3人 0.66，4人 0.51
+            const mwDefenseRatio = isMultiway ? Math.pow(1 / (mwTotalCount - 1), 0.6) : 1.0;
+            const sharedMdf = mdf * mwDefenseRatio;
+
             const _scBase = SC[street];
-            const sc = _mwN > 0 ? {
+            const sc = isMultiway ? {
                 ..._scBase,
+                canRangeBet:  false, // 多人底池严禁探测性范围下注
                 betThresh:    _scBase.betThresh + 4 * _mwN,
                 strongThresh: _scBase.strongThresh + 3 * _mwN,
                 raiseThresh:  _scBase.raiseThresh + 4 * _mwN,
-                callMargin:   _scBase.callMargin + 2 * _mwN
+                callMargin:   _scBase.callMargin + 2 * _mwN + (isSandwich ? 4 : 0) // 夹心位跟注门槛额外收紧 +4
             } : _scBase;
 
             // Blocker 接入(2026-07-21)：转牌/河牌按"挡坚果 vs 挡空气"调整两处——
@@ -13939,8 +14091,11 @@
                 warnings.push(`🎯 Pokercode ICM 3-1-3 [短码承诺]：码量处于承诺区(≤12BB/SPR≤1.0)，采取推或弃策略，避免小尺度做池`);
             }
 
-            if (_mwN > 0) {
-                warnings.push(`⚠ 多人底池：${_mwN + 1} 名对手在局 —— 胜率按多人计算，价值门槛已收紧，<b>纯诈唬一律关闭</b>（有真实进张的半诈唬仍保留）`);
+            if (isMultiway) {
+                warnings.push(`⚠ 多人底池：${mwTotalCount - 1} 名对手在局（共 ${mwTotalCount} 人）—— 胜率按多人计算，价值门槛已收紧，<b>纯诈唬一律关闭</b>（有真实进张的半诈唬按人数折损频率）`);
+                if (isSandwich) {
+                    warnings.push(`🥪 夹心位高危预警：我方处于夹心饼干位，身后仍有对手未表态，承受极大被挤压加注风险，跟注门槛大幅收紧(+4%)`);
+                }
             }
             if (stage === 'bubble' || stage === 'final') {
                 warnings.push('⚠ ' + (stage === 'bubble' ? '泡沫期' : '决赛桌') + '：避免边缘 bluff 和 bluff catch');
@@ -14225,10 +14380,17 @@
                         reasoning = `转牌胜率${equity.toFixed(0)}%（门槛${sc.betThresh}%），67%底池双桶`;
                     } else if (outs >= sc.semiBluffOuts) {
                         // 优质进张（转牌需 ≥10 张）
-                        const drawFreq = Math.round(40 * Math.min(outs, 15) / 15);
-                        primaryAction = 'BET'; sizing = sc.sizes.medium;
-                        frequencies = { bet: drawFreq, check: 100 - drawFreq };
-                        reasoning = `${outs}张进张（≥10 才转牌半诈唬），${drawFreq}%频率施压`;
+                        let drawFreq = Math.round(40 * Math.min(outs, 15) / 15);
+                        if (isMultiway) {
+                            drawFreq = Math.min(20, Math.round(drawFreq * 0.5));
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { bet: drawFreq, check: 100 - drawFreq };
+                            reasoning = `${outs}张进张，💡 Pokercode 多人底池(${mwTotalCount}人)：转牌半诈唬折损至 ${drawFreq}%，过牌控池`;
+                        } else {
+                            primaryAction = 'BET'; sizing = sc.sizes.medium;
+                            frequencies = { bet: drawFreq, check: 100 - drawFreq };
+                            reasoning = `${outs}张进张（≥10 才转牌半诈唬），${drawFreq}%频率施压`;
+                        }
                     } else if (iHaveNutAdv && sprZone === 'deep' && equity < 35 && iHaveRangeAdv) {
                         // 极化诈唬：坚果范围+范围优势
                         // Blocker 接入：极化诈唬最看 blocker——挡住他的坚果才敢开大
@@ -14261,7 +14423,7 @@
                     // P1-5：OOP 中等牌力高牌面控池
                     // 场景：OOP + A/K 高牌面 + 胜率 45-65% + 中高 SPR → 高频过牌保护范围
                     } else if (heroPos === 'OOP' && (highCard === 'A' || highCard === 'K')
-                               && equity >= 45 && equity < 65 && sprZone !== 'commit') {
+                                && equity >= 45 && equity < 65 && sprZone !== 'commit') {
                         const checkFreq = sprZone === 'deep' ? 78 : 68;
                         primaryAction = 'CHECK'; sizing = '';
                         frequencies = { check: checkFreq, bet: 100 - checkFreq };
@@ -14298,12 +14460,20 @@
                             frequencies = { bet: 65, check: 35 };
                             reasoning = `翻牌胜率${equity.toFixed(0)}%，${iHaveRangeAdv ? '范围优势，' : ''}${sc.sizes.medium} C-Bet`;
                         }
+                        // 多人底池翻牌 C-Bet 频率封顶统一收口移至主动线末尾 (Qwen F-3)
                     } else if (outs >= sc.semiBluffOuts) {
                         // 半诈唬（8 张进张起步）
-                        const drawFreq = Math.round(55 * Math.min(outs, 15) / 15);
-                        primaryAction = 'BET'; sizing = wetness > 0.5 ? sc.sizes.medium : sc.sizes.probe;
-                        frequencies = { bet: drawFreq, check: 100 - drawFreq };
-                        reasoning = `${outs}张进张，翻牌半诈唬（湿润面${(wetness*100).toFixed(0)}%）`;
+                        let drawFreq = Math.round(55 * Math.min(outs, 15) / 15);
+                        if (isMultiway) {
+                            drawFreq = Math.min(25, Math.round(drawFreq * 0.5));
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { bet: drawFreq, check: 100 - drawFreq };
+                            reasoning = `${outs}张进张，💡 Pokercode 多人底池(${mwTotalCount}人)：半诈唬频率折损至 ${drawFreq}%，多数时候过牌控池/看免费牌`;
+                        } else {
+                            primaryAction = 'BET'; sizing = wetness > 0.5 ? sc.sizes.medium : sc.sizes.probe;
+                            frequencies = { bet: drawFreq, check: 100 - drawFreq };
+                            reasoning = `${outs}张进张，翻牌半诈唬（湿润面${(wetness*100).toFixed(0)}%）`;
+                        }
                     } else if (sc.canRangeBet && iHaveRangeAdv && equity >= 35) {
                         // 探测性范围下注（仅翻牌）：胜率≥35%+范围优势
                         primaryAction = 'BET'; sizing = sc.sizes.probe;
@@ -14422,6 +14592,20 @@
                     }
                 }
 
+                // ── Pokercode 多人底池翻牌 C-Bet 统一收口封顶 (Phase 4 / Qwen F-3) ──
+                if (isMultiway && street === 'flop') {
+                    const _flopBucket = heroMadeBucket(postState.heroCards, postState.board.slice(0, 3));
+                    const isMonsterNut = _flopBucket === '两对+';
+                    const mwCap = mwTotalCount >= 4 ? 25 : 35;
+                    if (!isMonsterNut && frequencies && typeof frequencies.bet === 'number' && frequencies.bet > mwCap) {
+                        const prevF = frequencies.bet;
+                        frequencies = { bet: mwCap, check: 100 - mwCap };
+                        primaryAction = 'CHECK';
+                        sizing = '';
+                        reasoning += `；💡 Pokercode 多人底池(${mwTotalCount}人)：整体 C-Bet 频率由 ${prevF}% 封顶至 ${mwCap}%，多数时候过牌控池防被加注`;
+                    }
+                }
+
             }
 
             // ════════════════════════════════════════════════════
@@ -14527,19 +14711,29 @@
                         primaryAction = 'FOLD'; sizing = '';
                         frequencies = { fold: 100 };
                         reasoning = `💡 Pokercode ICM 3-1-3 [规避淘汰] 对手筹码覆盖我方，胜率超额${equityMargin.toFixed(0)}%未达到规避淘汰门槛(+${(sc.callMargin + survivalExtra).toFixed(0)}%)，果断弃牌避免出局`;
+                    } else if (isSandwich && equityMargin < sc.callMargin + 2 && equity < 60) {
+                        primaryAction = 'FOLD'; sizing = '';
+                        frequencies = { fold: 100 };
+                        reasoning = `🥪 Pokercode 夹心位防守：身后仍有对手未表态，边缘胜率（${equity.toFixed(0)}%）无法抵抗后位挤压加注，果断弃牌止损`;
                     } else {
                         primaryAction = 'CALL'; sizing = '';
-                        const callFreq = Math.min(80, Math.max(50, Math.round(mdf - (icmTighten - 1) * 20)));
+                        const callFreq = Math.min(80, Math.max(isMultiway ? 40 : 50, Math.round((isMultiway ? sharedMdf : mdf) - (icmTighten - 1) * 20)));
                         frequencies = { call: callFreq, fold: 100 - callFreq };
-                        reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，MDF=${mdf.toFixed(0)}%，${streetCN}跟注（需超${sc.callMargin}%容差）`;
+                        reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，MDF=${mdf.toFixed(0)}%${isMultiway ? `（${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%）` : ''}，${streetCN}跟注（需超${sc.callMargin}%容差）`;
                     }
                 }
                 // ── 进张跟注（仅翻牌/转牌，河牌禁止）──
                 else if (street !== 'river' && outs >= sc.semiBluffOuts && equity >= 20) {
-                    primaryAction = 'CALL'; sizing = '';
-                    const drawFreq = Math.min(75, Math.max(50, Math.round(mdf * 0.8)));
-                    frequencies = { call: drawFreq, fold: 100 - drawFreq };
-                    reasoning = `${outs}张进张，${streetCN}隐含赔率跟注（MDF=${mdf.toFixed(0)}%，需≥${sc.semiBluffOuts}张出路）`;
+                    if (isSandwich && outs < 9) {
+                        primaryAction = 'FOLD'; sizing = '';
+                        frequencies = { fold: 100 };
+                        reasoning = `🥪 Pokercode 夹心位防守：处于夹心位且进张不足（${outs}张 < 9张坚果听牌），身后有加注挤压风险，放弃投机跟注`;
+                    } else {
+                        primaryAction = 'CALL'; sizing = '';
+                        const callFreq = Math.min(75, Math.max(isMultiway ? 40 : 50, Math.round((isMultiway ? sharedMdf : mdf) * 0.8)));
+                        frequencies = { call: callFreq, fold: 100 - callFreq };
+                        reasoning = `${outs}张进张，${streetCN}隐含赔率跟注（MDF=${mdf.toFixed(0)}%${isMultiway ? `，${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%` : ''}，需≥${sc.semiBluffOuts}张出路）`;
+                    }
                 }
                 // ── 大尺度弃牌 ──
                 else if (isPushSize && equity < 40) {
@@ -14551,7 +14745,7 @@
                 else {
                     primaryAction = 'FOLD'; sizing = '';
                     frequencies = { fold: 100 };
-                    reasoning = `胜率${equity.toFixed(0)}% < 赔率${potOdds.toFixed(0)}%${street === 'river' ? '（河牌无进张）' : ''}，MDF=${mdf.toFixed(0)}%，弃牌`;
+                    reasoning = `胜率${equity.toFixed(0)}% < 赔率${potOdds.toFixed(0)}%${street === 'river' ? '（河牌无进张）' : ''}，MDF=${mdf.toFixed(0)}%${isMultiway ? `（${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%）` : ''}，弃牌`;
                 }
 
                 // ── 过渡带混合（1.8 < spr < 2.2）：commit 全押/弃牌策略平滑混入 flex ──
@@ -14626,8 +14820,8 @@
                     }
                 }
                 // 3. 多人底池急刹车模型
-                if (_mwN > 0) {
-                    const mwTip = `💡 Pokercode 多人底池：${_mwN + 1}人底池弃牌率剧降，纯诈唬强制归零，仅对强价值与高胜率听牌下注`;
+                if (isMultiway) {
+                    const mwTip = `💡 Pokercode 多人底池：${mwTotalCount}人底池弃牌率剧降，纯诈唬强制归零，仅对强价值与高胜率听牌下注`;
                     if (!warnings.some(w => w.includes('Pokercode 多人底池'))) warnings.push(mwTip);
                 }
 
@@ -14640,7 +14834,16 @@
             return {
                 primaryAction, sizing, frequencies, reasoning,
                 warnings, street,
-                math: { pot, effStack, spr, villainBet, requiredEq: potOdds, mdf, icmTighten, street }
+                math: {
+                    pot, effStack, spr, villainBet,
+                    requiredEq: potOdds,
+                    mdf,
+                    sharedMdf,
+                    isMultiway,
+                    mwTotalCount,
+                    icmTighten,
+                    street
+                }
             };
         }
 
@@ -14761,9 +14964,13 @@
 
             // 底层数学
             const m = result.math;
-            // villainBet > 0 时显示正确数值，否则显示"—"而非N/A
             document.getElementById('decMathOdds').innerText = m.requiredEq > 0 ? m.requiredEq.toFixed(0) + '%' : '—';
-            document.getElementById('decMathMdf').innerText = m.mdf > 0 ? m.mdf.toFixed(0) + '%' : '—';
+            // villainBet > 0 时显示正确数值，否则显示"—"而非N/A
+            if (m.isMultiway && m.sharedMdf > 0) {
+                document.getElementById('decMathMdf').innerHTML = `${m.sharedMdf.toFixed(0)}% <span class="text-[9px] text-sky-400 font-normal">(${m.mwTotalCount}人分摊)</span>`;
+            } else {
+                document.getElementById('decMathMdf').innerText = m.mdf > 0 ? m.mdf.toFixed(0) + '%' : '—';
+            }
             document.getElementById('decMathSpr').innerText = m.spr.toFixed(1);
 
             // 警告
