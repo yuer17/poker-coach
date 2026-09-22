@@ -9585,6 +9585,13 @@
                     .map(a => a.pos || (a.player === 'hero' ? heroPos : curMainV))
             );
 
+            // 找出在当前街道前已全下的玩家 (F-2 跨街全下记忆)
+            const priorAllins = new Set(
+                (postState.potTracker.actions || [])
+                    .filter(a => a.street && a.street !== currentStreet && a.action === 'allin')
+                    .map(a => a.pos || (a.player === 'hero' ? heroPos : curMainV))
+            );
+
             // 当前街道活跃在池玩家（按翻后行动顺位 POSTFLOP_ORDER 排序）
             const inHandPlayers = allPlayers.filter(p => !priorFolds.has(p.pos));
 
@@ -9594,9 +9601,9 @@
             const isAllin = {};
             inHandPlayers.forEach(p => {
                 committed[p.pos] = 0;
-                hasActed[p.pos] = false;
+                hasActed[p.pos] = priorAllins.has(p.pos);
                 hasFolded[p.pos] = false;
-                isAllin[p.pos] = false;
+                isAllin[p.pos] = priorAllins.has(p.pos);
             });
 
             let highestBet = 0;
@@ -9667,6 +9674,28 @@
             const allMatched = activeNonAllin.every(p => hasActed[p.pos] && Math.abs((committed[p.pos] || 0) - highestBet) < 0.01);
             const allActed = remaining.every(p => hasActed[p.pos]);
 
+            // 若在池存活玩家中仅有 <= 1 人未全下且全员平水（或前街全下跑牌），直接进入 showdown (F-2 修复)
+            if (activeNonAllin.length <= 1 && remaining.some(p => isAllin[p.pos]) && (allMatched || sa.length === 0)) {
+                return {
+                    phase: 'showdown',
+                    nextToAct: null,
+                    nextActorPos: null,
+                    nextActorLabel: '',
+                    isHeroNext: false,
+                    lastBet: highestBet,
+                    lastBetPlayer,
+                    lastAggressorPos,
+                    villainBet,
+                    heroBet,
+                    highestBet,
+                    committed,
+                    toCall: 0,
+                    facingCallers: 0,
+                    facingSummary: '已全下待摊牌',
+                    remainingPlayers: remaining
+                };
+            }
+
             if (allActed && allMatched) {
                 const anyAllin = remaining.some(p => isAllin[p.pos]);
                 const phase = anyAllin ? 'showdown' : 'street_over';
@@ -9693,11 +9722,12 @@
             // 确定下一个行动者
             let nextActor = null;
             if (sa.length === 0) {
+                const activePlayers = inHandPlayers.filter(p => !isAllin[p.pos]);
                 if (!isMultiway) {
                     const firstPos = postState.firstToAct === 'hero' ? heroPos : curMainV;
-                    nextActor = inHandPlayers.find(p => p.pos === firstPos) || inHandPlayers[0];
+                    nextActor = activePlayers.find(p => p.pos === firstPos) || activePlayers[0] || null;
                 } else {
-                    nextActor = inHandPlayers[0];
+                    nextActor = activePlayers[0] || null;
                 }
             } else {
                 const lastAct = sa[sa.length - 1];
@@ -9848,7 +9878,11 @@
             const street = vc.length === 3 ? 'flop' : vc.length === 4 ? 'turn' : 'river';
             const sa = (postState.potTracker.actions || []).filter(a => a.street === street);
             const ss = getMultiwayStreetState(sa);
-            const callAmt = (ss && ss.highestBet > 0) ? ss.highestBet : 0;
+            let callAmt = (ss && ss.highestBet > 0) ? ss.highestBet : 0;
+            const eff = (postState.potTracker && typeof postState.potTracker.effStack === 'number') ? postState.potTracker.effStack : null;
+            if (eff !== null && eff > 0 && callAmt > eff) {
+                callAmt = Math.round(eff * 10) / 10;
+            }
             setActionRecord('hero', 'call', callAmt, globalPosHero || 'BTN');
         }
 
@@ -11432,13 +11466,15 @@
 
             const sa = (postState.potTracker.actions || []).filter(a => a.street === street);
             const ss = getMultiwayStreetState(sa);
-            if (ss.isHeroNext || ss.phase === 'street_over' || ss.phase === 'showdown') return;
-
-            if (typeof pushUndo === 'function') pushUndo('多人底池：前方全员过牌');
+            const heroActed = sa.some(a => a.player === 'hero' || a.pos === heroPos);
+            if (heroActed || ss.isHeroNext || ss.phase === 'street_over' || ss.phase === 'showdown' || ss.highestBet > 0) return;
 
             const inHand = ss.remainingPlayers || mwCtx.players;
             const heroIdx = inHand.findIndex(p => p.isHero || p.pos === heroPos);
             const startIdx = inHand.findIndex(p => p.pos === ss.nextActorPos);
+
+            if (typeof pushUndo === 'function') pushUndo('多人底池：前方全员过牌');
+            postState._pendingVillainBet = null;
 
             if (startIdx >= 0 && heroIdx > startIdx) {
                 for (let i = startIdx; i < heroIdx; i++) {
@@ -11580,7 +11616,8 @@
                 const _ex = (postState.extraVillains || []).filter(x => x && x !== globalPosHero && x !== _curMainV);
                 if (mwCtx && mwCtx.isMultiway) {
                     const heroBadge = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold ${mwCtx.badgeClass}">${mwCtx.roleLabel}</span>`;
-                    const showCheckToHero = (ss.highestBet === 0 && !ss.isHeroNext && !['showdown', 'street_over'].includes(ss.phase));
+                    const heroActedThisStreet = streetActions.some(a => a.player === 'hero' || a.pos === globalPosHero);
+                    const showCheckToHero = (ss.highestBet === 0 && !ss.isHeroNext && !heroActedThisStreet && !['showdown', 'street_over'].includes(ss.phase));
                     
                     html += `<div class="text-xs mb-1.5 px-2 py-1.5 rounded" style="background:rgba(224,168,58,.08);border:1px solid rgba(224,168,58,.35);">
                         <div class="flex items-center justify-between gap-1 flex-wrap mb-1">
@@ -11681,13 +11718,12 @@
                     ${moreCards ? '' : '<button onclick="nextHand()" style="background:#e0a83a;">下一手 N</button>'}</div>`;
 
             } else if (ss.phase === 'street_over') {
-                // 下一步指引(2026-07-21)：本街打完后明确告诉用户下一步做什么，
-                // 弃牌收场直接给"下一手"大按钮，免得再去找按钮（用户反馈流程复杂）
-                const folded = streetActions.some(a => a.action === 'fold');
+                // 下一步指引：仅当在池存活玩家 ≤ 1 时才是真正弃牌收场 (F-3 修复)
+                const isFinalFold = ss.isOneLeft === true || (ss.remainingPlayers && ss.remainingPlayers.length <= 1);
                 const nextLabel = count === 3 ? '转牌' : count === 4 ? '河牌' : null;
-                if (folded || !nextLabel) {
+                if (isFinalFold || !nextLabel) {
                     html += `<div class="next-cta">
-                        <span>${folded ? '🏁 有人弃牌，本手结束' : '🏁 河牌行动完毕'}</span>
+                        <span>${isFinalFold ? '🏁 有人弃牌，本手结束' : '🏁 河牌行动完毕'}</span>
                         <button onclick="nextHand()">下一手 N</button></div>`;
                 } else {
                     // 内嵌发牌器(2026-07-21，用户要求)：本街打完就地发下一张，
@@ -14186,7 +14222,9 @@
                     if (a.player === 'hero') _heroIn = _villIn; else _villIn = _heroIn;
                 }
             }
-            const toCall  = villainBet > 0 ? Math.max(0, villainBet - _heroIn) : 0;
+            const hPos = heroPos || (typeof globalPosHero !== 'undefined' ? globalPosHero : 'BTN');
+            const hCommitted = (ss.committed && ss.committed[hPos] !== undefined) ? ss.committed[hPos] : _heroIn;
+            const toCall  = villainBet > 0 ? (ss.isHeroNext ? ss.toCall : Math.max(0, villainBet - hCommitted)) : 0;
             const potOdds = toCall > 0 ? toCall / (pot + toCall) * 100 : 0;
             const mdf     = (villainBet > 0 && pot > villainBet) ? (pot - villainBet) / pot * 100 : 0;
 
