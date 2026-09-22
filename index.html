@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>德扑教练 - Phase 1 v1.1</title>
+    <title>PokerCode v2.0 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -616,7 +616,7 @@
             .cpg-btn { height: 44px; font-size: var(--fs-body); }
             .nav-phase-btn { padding: 8px 14px; }
             .bet-action-btn { padding: 10px 10px; font-size: var(--fs-caption); }
-            input[type="number"], select { min-height: 40px; }
+            input[type="number"]:not(.tl-amt-inline), select { min-height: 40px; }
             /* 7 个翻前场景 Tab：窄屏折成 4+3 两行，防止每个 Tab 过窄难点 */
             .grid.grid-cols-7 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
             /* 帮助弹层贴边留白收窄 */
@@ -789,8 +789,9 @@
         .tl-pop .macro-btn { padding: 6px 10px; font-size: var(--fs-caption); display: inline-flex; align-items: center; gap: 4px; }
         .tl-pop .tl-amt { width: 62px; height: 24px; padding: 0 4px; text-align: center; font-family: var(--font-mono); font-size: var(--fs-caption); }
         #tlHeroRow .pos-btn-hero { min-height: 22px; height: 22px; }
-        .tl-amt-inline { display: block; width: 100%; max-width: 52px; margin: 2px auto 0; height: 18px; padding: 0 2px; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700;
-                         background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.25); border-radius: 3px; color: inherit; -moz-appearance: textfield; }
+        .tl-amt-inline { display: block; width: 100%; max-width: 38px; margin: 2px auto 0; height: 16px !important; min-height: 16px !important; max-height: 16px !important; padding: 0 2px; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700; line-height: 14px !important;
+                         background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.22); border-radius: 3px; color: inherit; -moz-appearance: textfield; }
+        .tl-amt-inline:focus { outline: none; border-color: var(--accent); background: rgba(0,0,0,.75); box-shadow: 0 0 0 1px var(--accent); }
         .hud-chip-mc { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.35); color: #93c5fd; }
         .hud-chip-bubble.urgent { border-color: #e5484d !important; color: #ff7a7d !important; animation: blPulse 1s ease-in-out infinite; }
         /* 配置面板盲注区：按钮等高不折行 */
@@ -913,7 +914,6 @@
             #tlHeroRow .pos-btn-hero, .tl-seat, .nav-phase-btn, .act-btn, .qc-btn, .seg-ctl button, .amt-box .step-btn {
                 min-height: 44px; min-width: 44px;
             }
-            .tl-amt-inline { min-height: 44px; }
             .tl-seat .tl-act { font-size: var(--fs-caption); }
         }
     </style>
@@ -924,9 +924,30 @@
 <body>
 
     <div class="app-container">
-        <div id="headerBar" class="flex justify-between items-center bg-black/40 px-4 py-2.5 border-b border-white/10 shrink-0" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <!-- 纤薄顶栏控制条（打牌常驻，高度 28px，平时收起节省纵向高度，点击展开完整面板） -->
+        <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:28px;height:28px;z-index:90;">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.0 正式版）">
+                <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.0 正式版</span></span>
+                <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
+                <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
+                    <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
+                    <span class="text-gray-600">·</span>
+                    <span id="topMiniStack" class="text-gray-300">40BB</span>
+                    <span class="text-gray-600">·</span>
+                    <span id="topMiniPot" class="text-amber-400/90">底池 1.5BB</span>
+                    <span class="text-gray-600">·</span>
+                    <span id="topMiniStreet" class="text-blue-300">翻前</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleHeaderDrawer()" id="headerDrawerBtn" class="nav-phase-btn text-[11px] py-0.5 px-2" style="height:22px;line-height:20px;background:rgba(255,255,255,0.06);">⚙ 功能与配置 ▾</button>
+            </div>
+        </div>
+
+        <div id="headerBar" class="flex justify-between items-center bg-black/50 px-4 py-2 border-b border-white/10 shrink-0" style="display:none;align-items:center;gap:16px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 -->
-            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">9-Max GTO <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v1.3</span></h1>
+            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.0 正式版</span></h1>
 
             <!-- 窗口身份色(2026-07-14)：多窗口多桌用 Banner 颜色区分（每标签页独立，
                  sessionStorage 持久 + 浏览器标签 emoji 前缀，一眼分清哪个窗口对哪张桌） -->
@@ -1117,6 +1138,7 @@
                 <button onclick="toggleHelp()" title="使用帮助（Esc 关闭）" class="nav-phase-btn" style="padding:6px 10px;">帮助</button>
                 <button onclick="resetAll()" title="彻底重置全部配置与状态" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-1 px-3 rounded shadow">↻ 重置</button>
                 <button onclick="nextHand()" title="清牌开新一手，保留筹码/位置/赛制（快捷键 N）" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-3 rounded shadow">下一手</button>
+                <button onclick="toggleHeaderDrawer(false)" title="收起顶部功能面板" class="nav-phase-btn text-xs px-2.5 py-1" style="height:28px;line-height:20px;background:rgba(255,255,255,0.08);">收起 ▴</button>
             </div>
         </div>
 
@@ -1618,6 +1640,7 @@
             const vd = document.getElementById('visionDropdown');
             if (vd) vd.style.display = 'none';
             const opening = d.style.display === 'none';
+            if (opening && typeof toggleHeaderDrawer === 'function') toggleHeaderDrawer(true);
             d.style.display = opening ? 'block' : 'none';
             if (opening) {
                 updateCfgSummary();
@@ -1640,6 +1663,7 @@
             const cfgD = document.getElementById('cfgDropdown');
             if (cfgD && force !== false) cfgD.style.display = 'none';
             const opening = force !== undefined ? !!force : (d.style.display === 'none' || (window.getComputedStyle && window.getComputedStyle(d).display === 'none'));
+            if (opening && typeof toggleHeaderDrawer === 'function') toggleHeaderDrawer(true);
             d.style.display = opening ? 'block' : 'none';
             if (opening) {
                 d.style.maxHeight = Math.max(240, window.innerHeight - d.getBoundingClientRect().top - 12) + 'px';
@@ -1766,8 +1790,8 @@
                 if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= 400;
                 if (!dy) return;
 
-                // 方向统一(2026-09-22)：向上滑动增大(+)、向下滑动减小(-)
-                const dir = dy > 0 ? 1 : -1;
+                // 方向物理标准：向上滚/滑动 (dy < 0) = 增大(+)，向下滚/滑动 (dy > 0) = 减小(-)
+                const dir = dy < 0 ? 1 : -1;
                 const now = performance.now();
                 const dt = Math.max(1, now - lastTs);
                 const isNew = (el !== lastEl || dir !== lastDir || dt > 200);
@@ -1782,7 +1806,7 @@
                     const accel = (dt < 70 && !isNew) ? Math.min(5, 1 + Math.floor(streak / 4)) : 1;
                     steps = dir * accel;
                 } else { // 触控板：位移累积 + 加速度动态换算
-                    acc += dy;
+                    acc += (dir * Math.abs(dy));
                     const accel = (speed > 3.0 && !isNew) ? Math.min(3, Math.floor(speed)) : 1;
                     const pxStep = PX_PER_STEP;
                     const n = Math.trunc(acc / pxStep);
@@ -2190,6 +2214,22 @@
                 const stageName = boardN === 0 ? '翻前' : boardN < 3 ? '选牌中' : boardN === 3 ? '翻牌' : boardN === 4 ? '转牌' : '河牌';
                 streetEl.textContent = stageName;
             }
+
+            // 6. 同步更新纤薄顶栏摘要（#topMiniStatus）
+            try {
+                const gameEl = document.getElementById('topHudGame');
+                const mg = document.getElementById('topMiniGame');
+                if (mg && gameEl) mg.textContent = gameEl.textContent;
+                const ms = document.getElementById('topMiniStack');
+                if (ms && stackEl) ms.textContent = stackEl.textContent.split(' ')[0];
+                const mp = document.getElementById('topMiniPot');
+                if (mp && potEl) {
+                    const pd = Number.isFinite(pot) ? (+pot.toFixed(1)) : pot;
+                    mp.textContent = `底池 ${pd}BB`;
+                }
+                const mst = document.getElementById('topMiniStreet');
+                if (mst && streetEl) mst.textContent = streetEl.textContent;
+            } catch (e) {}
         }
 
         // ============================================================
@@ -5080,8 +5120,31 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + '9-Max GTO 训练器';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.0 正式版';
             renderWindowColorChips(key);
+        };
+
+        /**
+         * 顶部功能区抽屉展开/折叠（2026-09-22 PokerCode v2.0 正式版，用户实战强诉求：打牌时收起节省 80px+ 纵向空间）
+         */
+        window.toggleHeaderDrawer = function(forceOpen) {
+            const bar = document.getElementById('headerBar');
+            const icon = document.getElementById('headerToggleIcon');
+            const btn = document.getElementById('headerDrawerBtn');
+            if (!bar) return;
+            const isClosed = bar.style.display === 'none';
+            const willOpen = forceOpen !== undefined ? forceOpen : isClosed;
+            if (willOpen) {
+                bar.style.display = 'flex';
+                if (icon) icon.style.transform = 'rotate(180deg)';
+                if (btn) btn.innerHTML = '收起功能区 ▴';
+                try { localStorage.setItem('pokercode_header_expanded', '1'); } catch (e) {}
+            } else {
+                bar.style.display = 'none';
+                if (icon) icon.style.transform = 'rotate(0deg)';
+                if (btn) btn.innerHTML = '⚙ 功能与配置 ▾';
+                try { localStorage.setItem('pokercode_header_expanded', '0'); } catch (e) {}
+            }
         };
         function renderWindowColorChips(activeKey) {
             const host = document.getElementById('windowColorChips');
@@ -5104,6 +5167,13 @@
             let saved = 'none';
             try { saved = sessionStorage.getItem('window_color') || 'none'; } catch (e) {}
             applyWindowColor(saved);
+        })();
+        (function initHeaderDrawer() {
+            try {
+                if (localStorage.getItem('pokercode_header_expanded') === '1') {
+                    toggleHeaderDrawer(true);
+                }
+            } catch (e) {}
         })();
 
         function nextHand() {
