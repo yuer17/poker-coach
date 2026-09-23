@@ -15231,11 +15231,16 @@
             const sharedMdf = mdf * mwDefenseRatio;
 
             const _scBase = SC[street];
+            const fairShare = isMultiway ? (100 / mwTotalCount) : 50;
+            // 2026-09-23 Fedor Holz Pokercode 多人底池相对公平胜率比（Fair-Share Equity Ratio）架构重构：
+            // 单挑基准是 50%，3人池基准是 33.3%，4人池基准是 25.0%。
+            // 废除单挑 62% 硬加 4*mwN 变成 66% 的致命数学倒挂，改为相对公平胜率标定：
+            const _mwBetRatio = iHaveRangeAdv ? 0.98 : oppHasRangeAdv ? 1.22 : 1.12;
             const sc = isMultiway ? {
                 ..._scBase,
-                canRangeBet:  false, // 多人底池严禁探测性范围下注
-                betThresh:    _scBase.betThresh + 4 * _mwN,
-                strongThresh: _scBase.strongThresh + 3 * _mwN,
+                canRangeBet:  false, // 多人底池严禁纯范围盲目探测
+                betThresh:    Math.round(fairShare * _mwBetRatio),
+                strongThresh: Math.round(fairShare * 1.35),
                 raiseThresh:  _scBase.raiseThresh + 4 * _mwN,
                 callMargin:   _scBase.callMargin + 2 * _mwN + (isSandwich ? 4 : 0) // 夹心位跟注门槛额外收紧 +4
             } : _scBase;
@@ -15702,6 +15707,7 @@
                         reasoning = `OOP 中等牌力控池：${highCard}高牌面胜率${equity.toFixed(0)}%，SPR=${spr.toFixed(1)}（${sprZone}），${checkFreq}%过牌保护范围避免被加注`;
                     // C2: IP 控池 — 翻牌中等牌力湿润面（刚过C-Bet门槛但不强，湿润面建大池风险高）
                     } else if (heroPos === 'IP' && sprZone !== 'commit'
+                               && !isMultiway
                                && equity >= sc.betThresh && equity < sc.betThresh + 12
                                && wetness >= 0.5 && spr >= 2.5) {
                         const checkFreq = Math.min(70, Math.round(50 + (wetness - 0.5) * 40));
@@ -15711,13 +15717,23 @@
                         warnings.push('⚠ IP湿润面中等牌力：C-Bet建大池风险高，控池等待转牌信息');
                     } else if (equity >= sc.strongThresh || equity >= sc.betThresh) {
                         // ── 价值档按「成手桶 × SPR」出频率与尺度（2026-09-10 环节 5）──
-                        // 原来是 `胜率≥70% → 67%底池 @82-92% / ≥55% → 33-50% @65%`：
-                        // **没有 SPR 维度，且"牌越强注越大"与实测方向相反**。见 flopValueTier 的实测表。
-                        // 算不出成手桶（缺底牌/公共牌）时**原样保留旧行为**。
                         const _vb = heroMadeBucket(postState.heroCards, postState.board.slice(0, 3));
                         const _vp = (postState.villainRange && postState.villainRange.rangePct) || 0;
                         const _vt = flopValueTier(_vb, spr, _vp, iHaveNutAdv, sc.sizes);
-                        if (_vt) {
+                        const _mwChecks = actions.filter(a => a.street === street && a.action === 'check');
+                        const _allOpponentsChecked = _mwChecks.length >= (mwTotalCount - 1);
+                        const isAbsoluteIp = isMultiway && mwCtx && mwCtx.relativeRole === 'ABSOLUTE_IP' && _allOpponentsChecked;
+                        if (isAbsoluteIp) {
+                            // 💡 Fedor Holz Pokercode 多人底池 [绝对有利位置 IP 价值搜刮]：
+                            // 前方对手已全线过牌（范围封顶），关煞位享有绝对信息优势与控制权
+                            primaryAction = 'BET';
+                            sizing = (equity >= sc.strongThresh || _vb === '两对+') ? (sc.sizes.medium || '33% 底池') : (sc.sizes.probe || '25% 底池');
+                            const _mwBetFreq = (equity >= sc.strongThresh || _vb === '两对+') ? 70 : 60;
+                            frequencies = { bet: _mwBetFreq, check: 100 - _mwBetFreq };
+                            reasoning = `💡 Pokercode 多人底池 [最后位置 IP 价值搜刮]：前方全过牌（范围封顶），我方享有绝对信息优势。` +
+                                        `成手=${_vb}（胜率${equity.toFixed(0)}%，达多人公平基准 ${(equity / fairShare).toFixed(1)} 倍），` +
+                                        `释放 ${_mwBetFreq}% 频率 ${sizing} 小注向听牌与弱成牌搜刮薄价值并保护底池（保留 ${100 - _mwBetFreq}% 控池）`;
+                        } else if (_vt) {
                             primaryAction = 'BET'; sizing = _vt.size;
                             frequencies = { bet: _vt.freq, check: 100 - _vt.freq };
                             reasoning = `翻牌胜率${equity.toFixed(0)}%、成手=${_vb}，SPR=${spr.toFixed(1)} → ` +
@@ -15792,7 +15808,7 @@
                             reasoning = isSurvival
                                 ? `翻牌胜率${equity.toFixed(0)}%、进张${outs}张不足，🛡️ ICM 规避淘汰（Survival 姿态）：空气牌绝不冒险诈唬，强制过牌控池`
                                 : (_mwN > 0
-                                    ? `翻牌胜率${equity.toFixed(0)}%、进张${outs}张不足，且 ${_mwN + 1} 人在局 —— 多人底池不做纯诈唬，过牌`
+                                    ? `翻牌胜率${equity.toFixed(0)}%、进张${outs}张（纯空气牌），且 ${mwTotalCount} 人在局 —— 💡 Pokercode 多人底池：纯空气牌弃牌率不足，严禁无脑下注送钱，强制过牌控池`
                                     : `翻牌胜率${equity.toFixed(0)}%（门槛${sc.betThresh}%），进张${outs}张不足，过牌`);
                         }
                     }
@@ -15878,8 +15894,11 @@
                 if (isMultiway && street === 'flop') {
                     const _flopBucket = heroMadeBucket(postState.heroCards, postState.board.slice(0, 3));
                     const isMonsterNut = _flopBucket === '两对+';
+                    const _mwChecks = actions.filter(a => a.street === street && a.action === 'check');
+                    const _allOpponentsChecked = _mwChecks.length >= (mwTotalCount - 1);
+                    const isIpValueSqueeze = mwCtx && mwCtx.relativeRole === 'ABSOLUTE_IP' && _allOpponentsChecked && equity >= sc.betThresh;
                     const mwCap = mwTotalCount >= 4 ? 25 : 35;
-                    if (!isMonsterNut && frequencies && typeof frequencies.bet === 'number' && frequencies.bet > mwCap) {
+                    if (!isMonsterNut && !isIpValueSqueeze && frequencies && typeof frequencies.bet === 'number' && frequencies.bet > mwCap) {
                         const prevF = frequencies.bet;
                         frequencies = { bet: mwCap, check: 100 - mwCap };
                         primaryAction = 'CHECK';
