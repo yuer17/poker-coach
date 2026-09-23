@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.3 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.4 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -929,9 +929,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 28px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:28px;height:28px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.3 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.4 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.3</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.4</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -950,7 +950,7 @@
 
         <div id="headerBar" class="flex justify-between items-center bg-black/50 px-4 py-2 border-b border-white/10 shrink-0" style="display:none;align-items:center;gap:16px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 -->
-            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.3 正式版</span></h1>
+            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.4 正式版</span></h1>
 
             <!-- 窗口身份色(2026-07-14)：多窗口多桌用 Banner 颜色区分（每标签页独立，
                  sessionStorage 持久 + 浏览器标签 emoji 前缀，一眼分清哪个窗口对哪张桌） -->
@@ -5150,7 +5150,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.3 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.4 正式版';
             renderWindowColorChips(key);
         };
 
@@ -6339,7 +6339,7 @@
             // 盲注（已投入，但 SB/BB 都还没"行动过"）
             if (committed.SB !== undefined) committed.SB = 0.5;
             if (committed.BB !== undefined) committed.BB = 1;
-            let curBet = 1, lastRaiseInc = 1, lastAggIdx = -1;
+            let curBet = 1, lastRaiseInc = 1, lastAggIdx = -1, lastFullBet = 1;
             const raises = [];       // 依次记录每一次加注（含开池）：{pos, amt, idx}
             const stackOf = p => (p === globalPosHero ? globalHeroStack : globalVillainStack) || 40;
 
@@ -6353,7 +6353,21 @@
                     const amt = act.a === 'allin' ? (act.amt || stackOf(p)) : act.amt;
                     committed[p] = amt;
                     if (act.a === 'allin') allIn.add(p);
-                    if (amt > curBet) { lastRaiseInc = amt - curBet; curBet = amt; lastAggIdx = i; raises.push({ pos: p, amt, idx: i, act }); }
+                    if (amt > curBet) {
+                        const inc = amt - curBet;
+                        // T-31(2026-09-23): 判定未满额加注（Under-raise）
+                        // 当 act.a 为 allin 且增量严格小于完整加注步长 lastRaiseInc 时，属于 underraise
+                        const isUnder = (act.a === 'allin' && inc < lastRaiseInc);
+                        const prevBetBefore = curBet;
+                        const prevFullBefore = lastFullBet;
+                        if (!isUnder) {
+                            lastRaiseInc = inc;
+                            lastFullBet = amt;
+                        }
+                        curBet = amt;
+                        lastAggIdx = i;
+                        raises.push({ pos: p, amt, idx: i, act, isUnderraise: isUnder, inc, prevBet: prevBetBefore, lastFullBet: prevFullBefore });
+                    }
                 }
             });
 
@@ -6432,10 +6446,30 @@
             } else {
                 dflt = Math.min(stack, Math.max(minRaise, Math.round(st.curBet * 2.2 * 2) / 2));
             }
+
+            // T-31(2026-09-23): 裁判级规则判断 Reopen (Under-raise 不重新打开全额行动过玩家的加注权)
+            const lastRaiseObj = st.raises.length > 0 ? st.raises[st.raises.length - 1] : null;
+            let canRaise = true;
+            let underraiseNote = '';
+
+            if (lastRaiseObj && lastRaiseObj.isUnderraise) {
+                const benchmarkBet = (lastRaiseObj.lastFullBet != null && lastRaiseObj.lastFullBet > 0) ? lastRaiseObj.lastFullBet : lastRaiseObj.prevBet;
+                const posCommitted = st.committed[pos] || 0;
+                // Q17-F2/F3: 若 pos 在此 under-raise 之前已经有自愿行动，且已全额投入/匹配过 benchmarkBet（且不是全下者本人）
+                const hasActedBefore = tlActs.slice(0, lastRaiseObj.idx).some(a => a.pos === pos);
+                if (hasActedBefore && pos !== lastRaiseObj.pos && posCommitted >= benchmarkBet && benchmarkBet > 0) {
+                    canRaise = false;
+                    underraiseNote = '⚖️ 裁判规则(TDA/WSOP)：对手短码未满额全下 (Under-raise)，加注权未重开，仅可跟注或弃牌';
+                }
+            }
+
             return {
                 need, minRaise, raiseDefault: Math.min(dflt, stack), stack,
                 facing: st.curBet > 1 || (st.committed[pos] || 0) < st.curBet,
                 canCheck: need <= 0,                       // BB 无人加注时可以过牌
+                canRaise,
+                isUnderraise: !!(lastRaiseObj && lastRaiseObj.isUnderraise),
+                underraiseNote,
                 nRaises: st.raises.length,
                 st
             };
@@ -6593,6 +6627,20 @@
             // ══ 情形 0：有人全下 —— 这是接注决策 ══
             if (allins.length) {
                 const shover = allins.reduce((a, b) => ((a.amt || 0) >= (b.amt || 0) ? a : b));
+                // O4 / GLM F-17-5: 识别 Limp-Shove (跛入后直接全推再加注极化陷阱)
+                // 若全推者此前有 Limp，且我方此前有加注，则本质是 Limp-Reraise 的全推极化形态
+                const shoverHadLimped = limps.includes(shover.pos) || (typeof tlActsOf === 'function' && tlActsOf(shover.pos).some(a => a.a === 'limp'));
+                const heroHadRaised = (rMine.length > 0) || (myLast && ['raise', 'allin'].includes(myLast.a));
+                if (shoverHadLimped && heroHadRaised) {
+                    out.mode = 'face3b';
+                    out.isLimpReraise = true;
+                    out.posV = shover.pos;
+                    out.vStack = shover.amt || globalVillainStack;
+                    out.threeBetSize = out.vStack;
+                    out.label = `${tlLbl(shover.pos)} 跛入全推再加注 (Limp-Shove) 到 ${(+out.vStack.toFixed(1))}BB`;
+                    out.note = '⚠️ 警惕 Limp-Shove 极化陷阱：对手先跛入后直接全推再加注，范围极度收敛于顶端怪兽牌（AA/KK 等），不可按宽范围盲目接注！';
+                    return out;
+                }
                 out.mode = 'defend'; out.posV = shover.pos; out.vStack = shover.amt || globalVillainStack;
                 out.label = `${tlLbl(shover.pos)} 全下 ${(+out.vStack.toFixed(1))}BB`;
                 if (allins.length > 1) out.note = `另有 ${allins.length - 1} 人全下，按最大者估算`;
@@ -6664,8 +6712,15 @@
                 const nBeforeRr = nthOf(rr.act || acts[rr.idx]);       // 他这次是第几次加注（0-based）
                 if (myLast.a === 'raise') {
                     if (myRaiseSeq === 0) {
-                        // 我开池 → 被再加注
-                        if (nBeforeRr >= 2) {
+                        // 我开池 / 隔离加注 → 被再加注
+                        // T-30(2026-09-23): 识别 Limp-Reraise (LRP 跛入再加注极化陷阱)
+                        const isLrp = limps.includes(rr.pos) || (typeof tlActsOf === 'function' && tlActsOf(rr.pos).some(a => a.a === 'limp'));
+                        if (isLrp) {
+                            out.mode = 'face3b';
+                            out.isLimpReraise = true;
+                            out.label = `${tlLbl(rr.pos)} 跛入再加注 (LRP) 到 ${(+rr.amt.toFixed(1))}BB`;
+                            out.note = '⚠️ 警惕 Limp-Reraise 极化陷阱：对手大概率持 AA/KK 等超强怪兽牌埋伏，诈唬率极低，中强牌（AQ/JJ等）需收紧弃牌防守';
+                        } else if (nBeforeRr >= 2) {
                             out.mode = 'face4b';
                             out.label = `我开池 ${out.raiseSize} → ${tlLbl(R[1].pos)} 3-Bet ${(+sz(1).toFixed(1))} → ` +
                                         `${tlLbl(rr.pos)} 4-Bet 到 ${(+rr.amt.toFixed(1))}BB`;
@@ -7044,18 +7099,24 @@
             const noRaise = o.nRaises === 0;
             const passTxt = o.canCheck ? 'Check' : noRaise ? 'Limp 1' : `Call ${(+o.need.toFixed(2))}`;
             const passAct = o.canCheck ? 'check' : noRaise ? 'limp' : 'call';
+            const raiseHtml = o.canRaise
+                ? `<span class="tl-pop-raise">Raise
+                        <input id="tlPopAmt" class="tl-amt" type="number" step="0.5" min="${o.minRaise}" value="${o.raiseDefault}">BB
+                        ${btn('OK', `tlDo('${pos}','raise',parseFloat(document.getElementById('tlPopAmt').value))`, act('raise'))}
+                    </span>
+                    ${btn(`All-in ${(+o.stack.toFixed(1))}`, `tlDo('${pos}','allin',${o.stack})`, act('allin'))}`
+                : `<span class="tl-pop-raise text-xs text-amber-400 font-semibold px-2 py-1 bg-amber-950/40 rounded border border-amber-500/30">🚫 Under-raise 未重开加注权</span>`;
+            const hintTxt = o.canRaise
+                ? `Min raise ${(+o.minRaise.toFixed(2))}BB${o.nRaises ? `（已有 ${o.nRaises} 次加注）` : ''}`
+                : (o.underraiseNote || `⚖️ TDA 裁判规则：对手未满额全下，加注权未重开，仅可跟注或弃牌`);
             pop.innerHTML = `<div class="tl-pop-title">${lbl} · 需跟 ${(+o.need.toFixed(2))}BB</div>
                 <div class="tl-pop-row">
                     ${btn('Fold', `tlDo('${pos}','fold')`, act('fold'))}
                     ${btn(passTxt, `tlDo('${pos}','${passAct}')`, act(passAct))}
-                    <span class="tl-pop-raise">Raise
-                        <input id="tlPopAmt" class="tl-amt" type="number" step="0.5" min="${o.minRaise}" value="${o.raiseDefault}">BB
-                        ${btn('OK', `tlDo('${pos}','raise',parseFloat(document.getElementById('tlPopAmt').value))`, act('raise'))}
-                    </span>
-                    ${btn(`All-in ${(+o.stack.toFixed(1))}`, `tlDo('${pos}','allin',${o.stack})`, act('allin'))}
+                    ${raiseHtml}
                     ${btn('✕', 'tlClosePopover()', act('close'))}
                 </div>
-                <div class="tl-pop-hint">Min raise ${(+o.minRaise.toFixed(2))}BB${o.nRaises ? `（已有 ${o.nRaises} 次加注）` : ''}</div>`;
+                <div class="tl-pop-hint">${hintTxt}</div>`;
             pop.style.display = 'block';
             const zr = zone.getBoundingClientRect(), ar = anchorEl.getBoundingClientRect();
             pop.style.left = Math.max(4, Math.min(ar.left - zr.left, zr.width - pop.offsetWidth - 4)) + 'px';
@@ -7207,6 +7268,9 @@
             if (a === 'limp')  { act = 'limp'; amount = 1; }
             if (a === 'raise') {
                 const o = tlOptions(pos);
+                if (o.canRaise === false) {
+                    showToast(o.underraiseNote || '未满额全下未重开加注权，仅可跟注或弃牌', 'warn'); return;
+                }
                 if (!(amount > 0)) amount = o.raiseDefault;
                 if (amount < o.minRaise - 1e-9 && amount < o.stack) {
                     showToast(`最小合法加注是 ${(+o.minRaise.toFixed(2))}BB`, 'error'); return;
@@ -7253,7 +7317,7 @@
             const limpAhead = st.seats.some(q => q !== pos && tlActsOf(q).some(a => a.a === 'limp'));
             let seq;
             if (st.raises.length > 0) {
-                seq = ['call', 'raise', 'allin', 'fold'];
+                seq = o.canRaise ? ['call', 'raise', 'allin', 'fold'] : ['call', 'fold'];
             } else if (isMe) {
                 seq = limpAhead ? ['limp', 'raise', 'fold']                 // over-limp 优先，其次 Iso
                     : pos === 'SB' ? ['raise', 'limp', 'fold']              // 盲对盲：跛入是主策略
@@ -7584,7 +7648,9 @@
             }
 
             if (currentMode === 'face3b') {
-                if (POS_ORDER[posV] <= POS_ORDER[posH]) {
+                const dSc = (typeof deriveScenario === 'function') ? deriveScenario() : null;
+                const isLrp = !!(dSc && dSc.isLimpReraise);
+                if (!isLrp && POS_ORDER[posV] <= POS_ORDER[posH]) {
                     showParadoxError(box, vText, logicText, `位置时间轴错误:3-Bet 者 [${POS_LABEL[posV]}] 必须在你 Open 位 [${POS_LABEL[posH]}] 之后行动。`); return;
                 }
             }
@@ -8447,136 +8513,166 @@
                         else { b += Math.floor(c * 0.3); f += Math.ceil(c * 0.7); c = 0; } 
                     }
                 } else {
-                    const action = getFacing3BetAction(handStr, posH, gameConfig.tableSize, effStack, posV);
-                    // 全盘审计修复(2026-07-21)：4-Bet 尺度改按 3-Bet 额定档（IP 2.2x / OOP 2.5x），
-                    // 下限为最小合法加注（3-Bet 额 + 上次加注增量），≥85% 有效筹码改全押。
-                    // 原 effStack×0.4 完全无视 3-Bet 额：30BB 时算出 12BB 低于最小合法加注
-                    //（面对 9BB 3-Bet 最少 15.5），100BB 时又达 40BB 过大。
-                    const _openAmt4 = getOpenSizeBB();   // 尺度可选(2026-09-08)
-                    const _isIP4 = POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV];
-                    const _minLegal4 = threeBetSize + Math.max(0, threeBetSize - _openAmt4);
-                    const fourBetSize = () => {
-                        const amt = Math.max(threeBetSize * (_isIP4 ? 2.2 : 2.5), _minLegal4);
-                        return (effStack > 0 && amt >= effStack * 0.85)
-                            ? `${effStack.toFixed(1)}BB All-in`
-                            : amt.toFixed(1) + 'BB 4-Bet';
-                    };
-                    switch (action) {
-                        case 'fivebet_jam':
+                    const dScenario = (typeof deriveScenario === 'function') ? deriveScenario() : null;
+                    const isLrpMode = !!(dScenario && dScenario.isLimpReraise);
+
+                    if (isLrpMode) {
+                        // T-30(2026-09-23): 面对 Limp-Reraise (LRP 跛入再加注) 极化防御场景
+                        // 对手是先 Limp 后 Reraise 的陷阱线，范围极度收紧至 AA, KK, QQ, AK 等超强怪兽牌
+                        const isMonster = ['AA', 'KK'].includes(handStr);
+                        const isSetMinePair = isPair && ['22','33','44','55','66','77','88','99','TT'].includes(handStr);
+                        const actualRaiseSize = (dScenario && dScenario.raiseSize > 0) ? dScenario.raiseSize : raiseSize;
+                        const toCallLrp = Math.max(0, threeBetSize - actualRaiseSize);
+                        const stackRatio = toCallLrp > 0 ? (effStack - toCallLrp) / toCallLrp : 0;
+
+                        if (isMonster) {
                             b = 100; c = 0; f = 0;
-                            // >50BB：MPT 60bb 那批把 4-Bet(4-9%) 与 All-in(1.5-3.5%) 画成同一个
-                            // 鲑红、无法分色，而该深度里**占多数的是 4-Bet 而非全下**。
-                            // 分不出来就不假装分得出：深码这一段按 4-Bet 出，尺度走既有分档。
-                            if (effStack > 50) {
-                                logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的进攻段` +
-                                        `（60BB 深度该节点 4-Bet 约 4-9% + 全下 1.5-3.5%；原图两者同色无法分开，` +
-                                        `按占多数的 4-Bet 出）。`;
-                                postSizing = fourBetSize();
-                            } else {
-                                logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的全下段` +
-                                        `（${effStack}BB 深度，该节点全下约 ${effStack <= 32 ? '12-21' : '9-13'}%）。` +
-                                        `注意全下段是范围的**中段**——阻断牌与翻后难打的牌；AA/KK/QQ 在跟注段留住对手诈唬。`;
-                                postSizing = `${effStack.toFixed(1)}BB All-in`;
-                            }
-                            break;
-                        case 'fivebet_mix':
-                            b = 50; c = 50; f = 0;
-                            logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测里是**真混合牌**` +
-                                    `（全下与跟注频率都不低），两条线 EV 接近，按混合执行即可。`;
-                            postSizing = `${effStack.toFixed(1)}BB All-in`;
-                            break;
-                        case 'fourbet':
-                            b=100; c=0; f=0;
-                            logic='顶级牌力，4-Bet 价值。';
-                            postSizing=fourBetSize();
-                            break;
-                        case 'fourbet_bluff_deep':
-                            b=35; f=65; c=0;
-                            logic='Blocker 牌（'+handStr+'），深码极化 4-Bet 诈唬。对手弃牌率高，有正 EV。';
-                            postSizing=fourBetSize();
-                            break;
-                        case 'fourbet_bluff_mid':
-                            b=20; f=80; c=0;
-                            logic='Blocker 牌（'+handStr+'），中浅码只能推全下，频率压低至 20%。';
-                            postSizing='All-in '+effStack+'BB';
-                            break;
-                        case 'fourbet_bluff_short':
-                            f=100; b=0; c=0;
-                            logic='筹码过浅（'+effStack+'BB），Blocker 牌 4-Bet = 全下，对抗 3-Bet 范围胜率不足，弃牌。';
-                            break;
-                        case 'call':
-                            c=100; b=0; f=0;
-                            logic = ['AA','KK','QQ','AKs','AKo'].includes(handStr) && mptF3bSet(posH, posV, effStack)
-                                ? `${handStr} 面对 3-Bet **跟注而非全下**（MPT 实测）：全下只会赶走对手的诈唬段、` +
-                                  `留下打得过我们的那部分；跟注把他整个 3-Bet 范围留在池里，翻后再拿钱。`
-                                : '中等牌力，深码平跟控池，翻牌后根据牌面决策。';
-                            break;
-                        case 'call_shallow':
-                            b=30; f=70; c=0;
-                            logic='筹码较浅（'+effStack+'BB），不建议平跟（SPR过低套牢风险），30% 推全下，70% 弃牌。';
-                            postSizing='All-in '+effStack+'BB';
-                            break;
-                        case 'fold':
-                        default:
-                            f=100; b=0; c=0;
-                            logic='不在防守范围，弃牌。';
-                            break;
-                    }
-                    // 审计修复#5(2026-09-08)：跟注前过价格闸门 —— 3-Bet 越大，跟注所需胜率越高。
-                    // 留 3 点容差给隐含赔率/翻后位置优势；差距超过它就把跟注改为弃牌。
-                    if (c > 0) {
-                        const pr = threeBetCallPrice([heroCard1, heroCard2], posV, posH, raiseSize, threeBetSize, 0, effStack);
-                        // 判据换成 **Eq × EqR ≥ 所需胜率**（2026-09-09）：
-                        // 原来是"裸胜率 ≥ 所需 − 3"，那 3 点没有出处，且方向是放宽
-                        //（等于假设权益实现率 >100%，不可能成立）。
-                        // 查不到 EqR 时才回落到旧判据。
-                        // 噪声带内不让随机数替用户做决定（沿用接全下那条既有规矩）：
-                        // 实现后胜率与所需胜率的差落在 MC 的 95% 置信区间内时，
-                        // 判据不翻转——实测 KJs 同一局面两次运行 39.2 / 39.3，
-                        // 正好骑在门槛上，不设这道闸就会一次跟一次弃。
-                        const _moe = pr ? 1.96 * Math.sqrt(Math.max(0.01, pr.eq / 100 * (1 - pr.eq / 100)) / 6000) * 100 : 0;
-                        const _real = pr && pr.eqr != null ? pr.eq * pr.eqr / 100 : (pr ? pr.eq : 0);
-                        const _bad = pr && (pr.eqr != null
-                            ? _real < pr.req - _moe
-                            : pr.eq < pr.req - 3);
-                        const _edge = pr && !_bad && Math.abs(_real - pr.req) <= _moe;
-                        if (_bad) {
-                            logic = `面对 ${threeBetSize}BB 3-Bet 需补 ${pr.toCall.toFixed(1)}BB，所需胜率 ${pr.req.toFixed(1)}%，` +
-                                    `${handStr} 对 ${POS_LABEL[posV]} 的 3-Bet 范围有 ${pr.eq.toFixed(1)}%` +
-                                    (pr.eqr != null
-                                      ? `，但<b>只能兑现其中的 ${pr.eqr.toFixed(0)}%</b>（实际到手 ` +
-                                        `${(pr.eq * pr.eqr / 100).toFixed(1)}% < 所需 ${pr.req.toFixed(1)}%）—— 弃牌。` +
-                                        `<br><span class="text-xs text-gray-400">权益实现率取自 MPT 热图（PioSolver），` +
-                                        `并按跟注后 SPR 向 100% 修正（池子越浅越接近全部兑现）。</span>`
-                                      : ` —— 价格不划算，弃牌。`);
-                            f = 100; c = 0; b = 0; postSizing = '';
-                        } else if (pr) {
-                            logic += pr.eqr != null
-                                ? `（价格核对：需 ${pr.req.toFixed(1)}%，裸胜率 ${pr.eq.toFixed(1)}% × 实现率 ` +
-                                  `${pr.eqr.toFixed(0)}% = ${_real.toFixed(1)}%` +
-                                  (_edge ? `　<b>边缘</b>：差距已在计算精度（±${_moe.toFixed(1)}点）之内，跟/弃都可辩护` : '') + `）`
-                                : `（价格核对：需 ${pr.req.toFixed(1)}%，实有 ${pr.eq.toFixed(1)}%）`;
+                            logic = `⚠️ 面对 ${POS_LABEL[posV] || posV} 的 Limp-Reraise (LRP 跛入再加注)：对手大概率是 AA/KK 埋伏陷阱。` +
+                                    `我方手持顶端怪兽牌 ${handStr}，坚决 4-Bet / All-in 价值对抗！`;
+                            postSizing = (effStack > 0 && threeBetSize * 2.2 >= effStack * 0.85) ? `${effStack.toFixed(1)}BB All-in` : `${(threeBetSize * 2.2).toFixed(1)}BB 4-Bet`;
+                        } else if (isSetMinePair && stackRatio >= 15.0 && effStack >= 30) {
+                            c = 100; b = 0; f = 0;
+                            logic = `⚠️ 面对 ${POS_LABEL[posV] || posV} 的 Limp-Reraise：对手大概率持 AA/KK，` +
+                                    `我方手持 ${handStr}，筹码跟注比充足（${stackRatio.toFixed(1)}x ≥ 15x），` +
+                                    `在极佳潜在隐含赔率下便宜平跟博暗三条（Set Mining）。翻牌不中即弃。`;
+                        } else {
+                            f = 100; b = 0; c = 0;
+                            logic = `⚠️ 面对 ${POS_LABEL[posV] || posV} 的 Limp-Reraise (LRP 跛入再加注陷阱线)：` +
+                                    `对手先跛入后大额加注，范围极度极化于 AA/KK/QQ/AK 等超强怪兽牌，诈唬率近乎归零。` +
+                                    `${handStr} 处于严重被压制绝境，无对抗胜率且隐含赔率不足，果断弃牌止损！`;
                         }
-                    }
-                    // ICM 修正：泡沫期/决赛桌收紧 bluff 频率
-                    // Fix-3: 直接按 stage 判断，泡沫期削减 55%（原 40% 效果不足）
-                    const icmSuppStage = gameConfig.stage === 'bubble' || gameConfig.stage === 'final';
-                    // 2026-09-09 二轮修复：`fivebet_jam` 不含 "bluff" 字样，于是**实测的
-                    // 全下段完全绕过了 ICM 抑制**——泡沫期拿 A5s/33/A2s 推 40BB 与常规期
-                    // 输出一模一样。而这一段恰恰是"范围的中段"（阻断牌），正是 ICM 最该压的部分。
-                    // 顶端价值牌（AA/KK/QQ/AKs，出现在前位节点的全下段里）不压。
-                    const _jamIsEdge = (action === 'fivebet_jam' || action === 'fivebet_mix')
-                                       && getRawEquity(handStr) < 66;
-                    if ((icmPressure > 1.5 || icmSuppStage) && (action.includes('bluff') || _jamIsEdge)) {
-                        const suppMult = gameConfig.stage === 'bubble' ? 0.55 : gameConfig.stage === 'final' ? 0.45 : 0.4;
-                        const icmShift = Math.ceil(b * suppMult);
-                        b = Math.max(0, b - icmShift); f += icmShift;
-                        logic += `（${gameConfig.stage === 'bubble' ? '泡沫期' : '决赛桌'} ICM 抑制 Bluff -${icmShift}%）`;
-                    }
-                    if (icmPressure > 1.5 && action === 'call_shallow') {
-                        f = Math.min(f + 15, 100);
-                        b = Math.max(b - 15, 0);
-                        logic += '（ICM 收紧防守）';
+                    } else {
+                        const action = getFacing3BetAction(handStr, posH, gameConfig.tableSize, effStack, posV);
+                        // 全盘审计修复(2026-07-21)：4-Bet 尺度改按 3-Bet 额定档（IP 2.2x / OOP 2.5x），
+                        // 下限为最小合法加注（3-Bet 额 + 上次加注增量），≥85% 有效筹码改全押。
+                        // 原 effStack×0.4 完全无视 3-Bet 额：30BB 时算出 12BB 低于最小合法加注
+                        //（面对 9BB 3-Bet 最少 15.5），100BB 时又达 40BB 过大。
+                        const _openAmt4 = getOpenSizeBB();   // 尺度可选(2026-09-08)
+                        const _isIP4 = POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV];
+                        const _minLegal4 = threeBetSize + Math.max(0, threeBetSize - _openAmt4);
+                        const fourBetSize = () => {
+                            const amt = Math.max(threeBetSize * (_isIP4 ? 2.2 : 2.5), _minLegal4);
+                            return (effStack > 0 && amt >= effStack * 0.85)
+                                ? `${effStack.toFixed(1)}BB All-in`
+                                : amt.toFixed(1) + 'BB 4-Bet';
+                        };
+                        switch (action) {
+                            case 'fivebet_jam':
+                                b = 100; c = 0; f = 0;
+                                // >50BB：MPT 60bb 那批把 4-Bet(4-9%) 与 All-in(1.5-3.5%) 画成同一个
+                                // 鲑红、无法分色，而该深度里**占多数的是 4-Bet 而非全下**。
+                                // 分不出来就不假装分得出：深码这一段按 4-Bet 出，尺度走既有分档。
+                                if (effStack > 50) {
+                                    logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的进攻段` +
+                                            `（60BB 深度该节点 4-Bet 约 4-9% + 全下 1.5-3.5%；原图两者同色无法分开，` +
+                                            `按占多数的 4-Bet 出）。`;
+                                    postSizing = fourBetSize();
+                                } else {
+                                    logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的全下段` +
+                                            `（${effStack}BB 深度，该节点全下约 ${effStack <= 32 ? '12-21' : '9-13'}%）。` +
+                                            `注意全下段是范围的**中段**——阻断牌与翻后难打的牌；AA/KK/QQ 在跟注段留住对手诈唬。`;
+                                    postSizing = `${effStack.toFixed(1)}BB All-in`;
+                                }
+                                break;
+                            case 'fivebet_mix':
+                                b = 50; c = 50; f = 0;
+                                logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测里是**真混合牌**` +
+                                        `（全下与跟注频率都不低），两条线 EV 接近，按混合执行即可。`;
+                                postSizing = `${effStack.toFixed(1)}BB All-in`;
+                                break;
+                            case 'fourbet':
+                                b=100; c=0; f=0;
+                                logic='顶级牌力，4-Bet 价值。';
+                                postSizing=fourBetSize();
+                                break;
+                            case 'fourbet_bluff_deep':
+                                b=35; f=65; c=0;
+                                logic='Blocker 牌（'+handStr+'），深码极化 4-Bet 诈唬。对手弃牌率高，有正 EV。';
+                                postSizing=fourBetSize();
+                                break;
+                            case 'fourbet_bluff_mid':
+                                b=20; f=80; c=0;
+                                logic='Blocker 牌（'+handStr+'），中浅码只能推全下，频率压低至 20%。';
+                                postSizing='All-in '+effStack+'BB';
+                                break;
+                            case 'fourbet_bluff_short':
+                                f=100; b=0; c=0;
+                                logic='筹码过浅（'+effStack+'BB），Blocker 牌 4-Bet = 全下，对抗 3-Bet 范围胜率不足，弃牌。';
+                                break;
+                            case 'call':
+                                c=100; b=0; f=0;
+                                logic = ['AA','KK','QQ','AKs','AKo'].includes(handStr) && mptF3bSet(posH, posV, effStack)
+                                    ? `${handStr} 面对 3-Bet **跟注而非全下**（MPT 实测）：全下只会赶走对手的诈唬段、` +
+                                      `留下打得过我们的那部分；跟注把他整个 3-Bet 范围留在池里，翻后再拿钱。`
+                                    : '中等牌力，深码平跟控池，翻牌后根据牌面决策。';
+                                break;
+                            case 'call_shallow':
+                                b=30; f=70; c=0;
+                                logic='筹码较浅（'+effStack+'BB），不建议平跟（SPR过低套牢风险），30% 推全下，70% 弃牌。';
+                                postSizing='All-in '+effStack+'BB';
+                                break;
+                            case 'fold':
+                            default:
+                                f=100; b=0; c=0;
+                                logic='不在防守范围，弃牌。';
+                                break;
+                        }
+                        // 审计修复#5(2026-09-08)：跟注前过价格闸门 —— 3-Bet 越大，跟注所需胜率越高。
+                        // 留 3 点容差给隐含赔率/翻后位置优势；差距超过它就把跟注改为弃牌。
+                        if (c > 0) {
+                            const pr = threeBetCallPrice([heroCard1, heroCard2], posV, posH, raiseSize, threeBetSize, 0, effStack);
+                            // 判据换成 **Eq × EqR ≥ 所需胜率**（2026-09-09）：
+                            // 原来是"裸胜率 ≥ 所需 − 3"，那 3 点没有出处，且方向是放宽
+                            //（等于假设权益实现率 >100%，不可能成立）。
+                            // 查不到 EqR 时才回落到旧判据。
+                            // 噪声带内不让随机数替用户做决定（沿用接全下那条既有规矩）：
+                            // 实现后胜率与所需胜率的差落在 MC 的 95% 置信区间内时，
+                            // 判据不翻转——实测 KJs 同一局面两次运行 39.2 / 39.3，
+                            // 正好骑在门槛上，不设这道闸就会一次跟一次弃。
+                            const _moe = pr ? 1.96 * Math.sqrt(Math.max(0.01, pr.eq / 100 * (1 - pr.eq / 100)) / 6000) * 100 : 0;
+                            const _real = pr && pr.eqr != null ? pr.eq * pr.eqr / 100 : (pr ? pr.eq : 0);
+                            const _bad = pr && (pr.eqr != null
+                                ? _real < pr.req - _moe
+                                : pr.eq < pr.req - 3);
+                            const _edge = pr && !_bad && Math.abs(_real - pr.req) <= _moe;
+                            if (_bad) {
+                                logic = `面对 ${threeBetSize}BB 3-Bet 需补 ${pr.toCall.toFixed(1)}BB，所需胜率 ${pr.req.toFixed(1)}%，` +
+                                        `${handStr} 对 ${POS_LABEL[posV]} 的 3-Bet 范围有 ${pr.eq.toFixed(1)}%` +
+                                        (pr.eqr != null
+                                          ? `，但<b>只能兑现其中的 ${pr.eqr.toFixed(0)}%</b>（实际到手 ` +
+                                            `${(pr.eq * pr.eqr / 100).toFixed(1)}% < 所需 ${pr.req.toFixed(1)}%）—— 弃牌。` +
+                                            `<br><span class="text-xs text-gray-400">权益实现率取自 MPT 热图（PioSolver），` +
+                                            `并按跟注后 SPR 向 100% 修正（池子越浅越接近全部兑现）。</span>`
+                                          : ` —— 价格不划算，弃牌。`);
+                                f = 100; c = 0; b = 0; postSizing = '';
+                            } else if (pr) {
+                                logic += pr.eqr != null
+                                    ? `（价格核对：需 ${pr.req.toFixed(1)}%，裸胜率 ${pr.eq.toFixed(1)}% × 实现率 ` +
+                                      `${pr.eqr.toFixed(0)}% = ${_real.toFixed(1)}%` +
+                                      (_edge ? `　<b>边缘</b>：差距已在计算精度（±${_moe.toFixed(1)}点）之内，跟/弃都可辩护` : '') + `）`
+                                    : `（价格核对：需 ${pr.req.toFixed(1)}%，实有 ${pr.eq.toFixed(1)}%）`;
+                            }
+                        }
+                        // ICM 修正：泡沫期/决赛桌收紧 bluff 频率
+                        // Fix-3: 直接按 stage 判断，泡沫期削减 55%（原 40% 效果不足）
+                        const icmSuppStage = gameConfig.stage === 'bubble' || gameConfig.stage === 'final';
+                        // 2026-09-09 二轮修复：`fivebet_jam` 不含 "bluff" 字样，于是**实测的
+                        // 全下段完全绕过了 ICM 抑制**——泡沫期拿 A5s/33/A2s 推 40BB 与常规期
+                        // 输出一模一样。而这一段恰恰是"范围的中段"（阻断牌），正是 ICM 最该压的部分。
+                        // 顶端价值牌（AA/KK/QQ/AKs，出现在前位节点的全下段里）不压。
+                        const _jamIsEdge = (action === 'fivebet_jam' || action === 'fivebet_mix')
+                                           && getRawEquity(handStr) < 66;
+                        if ((icmPressure > 1.5 || icmSuppStage) && (action.includes('bluff') || _jamIsEdge)) {
+                            const suppMult = gameConfig.stage === 'bubble' ? 0.55 : gameConfig.stage === 'final' ? 0.45 : 0.4;
+                            const icmShift = Math.ceil(b * suppMult);
+                            b = Math.max(0, b - icmShift); f += icmShift;
+                            logic += `（${gameConfig.stage === 'bubble' ? '泡沫期' : '决赛桌'} ICM 抑制 Bluff -${icmShift}%）`;
+                        }
+                        if (icmPressure > 1.5 && action === 'call_shallow') {
+                            f = Math.min(f + 15, 100);
+                            b = Math.max(b - 15, 0);
+                            logic += '（ICM 收紧防守）';
+                        }
                     }
                 }
 
@@ -9641,7 +9737,7 @@
             const validCards = postState.board.filter(c => c !== null);
             const count = validCards.length;
             const currentStreet = count === 3 ? 'flop' : count === 4 ? 'turn' : 'river';
-            const sa = (streetActions || []).filter(a => !a.street || a.street === currentStreet);
+            const sa = (Array.isArray(streetActions) ? streetActions : (postState.potTracker?.actions || [])).filter(a => !a.street || a.street === currentStreet);
 
             const mw = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
             const heroPos = globalPosHero || 'BTN';
@@ -9690,6 +9786,10 @@
             let lastAggAct = null;
             let betCount = 0;
             let callersAfterBet = [];
+            let lastValidBetInc = 0;
+            let lastBetUnderraise = false;
+            let prevHighestBetBeforeAgg = 0;
+            let lastFullBet = 0;
 
             for (const a of sa) {
                 const pPos = a.pos || (a.player === 'hero' ? heroPos : curMainV);
@@ -9708,6 +9808,17 @@
                 } else if (['bet', 'raise', 'allin'].includes(a.action)) {
                     committed[pPos] = a.amount;
                     if (a.amount > highestBet) {
+                        const inc = a.amount - highestBet;
+                        prevHighestBetBeforeAgg = highestBet;
+                        // T-31: 判定是否为未满额全下 (Under-raise)
+                        const isUnder = (a.action === 'allin' && lastValidBetInc > 0 && inc < lastValidBetInc);
+                        if (!isUnder) {
+                            lastValidBetInc = inc;
+                            lastFullBet = a.amount;
+                            lastBetUnderraise = false;
+                        } else {
+                            lastBetUnderraise = true;
+                        }
                         highestBet = a.amount;
                         lastAggressorPos = pPos;
                         lastAggAct = a;
@@ -9867,6 +9978,18 @@
                 }
             }
 
+            // T-31(2026-09-23): 翻后裁判级 Reopen 规则判定 (Under-raise 未重开全额行动过玩家的加注权)
+            let canRaise = true;
+            let underraiseNote = '';
+            if (lastBetUnderraise && nextActorPos) {
+                const actorCommitted = committed[nextActorPos] || 0;
+                const benchmarkBet = (lastFullBet > 0) ? lastFullBet : prevHighestBetBeforeAgg;
+                if (nextActorPos !== lastAggressorPos && actorCommitted >= benchmarkBet && benchmarkBet > 0) {
+                    canRaise = false;
+                    underraiseNote = '⚖️ TDA 裁判规则：对手短码未满额全下 (Under-raise)，加注权未重开，仅可跟注或弃牌';
+                }
+            }
+
             return {
                 phase,
                 nextToAct: isHeroNext ? 'hero' : 'villain',
@@ -9874,6 +9997,9 @@
                 nextActorPos,
                 nextActorLabel: nextActor.label,
                 isHeroNext,
+                canRaise,
+                isUnderraise: lastBetUnderraise,
+                underraiseNote,
                 lastBet: highestBet,
                 lastBetPlayer,
                 lastAggressorPos,
@@ -9922,12 +10048,10 @@
             // O3(2026-07)：对手任一动作已记录，Vision 预填值即消费/失效
             if (player === 'villain') postState._pendingVillainBet = null;
             recalculatePot();
-            // 引擎修复(2026-07)：对手激进动作(bet/raise/allin)实质收窄其范围 →
-            // 重跑完整分析管线（范围收窄 + 胜率重算 + postEngine 决策），否则决策
-            // 会用"街道开始时 vs 收窄前范围"的过时胜率（曾致：转牌被加注仍按 vs
-            // 弱范围的 67% 胜率进承诺区错误推全押）。checkStreetAnalysis 自带
-            // postCalcVersion 防串，重算期间显示 loading。
-            if (player === 'villain' && ['bet', 'raise', 'allin'].includes(action)) {
+            // 引擎修复(2026-07) & T-29(2026-09-23)：对手激进动作(bet/raise/allin)或跟注(call)均实质收窄其范围 →
+            // 重跑完整分析管线（范围收窄 + 胜率重算 + postEngine 决策），消除胜率时效性滞后。
+            // checkStreetAnalysis 自带 postCalcVersion 防串，重算期间显示 loading。
+            if (player === 'villain' && ['bet', 'raise', 'allin', 'call'].includes(action)) {
                 checkStreetAnalysis();
             } else {
                 // 风险点3修复：对手每次行动后重新估算范围，使多街动态收窄实时生效
@@ -10169,14 +10293,19 @@
                 if (!vActionLabel) vActionLabel = `开池 (${villainPos} Open)`;
 
             } else if (currentMode === 'face3b') {
-                // 对手 3-Bet：查 THREBET_RANGES[villainPos_vs_heroPos]
-                // Codex交叉测试修复②(2026-07-13)：兜底链与翻前 getThreeBetAction 统一——
-                // 缺键先查 9max 同名键（语义正确近似），再走 vs_MP / 固定极化范围；
-                // 非精确命中时标注"（近似范围）"，不再静默假装精确
-                const key      = `${villainPos}_vs_${heroPos}`;
-                const fallback = `${villainPos}_vs_MP`; // 常见兜底
-                const aliasKey = villainPos === 'UTG1' ? `MP_vs_${heroPos}` : null;
-                let approx3b = false;
+                const dSc = (typeof deriveScenario === 'function') ? deriveScenario() : null;
+                if (dSc && dSc.isLimpReraise) {
+                    baseHands = ['AA', 'KK', 'QQ', 'AKs', 'AKo'];
+                    vActionLabel = `Limp-Reraise 极化怪兽牌范围 (${villainPos} 先跛入后再加注)`;
+                } else {
+                    // 对手 3-Bet：查 THREBET_RANGES[villainPos_vs_heroPos]
+                    // Codex交叉测试修复②(2026-07-13)：兜底链与翻前 getThreeBetAction 统一——
+                    // 缺键先查 9max 同名键（语义正确近似），再走 vs_MP / 固定极化范围；
+                    // 非精确命中时标注"（近似范围）"，不再静默假装精确
+                    const key      = `${villainPos}_vs_${heroPos}`;
+                    const fallback = `${villainPos}_vs_MP`; // 常见兜底
+                    const aliasKey = villainPos === 'UTG1' ? `MP_vs_${heroPos}` : null;
+                    let approx3b = false;
                 // 一致性（2026-09-09）：翻前 getThreeBetAction 对 BB/SB 已改用
                 // MPT 校准 + 深度分档的宽度（vs BTN 40bb 14.3%），而这里若仍读旧表（7.4%）
                 // 就会出现"我方按 14% 打、却按 7% 估对手"的同模型两套宽度——
@@ -10213,6 +10342,7 @@
                     }
                     vActionLabel = `3-Bet 极化 (${villainPos} vs ${heroPos})${approx3b ? '（近似范围）' : ''}`;
                 }
+            }
 
             } else if (currentMode === 'squeeze') {
                 // 英雄 Squeeze，对手跟注进翻牌：顶端超强牌（AA/KK）面对 Squeeze 必 4-Bet，跟注范围为 Capped 范围
@@ -11216,31 +11346,38 @@
                 if (inputEl) { inputEl.style.borderColor = '#ef4444'; setTimeout(() => { inputEl.style.borderColor = ''; }, 1500); }
                 return;
             }
-            // 面对未跟平的下注/加注时，校验最小合法加注额
+            // 面对未跟平的下注/加注时，校验裁判规则及最小合法加注额
             {
                 const _vc = postState.board.filter(c => c !== null);
-                const isAllinIntent = eff > 0 && amt >= eff * 0.95;
-                if (_vc.length >= 3 && !isAllinIntent) {
+                if (_vc.length >= 3) {
                     const _street = _vc.length === 3 ? 'flop' : _vc.length === 4 ? 'turn' : 'river';
                     const _sa = (postState.potTracker.actions || []).filter(a => a.street === _street);
                     const _ss = (typeof getMultiwayStreetState === 'function') ? getMultiwayStreetState(_sa) : null;
-                    const _aggTotals = [];
-                    _sa.forEach(a => {
-                        if (['bet', 'raise', 'allin'].includes(a.action)) {
-                            _aggTotals.push(a.amount);
-                        }
-                    });
-                    const curMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
-                    const myPos = pos || (player === 'hero' ? (globalPosHero || 'BTN') : curMainV);
-                    const highest = _ss ? (_ss.highestBet || 0) : (_aggTotals.length ? Math.max(..._aggTotals) : 0);
-                    const myCommitted = _ss && _ss.committed ? (_ss.committed[myPos] || 0) : 0;
-                    if (highest > myCommitted) {
-                        const _prevAgg = _aggTotals.length >= 2 ? _aggTotals[_aggTotals.length - 2] : 0;
-                        const _minRaiseTo = highest + Math.max(0.5, highest - _prevAgg);
-                        if (amt < _minRaiseTo) {
-                            showToast(`加注不合法：面对 ${highest.toFixed(1)}BB 最少加注到 ${_minRaiseTo.toFixed(1)}BB（全押除外）`, 'error');
-                            if (inputEl) { inputEl.style.borderColor = '#ef4444'; setTimeout(() => { inputEl.style.borderColor = ''; }, 1500); }
-                            return;
+                    if (_ss && _ss.canRaise === false && player === 'hero') {
+                        showToast(_ss.underraiseNote || '⚖️ 对手短码未满额全下 (Under-raise)，加注权未重开，仅可跟注或弃牌', 'error');
+                        if (inputEl) { inputEl.style.borderColor = '#ef4444'; setTimeout(() => { inputEl.style.borderColor = ''; }, 1500); }
+                        return;
+                    }
+                    const isAllinIntent = eff > 0 && amt >= eff * 0.95;
+                    if (!isAllinIntent) {
+                        const _aggTotals = [];
+                        _sa.forEach(a => {
+                            if (['bet', 'raise', 'allin'].includes(a.action)) {
+                                _aggTotals.push(a.amount);
+                            }
+                        });
+                        const curMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+                        const myPos = pos || (player === 'hero' ? (globalPosHero || 'BTN') : curMainV);
+                        const highest = _ss ? (_ss.highestBet || 0) : (_aggTotals.length ? Math.max(..._aggTotals) : 0);
+                        const myCommitted = _ss && _ss.committed ? (_ss.committed[myPos] || 0) : 0;
+                        if (highest > myCommitted) {
+                            const _prevAgg = _aggTotals.length >= 2 ? _aggTotals[_aggTotals.length - 2] : 0;
+                            const _minRaiseTo = highest + Math.max(0.5, highest - _prevAgg);
+                            if (amt < _minRaiseTo) {
+                                showToast(`加注不合法：面对 ${highest.toFixed(1)}BB 最少加注到 ${_minRaiseTo.toFixed(1)}BB（全押除外）`, 'error');
+                                if (inputEl) { inputEl.style.borderColor = '#ef4444'; setTimeout(() => { inputEl.style.borderColor = ''; }, 1500); }
+                                return;
+                            }
                         }
                     }
                 }
@@ -11937,9 +12074,13 @@
                 //    四个按钮被挤到两端、中间一片空白。现在按职责拆两行，与真实扑克客户端一致：
                 //      · 尺度行：比例/倍数快捷 + 金额（带 −/+ 步进）+ 实时"= X% 底池"
                 //      · 动作行：四键等宽 grid，整组限宽 720px —— 屏幕再宽也不拉伸变形
-                if (isFacingAllin) {
+                if (isFacingAllin || (isHero && ss.canRaise === false)) {
                     const allinAmt = lastAggAct ? lastAggAct.amount : effStack;
-                    html += `<div class="text-xs text-orange-400/80 mb-1.5 px-1 font-bold">⚠ 对手全下 ${allinAmt.toFixed(1)}BB，仅可跟注或弃牌</div>`;
+                    if (isHero && ss.canRaise === false) {
+                        html += `<div class="text-xs text-amber-400/80 mb-1.5 px-1 font-bold">⚖ ${ss.underraiseNote || '前注全下未满额加注（Under-raise），加注权未重开，仅可跟注或弃牌'}</div>`;
+                    } else if (isFacingAllin) {
+                        html += `<div class="text-xs text-orange-400/80 mb-1.5 px-1 font-bold">⚠ 对手全下 ${allinAmt.toFixed(1)}BB，仅可跟注或弃牌</div>`;
+                    }
                     html += `<div class="act-row act-row-2">
                         <button onclick="${foldClick}" class="act-btn rounded-md border ${foldCls} active:scale-95 transition-all">${foldStar ? '★ ' : ''}弃牌${isHero ? '<kbd>L</kbd>' : ''}</button>
                         <button onclick="${passClick}" class="act-btn rounded-md border ${passCls} active:scale-95 transition-all">${passiveStar ? '★ ' : ''}${passiveLbl}${isHero ? '<kbd>J</kbd>' : ''}</button>
@@ -13072,7 +13213,7 @@
          * Flop（3张）/ Turn（4张）使用此函数。
          * 返回统一格式 { street, method, winRate, tieRate, loseRate, sampleCount, confidence, ... }
          */
-        async function calculateMonteCarloEquity(heroCards, boardCards, villainRange) {
+        async function calculateMonteCarloEquity(heroCards, boardCards, villainRange, extraVillainRanges = null) {
             // 参数检查
             if (!heroCards || heroCards.length < 2) {
                 return { error: 'heroCards 不足 2 张' };
@@ -13087,7 +13228,23 @@
                 return { error: 'PokerSolver 未加载' };
             }
 
-            const street = boardCards.length === 3 ? 'flop' : 'turn';
+            const street = boardCards.length === 3 ? 'flop' : (boardCards.length === 4 ? 'turn' : 'river');
+
+            // T-28(2026-09-23): 翻后多人在池真实多手牌联合蒙特卡洛抽样
+            // 若外部未显式传入 extraVillainRanges，且当前为多人底池（N >= 3），自动获取其他在池对手的范围
+            if (!extraVillainRanges && typeof getMultiwayContext === 'function') {
+                const mw = getMultiwayContext();
+                if (mw && mw.isMultiway) {
+                    const heroPos = globalPosHero || 'BTN';
+                    let mainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+                    if (mainV === heroPos) mainV = (heroPos === 'BB') ? 'BTN' : 'BB';
+                    const extras = (postState.extraVillains || []).filter(p => p && p !== heroPos && p !== mainV);
+                    if (extras.length > 0 && typeof rangeEstimator === 'function') {
+                        extraVillainRanges = extras.map(p => rangeEstimator(p, { skipActions: true })).filter(r => r && r.hands && r.hands.length > 0);
+                    }
+                }
+            }
+            const activeExtraRanges = (Array.isArray(extraVillainRanges) ? extraVillainRanges : []).filter(r => r && r.hands && r.hands.length > 0);
 
             // 标准化所有牌格式
             const normHero = heroCards.map(normalizeCard);
@@ -13115,30 +13272,48 @@
                 try {
                     const usedThisRound = new Set(baseUsed);
 
-                    // 从对手范围采样
+                    // 1. 从主对手范围采样
                     const villHand = sampleHandFromRange(villainRange.hands, usedThisRound);
                     if (!villHand) continue;
                     villHand.forEach(c => usedThisRound.add(c));
 
-                    // 补全公共牌到 5 张
+                    // 2. T-28: 从额外在池对手范围依次采样，确保各对手手牌互斥
+                    const extraHands = [];
+                    let extraFailed = false;
+                    for (const evr of activeExtraRanges) {
+                        const eh = sampleHandFromRange(evr.hands, usedThisRound);
+                        if (!eh) { extraFailed = true; break; }
+                        eh.forEach(c => usedThisRound.add(c));
+                        extraHands.push(eh);
+                    }
+                    if (extraFailed) continue;
+
+                    // 补全公共牌到 5 张（若 River 则 runout 长度为 0）
                     const remainingDeck = deck.filter(c => !usedThisRound.has(c));
-                    const runout = sampleNCards(remainingDeck, 5 - normBoard.length);
-                    if (runout.length !== 5 - normBoard.length) continue;
+                    const needCards = 5 - normBoard.length;
+                    const runout = needCards > 0 ? sampleNCards(remainingDeck, needCards) : [];
+                    if (runout.length !== needCards) continue;
                     const fullBoard = [...normBoard, ...runout];
 
                     // 最终去重验证
-                    const allCards = [...normHero, ...villHand, ...fullBoard];
+                    const allCards = [...normHero, ...villHand, ...extraHands.flat(), ...fullBoard];
                     if (new Set(allCards).size !== allCards.length) continue;
 
                     const heroFull = Hand.solve([...normHero, ...fullBoard]);
                     const villFull = Hand.solve([...villHand, ...fullBoard]);
-                    const winners = Hand.winners([heroFull, villFull]);
+                    const allSolves = [heroFull, villFull];
+                    for (const eh of extraHands) {
+                        allSolves.push(Hand.solve([...eh, ...fullBoard]));
+                    }
+                    const winners = Hand.winners(allSolves);
 
                     validSims++;
-                    if (winners.length === 2) {
-                        ties++;
-                    } else if (winners[0] === heroFull) {
-                        wins++;
+                    if (winners.includes(heroFull)) {
+                        if (winners.length === 1) {
+                            wins++;
+                        } else {
+                            ties++;
+                        }
                     } else {
                         losses++;
                     }
@@ -13155,7 +13330,8 @@
             const tieRate = (ties / validSims) * 100;
             const loseRate = (losses / validSims) * 100;
 
-            console.log(`[calcEquity] ${street.toUpperCase()} MonteCarlo: 胜${winRate.toFixed(1)}% 平${tieRate.toFixed(1)}% 负${loseRate.toFixed(1)}% (${validSims}次有效样本)`);
+            const poolDesc = activeExtraRanges.length > 0 ? ` (${activeExtraRanges.length + 2}人联合池)` : '';
+            console.log(`[calcEquity] ${street.toUpperCase()} MonteCarlo${poolDesc}: 胜${winRate.toFixed(1)}% 平${tieRate.toFixed(1)}% 负${loseRate.toFixed(1)}% (${validSims}次有效样本)`);
 
             return {
                 street,
@@ -13164,6 +13340,8 @@
                 tieRate: Math.round(tieRate * 10) / 10,
                 loseRate: Math.round(loseRate * 10) / 10,
                 sampleCount: validSims,
+                isMultiway: activeExtraRanges.length > 0,
+                playerCount: activeExtraRanges.length + 2,
                 confidence: validSims >= 200 ? 'high' : validSims >= 100 ? 'medium' : 'low',
                 warnings: validSims < 100 ? ['有效样本偏少，结果可能不稳定'] : []
             };
@@ -13264,17 +13442,34 @@
          * 根据公共牌数量自动选择算法：
          * - 3张：Monte Carlo (Flop)
          * - 4张：Monte Carlo (Turn)
-         * - 5张：Exact Enumeration (River)
+         * - 5张：Exact Enumeration (River 单挑) / Monte Carlo (River 多人联合)
          * 返回统一格式结果对象，内含 method / winRate / tieRate / loseRate 等字段。
          */
-        async function calculatePostflopEquity(heroCards, boardCards, villainRange) {
+        async function calculatePostflopEquity(heroCards, boardCards, villainRange, extraVillainRanges = null) {
             if (!boardCards) return { error: '公共牌数据不存在' };
+
+            // T-28: 探测多人在池额外对手
+            if (!extraVillainRanges && typeof getMultiwayContext === 'function') {
+                const mw = getMultiwayContext();
+                if (mw && mw.isMultiway) {
+                    const heroPos = globalPosHero || 'BTN';
+                    let mainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+                    if (mainV === heroPos) mainV = (heroPos === 'BB') ? 'BTN' : 'BB';
+                    const extras = (postState.extraVillains || []).filter(p => p && p !== heroPos && p !== mainV);
+                    if (extras.length > 0 && typeof rangeEstimator === 'function') {
+                        extraVillainRanges = extras.map(p => rangeEstimator(p, { skipActions: true })).filter(r => r && r.hands && r.hands.length > 0);
+                    }
+                }
+            }
 
             if (boardCards.length === 3 || boardCards.length === 4) {
                 // Flop 或 Turn：使用蒙特卡洛
-                return await calculateMonteCarloEquity(heroCards, boardCards, villainRange);
+                return await calculateMonteCarloEquity(heroCards, boardCards, villainRange, extraVillainRanges);
             } else if (boardCards.length === 5) {
-                // River：使用精准穷举
+                // River：如果是多人底池，采用 River Monte Carlo；单挑采用 River 精准穷举
+                if (extraVillainRanges && extraVillainRanges.length > 0) {
+                    return await calculateMonteCarloEquity(heroCards, boardCards, villainRange, extraVillainRanges);
+                }
                 return await calculateRiverExactEquity(heroCards, boardCards, villainRange);
             } else {
                 return { error: `公共牌数量不合法：${boardCards.length}张（只支持 3/4/5 张）` };
