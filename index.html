@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.1 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.2 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -929,9 +929,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 28px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:28px;height:28px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.1 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.2 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.1</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.2</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -5150,7 +5150,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.1 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.2 正式版';
             renderWindowColorChips(key);
         };
 
@@ -8713,15 +8713,16 @@
                 const sqAction = getSqueezeAction(handStr, posH, gameConfig.tableSize, gameConfig.stage, effStack, sqCallers);
 
                 const deadMoney = (raiseSize + sqCallers * raiseSize + 1.5 + getAnteBB()).toFixed(1);
+                const isOOP = ['SB', 'BB'].includes(posH);
                 const uncappedCappedDesc = `开池者范围未受限 (Uncapped)，但跟注者已封顶 (Capped，已排除最强范围)；底池积累了约 ${deadMoney}BB 死钱。`;
                 switch (sqAction) {
                     case 'squeeze_value':
                         sq = 100;
-                        logic = `<b>价值 Squeeze</b>：顶级手牌，100% 挤压建立大底池。${uncappedCappedDesc}以强牌压榨死钱并隔离底池。`;
+                        logic = `<b>价值 Squeeze</b>：顶级手牌，100% 挤压建立大底池。${uncappedCappedDesc}以强牌压榨死钱并以 ${isOOP ? 'OOP 5x' : 'IP 4x'} 极化尺度隔离底池。`;
                         break;
                     case 'squeeze_bluff':
                         sq = 60; f = 40;
-                        logic = `<b>Blocker Squeeze 诈唬</b>：A/K blocker 极化范围，60% 频率挤压。${uncappedCappedDesc}利用高弃牌率与阻断效应扫荡死钱。`;
+                        logic = `<b>Blocker Squeeze 诈唬</b>：A/K blocker 极化范围，60% 频率挤压。${uncappedCappedDesc}平跟者范围被封顶，利用高弃牌率与阻断效应扫荡死钱。`;
                         break;
                     case 'squeeze_bluff_reduced':
                         sq = 30; f = 70;
@@ -8770,16 +8771,11 @@
 
                 if (sq > 0) {
                     sizingBox.classList.remove('hidden');
-                    // Squeeze 尺度：4x 开池 + 每个 caller 追加 1x（引擎修复 2026-07：
-                    // 原固定按 1 个 caller，多人跟注时尺度不足；All-in 上限改用有效
-                    // 筹码 effStack——与 faceBet 的 P1-2 修复对齐，原用 sH 会在对手
-                    // 更短时显示超出实际可推额度的尺度）
-                    // 尺度修正(2026-07-21，用户提问"为什么 11BB"引出)：4x + 每 caller 1x 是
-                    // OOP 挤压的标准尺度（2.2 开池 + 1 跟注者 → 11BB，深码正确）。但原本只在
-                    // ≥85% 有效筹码才转全押——20BB 时 11BB 占 55%、被跟后 SPR 仅 0.35，
-                    // 留 9BB 在后面毫无操作空间。改为**投入 ≥35% 有效筹码即直接全押**
-                    //（承诺线：加注到这个比例已经不可弃牌，留小筹码只会削弱弃牌压力）。
-                    const squeezeAmt = raiseSize * 4 + raiseSize * numCallers;
+                    // E-03: Pokercode / Fedor Holz 翻前 Squeeze 尺度引擎
+                    // IP（BTN/CO）基础尺度为 4.0x 开池；OOP（SB/BB）无位置加成 1x 为 5.0x 开池；每额外多一个 caller 追加 1.0x 开池
+                    const baseMul = isOOP ? 5.0 : 4.0;
+                    const safeRaise = Math.max(1.0, raiseSize || 2.0);
+                    const squeezeAmt = safeRaise * baseMul + safeRaise * Math.max(0, numCallers - 1);
                     const squeezeSize = (effStack > 0 && squeezeAmt >= effStack * 0.35)
                         ? `${effStack.toFixed(1)}BB All-in`
                         : squeezeAmt.toFixed(1) + "BB";
@@ -15153,6 +15149,9 @@
 
                 // ════ 转牌专属逻辑：双桶门槛高，强进张才半诈唬 ════
                 else if (street === 'turn') {
+                    const flopHadBet = actions.some(a => a.street === 'flop' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
+                    const isDelayedCBetNode = (street === 'turn' && villainBet === 0 && heroIsPFA && heroPos === 'IP' && !flopHadBet);
+
                     if (oppHasRangeAdv && heroPos === 'OOP' && equity < 65) {
                         primaryAction = 'CHECK'; sizing = '';
                         frequencies = { check: 100 };
@@ -15160,12 +15159,35 @@
                     // C2: IP 控池 — 转牌薄价值湿润面（equity 刚过门槛但不够强，湿润面扩池危险）
                     } else if (heroPos === 'IP' && sprZone !== 'commit'
                                && equity >= sc.betThresh && equity < sc.betThresh + 6
-                               && wetness >= 0.5 && spr >= 2.5) {
+                               && wetness >= 0.5 && spr >= 2.5 && !isDelayedCBetNode) {
                         const checkFreq = Math.min(75, Math.round(55 + (wetness - 0.5) * 40));
                         primaryAction = 'CHECK'; sizing = '';
                         frequencies = { check: checkFreq, bet: 100 - checkFreq };
                         reasoning = `IP控池：转牌胜率${equity.toFixed(0)}%（薄价值），湿润面${(wetness*100).toFixed(0)}%，SPR=${spr.toFixed(1)}，双桶不如控池`;
                         warnings.push('⚠ 转牌湿润面薄价值：双桶后进张落地将难以处理，过牌控池留手牌权益');
+                    // E-04: Pokercode 2-2-4 转牌延时 C-Bet 动作引擎 (Hero IP, 翻牌双方过牌后对手再次过牌)
+                    } else if (isDelayedCBetNode && !(equity >= sc.strongThresh || (iHaveNutAdv && equity >= 65) || _tBucket === '两对+')) {
+                        const isStation = (vProfile && vProfile.id === 'calling_station' && equity < 50);
+                        const isMwAir = (isMultiway && mwTotalCount >= 3 && equity < 50 && outs < 7);
+                        if (isStation) {
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { check: 100 };
+                            reasoning = `💡 Pokercode 延时 C-Bet 刹车：对手画像为跟注站（calling_station），纯空气牌诈唬无法迫使其弃牌，过牌控池`;
+                        } else if (isSurvival) {
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { check: 100 };
+                            reasoning = `💡 Pokercode ICM 3-1-3 [规避淘汰]：转牌延时下注控池，避免造大底池被加注产生出局风险，过牌`;
+                        } else if (isMwAir) {
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { check: 100 };
+                            reasoning = `💡 Pokercode 多人底池：3人及以上底池弃牌率剧降，纯空气牌延时 C-Bet 归零，过牌`;
+                        } else {
+                            primaryAction = 'BET';
+                            frequencies = { bet: 70, check: 30 };
+                            const isDry = (ba?.pokercodeTopology?.category === 'DRY_HIGH' || ba?.pokercodeTopology?.category === 'PAIRED_BOARD' || (wetness || 0) <= 0.35);
+                            sizing = isDry ? (sc.sizes.small || '33% 底池') : (sc.sizes.medium || '67% 底池');
+                            reasoning = `💡 Pokercode 2-2-4 [转牌延时 C-Bet]：翻牌双方过牌后对手转牌再次 Check，其范围极度弱化封顶（Capped，已排除两对+等强牌）。我方在 IP 享有进攻权，释放 70% 频率 ${sizing} 延时持续下注扫荡死钱`;
+                        }
                     } else if (_tTier) {
                         // ── 转牌按「成手桶 × 驱动量」出频率与尺度（2026-09-11 环节 7）──
                         // 这一段替换的是三条老分支：强牌 80/90 大注、中等 55、以及**空气直接过牌 100%**。
@@ -15408,7 +15430,7 @@
                 if (icm313 && icm313.posture === 'bully') {
                     if (primaryAction === 'BET' || primaryAction === 'RAISE') {
                         reasoning += '；💡 Pokercode ICM 3-1-3 [筹码压制] 我方大码覆盖对手，激进施压';
-                    } else if (primaryAction === 'CHECK' && equity >= 42 && !oppHasRangeAdv && _mwN === 0) {
+                    } else if (primaryAction === 'CHECK' && equity >= 42 && !oppHasRangeAdv && _mwN === 0 && !(vProfile && vProfile.id === 'calling_station')) {
                         primaryAction = 'BET';
                         sizing = sc.sizes.medium || '50% 底池';
                         frequencies = { bet: 65, check: 35 };
@@ -15480,6 +15502,12 @@
                     ? { action: 'CALL',  sizing: '',     freq: { call: 100 } }
                     : { action: 'FOLD',  sizing: '',     freq: { fold: 100 } };
 
+                // ── E-05: Pokercode 2-1-3 翻牌面对小尺度 Mini C-Bet 的 Check-Raise 惩罚反击变量 ──
+                const preBetPotE05 = pot - villainBet;
+                const isMiniCBet = (street === 'flop' && heroPos === 'OOP' && !isFacingAllin && !isMultiway &&
+                                    preBetPotE05 > 0 && villainBet > 0 && (villainBet / preBetPotE05) <= 0.38);
+                const isCRCandidate = isMiniCBet && (equity >= 65 || outs >= 8 || (outs >= 6 && equity >= 30));
+
                 // Fix-7: 底对/弱牌相对牌力极低 → 直接弃牌（防止单凭赔率错误跟注）
                 // 硬伤修复H3(2026-07-10)：加尺度门槛 potOdds≥25（约半池以上）才强制弃牌。
                 // 原逻辑无视赔率——对手下25%底池只需17%胜率，35%胜率的底对也被弃掉，
@@ -15522,6 +15550,32 @@
                         : commitStratB.action === 'CALL'
                         ? `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%，跟注实现权益（不足 58% 全押线）`
                         : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%，弃牌`;
+                }
+                // ── E-05: Pokercode 2-1-3 翻牌面对小尺度 Mini C-Bet 的 Check-Raise 惩罚反击 ──
+                else if (isCRCandidate) {
+                    const isStrongValue = (equity >= 65);
+                    const isSemiBluff = !isStrongValue && (outs >= 8 || (outs >= 6 && equity >= 30));
+                    const isStation = (vProfile && vProfile.id === 'calling_station');
+
+                    if (isSemiBluff && (isStation || isSurvival)) {
+                        // 刹车：跟注站无法诈唬，ICM规避淘汰不造大底池，回退至平跟
+                        primaryAction = 'CALL'; sizing = '';
+                        frequencies = { call: 75, fold: 25 };
+                        reasoning = isStation
+                            ? `💡 Pokercode 2-1-3 [面对跟注站]：对手不弃牌，${outs}张进张听牌放弃 Check-Raise 诈唬，改用底池赔率平跟`
+                            : `💡 Pokercode ICM 3-1-3 [规避淘汰]：${outs}张进张听牌避免 Check-Raise 被反击全下，平跟控池`;
+                    } else {
+                        primaryAction = 'RAISE';
+                        const crAmt = Math.min(effStack, Math.max(villainBet * 3.2, villainBet + preBetPotE05 * 0.70));
+                        sizing = (effStack > 0 && crAmt >= effStack * 0.85) ? '全押' : crAmt.toFixed(1) + 'BB';
+                        const raiseF = isStrongValue ? (iHaveNutAdv ? 90 : 80) : 45;
+                        frequencies = { raise: raiseF, call: 100 - raiseF };
+                        const betPctStr = ((villainBet / preBetPotE05) * 100).toFixed(0);
+                        const posLabel = POS_LABEL[heroPos] || heroPos;
+                        reasoning = isStrongValue
+                            ? `💡 Pokercode 2-1-3 [翻牌 Check-Raise 惩罚]：${posLabel}面对对手 ${betPctStr}% 底池小尺度下注，持强牌（胜率${equity.toFixed(0)}%）以 ${raiseF}% 频率主动加注至 ${sizing} 榨取价值并保护手牌`
+                            : `💡 Pokercode 2-1-3 [翻牌 Check-Raise 惩罚]：${posLabel}面对对手 ${betPctStr}% 底池小尺度下注，持优质听牌（${outs}张进张，胜率${equity.toFixed(0)}%），以 ${raiseF}% 频率半诈唬加注至 ${sizing} 实施反击，利用对手过宽 C-Bet 范围剥削弃牌率`;
+                    }
                 }
                 // ── 加注：强价值（河牌门槛最高；被动转主动线 +8）──
                 else if (equity >= raiseThreshEff) {
@@ -15647,11 +15701,11 @@
                         advTip = `💡 Pokercode 双优势：[${topo.label}] 单花高动态面，双方同花听牌密集，整体缩减 C-Bet 频率并防守控池`;
                     }
                 }
-                // 2. 转牌延时 C-Bet (Delayed C-Bet) 指引 (仅当 Hero 为 IP 且对手转牌已过牌至我方)
-                if (street === 'turn' && villainBet === 0 && heroIsPFA && heroPos === 'IP') {
+                // 2. 转牌延时 C-Bet (Delayed C-Bet) 指引 (若未被 E-04 接管且动作为 BET 时兼容补充)
+                if (street === 'turn' && villainBet === 0 && heroIsPFA && heroPos === 'IP' && !reasoning.includes('延时 C-Bet')) {
                     const flopHadBet = actions.some(a => a.street === 'flop' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
-                    if (!flopHadBet) {
-                        advTip = `💡 Pokercode 延时 C-Bet：翻牌双方过牌后对手转牌再次过牌，其范围极度封顶（Capped），可启动 50%~60% 延时下注捕获死钱`;
+                    if (!flopHadBet && primaryAction === 'BET') {
+                        advTip = `💡 Pokercode 延时 C-Bet：翻牌双方过牌后对手转牌再次过牌，其范围极度封顶（Capped），可启动 70% 延时下注捕获死钱`;
                     }
                 }
                 // 3. 多人底池急刹车模型
@@ -15708,7 +15762,7 @@
                 // 2. 🐟 弃牌过多 (fold_heavy)
                 else if (vProfile.id === 'fold_heavy' && !isSurvival) {
                     if (villainBet === 0) {
-                        if (primaryAction === 'CHECK' && (heroIsPFA || iHaveRangeAdv || (blk && blk.edge > 0)) && equity >= 18) {
+                        if (primaryAction === 'CHECK' && !isMultiway && (heroIsPFA || iHaveRangeAdv || (blk && blk.edge > 0)) && equity >= 18) {
                             primaryAction = 'BET';
                             sizing = (street === 'turn' ? (sc.sizes.small || '33% 底池') : (sc.sizes.probe || '25% 底池'));
                             frequencies = { bet: 75, check: 25 };
@@ -15747,10 +15801,10 @@
                             exploitNote = '被动型对手过牌范围极度封顶，后位探测下注偷取死钱';
                         }
                     } else if (villainBet > 0) {
-                        // 被动出击必坚果：当且仅当对手非极小注（potOdds >= 20%）且我方非极强坚果（equity < 65%）时果断弃牌止损；
+                        // 被动出击必坚果：当且仅当对手非极小注（potOdds >= 20%）且我方非极强坚果（equity < 65%）且无优质进张（outs < 6）时果断弃牌止损；
                         // 面对超小注（potOdds < 20%）赔率极优时不盲目过弃，避免被反向剥削；全下由底层 commit/all-in 引擎接管
                         const isAllinShove = effStack > 0 && villainBet >= effStack * 0.95;
-                        if (primaryAction === 'CALL' && equity < 65 && potOdds >= 20 && !isAllinShove) {
+                        if (primaryAction === 'CALL' && equity < 65 && outs < 6 && potOdds >= 20 && !isAllinShove) {
                             primaryAction = 'FOLD';
                             sizing = '';
                             frequencies = { fold: 100 };
