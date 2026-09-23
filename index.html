@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.4 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.5 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -13,56 +13,60 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ Solver Instrument 设计令牌（2026-07-06 重定，替代紫金毛玻璃）══
-               对标 GTOWizard 专业解算器风：冷中性近黑基底 + 扁平实色面板 +
-               发丝边界 + 等宽数据字 + 解算器语义动作色。
-               旧变量名全部保留并重映射（数百处引用零改动）。 */
-            /* 基底：冷中性近黑（微偏蓝 hue~250） */
-            --bg-body: #0d0f13;
-            --bg-deep: #08090c;          /* 凹陷区/轨道底 */
-            --bg-atmos: #13161d;         /* 顶部极淡中性提亮（无彩色氛围） */
-            --surface-1: #14171d;        /* 基础面板 */
-            --surface-2: #1a1f27;        /* 关键面板（决策/胜率卡） */
-            --surface-3: #232936;        /* hover/输入框底 */
-            /* 旧玻璃变量 → 实色面板（毛玻璃废除，blur=0） */
-            --glass-bg: var(--surface-1);
-            --glass-bg-hover: #191d25;
-            --glass-bg-elevated: var(--surface-2);
-            --glass-border: rgba(255,255,255,0.07);
-            --glass-border-strong: rgba(255,255,255,0.13);
-            --glass-border-gold: rgba(255,255,255,0.13);  /* 旧金边 → 强边 */
-            --glass-highlight: rgba(255,255,255,0.04);
-            --glass-blur: 0px;
-            --glass-saturate: 1;
-            --shadow-card: none;
-            --shadow-elev: 0 8px 24px -12px rgba(0,0,0,0.5);
-            --shadow-pop: 0 16px 40px -16px rgba(0,0,0,0.6);
-            /* 唯一交互色：仪器蓝（选中/焦点/主行动） */
+            /* ══ PokerCode v2.5 高定黑曜石与 Liquid Glass 设计令牌 (Stage 3 UI-01) ══
+               融合 Apple HIG 与 Linear/Raycast 设计语言：
+               深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
+               等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
+            /* 基础表面层级 */
+            --bg-app:        #0b0d11;
+            --bg-body:       #0b0d11;
+            --bg-deep:       #080a0e;          /* 凹陷区/轨道底 */
+            --bg-atmos:      #11141b;         /* 顶部极淡中性提亮 */
+            --surface-1:     #12161f;        /* 基础面板：暗夜黑曜石 */
+            --surface-2:     #171c26;        /* 关键面板（决策/胜率卡） */
+            --surface-3:     #1f2633;        /* hover/输入框底 */
+            --surface-glass: rgba(18, 22, 31, 0.72);
+
+            /* Apple Liquid Glass 材质规范：0.5px 精细微光边框与通透倒角 */
+            --glass-bg:          rgba(18, 22, 31, 0.75);
+            --glass-bg-hover:    rgba(25, 30, 42, 0.85);
+            --glass-bg-elevated: rgba(23, 28, 38, 0.88);
+            --glass-border:      rgba(255, 255, 255, 0.08);
+            --glass-border-strong: rgba(255, 255, 255, 0.16);
+            --glass-border-gold: rgba(224, 168, 58, 0.22);
+            --glass-highlight:   rgba(255, 255, 255, 0.06);
+            --glass-blur:        12px;
+            --glass-saturate:    1.15;
+            --shadow-card:       0 4px 16px -4px rgba(0, 0, 0, 0.5);
+            --shadow-elev:       0 8px 24px -8px rgba(0, 0, 0, 0.6);
+            --shadow-pop:        0 16px 40px -12px rgba(0, 0, 0, 0.7);
+
+            /* 唯一交互色：高定仪器蓝（选中/焦点/主行动） */
             --accent: #57a9ff;
             --accent-hover: #7cbcff;
             --accent-deep: #2f7fd6;
-            --accent-dim: rgba(87,169,255,0.16);
-            /* 旧金色 → 琥珀（钱/底池语义专用，不再作按钮色） */
+            --accent-dim: rgba(87, 169, 255, 0.16);
+            /* 金色：琥珀金（底池/筹码专用） */
             --gold: #e0a83a;
-            --gold-dim: rgba(224,168,58,0.14);
+            --gold-dim: rgba(224, 168, 58, 0.14);
             /* 文字三级（暗房可读：正文 ≥6:1） */
-            --text-primary: #eef1f6;
-            --text-secondary: #a9b2c1;
-            --text-muted: #a9b2c1;
+            --text-primary: #f0f3f8;
+            --text-secondary: #9aa4b5;
+            --text-muted: #9aa4b5;
             /* 语义动作色（解算器词汇：进攻红 / 被动绿 / 弃牌灰蓝） */
-            --act-aggr: #d63940;         /* open/bet/raise/push */
-            --act-passive: #2ea86a;      /* call/check */
-            --act-fold: #5c667f;
+            --act-aggr: #e5484d;         /* open/bet/raise/push */
+            --act-passive: #3dd68c;      /* call/check */
+            --act-fold: #647087;
             --semantic-fold: var(--act-fold);
             --semantic-call: var(--act-passive);
             --semantic-raise: var(--act-aggr);
             --semantic-open: var(--act-aggr);
-            --win: #45d68a; --tie: #9ba4b5; --lose: #ff7a7d;
-            /* 身份色：Hero 红 / Villain 绿 */
-            --hero-red: #c23b4b;
-            --villain-green: #2f8f5b;
-            /* 数据等宽字（仪表读数） */
-            --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+            --win: #3dd68c; --tie: #9aa4b5; --lose: #e5484d;
+            /* 身份色：Hero 进攻红 / Villain 翠绿 */
+            --hero-red: #e5484d;
+            --villain-green: #2ea86a;
+            /* 数据等宽字（JetBrains Mono / Geist Mono 优先 + tabular-nums） */
+            --font-mono: 'JetBrains Mono', 'Geist Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
             /* ── 字号刻度（阶段五字号层级统一，比率~1.2，与 Tailwind 档位对齐）──
                micro   10px = 表盘标签/网格chip/角标（密度受限处的下限档，禁配 muted 色）
                caption 12px = 面板标题/字段说明/提示 meta（text-xs）
@@ -104,7 +108,7 @@
         /* 外框：实色仪器机身（去 backdrop-filter，移动端渲染成本同步归零） */
         /* 2026-07-21：overflow hidden→clip——hidden 会让外框成为 sticky 的（不滚动的）参照容器，决策 HUD 无法钉住；
            clip 同样裁切圆角但不构成滚动容器（不支持 clip 的旧浏览器自动回落到前一条 hidden） */
-        .app-container { width: 100%; max-width: 1200px; height: auto; min-height: 100vh; background-color: #101318; border-radius: var(--radius-lg); overflow: hidden; overflow: clip; box-shadow: none; border: 1px solid var(--glass-border); display: flex; flex-direction: column; }
+        .app-container { width: 100%; max-width: 1200px; height: auto; min-height: 100vh; background-color: var(--surface-1); border-radius: var(--radius-lg); overflow: hidden; overflow: clip; box-shadow: 0 12px 36px -12px rgba(0,0,0,0.7); border: 1px solid var(--glass-border); display: flex; flex-direction: column; }
 
         .scroll-area { height: auto; overflow: visible; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
         /* P2-4：窄屏右栏内容区可滚动 */
@@ -414,8 +418,8 @@
         /* 52张牌通用选牌网格 */
         .cpg-wrap { width: 100%; }
         .cpg-row { display: flex; gap: 3px; margin-bottom: 3px; }
-        .cpg-btn { flex: 1; min-width: 0; height: 42px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: var(--fs-caption); font-weight: bold; line-height: 1; user-select: none; cursor: pointer; white-space: nowrap; transition: opacity 0.12s, filter 0.12s; position: relative; overflow: visible; }
-        .cpg-btn:not([data-sel]):not([data-dis]):hover { filter: brightness(1.1); }
+        .cpg-btn { flex: 1; min-width: 0; height: 42px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: var(--fs-caption); font-weight: 800; line-height: 1; user-select: none; cursor: pointer; white-space: nowrap; transition: opacity 0.12s, filter 0.12s, transform 0.12s; position: relative; overflow: visible; box-shadow: inset 0 1px 0 rgba(255,255,255,0.22); }
+        .cpg-btn:not([data-sel]):not([data-dis]):hover { filter: brightness(1.15); transform: translateY(-1px); }
         
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -578,8 +582,8 @@
 
         /* ══════════ 融合单页(2026-07-14)：清公共牌按钮沿用柔和红描边（原 Board 区 :has 覆盖块已随面板融合删除）══════════ */
         button[onclick="clearBoard()"] { background: transparent !important; border-color: var(--semantic-raise) !important; color: var(--semantic-raise) !important; }
-        /* 选牌网格：选中态 → 靛紫描边（data-sel 由 JS 设，纯 CSS 命中） */
-        .cpg-btn[data-sel] { border-color: var(--accent) !important; box-shadow: 0 0 0 1px var(--accent); }
+        /* 选牌网格：选中态 → 琥珀金边与半透明标记 */
+        .cpg-btn[data-sel] { border-color: #e0a83a !important; box-shadow: 0 0 0 1.5px #e0a83a, inset 0 1px 0 rgba(255,255,255,0.3) !important; opacity: 0.38 !important; }
 
         /* ══════════ 数据即界面：关键数值统一等宽仪表字（2026-07 Solver 换肤）══════════ */
         #currentHandStr, #potDirectInput, #effDirectInput, #sumSpr, #equitySampleCount,
@@ -757,15 +761,28 @@
            任何宽度/缩放下都不冲出卡片；加注额输入在格内独占一行 */
         /* 架构重构(2026-09-21，2026-09-22 优化排版与紧凑度)：我的位置按钮与座位行动卡片垂直绑定（同一列容器 .tl-seat-col），
            上排位置按钮矮小紧凑(22px)，下排卡片固定高度(52px)锁死不抖动；英文紧凑排版适配各屏幕 */
-        .tl-ribbon { display: grid; grid-template-columns: repeat(var(--tl-seat-count, 9), minmax(0, 1fr)); gap: 3px; width: 100%; }
-        .tl-seat-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .tl-ribbon { display: grid; grid-template-columns: repeat(var(--tl-seat-count, 9), minmax(0, 1fr)); gap: 3px; width: 100%; overflow: visible; position: relative; }
+        .tl-seat-col { display: flex; flex-direction: column; gap: 2px; min-width: 0;
+                       will-change: transform; transform-origin: bottom center; backface-visibility: hidden;
+                       transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 280ms cubic-bezier(0.16, 1, 0.3, 1);
+                       position: relative; }
         .tl-seat-col .pos-btn-hero { width: 100%; min-width: 0; height: 22px; min-height: 22px; line-height: 22px; padding: 0; font-size: 11px; font-weight: 700; border-radius: var(--radius-xs, 3px); }
         .tl-seat { min-width: 0; height: 52px; min-height: 52px; max-height: 52px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
                    padding: 4px 1px; text-align: center; cursor: pointer; background: rgba(255,255,255,.03); user-select: none;
-                   transition: background .12s, border-color .12s; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+                   transition: background .15s, border-color .15s, box-shadow .25s; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .tl-seat:hover { background: rgba(255,255,255,.08); }
         .tl-seat .tl-pos { display: none; font-size: 12px; } /* 隐式保留以供不变量检验，上排按钮已显示位置，下卡不再重复 */
-        .tl-seat .tl-act { font-size: 11px; font-family: var(--font-mono); font-weight: 700; margin-top: 0; color: var(--text-muted); white-space: nowrap; line-height: 1.15; }
+        .tl-seat .tl-act { font-size: 11px; font-family: var(--font-mono); font-weight: 700; margin-top: 0; color: var(--text-muted); white-space: nowrap; line-height: 1.15;
+                           min-width: 0; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .tl-seat-col.dock-active { z-index: 30 !important; }
+        .tl-seat-col.dock-active .tl-seat {
+            box-shadow: 0 10px 24px -4px rgba(0,0,0,0.7), 0 0 0 1.5px rgba(87,169,255,0.45);
+            background: rgba(255,255,255,0.12);
+            overflow: visible;
+        }
+        .tl-seat-col.dock-active .tl-act {
+            overflow: visible; text-overflow: clip; z-index: 35;
+        }
         .tl-seat.fold .tl-act { color: var(--text-secondary); }
         .tl-seat.limp { border-color: rgba(46,168,106,.45); } .tl-seat.limp .tl-act { color: #45d68a; }
         .tl-seat.call { border-color: rgba(46,168,106,.7); background: rgba(46,168,106,.08); } .tl-seat.call .tl-act { color: #45d68a; }
@@ -904,6 +921,7 @@
             .act-btn kbd, .qc-btn kbd, .act-hint { display: none; }
             .act-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .tl-ribbon { gap: 3px; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
+            .tl-seat-col { transform: none !important; }
             .tl-seat-col .pos-btn-hero { min-height: 44px; min-width: 44px; }
             .tl-seat { padding: 4px 1px; }
             .tl-seat .tl-act { font-size: var(--fs-micro); }
@@ -929,9 +947,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 28px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:28px;height:28px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.4 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.5 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.4</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.5</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -950,7 +968,7 @@
 
         <div id="headerBar" class="flex justify-between items-center bg-black/50 px-4 py-2 border-b border-white/10 shrink-0" style="display:none;align-items:center;gap:16px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 -->
-            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.4 正式版</span></h1>
+            <h1 class="text-sm font-black tracking-wide" style="color: var(--text-primary);">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.5 正式版</span></h1>
 
             <!-- 窗口身份色(2026-07-14)：多窗口多桌用 Banner 颜色区分（每标签页独立，
                  sessionStorage 持久 + 浏览器标签 emoji 前缀，一眼分清哪个窗口对哪张桌） -->
@@ -3930,34 +3948,35 @@
                 const isMaxed = !isSel && currentSelected.length >= maxSelect;
                 const suit = cardStr[1];
                 const rank = cardStr[0];
-                const suitBg = { s: '#2d2c3a', h: '#4a2832', d: '#21384f', c: '#244a37' };
-                const bg = suitBg[suit] || '#2d2c3a';
+                const suitBg = { s: '#1e2229', h: '#c62828', d: '#1565c0', c: '#2e7d32' };
+                const suitBdr = { s: 'rgba(255,255,255,0.18)', h: 'rgba(255,255,255,0.22)', d: 'rgba(255,255,255,0.22)', c: 'rgba(255,255,255,0.22)' };
+                const bg = suitBg[suit] || '#1e2229';
                 btn.className = 'cpg-btn';
-                btn.style.color = 'white';
+                btn.style.color = '#ffffff';
                 btn.style.backgroundColor = bg;
 
                 if (isSel) {
-                    // 已选：花色背景 + opacity 0.3 + 白色 × 标记
+                    // 已选：GG 花色背景 + 琥珀高亮边 + 半透明 + 白色 × 标记
                     btn.setAttribute('data-sel', '1');
                     btn.removeAttribute('data-dis');
-                    btn.style.border = '1px solid rgba(255,255,255,0.1)';
-                    btn.style.opacity = '0.3';
+                    btn.style.border = '1.5px solid #e0a83a';
+                    btn.style.opacity = '0.38';
                     btn.style.cursor = 'pointer';
                     btn.innerHTML = rank + SUIT_SYMBOLS[suit] +
-                        '<span style="position:absolute;top:1px;right:2px;font-size:12px;color:#fff;font-weight:900;line-height:1;opacity:3">×</span>';
+                        '<span style="position:absolute;top:1px;right:2px;font-size:12px;color:#fff;font-weight:900;line-height:1;opacity:0.9">×</span>';
                 } else if (isDis) {
-                    // 禁用（如 board 已占用该牌）：花色背景，opacity 0.3，禁止点击
+                    // 禁用（如 board 已占用该牌）：花色背景，opacity 0.25，禁止点击
                     btn.removeAttribute('data-sel');
                     btn.setAttribute('data-dis', '1');
-                    btn.style.border = '1px solid rgba(255,255,255,0.05)';
-                    btn.style.opacity = '0.3';
+                    btn.style.border = '1px solid rgba(255,255,255,0.06)';
+                    btn.style.opacity = '0.25';
                     btn.style.cursor = 'not-allowed';
                     btn.textContent = rank + SUIT_SYMBOLS[suit];
                 } else {
-                    // 正常或已满（未选）：花色背景，正常亮度，hover 由 CSS 负责
+                    // 正常或已满（未选）：GG 花色背景，纯白大字，微高光边
                     btn.removeAttribute('data-sel');
                     btn.removeAttribute('data-dis');
-                    btn.style.border = '1px solid rgba(255,255,255,0.15)';
+                    btn.style.border = `1px solid ${suitBdr[suit] || 'rgba(255,255,255,0.18)'}`;
                     btn.style.opacity = '1';
                     btn.style.cursor = isMaxed ? 'default' : 'pointer';
                     btn.textContent = rank + SUIT_SYMBOLS[suit];
@@ -4135,6 +4154,7 @@
                 renderBoard();
                 renderSharedPicker();
                 autoTriggerAnalysis();
+                try { saveHandSessionMirror(); } catch (e) {}
             }
         }
         // ══════════ 全局撤回栈(2026-07-21，用户拍板"环节级快捷键") ══════════
@@ -4492,11 +4512,11 @@
         function renderHeroSlots() {
             const wrap = document.getElementById('heroSlots');
             if (!wrap) return;
-            const suitBg  = { s: '#2d2c3a', h: '#4a2832', d: '#21384f', c: '#244a37' };
-            const suitBdr = { s: '#4d4b62', h: '#7a4453', d: '#3d5a78', c: '#3c6b51' };
+            const suitBg  = { s: '#1e2229', h: '#c62828', d: '#1565c0', c: '#2e7d32' };
+            const suitBdr = { s: 'rgba(255,255,255,0.22)', h: 'rgba(255,255,255,0.25)', d: 'rgba(255,255,255,0.25)', c: 'rgba(255,255,255,0.25)' };
 
             // 融合单页(2026-07-14)：底牌槽与公共牌槽统一 40×56（同一行等高排布）
-            const makeSlot = (card, label, deselFn) => {
+            const makeSlot = (card, label, deselFn, tiltDeg = 0) => {
                 const div = document.createElement('div');
                 div.style.width = '40px';
                 div.style.height = '56px';
@@ -4506,23 +4526,25 @@
                 div.style.justifyContent = 'center';
                 div.style.flexDirection = 'column';
                 div.style.userSelect = 'none';
-                div.style.transition = 'opacity 0.15s, filter 0.15s';
+                div.style.transition = 'opacity 0.15s, filter 0.15s, transform 0.2s';
                 div.style.position = 'relative';
                 div.style.flexShrink = '0';
 
                 if (card) {
                     const suit = card[1];
                     const rank = card[0];
-                    div.style.backgroundColor = suitBg[suit] || '#2d2c3a';
-                    div.style.border = `2px solid ${suitBdr[suit] || '#4a4a6a'}`;
+                    div.style.backgroundColor = suitBg[suit] || '#1e2229';
+                    div.style.border = `1.5px solid ${suitBdr[suit] || 'rgba(255,255,255,0.22)'}`;
+                    div.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 14px rgba(0,0,0,0.5)';
                     div.style.cursor = 'pointer';
+                    if (tiltDeg) div.style.transform = `rotate(${tiltDeg}deg)`;
                     div.innerHTML = `
-                        <span style="font-size:16px;font-weight:900;color:white;line-height:1">${rank}</span>
-                        <span style="font-size:12px;color:white;line-height:1;margin-top:2px">${SUIT_SYMBOLS[suit]}</span>
-                        <span style="position:absolute;top:2px;right:3px;font-size:12px;color:rgba(255,255,255,0.5);line-height:1">×</span>`;
+                        <span style="font-size:16px;font-weight:900;color:#ffffff;line-height:1">${rank}</span>
+                        <span style="font-size:12px;color:#ffffff;line-height:1;margin-top:2px">${SUIT_SYMBOLS[suit]}</span>
+                        <span style="position:absolute;top:2px;right:3px;font-size:12px;color:rgba(255,255,255,0.6);line-height:1">×</span>`;
                     div.title = `${rank}${SUIT_SYMBOLS[suit]}（点击取消选中）`;
-                    div.addEventListener('mouseenter', () => { div.style.filter = 'brightness(1.15)'; });
-                    div.addEventListener('mouseleave', () => { div.style.filter = ''; });
+                    div.addEventListener('mouseenter', () => { div.style.filter = 'brightness(1.15)'; if (tiltDeg) div.style.transform = `rotate(${tiltDeg}deg) scale(1.06)`; });
+                    div.addEventListener('mouseleave', () => { div.style.filter = ''; if (tiltDeg) div.style.transform = `rotate(${tiltDeg}deg)`; });
                     div.addEventListener('click', deselFn);
                 } else {
                     div.style.backgroundColor = 'transparent';
@@ -4534,8 +4556,8 @@
             };
 
             wrap.innerHTML = '';
-            wrap.appendChild(makeSlot(heroCard1, 'H1', () => deselectHeroCard(heroCard1)));
-            wrap.appendChild(makeSlot(heroCard2, 'H2', () => deselectHeroCard(heroCard2)));
+            wrap.appendChild(makeSlot(heroCard1, 'H1', () => deselectHeroCard(heroCard1), -2.5));
+            wrap.appendChild(makeSlot(heroCard2, 'H2', () => deselectHeroCard(heroCard2), 2.5));
         }
 
         /**
@@ -5055,6 +5077,7 @@
             b.innerText = '开启';
             b.className = 'bg-green-600 text-white text-xs font-bold px-3 py-0.5 rounded';
             tlReset(); // 翻前时间线(2026-07-21)
+            try { clearHandSessionMirror(); } catch (e) {}
             renderHeroPicker(); syncHeroCardCompat(); switchMode('open');
             // 预存 bug 修复(2026-07-21，环节键 R 测试暴露)：switchMode 内 saveCurrentInputs 会把
             // 输入框里的旧筹码读回 globalHeroStack，上面的 =40 被覆盖——重置后筹码没真正归零。
@@ -5129,6 +5152,55 @@
          * 轻量清空 — 下一手：清底牌+翻后，保留筹码/位置/赛段/风格配置。
          * 对应每手之间的切换，不像 resetAll() 那样彻底归零。
          */
+        // ═══ T-33 手牌状态 SessionStorage 局部镜像持久化 (Stage 3) ═══
+        function saveHandSessionMirror() {
+            try {
+                if (typeof sessionStorage === 'undefined') return;
+                const mirror = {
+                    v: 'v2.5',
+                    heroCard1, heroCard2,
+                    globalPosHero,
+                    tlActs: Array.isArray(tlActs) ? tlActs : [],
+                    board: (postState && Array.isArray(postState.board)) ? postState.board : [],
+                    entered: !!(postState && postState._entered)
+                };
+                sessionStorage.setItem('pokercoach_hand_mirror', JSON.stringify(mirror));
+            } catch (e) {}
+        }
+        function clearHandSessionMirror() {
+            try { if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('pokercoach_hand_mirror'); } catch (e) {}
+        }
+        function restoreHandSessionMirror() {
+            try {
+                if (typeof sessionStorage === 'undefined') return false;
+                const raw = sessionStorage.getItem('pokercoach_hand_mirror');
+                if (!raw) return false;
+                const data = JSON.parse(raw);
+                if (!data || data.v !== 'v2.5') return false;
+                let restored = false;
+                if (data.heroCard1 && data.heroCard2) {
+                    heroCard1 = data.heroCard1;
+                    heroCard2 = data.heroCard2;
+                    syncHeroCardCompat();
+                    restored = true;
+                }
+                if (data.globalPosHero) {
+                    globalPosHero = data.globalPosHero;
+                    restored = true;
+                }
+                if (Array.isArray(data.tlActs) && data.tlActs.length > 0) {
+                    tlActs = data.tlActs;
+                    restored = true;
+                }
+                if (Array.isArray(data.board) && data.board.some(Boolean)) {
+                    postState.board = data.board;
+                    if (data.entered) postState._entered = true;
+                    restored = true;
+                }
+                return restored;
+            } catch (e) { return false; }
+        }
+
         // ═══ 窗口身份色(2026-07-14)：多窗口多桌方案 ═══
         // 用户决策：多桌 = 开多个浏览器窗口（页内多桌方案已撤除），每个窗口
         // 通过 Banner 身份色区分：header 染色 + 容器顶色条 + 浏览器标签 emoji 前缀。
@@ -5150,7 +5222,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.4 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.5 正式版';
             renderWindowColorChips(key);
         };
 
@@ -5211,6 +5283,7 @@
             pushUndo('下一手'); // 全局撤回栈(2026-07-21)
             try { setPickerOpen(true); } catch (e) {}   // 新一手要选底牌，网格展开(2026-09-11)
             // 清底牌
+            try { clearHandSessionMirror(); } catch (e) {}
             heroCard1 = null; heroCard2 = null;
             val1 = ''; val2 = ''; isSuited = false;
             renderHeroPicker(); renderHeroSlots(); updateHandStr();
@@ -6908,6 +6981,7 @@
                     executeEngine();
                 }
             }
+            try { saveHandSessionMirror(); } catch (e) {}
             return d;
         }
         function tlScheduleApply() { clearTimeout(_tlTimer); _tlTimer = setTimeout(() => tlApply(true), 120); }
@@ -6998,8 +7072,8 @@
                 const multi = acts.filter(a => a.a !== 'fold').length > 1 && !folded;
                 const sub = multi ? `<div class="tl-sub">Tot ${(+com.toFixed(2))}</div>` : '';
                 const title = editable
-                    ? (isTurn ? '该他行动：单击循环 · 右键/长按选具体动作'
-                              : last ? '已行动：单击改动作（其后的行动会一并清掉重录）· 右键/长按选具体动作'
+                    ? (isTurn ? '该他行动：单击循环 · 双击/右键/长按选具体动作'
+                              : last ? '已行动：单击改动作 · 双击/右键/长按弹出修改菜单'
                                      : '点他即记录他的行动，他前面没动过的人自动记为弃牌')
                     : '先记录我的行动，后面的人才能行动';
                 return `<div class="tl-seat-col" data-seatcol="${p}">
@@ -7011,8 +7085,46 @@
                 </div>`;
             }).join('');
 
+            // ── UI-02 Dock Fisheye / Adaptive Proximity Shift (邻近动力学) ──
+            const cols = Array.from(ribbon.querySelectorAll('.tl-seat-col'));
+            const resetCols = () => cols.forEach(c => {
+                c.style.transform = '';
+                c.style.zIndex = '';
+                c.classList.remove('dock-active');
+            });
+            cols.forEach((col, idx) => {
+                col.addEventListener('mouseenter', () => {
+                    if (window.innerWidth < 768 || (window.matchMedia && !window.matchMedia('(hover: hover)').matches)) return; // 实战移动端防御，防止小屏触控位移错位
+                    cols.forEach((c, i) => {
+                        const diff = i - idx;
+                        if (diff === 0) {
+                            c.style.transform = 'translateY(-6px) scale(1.14)';
+                            c.style.zIndex = '30';
+                            c.classList.add('dock-active');
+                        } else if (diff === -1) {
+                            c.style.transform = 'translateX(-10px) scale(0.96)';
+                            c.style.zIndex = '15';
+                        } else if (diff === 1) {
+                            c.style.transform = 'translateX(10px) scale(0.96)';
+                            c.style.zIndex = '15';
+                        } else if (diff === -2) {
+                            c.style.transform = 'translateX(-3px)';
+                            c.style.zIndex = '5';
+                        } else if (diff === 2) {
+                            c.style.transform = 'translateX(3px)';
+                            c.style.zIndex = '5';
+                        } else {
+                            c.style.transform = '';
+                            c.style.zIndex = '';
+                        }
+                    });
+                });
+            });
+            ribbon.addEventListener('mouseleave', resetCols);
+
             // ── 我的位置按钮交互 ──
             ribbon.querySelectorAll('[data-tlhero]').forEach(b => b.onclick = () => {
+                resetCols();
                 if (b.dataset.tlhero === globalPosHero) return;
                 const hadActions = tlActs.length > 0;
                 pushUndo(`我的位置 → ${tlLbl(b.dataset.tlhero)}`);
@@ -7023,7 +7135,7 @@
                 tlScheduleApply();
             });
 
-            // 座位交互：单击循环 / 右键·长按弹层
+            // 座位交互：单击循环 / 双击·右键·长按弹层 (T-32)
             ribbon.querySelectorAll('[data-tlseat]').forEach(el => {
                 const pos = el.dataset.tlseat;
                 let pressTimer = null, longPressed = false;
@@ -7039,6 +7151,10 @@
                     if (longPressed) { longPressed = false; return; }
                     if (!guard()) return;
                     tlCycleSeat(pos);
+                };
+                el.ondblclick = (e) => {
+                    e.preventDefault();
+                    if (guard()) tlOpenPopover(pos, el);
                 };
                 el.oncontextmenu = (e) => { e.preventDefault(); if (guard()) tlOpenPopover(pos, el); };
                 el.addEventListener('touchstart', () => { longPressed = false; pressTimer = setTimeout(() => { longPressed = true; if (guard()) tlOpenPopover(pos, el); }, 450); }, { passive: true });
@@ -9378,6 +9494,21 @@
         try { renderTimeline(); } catch (e) {} // 加载持久化的筹码单位后刷新筹码框
         initStageQuickSelect(); // 配置上移(2026-07-14b)：header 阶段下拉填充
         updateCfgSummary();
+        // T-33 启动尝试恢复 SessionStorage 镜像 (Stage 3)
+        try {
+            if (typeof restoreHandSessionMirror === 'function' && restoreHandSessionMirror()) {
+                renderHeroPicker();
+                renderHeroSlots();
+                tlRebuildLegacy();
+                renderTimeline();
+                tlScheduleApply();
+                if (postState._entered) {
+                    renderBoard();
+                    renderBettingPanel();
+                    try { autoTriggerAnalysis(); } catch (e) {}
+                }
+            }
+        } catch (e) {}
 
         // 配置上移(2026-07-14b)：旧「左列配置面板默认折叠」逻辑已废弃——
         // 配置现为 header 下拉（cfgDropdown 默认 display:none，即默认收起）
@@ -11019,18 +11150,17 @@
             } catch (e) { console.warn('[多人底池] 胜率覆盖失败:', e.message); }
         }
 
-        // 公共牌渲染：花色深色背景，与翻前英雄牌槽位样式一致
+        // 公共牌渲染：GG 平台四色纯白大字，微倒角与顶边高光
         function renderCardHTML(cardStr) {
             if (!cardStr) return '';
             const rank = cardStr[0];
             const suit = cardStr[1];
-            const suitBg  = { s:'#2d2c3a', h:'#4a2832', d:'#21384f', c:'#244a37' };
-            const suitBdr = { s:'#4d4b62', h:'#7a4453', d:'#3d5a78', c:'#3c6b51' };
-            const suitCol = { s:'#d4d2e4', h:'#e08a96', d:'#86acd4', c:'#74b58f' };
-            const bg  = suitBg[suit]  || '#2d2c3a';
-            const bdr = suitBdr[suit] || '#4a4a6a';
-            const col = suitCol[suit] || '#ffffff';
-            return `<div style="background:${bg};border:2px solid ${bdr}" class="rounded w-full h-full flex flex-col items-center justify-center select-none">
+            const suitBg  = { s: '#1e2229', h: '#c62828', d: '#1565c0', c: '#2e7d32' };
+            const suitBdr = { s: 'rgba(255,255,255,0.20)', h: 'rgba(255,255,255,0.25)', d: 'rgba(255,255,255,0.25)', c: 'rgba(255,255,255,0.25)' };
+            const bg  = suitBg[suit]  || '#1e2229';
+            const bdr = suitBdr[suit] || 'rgba(255,255,255,0.22)';
+            const col = '#ffffff';
+            return `<div style="background:${bg};border:1.5px solid ${bdr};box-shadow:inset 0 1px 0 rgba(255,255,255,0.25),0 4px 12px rgba(0,0,0,0.35);" class="rounded w-full h-full flex flex-col items-center justify-center select-none">
                 <span style="font-size:16px;font-weight:900;line-height:1;color:${col}">${rank}</span>
                 <span style="font-size:12px;line-height:1;margin-top:2px;color:${col}">${SUIT_SYMBOLS[suit]}</span>
             </div>`;
@@ -17390,7 +17520,7 @@ function renderVisionReviewCard(payload) {
     const p = _vrcPayload || {};
 
     const SYM    = { s:'♠', h:'♥', d:'♦', c:'♣' };
-    const suitBg = { s:'#2d2c3a', h:'#4a2832', d:'#21384f', c:'#244a37' };
+    const suitBg = { s: '#1e2229', h: '#c62828', d: '#1565c0', c: '#2e7d32' };
 
     // 有效筹码：编辑过用 p.eff；否则 min(我方,对手)；缺一方取另一方；皆无 null
     const eff = (p.eff != null) ? p.eff
