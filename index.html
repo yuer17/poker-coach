@@ -7902,10 +7902,10 @@
                     else                    { openPct = 0;   foldPct = 100; }
                 }
 
-                // 建议开池尺度
-                let openSize = "2.5x";
-                if (gameConfig.ante) openSize = "2.2x";
-                if (sH < 25) openSize = "2.0x (短码)";
+                // 建议开池尺度（统一由 getOpenSizeBB 驱动，消除与时间线按钮尺度割裂，T-26）
+                const curOpenBB = getOpenSizeBB();
+                let openSize = `${curOpenBB.toFixed(1)}x`;
+                if (sH < 25) openSize = `${curOpenBB.toFixed(1)}x (短码)`;
                 if (posH === 'SB') openSize = gameConfig.ante ? "2.5x" : "3.0x";
 
                 if (foldPct === 100) {
@@ -8151,8 +8151,25 @@
                     // 命中 REJAM 表则直接全推；未命中则屏蔽小 3-Bet，落入跟注/弃牌逻辑
                     const rejamAct = getRejamAction(handStr, posH, posV, effStack, gameConfig.stage);
                     if (rejamAct === 'jam_value') {
-                        b = 100; c = 0; f = 0; rejamChosen = true;
-                        logic = `${effStack}BB 中短码面对开池：3-Bet 即全推（Re-Jam）。价值全推，榨取对手跟注范围。`;
+                        const isSmallPair = isPair && v1 <= 6;
+                        if (isSmallPair) {
+                            if (effStack >= 18) {
+                                // 18-25BB 中深码：低频弃牌率挤压（Squeeze/Bluff Jam），主要靠弃牌率盈利，绝非价值推
+                                const isIP = ['BTN', 'CO', 'HJ'].includes(posH) && POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV];
+                                b = 25;
+                                c = isIP ? 75 : 45;
+                                f = 100 - b - c;
+                                rejamChosen = true;
+                                logic = `${effStack}BB ${posH} 面对 ${POS_LABEL[posV] || posV} 开池：${handStr} 为【弃牌率挤压推注 (Squeeze Jam)】。核心收益来自迫使对手弃牌抢下死钱（面对跟注范围 88+, AK 胜率仅约 28%，绝非价值全推）；${effStack}BB 深度下建议低频混合策略（全推 ${b}% / ${c > 0 ? `平跟 ${c}%` : ''}${f > 0 ? ` / 弃牌 ${f}%` : ''}），发挥位置优势控池。`;
+                            } else {
+                                // ≤17BB 浅码：死钱占筹码比例高，全推最大化弃牌率
+                                b = 80; f = 20; c = 0; rejamChosen = true;
+                                logic = `${effStack}BB 浅码面对开池：${handStr} 弃牌率挤压推注（Re-Jam）。死钱占有效筹码比例显著，全推迫使对手弃掉大部分两张高牌空气段，直接兑现底池权益。`;
+                            }
+                        } else {
+                            b = 100; c = 0; f = 0; rejamChosen = true;
+                            logic = `${effStack}BB 中短码面对开池：3-Bet 即全推（Re-Jam）。价值与阻断兼具，压制对手开池范围。`;
+                        }
                     } else if (rejamAct === 'jam_bluff') {
                         b = 70; f = 30; c = 0; rejamChosen = true;
                         logic = `${effStack}BB Re-Jam 诈唬（Blocker 牌），对开池范围施加最大弃牌压力。`;
@@ -8404,7 +8421,7 @@
                     // 它**低估**实现率（有位置实现得更多），低估方向只可能让我们少跟，
                     // 不会造成"本该弃却跟"。BB 自己走防守表（表本身已含 EqR），排除在外，
                     // 否则是重复计算。
-                    if (c > 0 && posH !== 'BB' && !(posH === 'SB' && posV === 'BB') && currentMode === 'faceBet') {
+                    if (c > 0 && posH !== 'BB' && !(posH === 'SB' && posV === 'BB') && currentMode === 'faceBet' && !rejamChosen) {
                         const _g = flatCallEqRGate(handStr, [heroCard1, heroCard2], posV,
                                                    raiseSize, effStack, posH);
                         if (_g && !_g.pass) {
@@ -8423,8 +8440,8 @@
                                      `${_g.needEqR.toFixed(0)}%，这手实现 ${_g.eqr}%）</span>`;
                         }
                     }
-                    // 筹码压制(套牢拦截)：BB 防守 call 不受影响（已处于大盲，无套牢风险）
-                    if (effStack < 20 && c > 0 && posH !== 'BB' && !(posH === 'SB' && posV === 'BB')) {
+                    // 筹码压制(套牢拦截)：BB 防守 call 不受影响（已处于大盲，无套牢风险）；rejam 显式混合不受影响
+                    if (effStack < 20 && c > 0 && posH !== 'BB' && !(posH === 'SB' && posV === 'BB') && !rejamChosen) {
                         logic += `<br><span class="text-red-400 font-bold text-xs">【筹码压制】有效筹码(${effStack}BB)过低,取消平跟避免套牢。</span>`;
                         if (isPair) { f += c; c = 0; } 
                         else { b += Math.floor(c * 0.3); f += Math.ceil(c * 0.7); c = 0; } 
@@ -8805,8 +8822,17 @@
 
                 // 泡沫期有效筹码门槛上调 5BB
                 const isBubble = icmPressure > 1.5;
-                const minSetStack  = isBubble ? 20 : 15;  // 小对子买 Set 门槛
-                const minConnStack = isBubble ? 25 : 20;  // 同花连牌门槛
+
+                // 筹码与跟注比率计算（T-25：彻底终结绝对 stack 粗暴判定）
+                const heroInvested = (posH === 'BB' ? 1.0 : (posH === 'SB' ? 0.5 : 0.0));
+                const toCall = Math.max(0, threeBetSize - heroInvested);
+                const leftAfter = Math.max(0, effStack - toCall);
+                const stackToCallRatio = toCall > 0 ? (leftAfter / toCall) : 999;
+                const isOOP = ['SB', 'BB'].includes(posH);
+                // 买暗三（Set Mining）相对赔率门槛：单挑 IP 需 12x，面对 3-Bet / 多人 / OOP 需 ≥ 15x
+                const minSetRatio = (isOOP || isBubble) ? 15.0 : 12.0;
+                // 同花连牌买同花顺听牌门槛：需 ≥ 18x
+                const minConnRatio = (isOOP || isBubble) ? 20.0 : 18.0;
 
                 let c = 0, b = 0, f = 100;
                 let logic = "";
@@ -8862,24 +8888,30 @@
                     c = 10; b = 0; f = 90;
                     logic = `ATs Cold Call 可玩性有限，通常弃牌（90%）。`;
                 }
-                // 22-99 小对子：买 Set，需足够深度
+                // 22-99 小对子：买 Set，需足够深度与筹码跟注比（T-25）
                 else if (isPair && v1 <= 9) {
-                    if (effStack >= minSetStack) {
+                    if (toCall <= 0) {
                         c = 100; b = 0; f = 0;
-                        logic = `${handStr} 深度足够（${effStack.toFixed(0)}BB ≥ ${minSetStack}BB），Cold Call 买 Set，翻后暗三 EV 正。`;
+                        logic = `${handStr} 无需额外补注，免费看牌买 Set。`;
+                    } else if (stackToCallRatio >= minSetRatio && effStack >= 20) {
+                        c = 100; b = 0; f = 0;
+                        logic = `${handStr} 隐含赔率充足：需补 ${toCall.toFixed(1)}BB，跟注后剩余 ${leftAfter.toFixed(1)}BB 为跟注额的 ${stackToCallRatio.toFixed(1)} 倍（≥ ${minSetRatio}x），Cold Call 买 Set 期望值为正。`;
                     } else {
-                        c = 0; f = 100;
-                        logic = `${handStr} 筹码太浅（${effStack.toFixed(0)}BB < ${minSetStack}BB），Set 隐含赔率不足，弃牌。`;
+                        c = 0; b = 0; f = 100;
+                        logic = `${handStr} 隐含赔率不足：需补 ${toCall.toFixed(1)}BB，跟注后剩余 ${leftAfter.toFixed(1)}BB 仅为跟注额的 ${stackToCallRatio.toFixed(1)} 倍（买 Set 需 ≥ ${minSetRatio}x 筹码深度），面对 3-Bet 果断弃牌。`;
                     }
                 }
-                // 76s+ 同花连牌：买翻后可玩性，需足够深度
+                // 76s+ 同花连牌：买翻后可玩性，需足够深度与筹码跟注比
                 else if (cat === "SuitedConn" && v1 >= 7) {
-                    if (effStack >= minConnStack) {
+                    if (toCall <= 0) {
                         c = 80; b = 0; f = 20;
-                        logic = `${handStr} 同花连牌有翻后潜力（effStack ${effStack.toFixed(0)}BB ≥ ${minConnStack}BB），Cold Call 可行。`;
+                        logic = `${handStr} 无需补注，免费看牌发挥连牌可玩性。`;
+                    } else if (stackToCallRatio >= minConnRatio && effStack >= 25) {
+                        c = 80; b = 0; f = 20;
+                        logic = `${handStr} 同花连牌隐含赔率充足（剩余筹码 ${leftAfter.toFixed(1)}BB 为跟注额的 ${stackToCallRatio.toFixed(1)} 倍 ≥ ${minConnRatio}x），Cold Call 可行。`;
                     } else {
-                        c = 0; f = 100;
-                        logic = `${handStr} 筹码太浅（${effStack.toFixed(0)}BB < ${minConnStack}BB），连牌可玩性不足，弃牌。`;
+                        c = 0; b = 0; f = 100;
+                        logic = `${handStr} 筹码跟注比不足（剩余筹码仅跟注额 ${stackToCallRatio.toFixed(1)} 倍 < ${minConnRatio}x），连牌翻后实现率受限，弃牌。`;
                     }
                 }
                 else {
@@ -8891,17 +8923,14 @@
                 // 19BB 的 3-Bet 都输出 Cold Call 100%。Hero 尚未投入，需补全额 3-Bet；
                 // 开池者那份加注是死钱。跟注后剩余筹码不足 ~10BB 时也没有买 Set 的隐含赔率。
                 if (c > 0) {
-                    const heroInvested = (posH === 'BB' ? 1.0 : (posH === 'SB' ? 0.5 : 0.0));
-                    const toCall = Math.max(0, threeBetSize - heroInvested);
                     const pr = threeBetCallPrice([heroCard1, heroCard2], globalPosCaller || posV, posV,
                                                  heroInvested, threeBetSize, raiseSize, effStack, posH);
-                    const leftAfter = effStack - toCall;
                     if (pr && pr.eq < pr.req - 3) {
                         logic = `面对 ${threeBetSize}BB 3-Bet 需补 ${toCall.toFixed(1)}BB，所需胜率 ${pr.req.toFixed(1)}%，` +
                                 `而 ${handStr} 对 3-Bet 范围仅 ${pr.eq.toFixed(1)}% —— 价格不划算，弃牌。`;
                         c = 0; b = 0; f = 100;
-                    } else if (isPair && leftAfter < 10) {
-                        logic = `跟注后仅剩 ${Math.max(0, leftAfter).toFixed(1)}BB，买 Set 的隐含赔率不存在（需约 10 倍于跟注额的后续筹码），弃牌。`;
+                    } else if (isPair && v1 <= 9 && stackToCallRatio < minSetRatio) {
+                        logic = `${handStr} 跟注需补 ${toCall.toFixed(1)}BB，剩余筹码 ${leftAfter.toFixed(1)}BB 仅为跟注额的 ${stackToCallRatio.toFixed(1)} 倍（买 Set 需 ≥ ${minSetRatio}x 后续筹码），隐含赔率不足，弃牌。`;
                         c = 0; b = 0; f = 100;
                     } else if (pr) {
                         logic += `（价格核对：需 ${pr.req.toFixed(1)}%，实有 ${pr.eq.toFixed(1)}%）`;
@@ -15600,10 +15629,55 @@
                         frequencies = { fold: 100 };
                         reasoning = `🥪 Pokercode 夹心位防守：身后仍有对手未表态，边缘胜率（${equity.toFixed(0)}%）无法抵抗后位挤压加注，果断弃牌止损`;
                     } else {
+                        // ── T-24 牌力分层与防守配额解耦 (Hand Tier Defense Model) ──
+                        // 严禁将全局范围的 MDF 粗暴均摊在具体单手牌上！
+                        // 范围前 20~25% 的顶端成牌（两对+/超对/TPTK/坚果听牌/高胜率成牌）在面对正常下注时防守频率必须为 100%（不弃牌）；
+                        // 弃牌配额 (1 - MDF) 必须全部由范围底部的空气与弱对子承担。
+                        let isTopTierHand = false;
+                        let isMidTierHand = false;
+                        try {
+                            const _hc = (postState.heroCards || []).filter(c => c).map(normalizeCard);
+                            const _bd = board.map(normalizeCard);
+                            if (_hc.length === 2 && _bd.length >= 3 && typeof Hand !== 'undefined') {
+                                const _sh = Hand.solve([..._hc, ..._bd]);
+                                const _rks = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
+                                const _hRanks = _hc.map(c => _rks[c[0]]).sort((a,b) => b - a);
+                                const _bdRanks = _bd.map(c => _rks[c[0]]).sort((a,b) => b - a);
+                                const _maxBoard = _bdRanks[0];
+                                const _isPocketPair = _hc[0][0] === _hc[1][0];
+                                
+                                const _isTwoPairPlus = _sh && _sh.rank >= 3; // 两对、三条、顺子、同花、葫芦、四条、同花顺
+                                const _isOverpair = _isPocketPair && _hRanks[0] > _maxBoard; // 超对
+                                const _isTopPair = !_isPocketPair && _hRanks.includes(_maxBoard);
+                                const _kicker = _hRanks[0] === _maxBoard ? _hRanks[1] : _hRanks[0];
+                                const _isTPTK = _isTopPair && _kicker >= 12; // 顶对顶踢脚/强踢脚 (Q, K, A)
+                                const _isNutDraw = outs >= 9 && equity >= 35; // 坚果听牌 (强顺听/强花听)
+                                
+                                if (_isTwoPairPlus || _isOverpair || _isTPTK || _isNutDraw || (equity >= 60 && relStr >= 60)) {
+                                    isTopTierHand = true;
+                                } else if (_isTopPair || (_isPocketPair && _hRanks[0] > _bdRanks[1]) || (equity >= potOdds + 12)) {
+                                    isMidTierHand = true;
+                                }
+                            }
+                        } catch (e) {}
+
                         primaryAction = 'CALL'; sizing = '';
-                        const callFreq = Math.min(80, Math.max(isMultiway ? 40 : 50, Math.round((isMultiway ? sharedMdf : mdf) - (icmTighten - 1) * 20)));
+                        let callFreq = 100;
+                        if (isTopTierHand) {
+                            // 顶端强牌：面对正常尺度下注（非大尺度全下），100% 捍卫，绝不弃牌
+                            callFreq = 100;
+                            const tierLabel = eq.handStrength || 'TPTK/超对/强成牌';
+                            reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，持顶端强牌（${tierLabel}，位于范围顶端），${isMultiway ? `${mwTotalCount}人底池` : ''}不被全局MDF稀释，100%跟注防守`;
+                        } else if (isMidTierHand) {
+                            // 中强成牌：防守主力，保持 80%~90% 高频防守
+                            callFreq = Math.min(90, Math.max(75, Math.round((isMultiway ? sharedMdf * 1.5 : mdf * 1.2))));
+                            reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，成牌牌力稳健（${eq.handStrength || '中强牌'}），${streetCN}高频跟注（${callFreq}%）防守`;
+                        } else {
+                            // 边缘抓诈牌：根据 MDF 分配防守配额，单挑下限 50%，多人底池下限 40%
+                            callFreq = Math.min(80, Math.max(isMultiway ? 40 : 50, Math.round((isMultiway ? sharedMdf : mdf) - (icmTighten - 1) * 20)));
+                            reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，MDF=${mdf.toFixed(0)}%${isMultiway ? `（${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%）` : ''}，边缘牌${streetCN}跟注防守（需超${sc.callMargin}%容差）`;
+                        }
                         frequencies = { call: callFreq, fold: 100 - callFreq };
-                        reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，MDF=${mdf.toFixed(0)}%${isMultiway ? `（${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%）` : ''}，${streetCN}跟注（需超${sc.callMargin}%容差）`;
                     }
                 }
                 // ── 进张跟注（仅翻牌/转牌，河牌禁止）──
