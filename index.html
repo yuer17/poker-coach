@@ -14668,25 +14668,89 @@
         }
 
         /** 我方这手牌在当前牌面的**成手桶**：两对+ / 顶对 / 弱对 / 无对。
-         *  定义与测量脚本 regression_tests/reference/texassolver/sizemix.py 的 bucket() **逐条一致**
-         *  ——两边必须是同一把尺子，否则拿实测值去调引擎就是在比两样东西。 */
+         *  2026-09-23 全盘重构：基于权威 Hand.solve 识别 9 级牌型体系，彻底根治
+         *  旧版 sizemix.py 字符串硬编码遗漏顺子、同花、葫芦、四条、同花顺导致被判"无对"的严重漏洞。
+         *  成手桶划分规则（与 sizemix.bucket 核心牌理一致，补全顺/花/葫芦）：
+         *   - 两对+：顺子、同花、葫芦、四条、同花顺；暗/明三条；双底牌成两对；公牌成对且底牌为口袋对
+         *   - 顶对：超对、顶对（单底牌中公牌最高张，包括公牌成对底牌中顶张）
+         *   - 弱对：中底对（单底牌中公牌次高/低张）
+         *   - 无对：高牌、或公牌自身成对/两对且 Hero 底牌未中任何对子 */
         function heroMadeBucket(heroCards, board) {
             try {
-                const bd = (board || []).filter(c => c);
-                if (!heroCards || heroCards.length < 2 || bd.length < 3) return null;
+                if (!heroCards || heroCards.length < 2 || !board || board.length < 3) return null;
+                const cleanHero = heroCards.filter(Boolean).map(normalizeCard);
+                const cleanBoard = board.filter(Boolean).map(normalizeCard);
+                if (cleanHero.length < 2 || cleanBoard.length < 3) return null;
+
                 const RKI = '23456789TJQKA';
-                const br = bd.map(c => c[0]);
-                const top = Math.max(...br.map(r => RKI.indexOf(r)));
-                const r1 = heroCards[0][0], r2 = heroCards[1][0];
-                if (r1 === r2) {
-                    if (br.includes(r1)) return '两对+';              // 暗三条
-                    if (RKI.indexOf(r1) >= top) return '顶对';        // 超对
+                const hr = cleanHero.map(c => c[0]);
+                const br = cleanBoard.map(c => c[0]);
+                const topBoardRank = Math.max(...br.map(r => RKI.indexOf(r)));
+
+                if (typeof Hand !== 'undefined') {
+                    const fullHand = Hand.solve([...cleanHero, ...cleanBoard]);
+                    const rank = fullHand.rank;
+
+                    // 1. 顺子、同花、葫芦、四条、同花顺 (rank >= 5) 绝对属于两对+
+                    if (rank >= 5) {
+                        if (cleanBoard.length >= 5) {
+                            const boardHand = Hand.solve(cleanBoard);
+                            if (boardHand.rank >= 5) {
+                                const winners = Hand.winners([fullHand, boardHand]);
+                                if (winners.length !== 1 || winners[0] !== fullHand) {
+                                    return '无对'; // 纯借公牌顺/花
+                                }
+                            }
+                        }
+                        return '两对+';
+                    }
+
+                    // 2. 三条 (rank === 4)
+                    if (rank === 4) {
+                        if (hr[0] === hr[1] && br.includes(hr[0])) return '两对+';
+                        for (const r of hr) {
+                            if (br.filter(x => x === r).length >= 2) return '两对+';
+                        }
+                        return '无对';
+                    }
+
+                    // 3. 两对 (rank === 3)
+                    if (rank === 3) {
+                        const hit = hr.filter(r => br.includes(r));
+                        if (hit.length === 2) return '两对+';
+                        if (hr[0] === hr[1] && new Set(br).size < br.length) return '两对+';
+                        // 公牌已有一对，Hero 只有一张中公牌 (如 QJ on Q636) -> 牌理上是顶对/弱对
+                        if (hit.length === 1) {
+                            return RKI.indexOf(hit[0]) >= topBoardRank ? '顶对' : '弱对';
+                        }
+                        return '无对';
+                    }
+
+                    // 4. 一对 (rank === 2)
+                    if (rank === 2) {
+                        if (hr[0] === hr[1]) {
+                            return RKI.indexOf(hr[0]) >= topBoardRank ? '顶对' : '弱对';
+                        }
+                        const hit = hr.filter(r => br.includes(r));
+                        if (hit.length > 0) {
+                            return RKI.indexOf(hit[0]) >= topBoardRank ? '顶对' : '弱对';
+                        }
+                        return '无对';
+                    }
+
+                    return '无对';
+                }
+
+                // 兜底分支（防 Hand 未加载）：
+                if (hr[0] === hr[1]) {
+                    if (br.includes(hr[0])) return '两对+';
+                    if (RKI.indexOf(hr[0]) >= topBoardRank) return '顶对';
                     return '弱对';
                 }
-                const hit = [r1, r2].filter(r => br.includes(r));
-                if (hit.length === 2) return '两对+';                  // 两对
-                for (const r of [r1, r2]) if (br.filter(x => x === r).length >= 2) return '两对+'; // 明三条
-                if (hit.length && RKI.indexOf(hit[0]) >= top) return '顶对';
+                const hit = [hr[0], hr[1]].filter(r => br.includes(r));
+                if (hit.length === 2) return '两对+';
+                for (const r of hr) if (br.filter(x => x === r).length >= 2) return '两对+';
+                if (hit.length && RKI.indexOf(hit[0]) >= topBoardRank) return '顶对';
                 if (hit.length) return '弱对';
                 return '无对';
             } catch (e) { return null; }
@@ -15269,14 +15333,27 @@
                 // 这是环节 4（空气桶）与环节 5（价值档）都踩过的同一个坑——
                 // 承诺区分支在常规区之前返回，新模型根本没机会生效；更要命的是
                 // SPR 过渡带会把两侧按权重混合，一边 70%、一边过牌，混出来就是 10%。
-                // 强听牌（_cDraw 且没有成手）仍走全押，那一支实测有据，不动。
+                // 2026-09-23 强牌价值保底防线 (Nut Value Protection Gate)：
+                // 承诺区 (SPR ≤ 1.8) 底池巨大筹码极浅，持有两对+、顺子、同花、葫芦或胜率≥60% 的顶端价值牌，
+                // 面对对手过牌绝对禁止建议 CHECK！主动作锁定 BET，下注频率保底 75% 以上。
+                const _isNutValueHand = _tBucket === '两对+' || equity >= 60;
+                let _tTierAction = _tTier ? (_tTier.freq >= 50 ? 'BET' : 'CHECK') : 'CHECK';
+                let _tTierSizing = _tTier ? (_tTier.freq >= 50 ? _tTier.size : '') : '';
+                let _tTierFreq = _tTier ? { bet: _tTier.freq, check: 100 - _tTier.freq } : { check: 100 };
+                if (_tTier && _isNutValueHand) {
+                    _tTierAction = 'BET';
+                    _tTierSizing = _tTier.size || sc.sizes.small;
+                    const protectedBetFreq = Math.max(75, _tTier.freq);
+                    _tTierFreq = { bet: protectedBetFreq, check: 100 - protectedBetFreq };
+                }
+
                 const commitStrat = (_tTier && !( _cDraw && _tBucket === '无对'))
-                    ? { action: _tTier.freq >= 50 ? 'BET' : 'CHECK',
-                        sizing: _tTier.freq >= 50 ? _tTier.size : '',
-                        freq: { bet: _tTier.freq, check: 100 - _tTier.freq } }
+                    ? { action: _tTierAction,
+                        sizing: _tTierSizing,
+                        freq: _tTierFreq }
                     : (_cVal || _cDraw)
                     ? (_cvt
-                        ? { action: 'BET', sizing: _cvt.size, freq: { bet: _cvt.freq, check: 100 - _cvt.freq } }
+                        ? { action: 'BET', sizing: _cvt.size, freq: { bet: Math.max(75, _cvt.freq), check: 100 - Math.max(75, _cvt.freq) } }
                         : { action: 'BET',
                             // **强听牌仍走全押**：无对那一桶（本身就含听牌）的下注里全押占 43.3%
                             //   —— 弃牌率 + 兑现权益双路盈利是低 SPR 听牌的标准打法，这一支不动。
@@ -15295,9 +15372,9 @@
                     reasoning = _tTier
                         ? `SPR=${spr.toFixed(1)}（承诺区）：转牌成手=${_tBucket}、` +
                           `范围强度差 ${_tTier.sd >= 0 ? '+' : ''}${_tTier.sd.toFixed(1)} 点` +
-                          `${_tTier.over ? '、转牌是超牌' : ''} → ${_tTier.freq}% 频率` +
-                          `${_tTier.freq >= 50 ? ' ' + _tTier.size : '（多数时候过牌）'}` +
-                          `（TexasSolver 校准：${_tTier.note}）`
+                          `${_tTier.over ? '、转牌是超牌' : ''} → ${_tTierFreq.bet}% 频率` +
+                          `${_tTierAction === 'BET' ? ' ' + _tTierSizing : '（多数时候过牌）'}` +
+                          `（${_isNutValueHand && _tTier.freq < 50 ? '强牌价值锁定下注' : `TexasSolver 校准：${_tTier.note}`}）`
                         : commitStrat.action === 'BET'
                         ? (_cAir && equity <= 50 && outs < sc.semiBluffOuts
                             ? `SPR=${spr.toFixed(1)}（承诺区）：翻牌胜率${equity.toFixed(0)}%、进张${outs}张都不足，` +
@@ -15414,18 +15491,17 @@
                         }
                     } else if (_tTier) {
                         // ── 转牌按「成手桶 × 驱动量」出频率与尺度（2026-09-11 环节 7）──
-                        // 这一段替换的是三条老分支：强牌 80/90 大注、中等 55、以及**空气直接过牌 100%**。
-                        // 四节点 × 16 张转牌实测，老分支范围加权频率比 solver 低 19-42 点，
-                        // 缺口几乎全在「无对」与「弱对」两桶（引擎 0-47%，solver 30-93%）。
-                        // 驱动量算不出来时 `_tTier` 为 null，整段跳过、老分支原样保留。
-                        primaryAction = _tTier.freq >= 50 ? 'BET' : 'CHECK';
-                        sizing = _tTier.freq >= 50 ? _tTier.size : '';
-                        frequencies = { bet: _tTier.freq, check: 100 - _tTier.freq };
+                        // 强牌价值保护：若持有两对+强牌且具有价值胜率，主动作锁定 BET，下注频率保底 70%
+                        const _isNutValue = _tBucket === '两对+' && equity >= sc.betThresh;
+                        const _effFreq = _isNutValue ? Math.max(70, _tTier.freq) : _tTier.freq;
+                        primaryAction = (_effFreq >= 50 || _isNutValue) ? 'BET' : 'CHECK';
+                        sizing = primaryAction === 'BET' ? (_tTier.size || sc.sizes.medium) : '';
+                        frequencies = { bet: _effFreq, check: 100 - _effFreq };
                         reasoning = `转牌胜率${equity.toFixed(0)}%、成手=${_tBucket}，` +
                                     `范围强度差 ${_tTier.sd >= 0 ? '+' : ''}${_tTier.sd.toFixed(1)} 点` +
                                     `${_tTier.over ? '、转牌是超牌' : ''}、SPR=${spr.toFixed(1)} → ` +
-                                    `${_tTier.freq}% 频率${_tTier.freq >= 50 ? ' ' + _tTier.size : '（多数时候过牌）'}` +
-                                    `（TexasSolver 校准：${_tTier.note}）`;
+                                    `${_effFreq}% 频率${primaryAction === 'BET' ? ' ' + sizing : '（多数时候过牌）'}` +
+                                    `（${_isNutValue && _tTier.freq < 50 ? '强牌价值锁定' : `TexasSolver 校准：${_tTier.note}`}）`;
                         // 坚果优势 + 深码的超池分支是老行为，**solver 的树里根本没给超池选项**，
                         // 所以它的缺席不是证据，不动它——只在这里让路。
                         if (iHaveNutAdv && sprZone === 'deep' && _tBucket === '两对+' && equity >= sc.strongThresh) {
