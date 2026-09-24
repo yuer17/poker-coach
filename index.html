@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.68 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.69 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -11,27 +11,25 @@
             margin: 0; padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
             -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;
-            background-color: #0b0d12;
-            background-image:
-                radial-gradient(circle at 18% 12%, rgba(35, 52, 82, 0.22) 0%, transparent 48%),
-                radial-gradient(circle at 82% 80%, rgba(24, 40, 64, 0.18) 0%, transparent 52%),
-                radial-gradient(circle at 50% 50%, rgba(14, 18, 28, 0.6) 0%, transparent 100%);
-            background-attachment: fixed;
+            background-color: #0b0d11;
             color: #f0f3f8;
-            transition: background-color 0.3s;
         }
         /* 关键数字/标题用负字距收紧（Linear 式 measured tracking），仅作用于拉丁/数字显示元素 */
         h1, h2, #decisionAction, #decisionSizing, #decMathOdds, #decMathMdf, #decMathSpr,
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.68 高定黑曜石与 Liquid Glass 设计令牌 (Stage 3 UI-01) ══
+            /* ══ PokerCode v2.69 高定黑曜石与 Liquid Glass 设计令牌 (Stage 3 UI-01) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
             /* 基础表面层级 */
             --bg-app:        #0b0d11;
             --bg-body:       #0b0d11;
+            --bg-surface-0:  #0f1217;
+            --bg-surface-1:  #141820;
+            --bg-surface-2:  #1c222e;
+            --bg-surface-3:  #252c3b;
             --bg-deep:       #080a0e;          /* 凹陷区/轨道底 */
             --bg-atmos:      #11141b;         /* 顶部极淡中性提亮 */
             --surface-1:     #12161f;        /* 基础面板：暗夜黑曜石 */
@@ -39,19 +37,22 @@
             --surface-3:     #1f2633;        /* hover/输入框底 */
             --surface-glass: rgba(18, 22, 31, 0.72);
 
-            /* Apple Liquid Glass 材质规范：0.5px 精细微光边框与通透倒角 */
-            --glass-bg:          rgba(18, 22, 31, 0.78);
-            --glass-bg-hover:    rgba(25, 30, 42, 0.88);
-            --glass-bg-elevated: rgba(23, 28, 38, 0.92);
-            --glass-border:      rgba(255, 255, 255, 0.08);
+            /* 0.5px 精细亚像素微光边框与环境高光 */
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-glass:  rgba(255, 255, 255, 0.10);
+            --border-rim:    rgba(255, 255, 255, 0.16);
+            --glass-border:  rgba(255, 255, 255, 0.08);
             --glass-border-strong: rgba(255, 255, 255, 0.16);
             --glass-border-gold: rgba(224, 168, 58, 0.22);
             --glass-highlight:   rgba(255, 255, 255, 0.08);
             --glass-blur:        16px;
             --glass-saturate:    1.35;
-            --shadow-card:       0 4px 16px -4px rgba(0, 0, 0, 0.5);
-            --shadow-elev:       0 8px 24px -8px rgba(0, 0, 0, 0.6);
-            --shadow-pop:        0 16px 40px -12px rgba(0, 0, 0, 0.7);
+
+            /* AO 环境光遮蔽投影与精密深度 */
+            --shadow-subtle:     0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            --shadow-card:       0 4px 16px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            --shadow-elev:       0 8px 24px -8px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+            --shadow-pop:        0 16px 40px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 
             /* 唯一交互色：高定仪器蓝（选中/焦点/主行动） */
             --accent: #57a9ff;
@@ -403,9 +404,33 @@
         .pos-btn-hero:hover { background-color: rgba(255,255,255,0.1); }
         .pos-btn-hero.active { background-color: #991b1b; color: white; border-color: #dc2626; }
 
-        .nav-phase-btn { background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); color: #9ca3af; font-size: var(--fs-caption); font-weight: bold; padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: 0.15s; }
-        .nav-phase-btn:hover { background: rgba(255,255,255,0.08); color: #e5e7eb; }
-        .nav-phase-btn.active { background: var(--accent); border-color: var(--accent-hover); color: #fff; box-shadow: 0 0 6px rgba(0,0,0,0.4); }
+        .nav-phase-btn {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-size: var(--fs-caption);
+            font-weight: 600;
+            padding: 0 10px;
+            height: 26px;
+            line-height: 24px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .nav-phase-btn:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: var(--border-rim);
+            color: var(--text-primary);
+        }
+        .nav-phase-btn.active {
+            background: var(--accent);
+            border-color: var(--accent-hover);
+            color: #fff;
+            box-shadow: 0 0 8px rgba(87,169,255,0.3);
+        }
 
         .cfg-btn { background-color: rgba(0,0,0,0.3); color: #9ca3af; font-weight: bold; font-size: var(--fs-caption); padding: 5px 0; border-radius: var(--radius-sm); cursor: pointer; transition: 0.15s; text-align: center; border: 1px solid transparent; }
         .cfg-btn:hover { background-color: rgba(255,255,255,0.1); }
@@ -453,10 +478,61 @@
         .collapse-content { transition: opacity 0.2s ease; overflow: hidden; }
         .collapse-content.collapsed { max-height: 0 !important; opacity: 0; }
 
-        /* 翻后下注按钮样式 */
-        .bet-action-btn { font-size: var(--fs-micro); font-weight: bold; padding: 5px 8px; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; transition: all 0.15s; text-align: center; }
-        .bet-action-btn:hover { filter: brightness(1.2); }
-        .bet-action-btn.active-bet { box-shadow: 0 0 0 2px var(--accent); filter: brightness(1.25); }
+        /* 翻后下注按钮样式：黑曜石质感、Laser Accent 与微下压触感 (UI-07) */
+        .bet-action-btn { 
+            font-size: var(--fs-micro); 
+            font-weight: 700; 
+            padding: 6px 10px; 
+            min-height: 32px;
+            border-radius: var(--radius-sm, 4px); 
+            cursor: pointer; 
+            border: 1px solid rgba(255,255,255,0.12); 
+            background: #141923;
+            color: #e2e8f0;
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1); 
+            text-align: center; 
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .bet-action-btn:hover { 
+            filter: brightness(1.2); 
+            transform: translateY(-1px);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 8px rgba(0,0,0,0.4);
+        }
+        .bet-action-btn:active {
+            transform: translateY(0.5px) scale(0.98);
+        }
+        .bet-action-btn.active-bet { 
+            border-color: var(--accent); 
+            box-shadow: 0 0 0 1px var(--accent), inset 0 1px 0 rgba(255,255,255,0.25); 
+            filter: brightness(1.25); 
+        }
+
+        /* 公共牌槽位：扑克 1:1.45 黄金高立身形与 CoinPoker 实体感 */
+        .board-slot {
+            width: 44px;
+            height: 66px;
+            border-radius: var(--radius-sm, 4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+            user-select: none;
+            box-sizing: border-box;
+            transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease-out;
+        }
+        .board-slot-empty {
+            border: 1.5px dashed rgba(255, 255, 255, 0.2) !important;
+            background: rgba(255, 255, 255, 0.02);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        .board-slot-filled {
+            cursor: pointer;
+        }
+        .board-slot-filled:hover {
+            transform: translateY(-2px) scale(1.04);
+            z-index: 10;
+        }
         /* 槽位激活态（正在选牌） */
         .board-slot-active { border-color: var(--accent) !important; box-shadow: 0 0 8px var(--accent); animation: slot-pulse 1s ease-in-out infinite; }
         @keyframes slot-pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.6; } }
@@ -464,15 +540,16 @@
         /* 52张牌通用选牌网格 */
         .cpg-wrap { width: 100%; }
         .cpg-row { display: flex; gap: 3px; margin-bottom: 3px; }
-        .cpg-btn { flex: 1; min-width: 0; height: 42px; border-radius: var(--radius-sm, 4px);
+        .cpg-btn { flex: 1; min-width: 0; height: 48px; border-radius: var(--radius-sm, 4px);
                    display: flex; flex-direction: column; align-items: center; justify-content: center;
                    user-select: none; cursor: pointer; white-space: nowrap;
                    transition: opacity 0.15s, filter 0.15s, transform 0.15s, box-shadow 0.15s;
                    position: relative; overflow: visible; box-sizing: border-box;
                    backface-visibility: hidden; }
         .cpg-btn:not([data-sel]):not([data-dis]):hover { filter: brightness(1.18); transform: translateY(-1.5px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 10px rgba(0,0,0,0.5); }
-        .cpg-rank { font-size: 13px; font-weight: 900; line-height: 1; color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); pointer-events: none; }
-        .cpg-suit { font-size: 10px; line-height: 1; margin-top: 1px; color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); pointer-events: none; }
+        .cpg-btn:active:not([data-dis]) { transform: scale(1.08); z-index: 40; }
+        .cpg-rank { font-size: 14px; font-weight: 900; line-height: 1; color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); pointer-events: none; }
+        .cpg-suit { font-size: 11px; line-height: 1; margin-top: 2px; color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); pointer-events: none; }
         
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -673,7 +750,7 @@
             .pos-btn, .pos-btn-hero { height: 38px; font-size: var(--fs-caption); }
             .tab-btn { padding: 11px 0; font-size: var(--fs-caption); }
             .cfg-btn { padding: 10px 0; font-size: var(--fs-caption); }
-            .cpg-btn { height: 44px; }
+            .cpg-btn { height: 48px; }
             .cpg-rank { font-size: 14px; }
             .cpg-suit { font-size: 11px; }
             .nav-phase-btn { padding: 8px 14px; }
@@ -790,17 +867,18 @@
            13 列会溢出被切掉右侧一列（实测 scrollWidth 706 > 容器 659）。 */
         .mini-deal { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 2px; width: 100%; }
         /* 基类命名为 .md-card，采用 CoinPoker 质感、微光边框与顶边高光 */
-        .md-card { font-size: 11px; font-weight: 800; padding: 4px 0; min-height: 26px; border-radius: var(--radius-xs, 3px);
+        .md-card { font-size: 12px; font-weight: 800; padding: 6px 0; min-height: 36px; border-radius: var(--radius-xs, 3px);
                 border: 1px solid rgba(255,255,255,.16); color: #fff; cursor: pointer; line-height: 1; position: relative;
+                display: inline-flex; align-items: center; justify-content: center;
                 box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 5px rgba(0,0,0,0.35); transition: all 0.12s ease-out; }
-        .md-card:hover:not(:disabled) { filter: brightness(1.22); transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 10px rgba(0,0,0,0.45); }
+        .md-card:hover:not(:disabled) { filter: brightness(1.22); transform: translateY(-1.5px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 10px rgba(0,0,0,0.45); }
         .md-s { background-color: #242833; background-image: linear-gradient(160deg, #2b303d 0%, #191c24 100%); }
         .md-h { background-color: #9e2a2b; background-image: linear-gradient(160deg, #b32e30 0%, #801819 100%); }
         .md-d { background-color: #2263a5; background-image: linear-gradient(160deg, #2974bf 0%, #184c85 100%); }
         .md-c { background-color: #1e7e45; background-image: linear-gradient(160deg, #239452 0%, #155e34 100%); }
         .md-off { opacity: .22; cursor: not-allowed; filter: grayscale(0.5); }
         .md-board { border: 1px solid #e0a83a !important; box-shadow: 0 0 0 1px #e0a83a, 0 0 10px rgba(224,168,58,0.55), inset 0 1px 0 rgba(255,255,255,0.4) !important; opacity: 1 !important; cursor: pointer !important; }
-        @media (max-width: 767.98px) { .md-card { min-height: 30px; font-size: var(--fs-caption); } }
+        @media (max-width: 767.98px) { .md-card { min-height: 38px; font-size: 13px; } }
         #postRightContent.hide-details #postHandCard, #postRightContent.hide-details #postRangeCard,
         #postRightContent.hide-details #postTextureCard, #postRightContent.hide-details #postDebugCard { display: none !important; }
         #mathProofPanel.proof-collapsed > :not(h3) { display: none; }
@@ -906,101 +984,120 @@
         /* 挂件改用途(2026-09-08)：原为升盲倒计时（已移除），现显示唯一会变且影响决策的数字——距钱圈人数 */
         #moneyWidget.urgent { border-color: #e5484d; color: #ff7a7d; animation: blPulse 1s ease-in-out infinite; }
         @keyframes blPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.0); } 50% { box-shadow: 0 0 0 3px rgba(229,72,77,.35); } }
-        .act-btn { min-height: 42px; font-size: var(--fs-body) !important; font-weight: 700; }
+        .act-btn {
+            min-height: 42px;
+            font-size: var(--fs-body) !important;
+            font-weight: 700;
+            border-radius: var(--radius-sm);
+            transition: transform 0.15s ease-out, box-shadow 0.15s ease-out, background-color 0.15s ease-out, border-color 0.15s ease-out;
+            will-change: transform;
+        }
+        .act-btn:hover:not(:disabled) {
+            transform: translateY(-1.5px);
+        }
+        .act-btn:active:not(:disabled) {
+            transform: translateY(0.5px) scale(0.98);
+        }
         /* 行动区排版重做(2026-09-10)：动作四键等宽 grid + 独立尺度行，整组限宽，大屏不拉伸 */
         .act-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 720px; }
         .act-row.act-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 420px; }
         .act-row .act-btn { width: 100%; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 
-        /* ─── 翻后行动按钮色彩体系（对标 CoinPoker 大厅按键与电竞终端） ─── */
-        /* 我方行动：清晰区分 弃牌(冷灰玄武岩) · 过牌/跟注(翠绿稳健) · 下注/加注(皇家蓝进取) · 全押(高能赤红) */
+        /* ─── 翻后行动按钮色彩体系（高定黑曜石 Anti-AI-Slop & Laser Accent 规范） ─── */
+        /* 我方行动：弃牌 (玄武黑曜石) · 过牌/跟注 (祖母绿微光) · 下注/加注 (深空蓝进取) · 全押 (绯红爆燃) */
         .act-btn-fold {
-            background: linear-gradient(180deg, #353c4a 0%, #20242e 100%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.16) !important;
-            color: #cbd5e1 !important;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+            background: #181d26 !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            color: #94a3b8 !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06) !important;
         }
         .act-btn-fold:hover:not(:disabled) {
-            background: linear-gradient(180deg, #414a5b 0%, #282e3b 100%) !important;
-            border-color: rgba(255, 255, 255, 0.3) !important;
-            color: #ffffff !important;
+            background: #222936 !important;
+            border-color: rgba(255, 255, 255, 0.24) !important;
+            color: #f1f5f9 !important;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.10) !important;
         }
         .act-btn-fold:disabled {
-            background: rgba(255, 255, 255, 0.03) !important;
-            border-color: rgba(255, 255, 255, 0.08) !important;
+            background: rgba(255, 255, 255, 0.02) !important;
+            border-color: rgba(255, 255, 255, 0.06) !important;
             color: #475569 !important;
             cursor: not-allowed;
             box-shadow: none !important;
+            transform: none !important;
         }
 
         .act-btn-checkcall {
-            background: linear-gradient(180deg, #1b8547 0%, #136332 100%) !important;
-            border: 1px solid rgba(74, 222, 128, 0.5) !important;
-            color: #ffffff !important;
-            box-shadow: 0 0 12px rgba(34, 197, 94, 0.25), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+            background: #0d261a !important;
+            border: 1px solid rgba(61, 214, 140, 0.45) !important;
+            color: #4ade80 !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 10px rgba(61, 214, 140, 0.16), inset 0 1px 0 rgba(255,255,255,0.12) !important;
         }
         .act-btn-checkcall:hover {
-            background: linear-gradient(180deg, #229953 0%, #17733b 100%) !important;
-            border-color: #4ade80 !important;
+            background: #123323 !important;
+            border-color: #3dd68c !important;
             color: #ffffff !important;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.6), 0 0 14px rgba(61, 214, 140, 0.32), inset 0 1px 0 rgba(255,255,255,0.20) !important;
         }
 
         .act-btn-betraise {
-            background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%) !important;
-            border: 1px solid rgba(147, 197, 253, 0.5) !important;
-            color: #ffffff !important;
-            box-shadow: 0 0 12px rgba(59, 130, 246, 0.28), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+            background: #10223d !important;
+            border: 1px solid rgba(87, 169, 255, 0.45) !important;
+            color: #93c5fd !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 10px rgba(87, 169, 255, 0.18), inset 0 1px 0 rgba(255,255,255,0.12) !important;
         }
         .act-btn-betraise:hover {
-            background: linear-gradient(180deg, #3b82f6 0%, #1e40af 100%) !important;
-            border-color: #93c5fd !important;
+            background: #162f54 !important;
+            border-color: #57a9ff !important;
             color: #ffffff !important;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.6), 0 0 14px rgba(87, 169, 255, 0.35), inset 0 1px 0 rgba(255,255,255,0.22) !important;
         }
 
         .act-btn.act-allin {
-            background: linear-gradient(180deg, #dc2626 0%, #991b1b 100%) !important;
-            border: 1px solid rgba(252, 165, 165, 0.55) !important;
-            color: #ffffff !important;
-            box-shadow: 0 0 14px rgba(239, 68, 68, 0.38), inset 0 1px 0 rgba(255,255,255,0.35) !important;
+            background: #2b1215 !important;
+            border: 1px solid rgba(229, 72, 77, 0.55) !important;
+            color: #fca5a5 !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 12px rgba(229, 72, 77, 0.25), inset 0 1px 0 rgba(255,255,255,0.14) !important;
         }
         .act-btn.act-allin:hover {
-            background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%) !important;
-            border-color: #fca5a5 !important;
+            background: #3b191d !important;
+            border-color: #ff6b6e !important;
             color: #ffffff !important;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.6), 0 0 16px rgba(229, 72, 77, 0.45), inset 0 1px 0 rgba(255,255,255,0.25) !important;
         }
 
-        /* 对手行动框与按钮专属配色 (2026-09-21)：突出"记录对手打法"，暖琥珀底色与警示边框，视觉彻底与我方割离 */
-        .frame-villain { border: 2px solid rgba(245, 158, 11, 0.65) !important; background: rgba(120, 53, 15, 0.18) !important; box-shadow: 0 0 16px rgba(245, 158, 11, 0.10); }
-        .villain-act-btn.act-btn-fold { background: rgba(68, 64, 60, 0.35) !important; border: 1px solid rgba(168, 162, 158, 0.4) !important; color: #e7e5e4 !important; }
-        .villain-act-btn.act-btn-fold:hover:not(:disabled) { background: rgba(87, 83, 78, 0.55) !important; border-color: #d6d3d1 !important; color: #fff !important; }
-        .villain-act-btn.act-btn-checkcall { background: rgba(236, 72, 153, 0.28) !important; border: 1px solid rgba(244, 114, 182, 0.65) !important; color: #fbcfe8 !important; }
-        .villain-act-btn.act-btn-checkcall:hover { background: rgba(219, 39, 119, 0.52) !important; border-color: #f472b6 !important; color: #ffffff !important; }
-        .villain-act-btn.act-btn-betraise { background: rgba(194, 65, 12, 0.38) !important; border: 1px solid rgba(251, 146, 60, 0.72) !important; color: #ffedd5 !important; }
-        .villain-act-btn.act-btn-betraise:hover { background: rgba(234, 88, 12, 0.58) !important; border-color: #fb923c !important; color: #ffffff !important; }
-        .villain-act-btn.act-allin { background: rgba(159, 18, 57, 0.38) !important; border: 1px solid rgba(251, 113, 133, 0.72) !important; color: #ffe4e6 !important; }
-        .villain-act-btn.act-allin:hover { background: rgba(190, 18, 60, 0.60) !important; border-color: #f43f5e !important; color: #ffffff !important; }
+        /* 对手行动框与按钮专属配色：突出"记录对手打法"，低饱和暖琥珀与精细边框，拒绝荧光廉价感 */
+        .frame-villain { border: 1.5px solid rgba(245, 158, 11, 0.45) !important; background: rgba(120, 53, 15, 0.12) !important; box-shadow: 0 0 12px rgba(245, 158, 11, 0.08); }
+        .villain-act-btn.act-btn-fold { background: #1c1917 !important; border: 1px solid rgba(168, 162, 158, 0.25) !important; color: #d6d3d1 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
+        .villain-act-btn.act-btn-fold:hover:not(:disabled) { background: #292524 !important; border-color: #a8a29e !important; color: #fff !important; }
+        .villain-act-btn.act-btn-checkcall { background: #221b16 !important; border: 1px solid rgba(245, 158, 11, 0.45) !important; color: #fde68a !important; box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 8px rgba(245, 158, 11, 0.12) !important; }
+        .villain-act-btn.act-btn-checkcall:hover { background: #2d241c !important; border-color: #f59e0b !important; color: #ffffff !important; }
+        .villain-act-btn.act-btn-betraise { background: #2b170f !important; border: 1px solid rgba(249, 115, 22, 0.50) !important; color: #fed7aa !important; box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 8px rgba(249, 115, 22, 0.15) !important; }
+        .villain-act-btn.act-btn-betraise:hover { background: #381f14 !important; border-color: #f97316 !important; color: #ffffff !important; }
+        .villain-act-btn.act-allin { background: #2e1017 !important; border: 1px solid rgba(244, 63, 94, 0.55) !important; color: #fecdd3 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 10px rgba(244, 63, 94, 0.20) !important; }
+        .villain-act-btn.act-allin:hover { background: #3d141e !important; border-color: #f43f5e !important; color: #ffffff !important; }
         /* 尺度行与动作行同宽、一起撑满(2026-09-11，用户第6点"按钮没排满")：
            快捷键均分剩余宽度；对手一侧没有快捷键，就让金额框自己撑开 */
         .size-row { display: flex; align-items: center; gap: 6px; max-width: 720px; margin-bottom: 8px; }
         .size-lbl { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 700; flex: 0 0 auto; letter-spacing: .04em; }
-        .qc-btn.qc-size { flex: 1 1 0; min-width: 0; padding: 6px 4px; }
+        .qc-btn.qc-size { flex: 1 1 0; min-width: 0; padding: 6px 4px; min-height: 32px; height: 32px; font-size: var(--fs-caption); border-radius: var(--radius-sm); transition: transform 0.15s ease-out, background-color 0.15s; }
+        .qc-btn.qc-size:hover { transform: translateY(-1px); }
         .amt-box { display: flex; align-items: stretch; border: 1px solid var(--border-primary); border-radius: var(--radius-sm);
-                   overflow: hidden; background: rgba(0,0,0,.3); flex: 0 0 auto; }
+                   overflow: hidden; background: rgba(0,0,0,.3); flex: 0 0 auto; min-height: 32px; height: 32px; }
         .size-row-villain .amt-box { flex: 1 1 auto; }
         .amt-box input[type="number"] { width: 78px; border: none; background: transparent; text-align: center;
                    font-family: var(--font-mono); font-size: var(--fs-body); color: var(--text-primary); height: 30px; padding: 0; border-radius: 0; }
         .size-row-villain .amt-box input[type="number"] { width: 100%; }
         .amt-box input[type="number"]:focus { outline: none; box-shadow: none; }
         .amt-box .step-btn { width: 28px; border: none; background: rgba(255,255,255,.06); color: var(--text-secondary);
-                   cursor: pointer; font-size: var(--fs-title); line-height: 1; font-weight: 700; }
+                   cursor: pointer; font-size: var(--fs-title); line-height: 1; font-weight: 700; transition: background 0.15s; }
         .amt-box .step-btn:hover { background: rgba(255,255,255,.18); color: var(--text-primary); }
         .pct-hint { font-size: var(--fs-micro); color: var(--text-muted); font-family: var(--font-mono); flex: 0 0 auto;
                     min-width: 72px; text-align: right; }
         /* 位置切换收成分段控件（2026-09-10）：原来是整行两个大按钮，在流程视图里过度抢戏，
            而它只是个"判定不对时才点"的覆盖开关——依据文字已写在同一行 */
-        .seg-ctl { display: inline-flex; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); overflow: hidden; flex: 0 0 auto; }
+        .seg-ctl { display: inline-flex; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); overflow: hidden; flex: 0 0 auto; min-height: 24px; }
         .seg-ctl button { font-size: var(--fs-micro); padding: 2px 8px; background: transparent; color: var(--text-muted);
-            border: none; cursor: pointer; white-space: nowrap; min-height: 22px; }
+            border: none; cursor: pointer; white-space: nowrap; min-height: 22px; transition: background 0.15s, color 0.15s; }
         .seg-ctl button:hover { background: rgba(255,255,255,.08); color: var(--text-secondary); }
         .seg-ctl button.on { background: rgba(87,169,255,.18); color: #9fd0ff; font-weight: 700; }
         /* 底池/有效筹码：从两个撑满半宽的大框收成紧凑字段（2026-09-10） */
@@ -1011,16 +1108,39 @@
             font-size: var(--fs-body); font-weight: 700; padding: 0 4px; }
         #actionSummaryArea { display: none; }   /* 与跨街行动线重复（2026-09-10 去重） */
         .act-btn kbd, .qc-btn kbd { font-family: var(--font-mono); font-size:12px; opacity: .55; margin-left: 5px; font-weight: 600; }
-        /* ★ 建议键与结论条共用一套语义色(2026-09-11)：结论是绿的，那个绿键就是要点的那个。
-           原来 ★ 一律 accent 蓝，与结论的语义色对不上，等于让用户再读一遍字才敢点。 */
-        .act-star { background: var(--accent) !important; color: #082744 !important; border-color: transparent !important;
-                    box-shadow: 0 0 0 3px rgba(87,169,255,.30); }
-        .act-star.act-sem-attack  { background: #d63940 !important; color: #fff !important;
-                    box-shadow: 0 0 0 3px rgba(214,57,64,.32); }
-        .act-star.act-sem-passive { background: #2ea86a !important; color: #052318 !important;
-                    box-shadow: 0 0 0 3px rgba(46,168,106,.32); }
-        .act-star.act-sem-fold    { background: #5c667f !important; color: #fff !important;
-                    box-shadow: 0 0 0 3px rgba(92,102,127,.32); }
+        /* ★ 建议键带呼吸微光（Subtle Breath Halo）与精准语义色 */
+        @keyframes breathHalo {
+            0%, 100% {
+                box-shadow: 0 0 0 1px var(--surface-1), 0 0 8px rgba(224, 168, 58, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            }
+            50% {
+                box-shadow: 0 0 0 1px var(--surface-1), 0 0 18px rgba(224, 168, 58, 0.70), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+            }
+        }
+        .act-star {
+            background: var(--accent) !important;
+            color: #082744 !important;
+            border-color: transparent !important;
+            animation: breathHalo 2.4s ease-in-out infinite;
+        }
+        .act-star.act-sem-attack {
+            background: #b91c1c !important;
+            color: #fff !important;
+            border: 1px solid #f87171 !important;
+            box-shadow: 0 0 0 1px var(--surface-1), 0 0 14px rgba(229, 72, 77, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+        }
+        .act-star.act-sem-passive {
+            background: #15803d !important;
+            color: #fff !important;
+            border: 1px solid #4ade80 !important;
+            box-shadow: 0 0 0 1px var(--surface-1), 0 0 14px rgba(61, 214, 140, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+        }
+        .act-star.act-sem-fold {
+            background: #334155 !important;
+            color: #fff !important;
+            border: 1px solid #64748b !important;
+            box-shadow: 0 0 0 1px var(--surface-1), 0 0 10px rgba(100, 116, 139, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+        }
         .act-star kbd { opacity: .75; color: inherit; }
         @media (max-width: 767.98px) {
             .act-btn kbd, .qc-btn kbd, .act-hint { display: none; }
@@ -1053,9 +1173,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.68 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.69 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.68</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.69</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1075,7 +1195,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.68 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.69 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -1361,13 +1481,13 @@
                         <div id="boardSlotsBox" class="pick-target-box" onclick="setPickTarget('board')" style="flex:1;">
                             <div class="pick-target-label">公共牌</div>
                             <div class="flex items-center gap-1">
-                                <div id="boardSlot0" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">F1</span></div>
-                                <div id="boardSlot1" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">F2</span></div>
-                                <div id="boardSlot2" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">F3</span></div>
+                                <div id="boardSlot0" class="board-slot board-slot-empty w-11 h-[66px] rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-400 font-bold">F1</span></div>
+                                <div id="boardSlot1" class="board-slot board-slot-empty w-11 h-[66px] rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-400 font-bold">F2</span></div>
+                                <div id="boardSlot2" class="board-slot board-slot-empty w-11 h-[66px] rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-400 font-bold">F3</span></div>
                                 <div class="w-px self-stretch mx-0.5" style="background:var(--border-primary);"></div>
-                                <div id="boardSlot3" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">T</span></div>
+                                <div id="boardSlot3" class="board-slot board-slot-empty w-11 h-[66px] rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-400 font-bold">T</span></div>
                                 <div class="w-px self-stretch mx-0.5" style="background:var(--border-primary);"></div>
-                                <div id="boardSlot4" class="w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-500">R</span></div>
+                                <div id="boardSlot4" class="board-slot board-slot-empty w-11 h-[66px] rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"><span class="text-xs text-gray-400 font-bold">R</span></div>
                             </div>
                         </div>
                     </div>
@@ -4656,11 +4776,11 @@
                 c: 'rgba(255,255,255,0.28)'
             };
 
-            // 真实手牌折扇布局：H1 向左微倾 -3.5°，H2 向右微倾 +3.5° 叠压 -10px，光影投射
+            // 真实手牌折扇布局：H1 向左微倾 -3.5°，H2 向右微倾 +3.5° 叠压 -12px，光影投射
             const makeSlot = (card, label, deselFn, tiltDeg = 0, isRight = false) => {
                 const div = document.createElement('div');
-                div.style.width = '42px';
-                div.style.height = '58px';
+                div.style.width = '46px';
+                div.style.height = '66px';
                 div.style.borderRadius = 'var(--radius-sm)';
                 div.style.display = 'flex';
                 div.style.alignItems = 'center';
@@ -4671,7 +4791,7 @@
                 div.style.position = 'relative';
                 div.style.flexShrink = '0';
                 if (isRight) {
-                    div.style.marginLeft = '-10px';
+                    div.style.marginLeft = '-12px';
                     div.style.zIndex = '2';
                 } else {
                     div.style.zIndex = '1';
@@ -4689,9 +4809,9 @@
                         : '0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.35)';
                     div.style.cursor = 'pointer';
                     div.innerHTML = `
-                        <span style="font-size:16px;font-weight:900;color:#ffffff;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,0.6);">${rank}</span>
-                        <span style="font-size:12px;color:#ffffff;line-height:1;margin-top:2px;text-shadow:0 1px 2px rgba(0,0,0,0.6);">${SUIT_SYMBOLS[suit]}</span>
-                        <span style="position:absolute;top:2px;right:3px;font-size:11px;color:rgba(255,255,255,0.7);line-height:1">×</span>`;
+                        <span style="font-size:19px;font-weight:900;color:#ffffff;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,0.6);">${rank}</span>
+                        <span style="font-size:14px;color:#ffffff;line-height:1;margin-top:3px;text-shadow:0 1px 2px rgba(0,0,0,0.6);">${SUIT_SYMBOLS[suit]}</span>
+                        <span style="position:absolute;top:2px;right:3px;font-size:12px;color:rgba(255,255,255,0.7);line-height:1">×</span>`;
                     div.title = `${rank}${SUIT_SYMBOLS[suit]}（点击取消选中）`;
                     div.addEventListener('mouseenter', () => { 
                         div.style.filter = 'brightness(1.15)'; 
@@ -4711,7 +4831,7 @@
                         ? '-2px 0 8px rgba(0,0,0,0.4), inset 0 1px 3px rgba(0,0,0,0.3)'
                         : 'inset 0 1px 3px rgba(0,0,0,0.3)';
                     div.style.cursor = 'default';
-                    div.innerHTML = `<span style="font-size:12px;font-weight:bold;color:rgba(255,255,255,0.35);text-align:center;line-height:1.3">${label}</span>`;
+                    div.innerHTML = `<span style="font-size:13px;font-weight:bold;color:rgba(255,255,255,0.35);text-align:center;line-height:1.3">${label}</span>`;
                 }
                 return div;
             };
@@ -5275,8 +5395,8 @@
                 const slot = document.getElementById('boardSlot' + i);
                 if (!slot) continue;
                 const labels = ['F1','F2','F3','T','R'];
-                slot.className = 'w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0';
-                slot.innerHTML = `<span class="text-xs text-gray-500">${labels[i]}</span>`;
+                slot.className = 'board-slot board-slot-empty w-11 h-[66px] rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0';
+                slot.innerHTML = `<span class="text-xs text-gray-400 font-bold">${labels[i]}</span>`;
                 slot.onclick = null;
             }
             const boardPickerEl = document.getElementById('boardPicker');
@@ -5318,7 +5438,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v2.68',
+                    v: 'v2.69',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5337,7 +5457,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5383,7 +5503,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.68 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.69 正式版';
             renderWindowColorChips(key);
         };
 
@@ -11332,8 +11452,8 @@
             const bdr = suitBdr[suit] || 'rgba(255,255,255,0.25)';
             const col = '#ffffff';
             return `<div style="background:${bg};border:1px solid ${bdr};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),0 2px 8px rgba(0,0,0,0.45);" class="rounded w-full h-full flex flex-col items-center justify-center select-none">
-                <span style="font-size:16px;font-weight:900;line-height:1;color:${col};text-shadow:0 1px 2px rgba(0,0,0,0.6);">${rank}</span>
-                <span style="font-size:12px;line-height:1;margin-top:2px;color:${col};text-shadow:0 1px 2px rgba(0,0,0,0.6);">${SUIT_SYMBOLS[suit]}</span>
+                <span style="font-size:19px;font-weight:900;line-height:1;color:${col};text-shadow:0 1px 2px rgba(0,0,0,0.6);">${rank}</span>
+                <span style="font-size:14px;line-height:1;margin-top:3px;color:${col};text-shadow:0 1px 2px rgba(0,0,0,0.6);">${SUIT_SYMBOLS[suit]}</span>
             </div>`;
         }
 
@@ -11380,7 +11500,7 @@
                 const card = postState.board[i];
 
                 if (card) {
-                    slot.className = "w-10 h-14 rounded flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shrink-0";
+                    slot.className = "board-slot board-slot-filled w-11 h-[66px] rounded flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shrink-0";
                     slot.innerHTML = renderCardHTML(card);
                     slot.title = `${slotLabels[i]}：${card}（点击移除）`;
                     slot.onclick = () => removeBoardCard(i);
@@ -11388,9 +11508,9 @@
                     // 待发牌高亮(2026-07-21)：本街行动打完后，下一张该发的槽位呼吸提示，
                     // 免得"打完了不知道下一步该干嘛"（用户反馈翻后流程复杂的主因之一）
                     const awaiting = (i === postState.board.filter(c => c !== null).length) && isStreetSettled();
-                    slot.className = "w-10 h-14 rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"
+                    slot.className = "board-slot board-slot-empty w-11 h-[66px] rounded border border-dashed border-gray-600 flex items-center justify-center shrink-0"
                         + (awaiting ? ' slot-await' : '');
-                    slot.innerHTML = `<span class="text-xs ${awaiting ? 'text-sky-300 font-bold' : 'text-gray-500'}">${slotLabels[i]}</span>`;
+                    slot.innerHTML = `<span class="text-xs ${awaiting ? 'text-sky-300 font-bold' : 'text-gray-400 font-bold'}">${slotLabels[i]}</span>`;
                     slot.onclick = null;
                 }
             }
