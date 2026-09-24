@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.72 开发版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.8 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -19,7 +19,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.72 高定黑曜石与 Liquid Glass 设计令牌 (Stage 3 UI-01) ══
+            /* ══ PokerCode v2.8 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Stage 3 & Stage 4) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1173,9 +1173,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.72 开发版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.8 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.72</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.8</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1195,7 +1195,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.69 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.8 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -5433,12 +5433,12 @@
          * 轻量清空 — 下一手：清底牌+翻后，保留筹码/位置/赛段/风格配置。
          * 对应每手之间的切换，不像 resetAll() 那样彻底归零。
          */
-        // ═══ T-33 手牌状态 SessionStorage 局部镜像持久化 (Stage 3) ═══
+        // ═══ T-33 手牌状态 SessionStorage 局部镜像持久化 (Stage 3 & 4) ═══
         function saveHandSessionMirror() {
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v2.69',
+                    v: 'v2.8',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5457,7 +5457,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5482,6 +5482,34 @@
             } catch (e) { return false; }
         }
 
+        // ═══ UI-08: 全局配置与面板状态本地持久化字典 (uiPreferences) ═══
+        const uiPreferences = {
+            _key: 'pokercode_ui_prefs_v28',
+            _cache: null,
+            _load() {
+                if (this._cache) return this._cache;
+                try {
+                    const raw = localStorage.getItem(this._key);
+                    this._cache = raw ? JSON.parse(raw) : {};
+                } catch (e) {
+                    this._cache = {};
+                }
+                return this._cache;
+            },
+            get(name, defaultVal = null) {
+                const store = this._load();
+                return (store && typeof store[name] !== 'undefined') ? store[name] : defaultVal;
+            },
+            set(name, val) {
+                const store = this._load();
+                store[name] = val;
+                try {
+                    localStorage.setItem(this._key, JSON.stringify(store));
+                } catch (e) {}
+            }
+        };
+        window.uiPreferences = uiPreferences;
+
         // ═══ 窗口身份色(2026-07-14)：多窗口多桌方案 ═══
         // 用户决策：多桌 = 开多个浏览器窗口（页内多桌方案已撤除），每个窗口
         // 通过 Banner 身份色区分：header 染色 + 容器顶色条 + 浏览器标签 emoji 前缀。
@@ -5503,7 +5531,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.72 开发版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.8 正式版';
             renderWindowColorChips(key);
         };
 
@@ -13890,8 +13918,8 @@
                 try {
                     const usedThisRound = new Set(baseUsed);
 
-                    // 1. 从主对手范围采样
-                    const villHand = sampleHandFromRange(villainRange.hands, usedThisRound);
+                    // 1. 从主对手范围采样 (Stage 4 第四战役: 传入 normBoard 激活花色微观加权)
+                    const villHand = sampleHandFromRange(villainRange.hands, usedThisRound, normBoard);
                     if (!villHand) continue;
                     villHand.forEach(c => usedThisRound.add(c));
 
@@ -13899,7 +13927,7 @@
                     const extraHands = [];
                     let extraFailed = false;
                     for (const evr of activeExtraRanges) {
-                        const eh = sampleHandFromRange(evr.hands, usedThisRound);
+                        const eh = sampleHandFromRange(evr.hands, usedThisRound, normBoard);
                         if (!eh) { extraFailed = true; break; }
                         eh.forEach(c => usedThisRound.add(c));
                         extraHands.push(eh);
@@ -14692,8 +14720,8 @@
             for (let i = 0; i < 300; i++) {
                 try {
                     const usedRel = new Set(baseUsed);
-                    // 这里用对手范围近似（实际应该用自己范围，但简化处理）
-                    const sampleHand = sampleHandFromRange(villainRange.hands, usedRel);
+                    // 这里用对手范围近似（实际应该用自己范围，但简化处理，Stage 4 战役 4 传入 board 激活花色加权）
+                    const sampleHand = sampleHandFromRange(villainRange.hands, usedRel, board);
                     if (!sampleHand) continue;
                     const sampleSolved = Hand.solve([...sampleHand, ...board]);
                     relCompared++;
@@ -14833,38 +14861,71 @@
 
         /**
          * 从范围里采样一手具体牌
+         * Stage 4 第四战役: 扩展 boardCards 支持同花感知与阻断微观加权轮盘赌 (R-03)
          */
-        function sampleHandFromRange(rangeHands, usedCards) {
-            const entry = buildRangeComboIndex(rangeHands, usedCards);
+        function sampleHandFromRange(rangeHands, usedCards, boardCards = null) {
+            const entry = buildRangeComboIndex(rangeHands, usedCards, boardCards);
             if (!entry || !entry.total) return null;
-            // 按累计组合数二分定位牌类，再在其合法组合内均匀抽一手
+            // 按累计组合数/权重二分定位牌类
             const r = Math.random() * entry.total;
             let lo = 0, hi = entry.cum.length - 1;
             while (lo < hi) { const mid = (lo + hi) >> 1; if (entry.cum[mid] > r) hi = mid; else lo = mid + 1; }
             const combos = entry.items[lo];
+            if (entry.hasTextureWeights && entry.itemWeights && entry.itemWeights[lo]) {
+                const iW = entry.itemWeights[lo];
+                const cr = Math.random() * iW.totalWeight;
+                let clo = 0, chi = iW.cumWeights.length - 1;
+                while (clo < chi) { const cmid = (clo + chi) >> 1; if (iW.cumWeights[cmid] > cr) chi = cmid; else clo = cmid + 1; }
+                return combos[clo];
+            }
             return combos[Math.floor(Math.random() * combos.length)];
         }
 
         /**
          * 把牌类范围（如 ['AA','AKs']）展开成扣除已知牌后的全部合法具体组合。
          * 供随机采样（sampleHandFromRange）与分层抽样（preflopEquityVsRange）共用。
+         * Stage 4 第四战役: 扩展 boardCards 支持同花面/听牌面微观概率加权 (R-03)
          */
-        function buildRangeComboIndex(rangeHands, usedCards) {
-            if (!rangeHands || rangeHands.length === 0) return null;
-            // 全盘审计修复(2026-07-21，用户授权动胜率核心)：采样改为按"扣除已知牌后的
-            // 合法组合数"加权。原按牌类均匀抽（对子 6 组合、同花 4、非同花 12 一视同仁）
-            // 把对子/同花权重高估 2-3 倍 → 对手范围显得更强，实测 AQo@T97 胜率压低 2.0 点、
-            // 88@K72 压低 3.0 点，方向恒为偏弃牌；河牌精确穷举本就按组合数，导致转→河跳变。
-            // 按 rangeHands 数组引用 + 已知牌签名缓存展开结果，MC 循环内零重复展开。
+        function buildRangeComboIndex(rangeHands, usedCards, boardCards = null) {
+            if (!rangeHands || !Array.isArray(rangeHands) || rangeHands.length === 0) return null;
+            if (!(usedCards instanceof Set)) usedCards = new Set(Array.isArray(usedCards) ? usedCards : []);
             const cache = buildRangeComboIndex._cache || (buildRangeComboIndex._cache = new WeakMap());
-            const sig = usedCards.size + ':' + [...usedCards].sort().join('');
+
+            let bSig = '';
+            let flushSuit = null;
+            let flushCount = 0;
+            if (boardCards && Array.isArray(boardCards) && boardCards.length >= 3) {
+                const sCounts = { s: 0, h: 0, d: 0, c: 0 };
+                for (const c of boardCards) {
+                    if (c && c.length >= 2) {
+                        const st = c[1].toLowerCase();
+                        if (sCounts[st] !== undefined) sCounts[st]++;
+                    }
+                }
+                for (const s of ['s', 'h', 'd', 'c']) {
+                    if (sCounts[s] >= 2 && sCounts[s] > flushCount) {
+                        flushSuit = s;
+                        flushCount = sCounts[s];
+                    }
+                }
+                if (flushCount >= 2) {
+                    bSig = `:F${flushCount}${flushSuit}`;
+                }
+            }
+
+            const sig = usedCards.size + ':' + [...usedCards].sort().join('') + bSig;
             let entry = cache.get(rangeHands);
             if (!entry || entry.sig !== sig) {
                 const suits = ['s','h','d','c'];
-                const items = [], cum = [];
+                const items = [], cum = [], itemWeights = [];
                 let total = 0;
+                const hasTextureWeights = Boolean(flushSuit && flushCount >= 2);
+                const validRanks = '23456789TJQKA';
+
                 for (const handStr of rangeHands) {
+                    if (typeof handStr !== 'string' || handStr.length < 2 || handStr.length > 3) continue;
                     const r1 = handStr[0].toUpperCase(), r2 = handStr[1].toUpperCase();
+                    if (!validRanks.includes(r1) || !validRanks.includes(r2)) continue;
                     const isPair = r1 === r2;
                     const isSuited = handStr.length === 3 && handStr[2].toLowerCase() === 's';
                     const combos = [];
@@ -14886,10 +14947,52 @@
                         }
                     }
                     if (!combos.length) continue;
-                    total += combos.length;
-                    items.push(combos); cum.push(total);
+
+                    if (hasTextureWeights) {
+                        // ── Stage 4 第四战役: 花色感知微观加权 ──
+                        const cumW = [];
+                        let itemTotalW = 0;
+                        for (const combo of combos) {
+                            const s1 = combo[0][1].toLowerCase(), s2 = combo[1][1].toLowerCase();
+                            let w = 1.0;
+                            if (flushCount >= 3) {
+                                // 3-Flush / Monotone 牌面
+                                if (isSuited && s1 === flushSuit) {
+                                    w = 2.5; // 已成同花
+                                } else if (s1 === flushSuit || s2 === flushSuit) {
+                                    const rankHolding = (s1 === flushSuit) ? combo[0][0] : combo[1][0];
+                                    if (rankHolding === 'A' || rankHolding === 'K') w = 1.8; // 坚果/次坚果同花抽牌与阻断
+                                    else w = 1.4;
+                                } else {
+                                    w = 0.4; // 纯干燥无该花色组合
+                                }
+                            } else if (flushCount === 2) {
+                                // 2-Flush 听花牌面
+                                if (isSuited && s1 === flushSuit) {
+                                    w = 2.0; // 强同花听牌
+                                } else if (s1 === flushSuit || s2 === flushSuit) {
+                                    const rankHolding = (s1 === flushSuit) ? combo[0][0] : combo[1][0];
+                                    if (rankHolding === 'A' || rankHolding === 'K') w = 1.5;
+                                    else w = 1.2;
+                                } else {
+                                    w = 0.7; // 纯干燥无该花色组合
+                                }
+                            }
+                            itemTotalW += w;
+                            cumW.push(itemTotalW);
+                        }
+                        total += itemTotalW;
+                        items.push(combos);
+                        cum.push(total);
+                        itemWeights.push({ cumWeights: cumW, totalWeight: itemTotalW });
+                    } else {
+                        total += combos.length;
+                        items.push(combos);
+                        cum.push(total);
+                        itemWeights.push(null);
+                    }
                 }
-                entry = { sig, items, cum, total, flat: items.flat() };
+                entry = { sig, items, cum, total, flat: items.flat(), hasTextureWeights, itemWeights };
                 cache.set(rangeHands, entry);
             }
             return entry;
@@ -15188,6 +15291,8 @@
                     return { c, k, blocked: heroSet.has(c[0]) || heroSet.has(c[1]) };
                 }).sort((a, b) => b.k - a.k);
                 const n = scored.length;
+                const totalBlockedCombos = scored.filter(x => x.blocked).length;
+                const blockerRemovalRatio = n > 0 ? (totalBlockedCombos / n) : 0;
                 const nutN = Math.max(1, Math.round(n * 0.20));
                 const airStart = Math.round(n * 0.55);
                 const nut = scored.slice(0, nutN);
@@ -15287,7 +15392,10 @@
                     isNutBlocker,
                     isAirBlocker,
                     blockerType,
-                    blockerTypeDesc
+                    blockerTypeDesc,
+                    removedCombosCount: totalBlockedCombos,
+                    blockerRemovalRatio: Math.round(blockerRemovalRatio * 1000) / 1000,
+                    totalCombosEvaluated: n
                 };
             } catch (e) { console.warn('[Blocker] 跳过:', e.message); return null; }
         }
