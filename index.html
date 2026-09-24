@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.5 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.68 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -25,7 +25,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.5 高定黑曜石与 Liquid Glass 设计令牌 (Stage 3 UI-01) ══
+            /* ══ PokerCode v2.68 高定黑曜石与 Liquid Glass 设计令牌 (Stage 3 UI-01) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -176,7 +176,7 @@
                 display: grid !important;
                 grid-template-columns: 54% 1fr;
                 gap: 0.75rem;
-                align-items: stretch;
+                align-items: start;
             }
             #preDecisionHead {
                 grid-column: 1 / -1;
@@ -184,22 +184,37 @@
             #decisionHUD {
                 grid-column: 1;
                 grid-row: 2;
-                height: 100%;
+                height: 148px !important;
+                min-height: 148px !important;
+                max-height: 148px !important;
+                overflow: hidden !important;
+                box-sizing: border-box;
                 display: flex;
                 flex-direction: column;
-                justify-content: center;
+                justify-content: space-between;
+                align-self: start;
             }
             #resultPanel {
                 grid-column: 2;
                 grid-row: 2;
-                height: 100%;
+                height: 148px !important;
+                min-height: 148px !important;
+                max-height: 148px !important;
                 min-width: 0;
+                overflow: hidden !important;
+                box-sizing: border-box;
+                align-self: start;
             }
             #postDecisionSlot {
                 grid-column: 2;
                 grid-row: 2;
-                height: 100%;
+                height: 148px !important;
+                min-height: 148px !important;
+                max-height: 148px !important;
                 min-width: 0;
+                overflow: hidden !important;
+                box-sizing: border-box;
+                align-self: start;
             }
             #resultPanel:not(.zone-fold) ~ #postDecisionSlot:not([style*="none"]) {
                 grid-column: 2;
@@ -210,7 +225,7 @@
                 height: 100%;
             }
             #postDecisionSlot > #decisionPanel {
-                height: 100%;
+                min-height: 100%;
                 margin-bottom: 0 !important;
                 display: flex;
                 flex-direction: column;
@@ -449,8 +464,15 @@
         /* 52张牌通用选牌网格 */
         .cpg-wrap { width: 100%; }
         .cpg-row { display: flex; gap: 3px; margin-bottom: 3px; }
-        .cpg-btn { flex: 1; min-width: 0; height: 42px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: var(--fs-caption); font-weight: 800; line-height: 1; user-select: none; cursor: pointer; white-space: nowrap; transition: opacity 0.12s, filter 0.12s, transform 0.12s; position: relative; overflow: visible; box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 2px 6px rgba(0,0,0,0.35); }
-        .cpg-btn:not([data-sel]):not([data-dis]):hover { filter: brightness(1.15); transform: translateY(-1px); }
+        .cpg-btn { flex: 1; min-width: 0; height: 42px; border-radius: var(--radius-sm, 4px);
+                   display: flex; flex-direction: column; align-items: center; justify-content: center;
+                   user-select: none; cursor: pointer; white-space: nowrap;
+                   transition: opacity 0.15s, filter 0.15s, transform 0.15s, box-shadow 0.15s;
+                   position: relative; overflow: visible; box-sizing: border-box;
+                   backface-visibility: hidden; }
+        .cpg-btn:not([data-sel]):not([data-dis]):hover { filter: brightness(1.18); transform: translateY(-1.5px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 10px rgba(0,0,0,0.5); }
+        .cpg-rank { font-size: 13px; font-weight: 900; line-height: 1; color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); pointer-events: none; }
+        .cpg-suit { font-size: 10px; line-height: 1; margin-top: 1px; color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); pointer-events: none; }
         
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -614,7 +636,7 @@
         /* ══════════ 融合单页(2026-07-14)：清公共牌按钮沿用柔和红描边（原 Board 区 :has 覆盖块已随面板融合删除）══════════ */
         button[onclick="clearBoard()"] { background: transparent !important; border-color: var(--semantic-raise) !important; color: var(--semantic-raise) !important; }
         /* 选牌网格：选中态 → 金曜高亮环与实体高光，取消死灰半透明 */
-        .cpg-btn[data-sel] { border-color: #e0a83a !important; box-shadow: 0 0 0 1.5px #e0a83a, 0 3px 12px rgba(224,168,58,0.45), inset 0 1px 0 rgba(255,255,255,0.4) !important; opacity: 1 !important; }
+        .cpg-btn[data-sel] { border: 1px solid #e0a83a !important; box-shadow: 0 0 0 1px #e0a83a, 0 3px 12px rgba(224,168,58,0.45), inset 0 1px 0 rgba(255,255,255,0.4) !important; opacity: 1 !important; }
 
         /* ══════════ 数据即界面：关键数值统一等宽仪表字（2026-07 Solver 换肤）══════════ */
         #currentHandStr, #potDirectInput, #effDirectInput, #sumSpr, #equitySampleCount,
@@ -651,7 +673,9 @@
             .pos-btn, .pos-btn-hero { height: 38px; font-size: var(--fs-caption); }
             .tab-btn { padding: 11px 0; font-size: var(--fs-caption); }
             .cfg-btn { padding: 10px 0; font-size: var(--fs-caption); }
-            .cpg-btn { height: 44px; font-size: var(--fs-body); }
+            .cpg-btn { height: 44px; }
+            .cpg-rank { font-size: 14px; }
+            .cpg-suit { font-size: 11px; }
             .nav-phase-btn { padding: 8px 14px; }
             .bet-action-btn { padding: 10px 10px; font-size: var(--fs-caption); }
             input[type="number"]:not(.tl-amt-inline), select { min-height: 40px; }
@@ -709,11 +733,12 @@
             position: sticky; top: 0; z-index: 30;
             background: linear-gradient(135deg, rgba(22, 27, 34, 0.95) 0%, rgba(13, 17, 23, 0.98) 100%);
             border: 1px solid var(--accent); border-radius: var(--radius-md, 8px);
-            padding: 8px 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            padding: 10px 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
             transition: border-color .15s, box-shadow .15s;
+            box-sizing: border-box;
         }
         #decisionHUD.hud-empty { border-color: var(--glass-border); box-shadow: none; opacity: 0.8; }
-        .hud-top { display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-micro); color: var(--text-muted); letter-spacing: .08em; }
+        .hud-top { display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-micro); color: var(--text-muted); letter-spacing: .08em; height: 18px; }
         .hud-stage { font-weight: 800; text-transform: uppercase; }
         .hud-badge { font-weight: 800; padding: 1px 8px; border-radius: 999px; font-size: var(--fs-micro); letter-spacing: 0; }
         .hud-badge[data-level="明确"] { background: rgba(46,168,106,.18); color: #45d68a; }
@@ -726,17 +751,17 @@
         .hud-src[data-src="ref"]  { background: rgba(87,169,255,.12);  color: #7cc0ff; border-color: rgba(87,169,255,.30); }
         .hud-src[data-src="calc"] { background: rgba(46,168,106,.12);  color: #45d68a; border-color: rgba(46,168,106,.30); }
         .hud-src[data-src="mix"]  { background: rgba(224,168,58,.12);  color: #e0a83a; border-color: rgba(224,168,58,.30); }
-        .hud-main-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
-        .hud-action { font-family: var(--font-mono); font-size: var(--fs-display); font-weight: 900; line-height: 1.15; color: var(--text-primary); letter-spacing: 0.02em; }
+        .hud-main-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; margin-top: 3px; }
+        .hud-action { font-family: var(--font-mono); font-size: var(--fs-display); font-weight: 900; line-height: 1.05; color: var(--text-primary); letter-spacing: 0.02em; white-space: nowrap; }
         #decisionHUD[data-sem="attack"]  .hud-action { color: #ff7a7d; }
         #decisionHUD[data-sem="passive"] .hud-action { color: #45d68a; }
         #decisionHUD[data-sem="fold"]    .hud-action { color: #8b95ab; }
         #decisionHUD[data-sem="mixed"]   .hud-action { color: #e0a83a; }
         .hud-sizing { font-family: var(--font-mono); color: var(--gold); font-weight: 700; font-size: 14px;
                       background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.35);
-                      padding: 2px 8px; border-radius: 4px; }
-        .hud-freq { width: 100%; min-width: 0; max-width: 100%; height: 20px; margin-top: 6px; margin-bottom: 3px; border-radius: var(--radius-xs, 4px); }
-        .hud-why { font-size: var(--fs-caption); color: var(--text-secondary); margin-top: 4px; line-height: 1.35;
+                      padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+        .hud-freq { width: 100%; min-width: 0; max-width: 100%; height: 12px; margin-top: 5px; margin-bottom: 3px; border-radius: var(--radius-xs, 4px); }
+        .hud-why { font-size: 12px; color: var(--text-secondary); margin-top: 3px; line-height: 1.35; max-height: 34px;
                    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .macro-strip { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
         .macro-btn { font-size: var(--fs-micro); font-weight: 700; padding: 3px 8px; border-radius: var(--radius-sm);
@@ -774,7 +799,7 @@
         .md-d { background-color: #2263a5; background-image: linear-gradient(160deg, #2974bf 0%, #184c85 100%); }
         .md-c { background-color: #1e7e45; background-image: linear-gradient(160deg, #239452 0%, #155e34 100%); }
         .md-off { opacity: .22; cursor: not-allowed; filter: grayscale(0.5); }
-        .md-board { border: 1.5px solid #e0a83a !important; box-shadow: 0 0 10px rgba(224,168,58,0.55), inset 0 1px 0 rgba(255,255,255,0.4) !important; opacity: 1 !important; cursor: pointer !important; }
+        .md-board { border: 1px solid #e0a83a !important; box-shadow: 0 0 0 1px #e0a83a, 0 0 10px rgba(224,168,58,0.55), inset 0 1px 0 rgba(255,255,255,0.4) !important; opacity: 1 !important; cursor: pointer !important; }
         @media (max-width: 767.98px) { .md-card { min-height: 30px; font-size: var(--fs-caption); } }
         #postRightContent.hide-details #postHandCard, #postRightContent.hide-details #postRangeCard,
         #postRightContent.hide-details #postTextureCard, #postRightContent.hide-details #postDebugCard { display: none !important; }
@@ -796,40 +821,43 @@
            任何宽度/缩放下都不冲出卡片；加注额输入在格内独占一行 */
         /* 架构重构(2026-09-21，2026-09-22 优化排版与紧凑度)：我的位置按钮与座位行动卡片垂直绑定（同一列容器 .tl-seat-col），
            上排位置按钮矮小紧凑(22px)，下排卡片固定高度(52px)锁死不抖动；英文紧凑排版适配各屏幕 */
-        .tl-ribbon { display: grid; grid-template-columns: repeat(var(--tl-seat-count, 9), minmax(0, 1fr)); gap: 3px; width: 100%; overflow: visible; position: relative; }
+        .tl-ribbon { display: grid; grid-template-columns: repeat(var(--tl-seat-count, 9), minmax(0, 1fr)); gap: 0; width: 100%; overflow: visible; position: relative; padding: 10px 4px 4px 4px; box-sizing: border-box; }
         .tl-seat-col { display: flex; flex-direction: column; gap: 2px; min-width: 0;
-                       will-change: transform; transform-origin: bottom center; backface-visibility: hidden;
-                       transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 80ms ease-out;
+                       will-change: transform; transform-origin: center bottom; backface-visibility: hidden;
+                       transition: transform 180ms ease-out, box-shadow 150ms ease-out;
                        position: relative; }
+        .tl-seat-col:not(:first-child) { margin-left: -6px; }
         .tl-seat-col .pos-btn-hero { width: 100%; min-width: 0; height: 22px; min-height: 22px; line-height: 22px; padding: 0; font-size: 11px; font-weight: 700; border-radius: var(--radius-xs, 3px); }
-        .tl-seat { min-width: 0; height: 52px; min-height: 52px; max-height: 52px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
-                   padding: 4px 1px; text-align: center; cursor: pointer; background: rgba(255,255,255,.03); user-select: none;
-                   transition: background .12s, border-color .12s, box-shadow 80ms ease-out; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .tl-seat:hover { background: rgba(255,255,255,.08); }
+        .tl-seat { min-width: 0; height: 52px; min-height: 52px; max-height: 52px; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
+                   padding: 4px 1px; text-align: center; cursor: pointer; background: #141822; user-select: none;
+                   box-shadow: -2px 0 6px rgba(0,0,0,0.45);
+                   transition: background .12s, border-color .12s, box-shadow 150ms ease-out; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .tl-seat:hover { background: #1a202c; }
         .tl-seat .tl-pos { display: none; font-size: 12px; } /* 隐式保留以供不变量检验，上排按钮已显示位置，下卡不再重复 */
         .tl-seat .tl-act { font-size: 11px; font-family: var(--font-mono); font-weight: 700; margin-top: 0; color: var(--text-muted); white-space: nowrap; line-height: 1.15;
                            min-width: 0; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-        .tl-seat-col.dock-active { z-index: 30 !important; }
+        .tl-seat-col.dock-active { z-index: 50 !important; }
         .tl-seat-col.dock-active .tl-seat {
-            box-shadow: 0 8px 20px -2px rgba(0,0,0,0.7), 0 0 0 1.5px rgba(87,169,255,0.55);
-            background: rgba(255,255,255,0.14);
+            box-shadow: 0 12px 28px -2px rgba(0,0,0,0.85), 0 0 0 1px rgba(87,169,255,0.6) !important;
+            background: #1c2230 !important;
             overflow: visible;
         }
         .tl-seat-col.dock-active .tl-act {
-            overflow: visible; text-overflow: clip; z-index: 35;
+            overflow: visible; text-overflow: clip; z-index: 55;
         }
-        .tl-seat.fold .tl-act { color: var(--text-secondary); }
-        .tl-seat.limp { border-color: rgba(46,168,106,.45); } .tl-seat.limp .tl-act { color: #45d68a; }
-        .tl-seat.call { border-color: rgba(46,168,106,.7); background: rgba(46,168,106,.08); } .tl-seat.call .tl-act { color: #45d68a; }
-        .tl-seat.raise { border-color: #e5484d; background: rgba(214,57,64,.12); } .tl-seat.raise .tl-act { color: #ff7a7d; }
-        .tl-seat.allin { border-color: #e0a83a; background: rgba(224,168,58,.14); } .tl-seat.allin .tl-act { color: #e0a83a; }
-        .tl-seat.hero { border: 2px solid #e5484d; background: rgba(229,72,77,.18); } .tl-seat.hero .tl-act { color: #fff; }
-        .tl-seat.disabled { opacity: .3; cursor: not-allowed; }
+        .tl-seat.fold { background: #0f1218 !important; border-color: rgba(255,255,255,0.05); }
+        .tl-seat.fold .tl-act { color: #64748b; }
+        .tl-seat.limp { background: #0d2319 !important; border-color: rgba(46,168,106,.5); } .tl-seat.limp .tl-act { color: #45d68a; }
+        .tl-seat.call { background: #0f2b1e !important; border-color: rgba(46,168,106,.7); } .tl-seat.call .tl-act { color: #45d68a; }
+        .tl-seat.raise { background: #2b1215 !important; border-color: rgba(229,72,77,0.6); } .tl-seat.raise .tl-act { color: #ff7a7d; }
+        .tl-seat.allin { background: #2b2110 !important; border-color: rgba(224,168,58,0.6); } .tl-seat.allin .tl-act { color: #e0a83a; }
+        .tl-seat.hero { background: #2e1518 !important; border: 1.5px solid #e5484d; } .tl-seat.hero .tl-act { color: #fff; }
+        .tl-seat.disabled { opacity: .28; cursor: not-allowed; }
         /* 按流水重写(2026-09-11)：轮到谁谁脉冲；多次行动的座位补一行"Tot X" */
         .tl-seat.idle .tl-act { color: var(--text-secondary); }
-        .tl-seat.turn { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(87,169,255,.28); animation: tlTurnPulse 1.6s ease-in-out infinite; }
+        .tl-seat.turn { background: #122135 !important; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(87,169,255,.28); animation: tlTurnPulse 1.6s ease-in-out infinite; }
         .tl-seat.turn .tl-act { color: #9fd0ff; font-weight: 800; }
-        .tl-seat.hero.turn { border-color: #e5484d; box-shadow: 0 0 0 2px rgba(229,72,77,.35); }
+        .tl-seat.hero.turn { background: #2e1518 !important; border-color: #e5484d; box-shadow: 0 0 0 2px rgba(229,72,77,.35); }
         .tl-seat.hero.turn .tl-act { color: #ff9ea1; }
         @keyframes tlTurnPulse { 0%,100% { box-shadow: 0 0 0 2px rgba(87,169,255,.20); } 50% { box-shadow: 0 0 0 4px rgba(87,169,255,.34); } }
         .tl-seat .tl-sub { font-size: 10px; color: var(--gold); margin-top: 1px; font-family: var(--font-mono); line-height: 1; }
@@ -1025,9 +1053,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.5 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.68 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.5</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.68</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1047,7 +1075,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.5 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.68 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -1278,18 +1306,23 @@
                     <div id="hudFreq" class="freq-bar hud-freq" style="display:none"></div>
                     <div id="hudWhy" class="hud-why" style="display:none"></div>
                 </div>
-                <div id="resultPanel" class="flex flex-col gap-1.5 w-full invisible shrink-0">
-                    <div id="actionBox" class="flex flex-col items-center justify-center p-2 rounded border-2 text-center shadow-lg flex-1 min-h-[140px] overflow-hidden">
-                        <h2 id="actionVerdict" class="text-xs font-bold mb-1" style="letter-spacing:.04em;opacity:.85;"></h2>
-                        <p id="actionLogic" class="text-xs font-medium px-1 text-gray-200 overflow-y-auto"></p>
-                        <div id="sizingBox" class="w-full mt-2 hidden shrink-0">
-                            <div class="text-xs text-gray-400 mb-1">建议尺度</div>
-                            <div id="sizingContent" class="text-sm font-bold text-yellow-300"></div>
+                <div id="resultPanel" class="flex flex-col w-full invisible shrink-0">
+                    <div id="actionBox" class="flex flex-col justify-between p-2.5 rounded border text-center shadow-lg h-full box-border overflow-hidden">
+                        <div class="flex items-center justify-between gap-2 shrink-0">
+                            <span class="text-[11px] font-bold text-gray-400">策略定位</span>
+                            <h2 id="actionVerdict" class="text-xs font-bold" style="letter-spacing:.04em;margin:0;"></h2>
                         </div>
-                        <div id="freqBox" class="w-full max-w-sm mt-2 hidden shrink-0">
-                            <div class="flex justify-between text-xs font-bold text-gray-300 mb-0.5" id="freqLabels"></div>
-                            <div class="freq-bar" id="freqBar"></div>
+                        <div class="flex items-center justify-around gap-2 my-1 shrink-0">
+                            <div id="sizingBox" class="hidden shrink-0">
+                                <div class="text-[10px] text-gray-400">建议尺度</div>
+                                <div id="sizingContent" class="text-base font-black font-mono text-yellow-300"></div>
+                            </div>
+                            <div id="freqBox" class="w-full max-w-xs hidden shrink-0">
+                                <div class="flex justify-between text-[10px] font-bold text-gray-300 mb-0.5" id="freqLabels"></div>
+                                <div class="freq-bar" id="freqBar"></div>
+                            </div>
                         </div>
+                        <p id="actionLogic" class="text-xs font-medium px-1 text-gray-300 line-clamp-2 overflow-hidden" style="margin:0;line-height:1.35;"></p>
                     </div>
                 </div>
                 <div id="postDecisionSlot"></div>
@@ -4029,38 +4062,54 @@
                 const suit = cardStr[1];
                 const rank = cardStr[0];
                 const suitBg = { s: '#242833', h: '#9e2a2b', d: '#2263a5', c: '#1e7e45' };
-                const suitBdr = { s: 'rgba(255,255,255,0.25)', h: 'rgba(255,255,255,0.28)', d: 'rgba(255,255,255,0.28)', c: 'rgba(255,255,255,0.28)' };
-                const bg = suitBg[suit] || '#242833';
+                const suitGrad = {
+                    s: 'linear-gradient(160deg, #2b303d 0%, #191c24 100%)',
+                    h: 'linear-gradient(160deg, #b32e30 0%, #801819 100%)',
+                    d: 'linear-gradient(160deg, #2974bf 0%, #184c85 100%)',
+                    c: 'linear-gradient(160deg, #239452 0%, #155e34 100%)'
+                };
+                const suitBdr = {
+                    s: 'rgba(255,255,255,0.25)',
+                    h: 'rgba(255,255,255,0.28)',
+                    d: 'rgba(255,255,255,0.28)',
+                    c: 'rgba(255,255,255,0.28)'
+                };
+                const bg = suitGrad[suit] || suitBg[suit] || '#242833';
                 btn.className = 'cpg-btn';
                 btn.style.color = '#ffffff';
-                btn.style.backgroundColor = bg;
+                btn.style.background = bg;
 
                 if (isSel) {
                     // 已选：CoinPoker 质感 + 金色高亮发光边框 + 保持 100% 不透明度 + 白色 × 标记
                     btn.setAttribute('data-sel', '1');
                     btn.removeAttribute('data-dis');
-                    btn.style.border = '1.5px solid #e0a83a';
+                    btn.style.border = '1px solid #e0a83a';
                     btn.style.opacity = '1';
-                    btn.style.boxShadow = '0 0 0 1.5px #e0a83a, 0 3px 12px rgba(224,168,58,0.45)';
+                    btn.style.filter = '';
+                    btn.style.boxShadow = '0 0 0 1px #e0a83a, 0 3px 12px rgba(224,168,58,0.45), inset 0 1px 0 rgba(255,255,255,0.4)';
                     btn.style.cursor = 'pointer';
-                    btn.innerHTML = rank + SUIT_SYMBOLS[suit] +
-                        '<span style="position:absolute;top:1px;right:2px;font-size:12px;color:#fff;font-weight:900;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,0.6);">×</span>';
+                    btn.innerHTML = `<span class="cpg-rank">${rank}</span><span class="cpg-suit">${SUIT_SYMBOLS[suit]}</span>` +
+                        '<span style="position:absolute;top:1px;right:2px;font-size:11px;color:#fff;font-weight:900;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,0.6);">×</span>';
                 } else if (isDis) {
-                    // 禁用（如 board 已占用该牌）：花色背景，opacity 0.25，禁止点击
+                    // 禁用（如 board 已占用该牌）：花色背景，opacity 0.22，禁止点击
                     btn.removeAttribute('data-sel');
                     btn.setAttribute('data-dis', '1');
                     btn.style.border = '1px solid rgba(255,255,255,0.06)';
-                    btn.style.opacity = '0.25';
+                    btn.style.boxShadow = 'none';
+                    btn.style.opacity = '0.22';
+                    btn.style.filter = 'grayscale(0.6)';
                     btn.style.cursor = 'not-allowed';
-                    btn.textContent = rank + SUIT_SYMBOLS[suit];
+                    btn.innerHTML = `<span class="cpg-rank" style="opacity:0.6;">${rank}</span><span class="cpg-suit" style="opacity:0.6;">${SUIT_SYMBOLS[suit]}</span>`;
                 } else {
-                    // 正常或已满（未选）：GG 花色背景，纯白大字，微高光边
+                    // 正常或已满（未选）：CoinPoker 花色微渐变，纯白大字，微高光边
                     btn.removeAttribute('data-sel');
                     btn.removeAttribute('data-dis');
-                    btn.style.border = `1px solid ${suitBdr[suit] || 'rgba(255,255,255,0.18)'}`;
+                    btn.style.border = `1px solid ${suitBdr[suit] || 'rgba(255,255,255,0.22)'}`;
+                    btn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 5px rgba(0,0,0,0.35)';
                     btn.style.opacity = '1';
+                    btn.style.filter = '';
                     btn.style.cursor = isMaxed ? 'default' : 'pointer';
-                    btn.textContent = rank + SUIT_SYMBOLS[suit];
+                    btn.innerHTML = `<span class="cpg-rank">${rank}</span><span class="cpg-suit">${SUIT_SYMBOLS[suit]}</span>`;
                 }
             }
 
@@ -4072,7 +4121,6 @@
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.setAttribute('data-card', cardStr);
-                    btn.textContent = rank + SUIT_SYMBOLS[suit];
                     btnMap[cardStr] = btn;
                     refreshBtn(btn, cardStr);
                     btn.addEventListener('click', () => {
@@ -4509,6 +4557,7 @@
             // 提取第一句核心依据供大卡片展示（R6：答案第一，输入第二，解释第三，技术细节第四）
             let coreWhy = String(why).replace(/<[^>]+>/g, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
             if (coreWhy) {
+                if (coreWhy.includes('💡')) coreWhy = coreWhy.split('💡')[0].trim();
                 const m = coreWhy.match(/^([^。！？\n]+[。！？]?)/);
                 if (m && m[1]) coreWhy = m[1].trim();
             }
@@ -5269,7 +5318,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v2.5',
+                    v: 'v2.68',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5288,7 +5337,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || data.v !== 'v2.5') return false;
+                if (!data || (data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5334,7 +5383,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.5 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.68 正式版';
             renderWindowColorChips(key);
         };
 
@@ -7220,24 +7269,29 @@
                 </div>`;
             }).join('');
 
-            // ── UI-02 动效优化：悬停仅对目标卡微抬升，彻底消除邻座左右推挤（手风琴抖动） ──
+            // ── UI-02 动效：横向叠放卡组 + 纯垂直上浮置顶（消除水平推挤抖动，对标实体卡组） ──
             const cols = Array.from(ribbon.querySelectorAll('.tl-seat-col'));
-            const resetCols = () => cols.forEach(c => {
+            const resetCols = () => cols.forEach((c, idx) => {
                 c.style.transform = '';
-                c.style.zIndex = '';
+                c.style.zIndex = `${idx + 1}`;
                 c.classList.remove('dock-active');
             });
+            resetCols();
+
             cols.forEach((col, idx) => {
                 col.addEventListener('mouseenter', () => {
-                    if (window.innerWidth < 768 || (window.matchMedia && !window.matchMedia('(hover: hover)').matches)) return;
+                    // 支持所有带鼠标/触控指针的环境（包含单屏、分屏与窄屏视口），仅无 hover 指针的纯触控设备跳过
+                    if (window.matchMedia && !window.matchMedia('(hover: hover)').matches) return;
                     cols.forEach((c, i) => {
                         if (i === idx) {
-                            c.style.transform = 'translateY(-4px)';
-                            c.style.zIndex = '30';
+                            // 纯垂直上浮 8px，保持水平坐标与宽度零位移，彻底根除横向挤压与震颤
+                            c.style.transform = 'translateY(-8px)';
+                            c.style.zIndex = '50';
                             c.classList.add('dock-active');
                         } else {
                             c.style.transform = '';
-                            c.style.zIndex = '';
+                            c.style.zIndex = `${i + 1}`;
+                            c.classList.remove('dock-active');
                         }
                     });
                 });
@@ -11277,7 +11331,7 @@
             const bg  = suitGrad[suit] || suitBg[suit] || '#242833';
             const bdr = suitBdr[suit] || 'rgba(255,255,255,0.25)';
             const col = '#ffffff';
-            return `<div style="background:${bg};border:1.5px solid ${bdr};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),0 4px 14px rgba(0,0,0,0.5);" class="rounded w-full h-full flex flex-col items-center justify-center select-none">
+            return `<div style="background:${bg};border:1px solid ${bdr};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),0 2px 8px rgba(0,0,0,0.45);" class="rounded w-full h-full flex flex-col items-center justify-center select-none">
                 <span style="font-size:16px;font-weight:900;line-height:1;color:${col};text-shadow:0 1px 2px rgba(0,0,0,0.6);">${rank}</span>
                 <span style="font-size:12px;line-height:1;margin-top:2px;color:${col};text-shadow:0 1px 2px rgba(0,0,0,0.6);">${SUIT_SYMBOLS[suit]}</span>
             </div>`;
@@ -13155,36 +13209,37 @@
 
                 <!-- 卡片2：决策依据（职责分离 2026-07-21：顶部 HUD = 答案，本卡 = 依据。
                      原本大字动作+尺度+频率条与 HUD 逐项重复，实测 255px 全是重复内容） -->
-                <div id="decisionPanel" class="panel-bg rounded overflow-hidden hidden" style="border: 1px solid var(--glass-border)">
-                    <div id="decisionMain" class="px-3 py-2" style="background: linear-gradient(135deg, rgba(87,169,255,0.10), rgba(0,0,0,0.25));">
-                        <div class="flex items-baseline justify-between gap-2 mb-1">
-                            <span class="text-xs text-gray-400 shrink-0">决策依据</span>
-                        </div>
-                        <div class="flex items-baseline gap-2 flex-wrap">
-                            <span id="decisionAction" class="text-base font-black tracking-wider">--</span>
+                <div id="decisionPanel" class="panel-bg rounded overflow-hidden hidden h-full flex flex-col justify-between p-2.5 box-border" style="border: 1px solid var(--accent); background: linear-gradient(135deg, rgba(22, 27, 34, 0.95) 0%, rgba(13, 17, 23, 0.98) 100%);">
+                    <!-- 顶栏：依据标题 + 剥削徽章 + 右侧内联 3 大核心数学指标胶囊 (零纵向占位) -->
+                    <div class="flex items-center justify-between gap-2 shrink-0" style="height: 22px;">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="text-xs font-bold text-gray-400 shrink-0">决策依据</span>
+                            <span id="decisionAction" class="text-xs font-black tracking-wider" style="color:#7cc0ff;">--</span>
                             <span id="decisionSizing" class="text-xs font-bold" style="color:var(--gold)"></span>
-                            <span id="decisionExploitBadge" class="text-xs font-bold px-1.5 py-0.5 rounded hidden" style="background:rgba(87,169,255,0.18);border:1px solid rgba(87,169,255,0.4);color:#7cc0ff;"></span>
+                            <span id="decisionExploitBadge" class="text-[10px] font-bold px-1.5 py-0.5 rounded hidden" style="background:rgba(87,169,255,0.18);border:1px solid rgba(87,169,255,0.4);color:#7cc0ff;"></span>
                         </div>
-                        <div id="decisionReason" class="text-xs text-gray-300 mt-1.5" style="line-height:1.5"></div>
+                        <div class="flex items-center gap-1.5 shrink-0" id="decisionMath">
+                            <div class="px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-[10px] flex items-center gap-1">
+                                <span class="text-gray-400">赔率</span>
+                                <span id="decMathOdds" class="font-bold font-mono text-white">--</span>
+                            </div>
+                            <div class="px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-[10px] flex items-center gap-1">
+                                <span class="text-gray-400">MDF</span>
+                                <span id="decMathMdf" class="font-bold font-mono text-white">--</span>
+                            </div>
+                            <div class="px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-[10px] flex items-center gap-1">
+                                <span class="text-gray-400">SPR</span>
+                                <span id="decMathSpr" class="font-bold font-mono text-amber-300">--</span>
+                            </div>
+                        </div>
                     </div>
+                    <!-- 中段：完整核心理由推理 (3行完整展开，无截断无滚动) -->
+                    <div id="decisionReason" class="text-xs text-gray-300 flex-1 my-1 overflow-hidden" style="line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;"></div>
                     <div class="hidden">
                         <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
                     </div>
-                    <div class="p-2 grid grid-cols-3 gap-1 text-center bg-black/10" id="decisionMath">
-                        <div class="bg-black/20 p-1 rounded">
-                            <div class="text-xs text-gray-400">底池赔率</div>
-                            <div id="decMathOdds" class="text-xs font-bold text-white">--</div>
-                        </div>
-                        <div class="bg-black/20 p-1 rounded">
-                            <div class="text-xs text-gray-400">MDF</div>
-                            <div id="decMathMdf" class="text-xs font-bold text-white">--</div>
-                        </div>
-                        <div class="bg-black/20 p-1 rounded">
-                            <div class="text-xs text-gray-400">SPR</div>
-                            <div id="decMathSpr" class="text-xs font-bold text-white">--</div>
-                        </div>
-                    </div>
-                    <div id="decisionWarnings" class="px-2 pb-2 space-y-1"></div>
+                    <!-- 底栏：横向标签化警示区 (零纵向堆叠，横向紧凑药丸流) -->
+                    <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 26px;"></div>
                 </div>
 
                 <!-- 卡片3：胜率分析（胜/平/负 + 算法标签） -->
@@ -16513,42 +16568,40 @@
             if (!panel) {
                 panel = document.createElement('div');
                 panel.id = 'decisionPanel';
-                panel.className = 'panel-bg rounded mb-2 overflow-hidden';
-                panel.style.border = '2px solid var(--accent)';
+                panel.className = 'panel-bg rounded overflow-hidden h-full flex flex-col justify-between p-2.5 box-border';
+                panel.style.border = '1px solid var(--accent)';
+                panel.style.background = 'linear-gradient(135deg, rgba(22, 27, 34, 0.95) 0%, rgba(13, 17, 23, 0.98) 100%)';
                 panel.innerHTML = `
-                    <!-- 职责分离(2026-07-21)：顶部 HUD = 答案（动作/尺度/频率/标识），本面板 = 依据（完整理由+数学+警告）。
-                         原本大字动作+尺度+频率条与 HUD 逐项重复（实测面板 255px 全是重复内容），现收敛为一行上下文标签。 -->
-                    <div id="decisionMain" class="px-3 py-2" style="background: linear-gradient(135deg, rgba(87,169,255,0.10), rgba(0,0,0,0.25));">
-                        <div class="flex items-baseline justify-between gap-2 mb-1">
-                            <span class="text-xs text-gray-400 shrink-0">决策依据</span>
-                        </div>
-                        <div class="flex items-baseline gap-2 flex-wrap">
-                            <span id="decisionAction" class="text-base font-black tracking-wider">--</span>
+                    <!-- 顶栏：依据标题 + 剥削徽章 + 右侧内联 3 大核心数学指标胶囊 (零纵向占位) -->
+                    <div class="flex items-center justify-between gap-2 shrink-0" style="height: 22px;">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="text-xs font-bold text-gray-400 shrink-0">决策依据</span>
+                            <span id="decisionAction" class="text-xs font-black tracking-wider" style="color:#7cc0ff;">--</span>
                             <span id="decisionSizing" class="text-xs font-bold" style="color:var(--gold)"></span>
-                            <span id="decisionExploitBadge" class="text-xs font-bold px-1.5 py-0.5 rounded hidden" style="background:rgba(87,169,255,0.18);border:1px solid rgba(87,169,255,0.4);color:#7cc0ff;"></span>
+                            <span id="decisionExploitBadge" class="text-[10px] font-bold px-1.5 py-0.5 rounded hidden" style="background:rgba(87,169,255,0.18);border:1px solid rgba(87,169,255,0.4);color:#7cc0ff;"></span>
                         </div>
-                        <div id="decisionReason" class="text-xs text-gray-300 mt-1.5" style="line-height:1.5"></div>
+                        <div class="flex items-center gap-1.5 shrink-0" id="decisionMath">
+                            <div class="px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-[10px] flex items-center gap-1">
+                                <span class="text-gray-400">赔率</span>
+                                <span id="decMathOdds" class="font-bold font-mono text-white">--</span>
+                            </div>
+                            <div class="px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-[10px] flex items-center gap-1">
+                                <span class="text-gray-400">MDF</span>
+                                <span id="decMathMdf" class="font-bold font-mono text-white">--</span>
+                            </div>
+                            <div class="px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-[10px] flex items-center gap-1">
+                                <span class="text-gray-400">SPR</span>
+                                <span id="decMathSpr" class="font-bold font-mono text-amber-300">--</span>
+                            </div>
+                        </div>
                     </div>
+                    <!-- 中段：完整核心理由推理 (3行完整展开，无截断无滚动) -->
+                    <div id="decisionReason" class="text-xs text-gray-300 flex-1 my-1 overflow-hidden" style="line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;"></div>
                     <div class="hidden">
                         <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
                     </div>
-                    <!-- 底层数据 -->
-                    <div class="p-2 grid grid-cols-3 gap-1 text-center bg-black/10" id="decisionMath">
-                        <div class="bg-black/20 p-1 rounded">
-                            <div class="text-xs text-gray-400">底池赔率</div>
-                            <div id="decMathOdds" class="text-xs font-bold text-white">--</div>
-                        </div>
-                        <div class="bg-black/20 p-1 rounded">
-                            <div class="text-xs text-gray-400">MDF</div>
-                            <div id="decMathMdf" class="text-xs font-bold text-white">--</div>
-                        </div>
-                        <div class="bg-black/20 p-1 rounded">
-                            <div class="text-xs text-gray-400">SPR</div>
-                            <div id="decMathSpr" class="text-xs font-bold text-white">--</div>
-                        </div>
-                    </div>
-                    <!-- 警告区 -->
-                    <div id="decisionWarnings" class="px-2 pb-2 space-y-1"></div>`;
+                    <!-- 底栏：横向标签化警示区 (零纵向堆叠，横向紧凑药丸流) -->
+                    <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 26px;"></div>`;
                 // 插入到 postRightContent 的最顶部（决策最重要，放第一位）
                 const container = document.getElementById('postRightContent');
                 container.insertBefore(panel, container.firstChild);
@@ -16665,7 +16718,7 @@
             };
             (result.warnings || []).forEach(w => {
                 const div = document.createElement('div');
-                div.className = 'text-xs px-2 py-1 rounded border ' + _warnStyle(w);
+                div.className = 'text-[11px] px-2 py-0.5 rounded border inline-flex items-center shrink-0 ' + _warnStyle(w);
                 // 警示文案里带 <b> 强调（如"多人底池：<b>纯诈唬一律关闭</b>"），
                 // 用 innerText 会把标签当字面量原样显示出来（用户截图可见）。内容全是引擎里的常量，非用户输入。
                 div.innerHTML = w;
@@ -17708,7 +17761,7 @@ function renderVisionReviewCard(payload) {
             : sv === 'ok'
             ? { t: '✓', col: '#45d68a', bd: 'rgba(69,214,138,0.6)', tip: '像素判色与模型一致，可信' }
             : { t: '？', col: '#ff7a7d', bd: '#e5484d', tip: '花色未经像素校验（该区域不够清晰）——请人工确认' };
-        return `<span data-edit="${editKey}" title="${mark.tip}｜点击可改" style="${base}${active}border:1.5px solid ${mark.bd};background:${suitBg[s]||'#2d2c3a'};color:#fff;padding:2px 4px;">
+        return `<span data-edit="${editKey}" title="${mark.tip}｜点击可改" style="${base}${active}border:1px solid ${mark.bd};background:${suitBg[s]||'#2d2c3a'};color:#fff;padding:2px 4px;">
             <span>${r}${SYM[s]||''}</span>
             <span style="font-size:14px;font-weight:900;color:${mark.col};line-height:1;margin-top:2px;">${mark.t}</span></span>`;
     };
