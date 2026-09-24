@@ -12240,7 +12240,8 @@
                     rangeAdvantage: (postState.boardAnalysis || {}).rangeAdvantage,
                     nutAdvantage: (postState.boardAnalysis || {}).nutAdvantage,
                     wetness: (postState.boardAnalysis || {}).wetness,
-                    isMultiway: (typeof getMultiwayContext === 'function' && getMultiwayContext()?.isMultiway)
+                    isMultiway: (typeof getMultiwayContext === 'function' && getMultiwayContext()?.isMultiway),
+                    turnRunoutShift: (postState.boardAnalysis || {}).turnRunoutShift
                 }) : null;
 
             // suggAction / suggAmt 供各按钮星标高亮使用（见下方行动区）
@@ -12685,6 +12686,169 @@
             };
         }
 
+        /**
+         * ════════════════════════════════════════════════════════════════
+         * Pokercode 转牌转折张动态感知与优势转移分类器 (Turn Runout Dynamics & Shift)
+         * 理论依据：Fedor Holz & Matthias Eibinger Pokercode 进阶转牌博弈体系
+         * ════════════════════════════════════════════════════════════════
+         * @param {Array<string>} flopCards - 翻牌 3 张（如 ['Qs', '6h', '3h']）
+         * @param {string} turnCard - 转牌 1 张（如 '2c', 'Kd', '6c', 'Th'）
+         */
+        function classifyTurnRunout(flopCards, turnCard) {
+            if (!flopCards || flopCards.length < 3 || !turnCard) return null;
+            const RKI = '23456789TJQKA';
+            const r2v = r => {
+                const idx = RKI.indexOf(r);
+                return idx >= 0 ? idx + 2 : parseInt(r);
+            };
+
+            const flopRanks = flopCards.map(c => r2v(c[0]));
+            const turnRank = r2v(turnCard[0]);
+            const turnSuit = turnCard[1];
+            const flopMaxRank = Math.max(...flopRanks);
+
+            // 1. 同花动态统计
+            const flopSuitsCount = { 's': 0, 'h': 0, 'c': 0, 'd': 0 };
+            flopCards.forEach(c => flopSuitsCount[c[1]] = (flopSuitsCount[c[1]] || 0) + 1);
+            const isFlushCompleter = (flopSuitsCount[turnSuit] >= 2);
+
+            // 2. 配对动态
+            const isBoardPair = flopRanks.includes(turnRank);
+
+            // 3. 超牌动态
+            const isOvercard = turnRank > flopMaxRank;
+
+            // 4. 连张/顺子成牌动态 (Straight Completer)
+            const all4Ranks = [...flopRanks, turnRank].sort((a, b) => a - b);
+            const unique4 = [...new Set(all4Ranks)];
+            if (unique4.includes(14)) unique4.unshift(1); // Ace-low
+            
+            let maxConsecutive = 1;
+            let minSpan4 = 99;
+            for (let i = 0; i < unique4.length; i++) {
+                for (let j = i + 1; j < unique4.length; j++) {
+                    const diff = unique4[j] - unique4[i];
+                    const count = j - i + 1;
+                    if (diff === count - 1) {
+                        maxConsecutive = Math.max(maxConsecutive, count);
+                    }
+                    if (count === 4) {
+                        minSpan4 = Math.min(minSpan4, diff);
+                    }
+                }
+            }
+
+            let maxConsecutiveNatural = 1;
+            const natural4 = [...new Set(all4Ranks)].sort((a, b) => a - b);
+            for (let i = 0; i < natural4.length; i++) {
+                for (let j = i + 1; j < natural4.length; j++) {
+                    if (natural4[j] - natural4[i] === j - i) {
+                        maxConsecutiveNatural = Math.max(maxConsecutiveNatural, j - i + 1);
+                    }
+                }
+            }
+
+            // 检查翻牌的原生连续张数
+            const flopUniqueNatural = [...new Set(flopRanks)].sort((a, b) => a - b);
+            let flopMaxConsecutiveNatural = 1;
+            for (let i = 0; i < flopUniqueNatural.length; i++) {
+                for (let j = i + 1; j < flopUniqueNatural.length; j++) {
+                    if (flopUniqueNatural[j] - flopUniqueNatural[i] === j - i) {
+                        flopMaxConsecutiveNatural = Math.max(flopMaxConsecutiveNatural, j - i + 1);
+                    }
+                }
+            }
+
+            // 顺子完成条件：
+            // 1. 公牌 4 连张 (如 6-7-8-9 或 A-2-3-4 或 T-J-Q-K) 或 4 张跨度 <= 4 (如 5-7-8-9 双头/单张即成顺)
+            // 2. 转牌与翻牌连接生成自然中连 3 连张 (如 9-8-x + 7 -> 7-8-9, J-T-x + 9 -> 9-T-J)，两端均开放且 <=12
+            const isStraightCompleter = (maxConsecutive >= 4 || minSpan4 <= 4 || (maxConsecutiveNatural >= 3 && flopMaxConsecutiveNatural <= 2 && turnRank <= 12));
+
+            if (isFlushCompleter) {
+                return {
+                    type: 'FLUSH_COMPLETER',
+                    label: isOvercard ? '成花转折 (含超牌)' : '成花转折 (Flush Completer)',
+                    badgeClass: 'bg-blue-900/60 text-blue-300 border border-blue-500/40',
+                    advShift: 'Caller',
+                    tactics: '转牌成花转折：公牌形成 3 张同花，双方同花听牌完成。侵略者无同花阻断严禁盲目开第二桶，必须急刹车控池；持有坚果同花或坚果花阻断可采用极化大注或诱捕。',
+                    isOvercard,
+                    isBoardPair,
+                    isFlushCompleter: true,
+                    isStraightCompleter,
+                    turnCard,
+                    turnRank,
+                    flopMaxRank
+                };
+            }
+
+            if (isStraightCompleter) {
+                return {
+                    type: 'STRAIGHT_COMPLETER',
+                    label: '成顺转折 (Straight Completer)',
+                    badgeClass: 'bg-amber-900/60 text-amber-300 border border-amber-500/40',
+                    advShift: 'Caller',
+                    tactics: '转牌连张激活/成顺：转折张深度连接防守方高频跟注区间（同花连张与两头顺）。开池方顶对/超对相对牌力急剧退化为纯抓诈牌，严禁盲目重注扩池；宜采取防守控池或窄范围极化保护。',
+                    isOvercard,
+                    isBoardPair,
+                    isFlushCompleter: false,
+                    isStraightCompleter: true,
+                    turnCard,
+                    turnRank,
+                    flopMaxRank
+                };
+            }
+
+            if (isBoardPair) {
+                return {
+                    type: 'BOARD_PAIR',
+                    label: '公对成双 (Board Pair)',
+                    badgeClass: 'bg-purple-900/60 text-purple-300 border border-purple-500/40',
+                    advShift: 'Raiser',
+                    tactics: '转牌公牌成对：阻断对手大量两对组合（顺带将其降格或削弱），开池方超对安全性大幅提升，同时巩固顶端三条/葫芦优势。推荐采用 25%~33% 小注高频测试或控池诱捕。',
+                    isOvercard,
+                    isBoardPair: true,
+                    isFlushCompleter: false,
+                    isStraightCompleter: false,
+                    turnCard,
+                    turnRank,
+                    flopMaxRank
+                };
+            }
+
+            if (isOvercard) {
+                return {
+                    type: 'OVERCARD',
+                    label: '超牌转折 (Overcard)',
+                    badgeClass: 'bg-emerald-900/60 text-emerald-300 border border-emerald-500/40',
+                    advShift: 'Raiser',
+                    tactics: '转牌发出超牌：高频穿透对手翻牌跟注范围（中弱对与飘浮牌），翻前侵略者范围与顶端优势激增。推荐高频释放第二桶或延迟 C-Bet（33%小注或几何注），迫使其弃掉边缘对子。',
+                    isOvercard: true,
+                    isBoardPair: false,
+                    isFlushCompleter: false,
+                    isStraightCompleter: false,
+                    turnCard,
+                    turnRank,
+                    flopMaxRank
+                };
+            }
+
+            return {
+                type: 'BLANK',
+                label: '白板砖牌 (Blank/Brick)',
+                badgeClass: 'bg-slate-800 text-gray-300 border border-gray-600/40',
+                advShift: 'Neutral',
+                tactics: '转牌白板砖牌：牌面动态与翻牌完全一致，双方范围未发生结构性位移。翻牌主动方延续两极化策略（强价值+高期望抽牌开第二桶），翻牌过牌线可释放延迟 C-Bet 剥削防守方弱封顶范围。',
+                isOvercard: false,
+                isBoardPair: false,
+                isFlushCompleter: false,
+                isStraightCompleter: false,
+                turnCard,
+                turnRank,
+                flopMaxRank
+            };
+        }
+        window.classifyTurnRunout = classifyTurnRunout;
+
         function boardAnalyzer(boardCards) {
             const ranks = [];
             const suitsCount = { 's':0, 'h':0, 'c':0, 'd':0 };
@@ -12797,6 +12961,12 @@
                 maxRank, maxSuitCount, paired, trips, flushThreat, straightThreat, bSpan: bSpanVal
             });
 
+            // Stage 4: 转牌转折张动态感知与优势转移 (Turn Runout Dynamics & Shift)
+            let turnRunoutShift = null;
+            if (boardCards.length >= 4) {
+                turnRunoutShift = classifyTurnRunout(boardCards.slice(0, 3), boardCards[3]);
+            }
+
             // Range Advantage
             // A/K高牌面 或 配对面 → Raiser（开池者有 AK/AQ/KQ 等顶对及大对子/高张优势）
             // 中低连接面（最高牌<=J）→ Caller（防守者有 JTs/T9s/87s 等顺子/同花进张）
@@ -12810,11 +12980,28 @@
             if (flushThreat === 'monotone' || flushThreat === 'flush' || straightThreat >= 2 || (bSpanVal <= 2 && maxRank <= 12)) {
                 if (maxRank <= 12) nutAdv = 'Caller';
             }
+
+            // Stage 4 转牌专属优势重标定：动态感知转折张对双方范围与坚果分布的冲击
+            if (street === 'turn' && turnRunoutShift) {
+                if (turnRunoutShift.type === 'STRAIGHT_COMPLETER') {
+                    nutAdv = 'Caller';
+                    if (maxRank <= 12 || straightThreat >= 2) rangeAdv = 'Caller';
+                } else if (turnRunoutShift.type === 'FLUSH_COMPLETER') {
+                    if (maxRank <= 12) nutAdv = 'Caller';
+                } else if (turnRunoutShift.type === 'OVERCARD') {
+                    rangeAdv = 'Raiser';
+                    if (straightThreat < 2 && flushThreat !== 'flush') nutAdv = 'Raiser';
+                } else if (turnRunoutShift.type === 'BOARD_PAIR') {
+                    rangeAdv = 'Raiser';
+                    nutAdv = 'Raiser';
+                }
+            }
             
             return {
                 street, highCard, paired, trips, flushThreat, straightThreat,
                 connectedness, wetness, rangeAdvantage: rangeAdv, nutAdvantage: nutAdv,
-                pokercodeTopology
+                pokercodeTopology,
+                turnRunoutShift
             };
         }
 
@@ -13073,10 +13260,15 @@
             const wetness = Number(options.wetness) || 0;
             const isMultiway = !!options.isMultiway;
             const vProf = options.villainProfile || 'balanced';
+            const trs = options.turnRunoutShift || null;
 
             let recommendedProfile = 'standard';
             if (isMultiway) {
                 recommendedProfile = 'blocker';
+            } else if (trs && (trs.type === 'FLUSH_COMPLETER' || trs.type === 'STRAIGHT_COMPLETER')) {
+                recommendedProfile = 'blocker'; // 成顺/成花转折，坚果向对手倾斜，控池小注
+            } else if (trs && trs.type === 'BOARD_PAIR') {
+                recommendedProfile = 'blocker'; // 公牌成对控池
             } else if (vProf === 'calling_station' && spr >= 1.2) {
                 recommendedProfile = 'overbet'; // 面对跟注站单挑，超池满额榨取
             } else if (vProf === 'fold_heavy') {
@@ -14262,6 +14454,16 @@
                     <span class="text-amber-400 font-bold">💡 Pokercode 拓扑策略：</span>${topo.tactics}
                 </div>` : '';
 
+            // Stage 4: 转牌转折张徽章与战术卡
+            const trs = analysis.turnRunoutShift;
+            const trsBadge = (analysis.street === 'turn' && trs)
+                ? `<span class="text-xs px-2 py-0.5 rounded font-semibold ${trs.badgeClass}">${trs.label}</span>`
+                : '';
+            const trsTactics = (analysis.street === 'turn' && trs && trs.tactics)
+                ? `<div class="mt-2 text-xs text-gray-300 bg-white/5 p-2 rounded border border-white/10" id="turnRunoutCard">
+                       <span class="text-amber-400 font-bold">🔄 Pokercode 转牌转折动态：</span>${trs.tactics}
+                   </div>` : '';
+
             const mwCtx = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
             const mwBadge = (mwCtx && mwCtx.isMultiway)
                 ? `<span class="text-xs px-2 py-0.5 rounded font-semibold ${mwCtx.badgeClass}">${mwCtx.totalCount}人底池 · ${mwCtx.roleLabel}</span>`
@@ -14271,6 +14473,22 @@
                     <span class="text-sky-400 font-bold">💡 Pokercode 多人底池：</span>${mwCtx.roleTactics}
                 </div>` : '';
 
+            // Stage 4 第二战役: 河牌/转牌 Blocker 徽章展示
+            const blkRes = (postState.decisionResult && postState.decisionResult.blocker) ||
+                ((analysis.street === 'turn' || analysis.street === 'river') && postState.heroCards && postState.heroCards.length >= 2 && postState.villainRange?.hands
+                    ? analyzeBlockers(postState.heroCards, postState.board.filter(Boolean), postState.villainRange.hands)
+                    : null);
+            let blkBadge = '';
+            if (blkRes) {
+                if (blkRes.isNutBlocker) {
+                    blkBadge = `<span class="text-xs px-2 py-0.5 rounded font-semibold bg-emerald-950/60 text-emerald-300 border border-emerald-500/40">🎯 ${blkRes.blockerTypeDesc}</span>`;
+                } else if (blkRes.isAirBlocker) {
+                    blkBadge = `<span class="text-xs px-2 py-0.5 rounded font-semibold bg-rose-950/60 text-rose-300 border border-rose-500/40">⚠️ ${blkRes.blockerTypeDesc}</span>`;
+                } else if (Math.abs(blkRes.edge) >= 4) {
+                    blkBadge = `<span class="text-xs px-2 py-0.5 rounded font-semibold bg-sky-950/60 text-sky-300 border border-sky-500/40">Blocker Δ${blkRes.edge > 0 ? '+' : ''}${blkRes.edge}</span>`;
+                }
+            }
+
             const curPot = (postState.potTracker && postState.potTracker.currentPot) || 0;
             const curEff = (postState.potTracker && postState.potTracker.effStack) || 0;
             const geom = (typeof calcGeometricSizing === 'function' && curPot > 0 && curEff > 0)
@@ -14279,7 +14497,8 @@
                     rangeAdvantage: analysis.rangeAdvantage,
                     nutAdvantage: analysis.nutAdvantage,
                     wetness: analysis.wetness,
-                    isMultiway: (mwCtx && mwCtx.isMultiway)
+                    isMultiway: (mwCtx && mwCtx.isMultiway),
+                    turnRunoutShift: analysis.turnRunoutShift
                 }) : null;
 
             let geomTactics = '';
@@ -14338,8 +14557,12 @@
                     <div class="flex items-center gap-1.5 flex-wrap">
                         <span>牌面结构</span>
                         ${topoBadge}
+                        ${trsBadge}
+                        ${blkBadge}
                         ${mwBadge}
                     </div>
+                    <span style="color: var(--accent);">${title}</span>
+                </div>
                     <span style="color: var(--accent);">${title}</span>
                 </div>
                 <div class="flex justify-between items-center bg-black/30 p-2 rounded mb-2">
@@ -14375,7 +14598,7 @@
                         <span class="text-xs text-gray-400">坚果优势</span>
                         <span class="text-xs font-bold ${nutColor} mt-1">${nutIcon} ${analysis.nutAdvantage}</span>
                     </div>
-                </div>${topoTactics}${mwTactics}${geomTactics}`;
+                </div>${topoTactics}${trsTactics}${mwTactics}${geomTactics}`;
             card.classList.remove('hidden');
         }
 
@@ -14933,6 +15156,8 @@
                 const heroSet = new Set(hero);
                 const boardSet = new Set(bd);
                 const SUITS = ['s', 'h', 'd', 'c'];
+                const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'];
+                const RKI = '23456789TJQKA';
                 const combos = [];
                 for (const h of rangeHands) {
                     const r1 = h[0].toUpperCase(), r2 = h[1].toUpperCase();
@@ -14961,12 +15186,100 @@
                 const pct = arr => arr.length ? arr.filter(x => x.blocked).length / arr.length * 100 : 0;
                 const nutBlock = pct(nut), airBlock = pct(air);
                 const edge = Math.round((nutBlock - airBlock) * 10) / 10;
-                const note = edge >= 4
-                    ? `你挡住对手 ${nutBlock.toFixed(0)}% 的坚果、仅 ${airBlock.toFixed(0)}% 的空气 → 他更少强牌，利于施压与抓诈唬`
-                    : edge <= -4
-                    ? `你挡住对手 ${airBlock.toFixed(0)}% 的空气、仅 ${nutBlock.toFixed(0)}% 的坚果 → 他更少在诈唬，抓诈唬要收紧`
+
+                // ── Stage 4 第二战役: 细分坚果同花/顺子阻断牌深度建模 ──
+                // 1. 同花坚果阻断 (Nut Flush Blocker)
+                const suitCounts = { s: 0, h: 0, d: 0, c: 0 };
+                bd.forEach(c => suitCounts[c[1].toLowerCase()]++);
+                let flushSuit = null;
+                for (const s of SUITS) {
+                    if (suitCounts[s] >= 3) { flushSuit = s; break; }
+                }
+                let isNutFlushBlocker = false;
+                let nutFlushCard = null;
+                if (flushSuit) {
+                    for (let i = RANKS.length - 1; i >= 0; i--) {
+                        const cand = RANKS[i] + flushSuit;
+                        if (!boardSet.has(cand)) {
+                            nutFlushCard = cand;
+                            break;
+                        }
+                    }
+                    const heroFlushCards = hero.filter(c => c[1].toLowerCase() === flushSuit);
+                    const heroHasFlush = (suitCounts[flushSuit] + heroFlushCards.length) >= 5;
+                    if (nutFlushCard && heroSet.has(nutFlushCard) && !heroHasFlush) {
+                        isNutFlushBlocker = true;
+                    }
+                }
+
+                // 2. 顺子坚果阻断 (Nut Straight Blocker)
+                const bRanks = [...new Set(bd.map(c => RKI.indexOf(c[0])))].sort((a,b)=>a-b);
+                let nutStraightRank = null;
+                let isStraightNutBlocker = false;
+                for (let high = 12; high >= 3; high--) {
+                    const straightWindow = high === 3 ? [12, 0, 1, 2, 3] : [high-4, high-3, high-2, high-1, high];
+                    const needed = straightWindow.filter(r => !bRanks.includes(r));
+                    if (needed.length === 1 || needed.length === 2) {
+                        nutStraightRank = RKI[Math.max(...needed)];
+                        break;
+                    }
+                }
+                if (nutStraightRank) {
+                    const heroHasNutRank = hero.some(c => c[0] === nutStraightRank);
+                    const allRanks = [...new Set([...bd, ...hero].map(c => RKI.indexOf(c[0])))];
+                    let heroHasStraight = false;
+                    for (let high = 12; high >= 3; high--) {
+                        const straightWindow = high === 3 ? [12, 0, 1, 2, 3] : [high-4, high-3, high-2, high-1, high];
+                        if (straightWindow.every(r => allRanks.includes(r))) {
+                            heroHasStraight = true;
+                            break;
+                        }
+                    }
+                    if (heroHasNutRank && !heroHasStraight) {
+                        isStraightNutBlocker = true;
+                    }
+                }
+
+                const isNutBlocker = isNutFlushBlocker || isStraightNutBlocker || (edge >= 8) || (nutBlock >= 20 && edge >= 4);
+                const isAirBlocker = (edge <= -4) || (airBlock >= 18 && edge <= -2);
+
+                let blockerType = 'NEUTRAL';
+                let blockerTypeDesc = '中性阻断';
+                const suitSymbols = { s: '♠', h: '♥', d: '♦', c: '♣' };
+                if (isNutFlushBlocker) {
+                    blockerType = 'NUT_FLUSH';
+                    blockerTypeDesc = `坚果同花阻断 [${nutFlushCard[0]}${suitSymbols[nutFlushCard[1].toLowerCase()] || nutFlushCard[1]}]`;
+                } else if (isStraightNutBlocker) {
+                    blockerType = 'NUT_STRAIGHT';
+                    blockerTypeDesc = `坚果顺子阻断 [${nutStraightRank}高]`;
+                } else if (isNutBlocker) {
+                    blockerType = 'VALUE_BLOCKER';
+                    blockerTypeDesc = `坚果/价值阻断 (挡坚果 ${nutBlock.toFixed(0)}%)`;
+                } else if (isAirBlocker) {
+                    blockerType = 'AIR_BLOCKER';
+                    blockerTypeDesc = `阻断对手空气/诈唬 (挡空气 ${airBlock.toFixed(0)}%)`;
+                }
+
+                const note = (isNutFlushBlocker || isStraightNutBlocker || edge >= 4)
+                    ? `${(isNutFlushBlocker || isStraightNutBlocker) ? '【' + blockerTypeDesc + '】' : ''}你挡住对手 ${nutBlock.toFixed(0)}% 的坚果、仅 ${airBlock.toFixed(0)}% 的空气 → 他更少强牌，利于施压与抓诈唬`
+                    : (isAirBlocker || edge <= -4)
+                    ? `${isAirBlocker ? '【' + blockerTypeDesc + '】' : ''}你挡住对手 ${airBlock.toFixed(0)}% 的空气、仅 ${nutBlock.toFixed(0)}% 的坚果 → 他更少在诈唬，抓诈唬要收紧`
                     : `Blocker 影响中性（挡坚果 ${nutBlock.toFixed(0)}% / 挡空气 ${airBlock.toFixed(0)}%）`;
-                return { nutBlock: Math.round(nutBlock * 10) / 10, airBlock: Math.round(airBlock * 10) / 10, edge, note };
+
+                return {
+                    nutBlock: Math.round(nutBlock * 10) / 10,
+                    airBlock: Math.round(airBlock * 10) / 10,
+                    edge,
+                    note,
+                    isNutFlushBlocker,
+                    nutFlushCard,
+                    isStraightNutBlocker,
+                    nutStraightRank,
+                    isNutBlocker,
+                    isAirBlocker,
+                    blockerType,
+                    blockerTypeDesc
+                };
             } catch (e) { console.warn('[Blocker] 跳过:', e.message); return null; }
         }
 
@@ -15549,6 +15862,15 @@
             const blkMargin = blk ? Math.max(-4, Math.min(4, -blk.edge * 0.25)) : 0;
             const blkBluff = blk ? Math.max(-15, Math.min(15, Math.round(blk.edge * 0.6))) : 0;
             if (blk && Math.abs(blk.edge) >= 4) sc.callMargin = Math.max(2, sc.callMargin + blkMargin);
+            if (street === 'river' && blk && !isMultiway) {
+                if (blk.isNutBlocker) {
+                    // 河牌坚果阻断牌放宽抓诈门槛（callMargin 额外 -3，下限 0）
+                    sc.callMargin = Math.max(0, sc.callMargin - 3);
+                } else if (blk.isAirBlocker) {
+                    // 河牌阻断对手空气/诈唬端，收紧抓诈门槛（callMargin 额外 +3）
+                    sc.callMargin = sc.callMargin + 3;
+                }
+            }
 
             const warnings = [];
             // 风险溢价接入翻后（2026-09-09，MPT）：书里明确写了溢价**不只作用于全下**——
@@ -15778,6 +16100,7 @@
                     _tTierFreq = { bet: protectedBetFreq, check: 100 - protectedBetFreq };
                 }
 
+                const isRiverNutBluffCandidate = (street === 'river' && blk && blk.isNutBlocker && _mwN === 0 && hadPrevStreetBet);
                 const commitStrat = (_tTier && !( _cDraw && _tBucket === '无对'))
                     ? { action: _tTierAction,
                         sizing: _tTierSizing,
@@ -15790,6 +16113,10 @@
                             //   —— 弃牌率 + 兑现权益双路盈利是低 SPR 听牌的标准打法，这一支不动。
                             sizing: (_cVal && street === 'flop' && spr >= 1.0) ? sc.sizes.medium : sc.sizes.push,
                             freq: { bet: 95, check: 5 } })
+                    : isRiverNutBluffCandidate
+                    ? { action: 'BET',
+                        sizing: (spr <= 1.5 ? sc.sizes.push : (sc.sizes.nut || '100% 底池')),
+                        freq: { bet: Math.min(55, Math.max(35, Math.round(28 / icmTighten) + Math.max(6, blkBluff))), check: 100 - Math.min(55, Math.max(35, Math.round(28 / icmTighten) + Math.max(6, blkBluff))) } }
                     : (_cAir && _cAir.freq >= 10
                         ? { action: _cAir.freq >= 50 ? 'BET' : 'CHECK',
                             sizing: _cAir.freq >= 50 ? sc.sizes.probe : '',
@@ -15812,6 +16139,8 @@
                               `但**范围强度差 ${_cAir.sd >= 0 ? '+' : ''}${_cAir.sd.toFixed(1)} 点**` +
                               `${_cAir.paired ? '、成对面' : ''} → ${_cAir.freq}% 频率小注施压（TexasSolver 校准：` +
                               `低 SPR 上小注才是主力，全押占比只有 0.1-23.5%）`
+                            : isRiverNutBluffCandidate
+                            ? `SPR=${spr.toFixed(1)}（承诺区）💡 Pokercode 河牌极化诈唬：手牌持有${blk.blockerTypeDesc}（对手坚果组合被显著剔除），前街进攻代表性强，释放 ${commitStrat.freq.bet}% 极化大尺度（${commitStrat.sizing}）施压迫使其抓诈中强牌弃牌${blkBluff ? `｜blocker ${blkBluff > 0 ? '+' : ''}${blkBluff}%` : ''}`
                             : (_cvt
                                 ? `SPR=${spr.toFixed(1)}（承诺区）：胜率${equity.toFixed(0)}%、成手=${_cvb} → ` +
                                   `${_cvt.freq}% 频率 ${_cvt.size}（TexasSolver 校准：${_cvt.note}）`
@@ -15866,10 +16195,21 @@
                             reasoning = _mwN > 0
                                 ? `河牌胜率${equity.toFixed(0)}%，${_mwN + 1} 名对手在局 —— 多人底池不做纯诈唬，过牌`
                                 : `河牌胜率${equity.toFixed(0)}%，诈唬频率已被 ICM/blocker 压至 0，过牌`;
+                        } else if (blk && blk.isNutBlocker && _mwN === 0) {
+                            const isOverbetViable = (sprZone === 'deep' || spr >= 2.0);
+                            sizing = isOverbetViable ? (sc.sizes.nut || '100% 底池') : (sc.sizes.strong || '75% 底池');
+                            const polBluffFreq = Math.min(50, Math.max(25, Math.round(26 / icmTighten) + Math.max(6, blkBluff)));
+                            primaryAction = 'BET';
+                            frequencies = { bet: polBluffFreq, check: 100 - polBluffFreq };
+                            reasoning = `💡 Pokercode 河牌极化诈唬：手牌持有${blk.blockerTypeDesc}（对手坚果组合被显著剔除），前街进攻代表性强，释放 ${polBluffFreq}% 极化大尺度（${sizing}）施压迫使其抓诈中强牌弃牌${blkBluff ? `｜blocker ${blkBluff > 0 ? '+' : ''}${blkBluff}%` : ''}`;
+                        } else if (blk && blk.isAirBlocker && _mwN === 0) {
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { check: 100 };
+                            reasoning = `💡 Pokercode 河牌诈唬刹车：手牌阻断对手大量空气/弃牌端（${blk.blockerTypeDesc}），对手范围高度浓缩为成牌，纯诈唬弃牌率不足，过牌`;
                         } else {
-                        primaryAction = 'BET'; sizing = '33% 底池';
-                        frequencies = { bet: maxBluff, check: 100 - maxBluff };
-                        reasoning = `河牌胜率${equity.toFixed(0)}%，前街有代表性，${maxBluff}%低频诈唬（33%底池）${blkBluff ? `｜blocker ${blkBluff > 0 ? '+' : ''}${blkBluff}%` : ''}`;
+                            primaryAction = 'BET'; sizing = '33% 底池';
+                            frequencies = { bet: maxBluff, check: 100 - maxBluff };
+                            reasoning = `河牌胜率${equity.toFixed(0)}%，前街有代表性，${maxBluff}%低频诈唬（33%底池）${blkBluff ? `｜blocker ${blkBluff > 0 ? '+' : ''}${blkBluff}%` : ''}`;
                         }
                     } else {
                         // 中间带：无法价值也无法诈唬，过牌
@@ -16153,9 +16493,14 @@
                         const _heroBetTurn = actions.some(a => a.street === 'turn' && a.player === 'hero' && ['bet', 'raise', 'allin'].includes(a.action));
                         const _isIpTurnBettor = (heroPos === 'IP' && _heroBetTurn) ? 1 : 0;
                         const _fitted = Math.max(0, Math.min(100, Math.round(0.55 * _oldFreq + 16.4 + 14.8 * _isOver + 17.4 * _isIpTurnBettor)));
-                        const _newFreq = _rBucket === '弱对'
+                        let _newFreq = _rBucket === '弱对'
                             ? Math.max(0, Math.min(100, Math.round(_oldFreq + 0.75 * (_fitted - _oldFreq))))
                             : _fitted;
+                        if (blk && blk.isNutBlocker && hadPrevStreetBet) {
+                            _newFreq = Math.min(65, Math.max(50, _newFreq + 20));
+                        } else if (blk && blk.isAirBlocker) {
+                            _newFreq = Math.max(0, Math.min(25, _newFreq - 20));
+                        }
                         frequencies = { bet: _newFreq, check: 100 - _newFreq };
                         if (_newFreq >= 50) {
                             primaryAction = 'BET';
@@ -16243,7 +16588,7 @@
                 // ③ 赔率不足才弃牌。
                 const commitStratB = equity >= (passiveTurnedAggro ? 66 : 58)
                     ? { action: 'RAISE', sizing: '全押', freq: { raise: 100 } }
-                    : (toCall > 0 && equity >= potOdds + 4)
+                    : (toCall > 0 && equity >= potOdds + (street === 'river' && blk && blk.isNutBlocker ? 0 : 4))
                     ? { action: 'CALL',  sizing: '',     freq: { call: 100 } }
                     : { action: 'FOLD',  sizing: '',     freq: { fold: 100 } };
 
@@ -16261,7 +16606,9 @@
                 // 成手牌"（底对 set outs 2-3 张、纯空气 0 张），而卡顺(4张)及以上真听牌
                 // 的胜率是实打实的进张，交给下方赔率分支——原 outs<6 把 8♠7♠ 在 T♠6♥2♦
                 // 的卡顺(胜率32.8% > 赔率25%+容差4)也强制弃掉，与面板数学直接矛盾。
-                if (!isFacingAllin && equity < 40 && relStr < 30 && villainBet > 0 && outs < 4 && potOdds >= 25) {
+                // 坚果阻断抓诈豁免(Stage 4 第二战役): 河牌持坚果阻断牌且胜率达到赔率时，放行给抓诈阻断校准分支
+                const isNutBlockerBluffCatcher = (street === 'river' && blk && blk.isNutBlocker && equity >= potOdds);
+                if (!isFacingAllin && equity < 40 && relStr < 30 && villainBet > 0 && outs < 4 && potOdds >= 25 && !isNutBlockerBluffCatcher) {
                     primaryAction = 'FOLD'; sizing = '';
                     frequencies = { fold: 100 };
                     reasoning = `胜率${equity.toFixed(0)}%且相对牌力仅${relStr.toFixed(0)}%（底对/弱牌高牌面），面对下注弃牌`;
@@ -16293,7 +16640,9 @@
                     reasoning = commitStratB.action === 'RAISE'
                         ? `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%≥58%，全押`
                         : commitStratB.action === 'CALL'
-                        ? `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%，跟注实现权益（不足 58% 全押线）`
+                        ? (street === 'river' && blk && blk.isNutBlocker
+                            ? `SPR=${spr.toFixed(1)}（承诺区）🎯 [坚果阻断抓诈] 胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%，持${blk.blockerTypeDesc}有效阻断对手价值下注端，放宽抓诈跟注`
+                            : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%，跟注实现权益（不足 58% 全押线）`)
                         : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%，弃牌`;
                 }
                 // ── E-05: Pokercode 2-1-3 翻牌面对小尺度 Mini C-Bet 的 Check-Raise 惩罚反击 ──
@@ -16386,12 +16735,23 @@
                             reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，持顶端强牌（${tierLabel}，位于范围顶端），${isMultiway ? `${mwTotalCount}人底池` : ''}不被全局MDF稀释，100%跟注防守`;
                         } else if (isMidTierHand) {
                             // 中强成牌：防守主力，保持 80%~90% 高频防守
-                            callFreq = Math.min(90, Math.max(75, Math.round((isMultiway ? sharedMdf * 1.5 : mdf * 1.2))));
-                            reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，成牌牌力稳健（${eq.handStrength || '中强牌'}），${streetCN}高频跟注（${callFreq}%）防守`;
+                            const midBlkBoost = (street === 'river' && blk && blk.isNutBlocker && !isMultiway) ? 10 : 0;
+                            callFreq = Math.min(95, Math.max(75, Math.round((isMultiway ? sharedMdf * 1.5 : mdf * 1.2)) + midBlkBoost));
+                            reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，成牌牌力稳健（${eq.handStrength || '中强牌'}）` +
+                                (street === 'river' && blk && blk.isNutBlocker && !isMultiway ? `｜🎯 [坚果阻断抓诈] 持${blk.blockerTypeDesc}剔除对手价值下注端` : '') +
+                                `，${streetCN}高频跟注（${callFreq}%）防守`;
                         } else {
                             // 边缘抓诈牌：根据 MDF 分配防守配额，单挑下限 50%，多人底池下限 40%
                             callFreq = Math.min(80, Math.max(isMultiway ? 40 : 50, Math.round((isMultiway ? sharedMdf : mdf) - (icmTighten - 1) * 20)));
-                            reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，MDF=${mdf.toFixed(0)}%${isMultiway ? `（${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%）` : ''}，边缘牌${streetCN}跟注防守（需超${sc.callMargin}%容差）`;
+                            if (street === 'river' && blk && blk.isNutBlocker && !isMultiway) {
+                                callFreq = Math.min(85, Math.max(68, callFreq + 22));
+                                reasoning = `🎯 [坚果阻断抓诈] 胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，持${blk.blockerTypeDesc}（有效阻断对手价值下注端，放大其诈唬占比），河牌放宽抓诈门槛积极跟注（${callFreq}%）`;
+                            } else if (street === 'river' && blk && blk.isAirBlocker && !isMultiway) {
+                                callFreq = Math.max(25, Math.min(45, callFreq - 25));
+                                reasoning = `⚠️ [阻断对手诈唬] 胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，手牌阻断对手大量空气/诈唬端（${blk.blockerTypeDesc}），对手下注范围偏向真实价值，压缩抓诈频率至 ${callFreq}%（倾向弃牌）`;
+                            } else {
+                                reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，MDF=${mdf.toFixed(0)}%${isMultiway ? `（${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%）` : ''}，边缘牌${streetCN}跟注防守（需超${sc.callMargin}%容差）`;
+                            }
                         }
                         frequencies = { call: callFreq, fold: 100 - callFreq };
                     }
@@ -16419,7 +16779,11 @@
                 else {
                     primaryAction = 'FOLD'; sizing = '';
                     frequencies = { fold: 100 };
-                    reasoning = `胜率${equity.toFixed(0)}% < 赔率${potOdds.toFixed(0)}%${street === 'river' ? '（河牌无进张）' : ''}，MDF=${mdf.toFixed(0)}%${isMultiway ? `（${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%）` : ''}，弃牌`;
+                    if (street === 'river' && blk && blk.isAirBlocker && !isMultiway) {
+                        reasoning = `⚠️ [阻断对手诈唬] 胜率${equity.toFixed(0)}%（未满足阻断校准门槛+${sc.callMargin}%），手牌阻断对手大量空气/诈唬端（${blk.blockerTypeDesc}），对手下注范围偏向真实价值，抓诈期望为负，果断弃牌止损`;
+                    } else {
+                        reasoning = `胜率${equity.toFixed(0)}% < 赔率${potOdds.toFixed(0)}%${street === 'river' ? '（河牌无进张）' : ''}，MDF=${mdf.toFixed(0)}%${isMultiway ? `（${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%）` : ''}，弃牌`;
+                    }
                 }
 
                 // ── 过渡带混合（1.8 < spr < 2.2）：commit 全押/弃牌策略平滑混入 flex ──
@@ -16498,6 +16862,27 @@
                         advTip = `💡 Pokercode 延时 C-Bet：翻牌双方过牌后对手转牌再次过牌，其范围极度封顶（Capped），可启动 70% 延时下注捕获死钱`;
                     }
                 }
+
+                // Stage 4: 转牌转折张动态感知与优势转移 (Turn Runout Shift 指引)
+                if (street === 'turn' && ba && ba.turnRunoutShift) {
+                    const trs = ba.turnRunoutShift;
+                    let trsTip = '';
+                    if (trs.type === 'OVERCARD') {
+                        trsTip = `💡 Pokercode 转牌动态：[${trs.label}] 发出高张压制对手翻牌跟注范围，我方范围优势激增，推荐高频施压或延迟下注`;
+                    } else if (trs.type === 'STRAIGHT_COMPLETER') {
+                        trsTip = `💡 Pokercode 转牌动态：[${trs.label}] 公牌连张激活，坚果优势向防守方转移，超对/顶对相对贬值，防范对手反击，优先控池`;
+                    } else if (trs.type === 'FLUSH_COMPLETER') {
+                        trsTip = `💡 Pokercode 转牌动态：[${trs.label}] 公牌形成 3 张同花，非同花阻断空气牌诈唬期望转负，无高张同花阻断建议过牌控池`;
+                    } else if (trs.type === 'BOARD_PAIR') {
+                        trsTip = `💡 Pokercode 转牌动态：[${trs.label}] 公牌成对削弱对手两对组合，超对安全性提升，推荐 25%~33% 小注高频测试或诱捕`;
+                    } else if (trs.type === 'BLANK') {
+                        trsTip = `💡 Pokercode 转牌动态：[${trs.label}] 白板砖牌未改变双方范围结构，翻牌优势延续，可根据范围极化执行第二桶或延迟小注`;
+                    }
+                    if (trsTip && !warnings.some(w => w.includes('Pokercode 转牌动态'))) {
+                        warnings.push(trsTip);
+                    }
+                }
+
                 // 3. 多人底池急刹车模型
                 if (isMultiway) {
                     const mwTip = `💡 Pokercode 多人底池：${mwTotalCount}人底池弃牌率剧降，纯诈唬强制归零，仅对强价值与高胜率听牌下注`;
@@ -16652,13 +17037,15 @@
                     isMultiway,
                     mwTotalCount,
                     villainBet,
-                    villainProfile: vProfile ? vProfile.id : 'balanced'
+                    villainProfile: vProfile ? vProfile.id : 'balanced',
+                    turnRunoutShift: ba.turnRunoutShift
                 }) : null;
 
             return {
                 primaryAction, sizing, frequencies, reasoning,
                 warnings, street,
                 geometry,
+                blocker: blk,
                 villainProfile: vProfile,
                 exploitOffset: {
                     profile: vProfile ? vProfile.id : 'balanced',
