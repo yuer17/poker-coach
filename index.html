@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.69 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.72 开发版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -19,7 +19,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.69 高定黑曜石与 Liquid Glass 设计令牌 (Stage 3 UI-01) ══
+            /* ══ PokerCode v2.72 高定黑曜石与 Liquid Glass 设计令牌 (Stage 3 UI-01) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1173,9 +1173,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.69 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.72 开发版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.69</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.72</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -5503,7 +5503,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.69 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.72 开发版';
             renderWindowColorChips(key);
         };
 
@@ -14489,6 +14489,16 @@
                 }
             }
 
+            // Stage 4 第三战役: 多街攻防行动线徽章展示
+            const actLineRes = (postState.decisionResult && postState.decisionResult.actionLine) ||
+                (typeof classifyActionLine === 'function' && postState.potTracker && postState.potTracker.actions
+                    ? classifyActionLine(postState.potTracker.actions, postState.position, ['open', 'vsLimp', 'squeeze'].includes(currentMode), analysis.street)
+                    : null);
+            let actLineBadge = '';
+            if (actLineRes && actLineRes.line !== 'GENERIC') {
+                actLineBadge = `<span class="text-xs px-2 py-0.5 rounded font-semibold bg-indigo-950/60 text-indigo-300 border border-indigo-500/40">🌳 ${actLineRes.lineLabel}</span>`;
+            }
+
             const curPot = (postState.potTracker && postState.potTracker.currentPot) || 0;
             const curEff = (postState.potTracker && postState.potTracker.effStack) || 0;
             const geom = (typeof calcGeometricSizing === 'function' && curPot > 0 && curEff > 0)
@@ -14559,10 +14569,9 @@
                         ${topoBadge}
                         ${trsBadge}
                         ${blkBadge}
+                        ${actLineBadge}
                         ${mwBadge}
                     </div>
-                    <span style="color: var(--accent);">${title}</span>
-                </div>
                     <span style="color: var(--accent);">${title}</span>
                 </div>
                 <div class="flex justify-between items-center bg-black/30 p-2 rounded mb-2">
@@ -15284,6 +15293,106 @@
         }
 
         // ════════════════════════════════════════════════════
+        // Stage 4 第三战役: 多街攻防树状连贯性与行动线拟合 (classifyActionLine)
+        // ----------------------------------------------------
+        // 用途：结构化识别翻牌、转牌、河牌连贯行动线（Action Line）与战术节点，
+        //       解决单街决策孤立、三桶极化断裂、XR后续连贯缺失与探针下注误判。
+        // ════════════════════════════════════════════════════
+        function classifyActionLine(actions, heroPos, heroIsPFA, street) {
+            if (!Array.isArray(actions)) actions = [];
+            const isIP = heroPos === 'IP' || heroPos === 'BTN' || heroPos === 'CO' || heroPos === 'HJ';
+            const isOOP = !isIP;
+
+            const flopActs = actions.filter(a => a.street === 'flop');
+            const turnActs = actions.filter(a => a.street === 'turn');
+            const riverActs = actions.filter(a => a.street === 'river');
+
+            // 翻牌行动特征
+            const flopHeroBets = flopActs.some(a => a.player === 'hero' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
+            const flopHeroChecks = flopActs.some(a => a.player === 'hero' && a.action === 'check');
+            const flopHeroCalls = flopActs.some(a => a.player === 'hero' && a.action === 'call');
+            const flopHeroXR = flopActs.some(a => a.player === 'hero' && a.action === 'raise') &&
+                               flopActs.some(a => a.player === 'villain' && (a.action === 'bet' || a.action === 'raise'));
+            const flopVillainBets = flopActs.some(a => a.player === 'villain' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
+            const flopVillainChecks = flopActs.some(a => a.player === 'villain' && a.action === 'check');
+            const flopBothChecked = flopActs.length >= 2 && flopActs.every(a => a.action === 'check');
+
+            // 转牌行动特征
+            const turnHeroBets = turnActs.some(a => a.player === 'hero' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
+            const turnHeroChecks = turnActs.some(a => a.player === 'hero' && a.action === 'check');
+            const turnHeroCalls = turnActs.some(a => a.player === 'hero' && a.action === 'call');
+            const turnVillainBets = turnActs.some(a => a.player === 'villain' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
+            const turnVillainChecks = turnActs.some(a => a.player === 'villain' && a.action === 'check');
+            const turnHeroDelayedBet = flopBothChecked && turnHeroBets;
+
+            // 河牌行动特征
+            const riverVillainBet = riverActs.some(a => a.player === 'villain' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
+            const riverVillainCheck = riverActs.some(a => a.player === 'villain' && a.action === 'check');
+
+            // 1. 三桶进攻线 (Triple Barrel Node):
+            // 河牌街，Hero 翻牌下注、转牌下注，河牌对手未下注
+            const isTripleBarrelNode = (street === 'river' && flopHeroBets && turnHeroBets && !riverVillainBet);
+
+            // 2. 翻牌 Check-Raise 后的转牌连贯线 (Post-XR Node):
+            // 转牌街，Hero 翻牌执行过牌-加注(XR)，对手跟注后转牌未下注
+            const isPostXRNode = (street === 'turn' && flopHeroXR && !turnVillainBets);
+
+            // 3. 延时 C-Bet 后的河牌连贯线 (Delayed Barrel Node):
+            // 河牌街，翻牌双方过牌，Hero 转牌延时 C-Bet 被跟注，河牌对手未下注
+            const isDelayedBarrelNode = (street === 'river' && flopBothChecked && turnHeroBets && !riverVillainBet);
+
+            // 4. 防守河牌探针下注线 (Facing River Probe Bet):
+            // 河牌街，Hero 翻牌下注、转牌过牌控池，河牌对手突然主动下注
+            const isFacingRiverProbe = (street === 'river' && flopHeroBets && turnHeroChecks && riverVillainBet);
+
+            // 5. 面对对手三桶极化防守 (Facing Triple Barrel):
+            // 河牌街，对手翻牌下注、转牌下注、河牌再次下注
+            const isFacingTripleBarrel = (street === 'river' && flopVillainBets && turnVillainBets && riverVillainBet);
+
+            // 6. 转牌领打候选线 (Turn Lead Candidate):
+            // 转牌街，对手翻牌下注，Hero 翻牌跟注，转牌对手尚未下注且 Hero 为 OOP 先手
+            const isTurnLeadCandidate = (street === 'turn' && flopVillainBets && flopHeroCalls && !turnVillainBets && isOOP);
+
+            let lineName = 'GENERIC';
+            let lineLabel = '常规路线';
+            if (isTripleBarrelNode) {
+                lineName = 'TRIPLE_BARREL';
+                lineLabel = '三桶进攻线';
+            } else if (isPostXRNode) {
+                lineName = 'POST_CHECK_RAISE';
+                lineLabel = 'Check-Raise 持续压制';
+            } else if (isDelayedBarrelNode) {
+                lineName = 'DELAYED_BARREL';
+                lineLabel = '延时 C-Bet 薄价值';
+            } else if (isFacingRiverProbe) {
+                lineName = 'FACING_RIVER_PROBE';
+                lineLabel = '防守河牌探针下注';
+            } else if (isFacingTripleBarrel) {
+                lineName = 'FACING_TRIPLE_BARREL';
+                lineLabel = '面对三桶极化防守';
+            } else if (isTurnLeadCandidate) {
+                lineName = 'TURN_LEAD_CANDIDATE';
+                lineLabel = '转牌领打候选';
+            }
+
+            return {
+                line: lineName,
+                lineName,
+                lineLabel,
+                isTripleBarrelNode,
+                isPostXRNode,
+                isDelayedBarrelNode,
+                isFacingRiverProbe,
+                isFacingTripleBarrel,
+                isTurnLeadCandidate,
+                flopHeroBets,
+                turnHeroBets,
+                flopBothChecked
+            };
+        }
+        if (typeof window !== 'undefined') window.classifyActionLine = classifyActionLine;
+
+        // ════════════════════════════════════════════════════
         // 牌面范围强度差（2026-09-10，TexasSolver 校准 · 环节 3）
         // ----------------------------------------------------
         // 用途：驱动"没成牌"那一桶的持续下注频率。
@@ -15854,6 +15963,10 @@
                 callMargin:   _scBase.callMargin + 2 * _mwN + (isSandwich ? 4 : 0) // 夹心位跟注门槛额外收紧 +4
             } : _scBase;
 
+            const actLine = (typeof classifyActionLine === 'function')
+                ? classifyActionLine(actions, heroPos, heroIsPFA, street)
+                : null;
+
             // Blocker 接入(2026-07-21)：转牌/河牌按"挡坚果 vs 挡空气"调整两处——
             //   ① 抓诈唬门槛 callMargin：挡住他坚果多 → 可以跟得更宽；挡住他空气多 → 收紧
             //   ② 诈唬频率（下方各诈唬分支）：挡住他继续范围越多，诈唬越有效
@@ -15862,13 +15975,19 @@
             const blkMargin = blk ? Math.max(-4, Math.min(4, -blk.edge * 0.25)) : 0;
             const blkBluff = blk ? Math.max(-15, Math.min(15, Math.round(blk.edge * 0.6))) : 0;
             if (blk && Math.abs(blk.edge) >= 4) sc.callMargin = Math.max(2, sc.callMargin + blkMargin);
-            if (street === 'river' && blk && !isMultiway) {
-                if (blk.isNutBlocker) {
+            if (street === 'river' && !isMultiway) {
+                if (blk && blk.isNutBlocker) {
                     // 河牌坚果阻断牌放宽抓诈门槛（callMargin 额外 -3，下限 0）
                     sc.callMargin = Math.max(0, sc.callMargin - 3);
-                } else if (blk.isAirBlocker) {
+                } else if (actLine && actLine.isFacingRiverProbe) {
+                    // 防守河牌探针下注放宽抓诈门槛（callMargin 额外 -3，下限 0）
+                    sc.callMargin = Math.max(0, sc.callMargin - 3);
+                } else if (blk && blk.isAirBlocker) {
                     // 河牌阻断对手空气/诈唬端，收紧抓诈门槛（callMargin 额外 +3）
                     sc.callMargin = sc.callMargin + 3;
+                } else if (actLine && actLine.isFacingTripleBarrel) {
+                    // 面对对手三桶极化，抓诈门槛适当收紧（callMargin 额外 +2）
+                    sc.callMargin = sc.callMargin + 2;
                 }
             }
 
@@ -16100,7 +16219,11 @@
                     _tTierFreq = { bet: protectedBetFreq, check: 100 - protectedBetFreq };
                 }
 
-                const isRiverNutBluffCandidate = (street === 'river' && blk && blk.isNutBlocker && _mwN === 0 && hadPrevStreetBet);
+                const isRiverNutBluffCandidate = (street === 'river' && equity < 40 && blk && blk.isNutBlocker && _mwN === 0 && hadPrevStreetBet);
+                const isRiverValueCandidate = (street === 'river' && (equity >= 60 || _tBucket === '两对+'));
+                const isDelayedRiverValue = (street === 'river' && actLine && actLine.isDelayedBarrelNode && equity >= 55 && equity < 80);
+                const isPostXRTurnValue = (street === 'turn' && actLine && actLine.isPostXRNode && (equity >= 58 || _tBucket === '两对+' || outs >= 8));
+
                 const commitStrat = (_tTier && !( _cDraw && _tBucket === '无对'))
                     ? { action: _tTierAction,
                         sizing: _tTierSizing,
@@ -16113,6 +16236,18 @@
                             //   —— 弃牌率 + 兑现权益双路盈利是低 SPR 听牌的标准打法，这一支不动。
                             sizing: (_cVal && street === 'flop' && spr >= 1.0) ? sc.sizes.medium : sc.sizes.push,
                             freq: { bet: 95, check: 5 } })
+                    : isPostXRTurnValue
+                    ? { action: 'BET',
+                        sizing: (spr <= 2.0 ? sc.sizes.push : (sc.sizes.strong || '75% 底池')),
+                        freq: { bet: 95, check: 5 } }
+                    : isDelayedRiverValue
+                    ? { action: 'BET',
+                        sizing: (sc.sizes.medium || '50% 底池'),
+                        freq: { bet: 85, check: 15 } }
+                    : isRiverValueCandidate
+                    ? { action: 'BET',
+                        sizing: (spr <= 1.5 ? sc.sizes.push : (sc.sizes.nut || '100% 底池')),
+                        freq: { bet: 95, check: 5 } }
                     : isRiverNutBluffCandidate
                     ? { action: 'BET',
                         sizing: (spr <= 1.5 ? sc.sizes.push : (sc.sizes.nut || '100% 底池')),
@@ -16133,6 +16268,14 @@
                           `${_tTier.over ? '、转牌是超牌' : ''} → ${_tTierFreq.bet}% 频率` +
                           `${_tTierAction === 'BET' ? ' ' + _tTierSizing : '（多数时候过牌）'}` +
                           `（${_isNutValueHand && _tTier.freq < 50 ? '强牌价值锁定下注' : `TexasSolver 校准：${_tTier.note}`}）`
+                        : isPostXRTurnValue
+                        ? `SPR=${spr.toFixed(1)}（承诺区）💡 Pokercode [Check-Raise 持续压制]：翻牌 Check-Raise 夺回主动权，转牌持强牌（胜率${equity.toFixed(0)}%）延续第二桶全押/大注施压榨取价值`
+                        : isDelayedRiverValue
+                        ? `SPR=${spr.toFixed(1)}（承诺区）💡 Pokercode [延时 C-Bet 薄价值]：对手转牌跟注延时下注且河牌再次过牌，范围极度封顶（Capped），释放中等尺度（${commitStrat.sizing}）榨取其中弱对跟注价值`
+                        : isRiverValueCandidate
+                        ? (actLine && actLine.isTripleBarrelNode
+                            ? `SPR=${spr.toFixed(1)}（承诺区）💡 Pokercode [三桶进攻线]：前两街强力施压，河牌持强价值手牌（胜率${equity.toFixed(0)}%）释放极化终结全押/大注（${commitStrat.sizing}）榨取对手抓诈范围`
+                            : `SPR=${spr.toFixed(1)}（承诺区），河牌强价值胜率${equity.toFixed(0)}%，${commitStrat.sizing}榨取价值`)
                         : commitStrat.action === 'BET'
                         ? (_cAir && equity <= 50 && outs < sc.semiBluffOuts
                             ? `SPR=${spr.toFixed(1)}（承诺区）：翻牌胜率${equity.toFixed(0)}%、进张${outs}张都不足，` +
@@ -16169,7 +16312,39 @@
 
                 // ════ 河牌专属逻辑：无进张概念，纯价值/诈唬 ════
                 else if (street === 'river') {
-                    if (equity >= sc.strongThresh) {
+                    if (actLine && actLine.isTripleBarrelNode) {
+                        if (equity >= sc.betThresh || _tBucket === '两对+') {
+                            primaryAction = 'BET'; sizing = (sc.sizes.nut || '100% 底池');
+                            const freq = iHaveNutAdv ? 95 : 85;
+                            frequencies = { bet: freq, check: 100 - freq };
+                            reasoning = `河牌胜率${equity.toFixed(0)}%，💡 Pokercode [三桶进攻线]：前两街强力施压，河牌持强价值手牌极化大注（${sizing}）榨取对手抓诈范围`;
+                        } else if (equity >= 40 && equity < sc.betThresh) {
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { check: 90, bet: 10 };
+                            reasoning = `河牌胜率${equity.toFixed(0)}%，💡 Pokercode [三桶进攻线]：中强成牌具有摊牌价值（Showdown Value），过牌控池比牌，避免将抓诈成牌打成纯诈唬`;
+                        } else if (equity < 30 && blk && blk.isNutBlocker && _mwN === 0) {
+                            const isOverbetViable = (sprZone === 'deep' || spr >= 2.0);
+                            sizing = isOverbetViable ? (sc.sizes.nut || '100% 底池') : (sc.sizes.strong || '75% 底池');
+                            const polBluffFreq = Math.min(50, Math.max(25, Math.round(26 / icmTighten) + Math.max(6, blkBluff)));
+                            primaryAction = 'BET';
+                            frequencies = { bet: polBluffFreq, check: 100 - polBluffFreq };
+                            reasoning = `💡 Pokercode [三桶进攻线] 极化诈唬：手牌持有${blk.blockerTypeDesc}（对手坚果组合被显著剔除），前两街进攻代表性强，释放 ${polBluffFreq}% 极化大尺度（${sizing}）施压迫使其抓诈中强牌弃牌${blkBluff ? `｜blocker ${blkBluff > 0 ? '+' : ''}${blkBluff}%` : ''}`;
+                        } else {
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { check: 100 };
+                            reasoning = `河牌胜率${equity.toFixed(0)}%，💡 Pokercode [三桶进攻线]：空气牌无坚果阻断，放弃第三桶纯诈唬，过牌`;
+                        }
+                    } else if (actLine && actLine.isDelayedBarrelNode) {
+                        if (equity >= 50) {
+                            primaryAction = 'BET'; sizing = (sc.sizes.medium || '50% 底池');
+                            frequencies = { bet: 75, check: 25 };
+                            reasoning = `河牌胜率${equity.toFixed(0)}%，💡 Pokercode [延时 C-Bet 薄价值]：对手转牌跟注延时下注且河牌再次过牌，范围极度封顶（Capped），释放中等尺度（${sizing}）榨取其中弱对跟注价值`;
+                        } else {
+                            primaryAction = 'CHECK'; sizing = '';
+                            frequencies = { check: 100 };
+                            reasoning = `河牌胜率${equity.toFixed(0)}%，延时下注未中且无摊牌价值，过牌`;
+                        }
+                    } else if (equity >= sc.strongThresh) {
                         // 强价值：坚果优势可超池
                         primaryAction = 'BET'; sizing = sc.sizes.nut;
                         const freq = iHaveNutAdv ? 95 : 85;
@@ -16224,14 +16399,27 @@
                     const flopHadBet = actions.some(a => a.street === 'flop' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
                     const isDelayedCBetNode = (street === 'turn' && villainBet === 0 && heroIsPFA && heroPos === 'IP' && !flopHadBet);
 
-                    if (oppHasRangeAdv && heroPos === 'OOP' && equity < 65) {
+                    const trs = ba.turnRunoutShift;
+                    const isAdvantageFlipped = (ba.textureShiftAdvantage != null && ba.textureShiftAdvantage <= -3) || (trs && (trs.type === 'FLUSH_COMPLETER' || trs.type === 'STRAIGHT_COMPLETER'));
+
+                    if (actLine && actLine.isTurnLeadCandidate && isAdvantageFlipped && (equity >= 65 || _tBucket === '两对+' || outs >= 9)) {
+                        primaryAction = 'BET';
+                        sizing = sc.sizes.medium || '50% 底池';
+                        frequencies = { bet: 75, check: 25 };
+                        reasoning = `转牌胜率${equity.toFixed(0)}%，💡 Pokercode [转牌转折反客为主领打]：转牌出现重度偏向防守方的转折张（${(trs && (trs.label || trs.desc)) || '坚果优势转移'}），我方击中强成牌/坚果听牌，释放 75% 领打（${sizing}）夺回进攻主导权，防止对手免费看河牌`;
+                    } else if (actLine && actLine.isPostXRNode && (equity >= 58 || _tBucket === '两对+' || outs >= 8)) {
+                        primaryAction = 'BET';
+                        sizing = (spr <= 2.0 ? '全押' : (sc.sizes.strong || '75% 底池'));
+                        frequencies = { bet: 85, check: 15 };
+                        reasoning = `转牌胜率${equity.toFixed(0)}%${outs >= 8 ? `+${outs}张进张` : ''}，💡 Pokercode [Check-Raise 持续压制]：翻牌 Check-Raise 夺回主动权后转牌延续第二桶施压（${sizing}），惩罚对手跟注范围并保护手牌`;
+                    } else if (oppHasRangeAdv && heroPos === 'OOP' && equity < 65) {
                         primaryAction = 'CHECK'; sizing = '';
                         frequencies = { check: 100 };
                         reasoning = `转牌范围劣势，OOP胜率${equity.toFixed(0)}%，控池等待`;
                     // C2: IP 控池 — 转牌薄价值湿润面（equity 刚过门槛但不够强，湿润面扩池危险）
                     } else if (heroPos === 'IP' && sprZone !== 'commit'
-                               && equity >= sc.betThresh && equity < sc.betThresh + 6
-                               && wetness >= 0.5 && spr >= 2.5 && !isDelayedCBetNode) {
+                                && equity >= sc.betThresh && equity < sc.betThresh + 6
+                                && wetness >= 0.5 && spr >= 2.5 && !isDelayedCBetNode) {
                         const checkFreq = Math.min(75, Math.round(55 + (wetness - 0.5) * 40));
                         primaryAction = 'CHECK'; sizing = '';
                         frequencies = { check: checkFreq, bet: 100 - checkFreq };
@@ -16586,9 +16774,10 @@
                 // ② 40-58% 区间且赔率足够 → 跟注实现权益（旧逻辑把 equity 45%、
                 //    只需 27% 赔率的中对+听牌直接弃掉，是明显的 EV 漏损）；
                 // ③ 赔率不足才弃牌。
+                const isCallMarginRelaxed = (street === 'river' && ((blk && blk.isNutBlocker) || (actLine && actLine.isFacingRiverProbe)));
                 const commitStratB = equity >= (passiveTurnedAggro ? 66 : 58)
                     ? { action: 'RAISE', sizing: '全押', freq: { raise: 100 } }
-                    : (toCall > 0 && equity >= potOdds + (street === 'river' && blk && blk.isNutBlocker ? 0 : 4))
+                    : (toCall > 0 && equity >= potOdds + (isCallMarginRelaxed ? 0 : 4))
                     ? { action: 'CALL',  sizing: '',     freq: { call: 100 } }
                     : { action: 'FOLD',  sizing: '',     freq: { fold: 100 } };
 
@@ -16607,8 +16796,10 @@
                 // 的胜率是实打实的进张，交给下方赔率分支——原 outs<6 把 8♠7♠ 在 T♠6♥2♦
                 // 的卡顺(胜率32.8% > 赔率25%+容差4)也强制弃掉，与面板数学直接矛盾。
                 // 坚果阻断抓诈豁免(Stage 4 第二战役): 河牌持坚果阻断牌且胜率达到赔率时，放行给抓诈阻断校准分支
+                // 探针抓诈豁免(Stage 4 第三战役): 河牌防守探针下注且胜率达到赔率时，放行给抓诈校准分支
                 const isNutBlockerBluffCatcher = (street === 'river' && blk && blk.isNutBlocker && equity >= potOdds);
-                if (!isFacingAllin && equity < 40 && relStr < 30 && villainBet > 0 && outs < 4 && potOdds >= 25 && !isNutBlockerBluffCatcher) {
+                const isProbeBluffCatcher = (street === 'river' && actLine && actLine.isFacingRiverProbe && equity >= potOdds);
+                if (!isFacingAllin && equity < 40 && relStr < 30 && villainBet > 0 && outs < 4 && potOdds >= 25 && !isNutBlockerBluffCatcher && !isProbeBluffCatcher) {
                     primaryAction = 'FOLD'; sizing = '';
                     frequencies = { fold: 100 };
                     reasoning = `胜率${equity.toFixed(0)}%且相对牌力仅${relStr.toFixed(0)}%（底对/弱牌高牌面），面对下注弃牌`;
@@ -16642,7 +16833,9 @@
                         : commitStratB.action === 'CALL'
                         ? (street === 'river' && blk && blk.isNutBlocker
                             ? `SPR=${spr.toFixed(1)}（承诺区）🎯 [坚果阻断抓诈] 胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%，持${blk.blockerTypeDesc}有效阻断对手价值下注端，放宽抓诈跟注`
-                            : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%，跟注实现权益（不足 58% 全押线）`)
+                            : (street === 'river' && actLine && actLine.isFacingRiverProbe
+                                ? `SPR=${spr.toFixed(1)}（承诺区）🎯 [防守河牌探针下注] 胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%，对手利用转牌过牌发起探针偷池，放宽抓诈积极跟注`
+                                : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%，跟注实现权益（不足 58% 全押线）`))
                         : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%，弃牌`;
                 }
                 // ── E-05: Pokercode 2-1-3 翻牌面对小尺度 Mini C-Bet 的 Check-Raise 惩罚反击 ──
@@ -16736,9 +16929,11 @@
                         } else if (isMidTierHand) {
                             // 中强成牌：防守主力，保持 80%~90% 高频防守
                             const midBlkBoost = (street === 'river' && blk && blk.isNutBlocker && !isMultiway) ? 10 : 0;
-                            callFreq = Math.min(95, Math.max(75, Math.round((isMultiway ? sharedMdf * 1.5 : mdf * 1.2)) + midBlkBoost));
+                            const midProbeBoost = (street === 'river' && actLine && actLine.isFacingRiverProbe && !isMultiway) ? 8 : 0;
+                            callFreq = Math.min(95, Math.max(75, Math.round((isMultiway ? sharedMdf * 1.5 : mdf * 1.2)) + midBlkBoost + midProbeBoost));
                             reasoning = `胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，成牌牌力稳健（${eq.handStrength || '中强牌'}）` +
                                 (street === 'river' && blk && blk.isNutBlocker && !isMultiway ? `｜🎯 [坚果阻断抓诈] 持${blk.blockerTypeDesc}剔除对手价值下注端` : '') +
+                                (street === 'river' && actLine && actLine.isFacingRiverProbe && !isMultiway ? `｜🎯 [防守河牌探针下注] 对手转牌过牌后发起探针下注，成牌稳健抓诈` : '') +
                                 `，${streetCN}高频跟注（${callFreq}%）防守`;
                         } else {
                             // 边缘抓诈牌：根据 MDF 分配防守配额，单挑下限 50%，多人底池下限 40%
@@ -16746,6 +16941,9 @@
                             if (street === 'river' && blk && blk.isNutBlocker && !isMultiway) {
                                 callFreq = Math.min(85, Math.max(68, callFreq + 22));
                                 reasoning = `🎯 [坚果阻断抓诈] 胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，持${blk.blockerTypeDesc}（有效阻断对手价值下注端，放大其诈唬占比），河牌放宽抓诈门槛积极跟注（${callFreq}%）`;
+                            } else if (street === 'river' && actLine && actLine.isFacingRiverProbe && !isMultiway) {
+                                callFreq = Math.min(85, Math.max(65, callFreq + 18));
+                                reasoning = `🎯 [防守河牌探针下注] 胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，对手转牌过牌后发起探针下注（范围极化且易包含空气偷池），放宽门槛积极抓诈跟注（${callFreq}%）`;
                             } else if (street === 'river' && blk && blk.isAirBlocker && !isMultiway) {
                                 callFreq = Math.max(25, Math.min(45, callFreq - 25));
                                 reasoning = `⚠️ [阻断对手诈唬] 胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，手牌阻断对手大量空气/诈唬端（${blk.blockerTypeDesc}），对手下注范围偏向真实价值，压缩抓诈频率至 ${callFreq}%（倾向弃牌）`;
@@ -17046,6 +17244,7 @@
                 warnings, street,
                 geometry,
                 blocker: blk,
+                actionLine: actLine,
                 villainProfile: vProfile,
                 exploitOffset: {
                     profile: vProfile ? vProfile.id : 'balanced',
