@@ -722,11 +722,11 @@
         #heroBetInput, #villainBetInput, #stackHero, #stackVillain, #raiseSize,
         #threeBetSize, #avgStack { font-family: var(--font-mono); }
         /* 顶部工具条按钮：下一手 = 主行动蓝；重置 = 危险幽灵红 */
-        button[onclick="nextHand()"] {
+        button[onclick="nextHand()"], #btnNextHand {
             background: var(--accent) !important; color: #082744 !important;
-            border: 1px solid transparent;
+            border: 1px solid transparent; min-height: 44px;
         }
-        button[onclick="nextHand()"]:hover { background: var(--accent-hover) !important; }
+        button[onclick="nextHand()"]:hover, #btnNextHand:hover { background: var(--accent-hover) !important; }
         button[onclick="resetAll()"] {
             background: transparent !important; color: #ff8589 !important;
             border: 1px solid rgba(229,72,77,0.45) !important;
@@ -1466,7 +1466,7 @@
                             <button onclick="undoLastStep();" id="macroUndoBtn" class="macro-btn" title="没有可撤回的操作">↶ 撤回<kbd>Z</kbd></button>
                             <button onclick="clearHeroCards();" class="macro-btn" title="清底牌（H）">清底牌<kbd>H</kbd></button>
                             <button onclick="clearBoard();" class="macro-btn" title="清公共牌，回到翻前（G）">清公共牌<kbd>G</kbd></button>
-                            <button onclick="nextHand();" class="macro-btn macro-next" title="下一手（N）——最常用，故做成主行动样式">下一手<kbd>N</kbd></button>
+                            <button id="btnNextHand" onclick="nextHand();" class="macro-btn macro-next" title="下一手（N）——最常用，故做成主行动样式">下一手<kbd>N</kbd></button>
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
                             <span id="currentHandStr" class="text-base font-black text-yellow-400 tracking-wider">A♠ Q♥</span>
@@ -3943,9 +3943,20 @@
         // vsLimp 多选跛入位置（替代手动输入跛入人数）
         let selectedLimperPositions = ['UTG'];
 
-        /** 将 heroCard1/heroCard2 同步到翻前引擎兼容变量 val1/val2/isSuited */
+        /** 将 heroCard1/heroCard2 同步到翻前引擎兼容变量 val1/val2/isSuited (I01 修复) */
         function syncHeroCardCompat() {
-            if (!heroCard1 || !heroCard2) return; // 未选满两张时不同步
+            if (!heroCard1 || !heroCard2) {
+                // 清空或未选满时，同步失效底牌与翻后分析，防旧决策残留
+                if (typeof postState !== 'undefined' && postState) {
+                    postState.heroCards = [];
+                    postState.decisionResult = null;
+                    postState.equityResult = null;
+                }
+                val1 = null; val2 = null; isSuited = false;
+                updateHandStr();
+                updateHeroPickerHint();
+                return;
+            }
             val1 = heroCard1[0];
             val2 = heroCard2[0];
             // 对子不算同花
@@ -7590,14 +7601,20 @@
         // 且它们由每手粘贴的牌桌截图自动更新（OCR 一直在读标题栏盲注），无需手工维护。
         let chipVals = { hero: null, villain: null, avg: null }; // 筹码单位=筹码数时的原始筹码
         function blFmt(n) { return (n || 0).toLocaleString('en-US'); }
-        function blSave() { try { localStorage.setItem('blind_cfg', JSON.stringify(gameConfig.blinds)); localStorage.setItem('chip_unit', gameConfig.chipUnit); localStorage.setItem('auto_pos', gameConfig.autoAdvancePos ? '1' : '0');
-            localStorage.setItem('tourney_cfg', JSON.stringify(gameConfig.tourney)); } catch (e) {} } // 赛事信息随之持久化（刷新不丢，一场比赛只需录一次）
+        function blSave() { try {
+            localStorage.setItem('blind_cfg', JSON.stringify(gameConfig.blinds));
+            localStorage.setItem('chip_unit', gameConfig.chipUnit);
+            localStorage.setItem('auto_pos', gameConfig.autoAdvancePos ? '1' : '0');
+            localStorage.setItem('tourney_cfg', JSON.stringify(gameConfig.tourney));
+            if (gameConfig.stage) localStorage.setItem('stage', gameConfig.stage);
+        } catch (e) {} } // 赛事信息与阶段随之持久化（刷新不丢，一场比赛只需录一次，I06 修复）
         function blLoad() {
             try {
                 const s = localStorage.getItem('blind_cfg'); if (s) Object.assign(gameConfig.blinds, JSON.parse(s));
                 const u = localStorage.getItem('chip_unit'); if (u === 'chips' || u === 'bb') gameConfig.chipUnit = u;
                 const a = localStorage.getItem('auto_pos'); if (a === '0') gameConfig.autoAdvancePos = false;
                 const ty = localStorage.getItem('tourney_cfg'); if (ty) Object.assign(gameConfig.tourney, JSON.parse(ty));
+                const st = localStorage.getItem('stage'); if (st) gameConfig.stage = st;
             } catch (e) {}
         }
         window.blOnInput = function(el) {
@@ -9660,29 +9677,43 @@
                         const _shovePos = new Set(_shoves.map(x => x.pos));
                         if (posH !== 'SB' && !_shovePos.has('SB')) _dead += 0.5;
                         if (posH !== 'BB' && !_shovePos.has('BB')) _dead += 1.0;
+                        let _heroCommitted = posted;
+                        if (typeof tlActs !== 'undefined' && Array.isArray(tlActs)) {
+                            const heroActs = tlActs.filter(a => a.pos === globalPosHero);
+                            if (heroActs.length > 0) {
+                                const lastHero = heroActs[heroActs.length - 1];
+                                if (lastHero.amt && !isNaN(lastHero.amt) && lastHero.amt > _heroCommitted) {
+                                    _heroCommitted = lastHero.amt;
+                                }
+                            }
+                        }
                         _multi = preflopMultiAllinEquity([heroCard1, heroCard2],
-                            _ranges, _shoves.map(x => x.amt), _heroCall, _dead, 6000);
+                            _ranges, _shoves.map(x => x.amt), _heroCall, _dead, 6000, _heroCommitted);
                     }
                 } catch (e) { _multi = null; }
 
+                let effectiveBaseOdds = baseOdds;
+                let effectiveReqEq = adjustedReqEq;
                 if (_multi) {
-                    // 把依据写出来：用户看到的 41.8% 不是"同时赢过所有人"的概率（那是 32.7%），
-                    // 而是按边池结构加权的**等效胜率** —— 边池那一层只需赢过最大的那家。
+                    // A-01 闭包：多人全下时，保本门槛切换为基于多人总底池与新增跟注成本的 _multi.reqEq，加算风险溢价
+                    effectiveBaseOdds = _multi.reqEq;
+                    effectiveReqEq = _multi.reqEq + riskPrem + stackAdjustment;
+                    // 把依据写出来：用户看到的胜率是按边池结构加权的等效胜率
                     warnings.push(`⚠ ${_shoveCount} 家全下：已按边池结构计算 —— ` +
+                        `总底池 ${_multi.totalPot.toFixed(1)}BB，我方新增跟注成本 ${_multi.additionalCall.toFixed(1)}BB（保本门槛 ${_multi.reqEq.toFixed(1)}%）；` +
                         `主池要赢过全部 ${_shoveCount} 家（概率 ${_multi.pWinAll.toFixed(1)}%），` +
-                        `边池只需赢过最大的那家；${_mcEqLabel}为两层按底池加权的等效胜率。` +
-                        `原模型只对最大的一家估算、把其余全下当死钱，会高估十几个点。`);
+                        `边池只需赢过最大的那家；${_mcEqLabel}为两层按底池加权的等效胜率。`);
                 }
                 let _mcEq = _multi ? _multi.eqEff
                           : preflopEquityVsRange([heroCard1, heroCard2], pushHands, 6000);
                 let simsUsed = 6000, razorThin = false;
-                if (!_multi && _mcEq !== null && Math.abs(_mcEq - adjustedReqEq) < 2.5) {
+                if (!_multi && _mcEq !== null && Math.abs(_mcEq - effectiveReqEq) < 2.5) {
                     razorThin = true; simsUsed = 50000;
                     _mcEq = preflopEquityVsRange([heroCard1, heroCard2], pushHands, simsUsed);
                 }
                 const eqIsMC = _mcEq !== null;
                 const actEq = eqIsMC ? Math.round(_mcEq * 10) / 10 : 40; // 库未加载时保守兜底
-                const netEv = actEq - adjustedReqEq; // 用 adjustedReqEq（含大码 vs 短码放宽）
+                const netEv = actEq - effectiveReqEq; // 用 effectiveReqEq (多人全下时基于真实总底池与新增成本)
                 // 噪声带内不让随机数替用户做决定(2026-07-21)：加采样也解决不了刀尖局面——
                 // 55 接 UTG 10BB 的真实优势只有 +0.3 点，而 50000 次采样的标准差就有 0.22 点，
                 // 约 9% 的运行会落到红线另一侧（实测连跑 5 次出现 弃牌/边缘 两种结论）。
@@ -9699,7 +9730,7 @@
                 if (coinFlip) {
                     box.style.borderColor = '#e0a83a'; box.style.backgroundColor = 'rgba(224,168,58,0.1)';
                     vText.style.color = '#e0a83a'; vText.innerText = '🟡 边缘接注';
-                    logicText.innerHTML = `胜率 ${actEq}% 与门槛 ${adjustedReqEq.toFixed(1)}% 相差仅 ${Math.abs(netEv).toFixed(1)} 点，` +
+                    logicText.innerHTML = `胜率 ${actEq}% 与门槛 ${effectiveReqEq.toFixed(1)}% 相差仅 ${Math.abs(netEv).toFixed(1)} 点，` +
                         `已在计算精度（±${moe.toFixed(1)}）之内 —— <b>这是真正的硬币局，接与弃长期收益几乎相同</b>。` +
                         `chipEV 分不出高下时，有 ICM 压力（近奖金圈/决赛桌）应弃牌保命；纯累积筹码期可接。` +
                         `<br><span class="text-gray-400 text-xs">已按 ${simsUsed.toLocaleString()} 次采样精算，再加采样也无法分出胜负</span>` +
@@ -9719,21 +9750,20 @@
                 } else {
                     box.style.borderColor = '#5c667f'; box.style.backgroundColor = 'rgba(92,102,127,0.12)';
                     vText.style.color = '#8b95ab'; vText.innerText = '⚪ 弃牌 (Fold)';
-                    // 弃牌分支原来只有一句「胜率不足，接注送死」，**把 warnings 整个丢掉了** ——
-                    // 多家全下的边池说明、风险溢价档位这些依据在最该看到的分支上反而不显示。
-                    logicText.innerHTML = `胜率 ${actEq}% 低于门槛 ${adjustedReqEq.toFixed(1)}%，接注送死。` +
+                    // 弃牌分支显示基于 effectiveReqEq 的统一门槛
+                    logicText.innerHTML = `胜率 ${actEq}% 低于门槛 ${effectiveReqEq.toFixed(1)}%，接注送死。` +
                         (warnings.length ? `<br><span class="text-green-400 text-xs">${warnings.join('<br>')}</span>` : '');
                 }
 
                 document.getElementById('lblBox1').innerText = "底池赔率";
-                document.getElementById('mathBox1').innerText = baseOdds.toFixed(1) + "%";
+                document.getElementById('mathBox1').innerText = effectiveBaseOdds.toFixed(1) + "%";
                 // 把配对档位写进标签，用户一眼看到这个数是怎么来的（2026-09-09）
                 document.getElementById('lblBox2').innerText =
                     `风险溢价 ${({big:'大码',mid:'中码',short:'短码'})[_rp.heroClass]}对${({big:'大码',mid:'中码',short:'短码'})[_rp.villainClass]}`;
                 document.getElementById('lblBox2').title = _rp.note + '（Modern Poker Theory, Table 41）';
                 document.getElementById('mathBox2').innerText = (riskPrem >= 0 ? "+" : "") + riskPrem.toFixed(1) + "%";
                 document.getElementById('lblBox3').innerText = "最终红线（调整后）";
-                document.getElementById('mathBox3').innerText = adjustedReqEq.toFixed(1) + "%";
+                document.getElementById('mathBox3').innerText = effectiveReqEq.toFixed(1) + "%";
                 document.getElementById('lblBar1').innerText =
                     (pushSrc === 'rejam'
                         ? `vs ${POS_LABEL[posV]} 对我方开池的 Re-Jam 范围 ${villainPushRange.toFixed(0)}%`
@@ -9741,8 +9771,8 @@
                     + ` 胜率${eqIsMC ? '（MC×6000）' : '（兜底估算）'}`;
                 document.getElementById('mathBar1Text').innerText = actEq.toFixed(1) + "%";
                 document.getElementById('mathBar1Fill').style.width = actEq + "%";
-                document.getElementById('mathBar2Text').innerText = adjustedReqEq.toFixed(1) + "%";
-                document.getElementById('mathBar2Line').style.left = Math.max(0, Math.min(100, adjustedReqEq)) + "%";
+                document.getElementById('mathBar2Text').innerText = effectiveReqEq.toFixed(1) + "%";
+                document.getElementById('mathBar2Line').style.left = Math.max(0, Math.min(100, effectiveReqEq)) + "%";
                 proofPanel.classList.remove('hidden');
                 document.getElementById('resultPanel').classList.remove('invisible');
                 updateCfgSummary();
@@ -10033,7 +10063,13 @@
                 // 用时间线里我的真实开池额（iso-raise 到 5BB 时 pot 应按 5 算，而非默认 2.2）
                 // 盲对盲跛入（2026-09-09）：SB 补齐到 1BB、BB 过牌 → 双方各 1BB，
                 // 不能按开池额算（否则 SB 跛入池被算成 2.2BB 池、SPR 差一倍）
+                const _vTxt = document.getElementById('actionVerdict')?.innerText || '';
+                const isShortPush = (typeof globalHeroStack === 'number' && globalHeroStack <= 10) &&
+                                    (/全下|全押|push|jam/i.test(_vTxt) || (typeof lastEngineVerdict === 'string' && /全下|全押|push|jam/i.test(lastEngineVerdict)));
+                const isJamAct = typeof tlHero !== 'undefined' && tlHero && ['jam', 'push', 'allin'].includes(tlHero.action);
                 each = (typeof tlHero !== 'undefined' && tlHero && tlHero.action === 'limp') ? 1
+                     : isJamAct ? (tlHero.amount || globalHeroStack)
+                     : isShortPush ? globalHeroStack
                      : (typeof tlHero !== 'undefined' && tlHero && tlHero.action === 'open' && tlHero.amount > 0)
                        ? tlHero.amount : openAmt;
             } else if (currentMode === 'vsLimp') {
@@ -10103,18 +10139,56 @@
         }
 
         /**
-         * Pokercode 多人底池席位与相对位置上下文 (Phase 4)
+         * 判定指定席位在当前手牌中是否已弃牌 (B1.1 纯函数派生式过滤，保证撤销可逆)
+         */
+        function isSeatFolded(pos) {
+            if (!pos || !postState || !postState.potTracker || !Array.isArray(postState.potTracker.actions)) return false;
+            return postState.potTracker.actions.some(a => (a.pos === pos || (!a.pos && a.player === 'villain' && pos === (globalPosVillain || 'BB'))) && a.action === 'fold');
+        }
+
+        /**
+         * 动态获取当前在局争夺底池的活跃对手席位 (B1.1 & B1.2 主对手动态迁移)
+         */
+        function getActiveContenders() {
+            const heroPos = globalPosHero || 'BTN';
+            let curMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+            if (curMainV === heroPos) {
+                curMainV = (heroPos === 'BB') ? 'BTN' : 'BB';
+            }
+            const allExtras = (postState.extraVillains || []).filter(p => p && p !== heroPos && p !== curMainV);
+            
+            // 筛选所有未弃牌的对手席位
+            const activeOpponents = [];
+            if (!isSeatFolded(curMainV)) {
+                activeOpponents.push(curMainV);
+            }
+            allExtras.forEach(p => {
+                if (!isSeatFolded(p) && !activeOpponents.includes(p)) {
+                    activeOpponents.push(p);
+                }
+            });
+            
+            // 若原主对手已弃牌，而额外对手中有在局者，则将首位活跃额外对手提升为主对手 (B1.2)
+            const mainV = activeOpponents.length > 0 ? activeOpponents[0] : curMainV;
+            const extras = activeOpponents.length > 1 ? activeOpponents.slice(1) : [];
+            const heroActive = !isSeatFolded(heroPos);
+            
+            return {
+                heroPos,
+                mainV,
+                extras,
+                activeOpponents,
+                totalActiveCount: (heroActive ? 1 : 0) + activeOpponents.length
+            };
+        }
+
+        /**
+         * Pokercode 多人底池席位与相对位置上下文 (Phase 4 / B1.1 动态降维改造)
          * 计算当前在池所有玩家列表、翻后行动顺位、以及 Hero 的相对位置角色 (ABSOLUTE_OOP / SANDWICH / ABSOLUTE_IP)
          */
         function getMultiwayContext() {
-            const heroPos = globalPosHero || 'BTN';
-            let mainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
-            if (mainV === heroPos) {
-                mainV = (heroPos === 'BB') ? 'BTN' : 'BB';
-            }
-            const extras = (postState.extraVillains || []).filter(p => p && p !== heroPos && p !== mainV);
-            
-            const rawContenders = Array.from(new Set([heroPos, mainV, ...extras]));
+            const { heroPos, mainV, extras, totalActiveCount } = getActiveContenders();
+            const rawContenders = Array.from(new Set([heroPos, ...(totalActiveCount > 1 ? [mainV, ...extras] : (isSeatFolded(mainV) ? [] : [mainV]))]));
             const sortedPlayers = rawContenders.map(pos => ({
                 pos,
                 label: POS_LABEL[pos] || pos,
@@ -10161,7 +10235,10 @@
                 relativeRole,
                 roleLabel,
                 badgeClass,
-                roleTactics
+                roleTactics,
+                extras,
+                mainV,
+                heroPos
             };
         }
 
@@ -10180,7 +10257,7 @@
         function getMultiwayStreetState(streetActions) {
             const validCards = postState.board.filter(c => c !== null);
             const count = validCards.length;
-            const currentStreet = count === 3 ? 'flop' : count === 4 ? 'turn' : 'river';
+            const currentStreet = count === 4 ? 'turn' : count === 5 ? 'river' : 'flop';
             const sa = (Array.isArray(streetActions) ? streetActions : (postState.potTracker?.actions || [])).filter(a => !a.street || a.street === currentStreet);
 
             const mw = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
@@ -10190,10 +10267,32 @@
                 curMainV = (heroPos === 'BB') ? 'BTN' : 'BB';
             }
             
-            const allPlayers = (mw && mw.players && mw.players.length > 0) ? mw.players : [
+            let allPlayers = (mw && mw.players && mw.players.length > 0) ? [...mw.players] : [
                 { pos: curMainV, label: POS_LABEL[curMainV] || curMainV || '对手', isHero: false, order: 0 },
                 { pos: heroPos, label: POS_LABEL[heroPos] || heroPos || '我方', isHero: true, order: 1 }
             ];
+
+            // 若动作日志中包含了显式席位 (如测试用例或录入席位)，合并至 allPlayers (修复 A12)
+            const saPositions = new Set(sa.map(a => a.pos).filter(Boolean));
+            if (saPositions.size > 0) {
+                const curPosSet = new Set(allPlayers.map(p => p.pos));
+                const hasOverlap = [...saPositions].some(p => curPosSet.has(p));
+                if (!hasOverlap) {
+                    allPlayers = [];
+                }
+                saPositions.forEach(pos => {
+                    if (!allPlayers.some(p => p.pos === pos)) {
+                        const isHero = sa.some(a => a.pos === pos && a.player === 'hero') || pos === heroPos;
+                        allPlayers.push({
+                            pos,
+                            label: POS_LABEL[pos] || pos,
+                            isHero,
+                            order: POSTFLOP_ORDER[pos] || 5
+                        });
+                    }
+                });
+                allPlayers.sort((a, b) => a.order - b.order);
+            }
 
             const isMultiway = allPlayers.length >= 3;
 
@@ -10211,8 +10310,23 @@
                     .map(a => a.pos || (a.player === 'hero' ? heroPos : curMainV))
             );
 
+            // 翻前全下派生注入 (A01, A04, A12, X05 闭包)
+            try {
+                if (typeof tlState === 'function') {
+                    const _tls = tlState();
+                    if (_tls && _tls.allIn && _tls.allIn.size > 0) {
+                        _tls.allIn.forEach(pos => priorAllins.add(pos));
+                    }
+                }
+            } catch (e) {}
+
             // 当前街道活跃在池玩家（按翻后行动顺位 POSTFLOP_ORDER 排序）
             const inHandPlayers = allPlayers.filter(p => !priorFolds.has(p.pos));
+
+            // 有效筹码为 0 时，在池存活玩家均已无筹码下注，全部注入 priorAllins (修复 A01)
+            if (postState.potTracker && typeof postState.potTracker.effStack === 'number' && postState.potTracker.effStack === 0) {
+                inHandPlayers.forEach(p => priorAllins.add(p.pos));
+            }
 
             const committed = {};
             const hasActed = {};
@@ -10284,6 +10398,7 @@
             if (remaining.length <= 1) {
                 return {
                     phase: 'street_over',
+                    isStreetClosed: true,
                     nextToAct: null,
                     nextActorPos: null,
                     nextActorLabel: '',
@@ -10312,6 +10427,7 @@
             if (activeNonAllin.length <= 1 && remaining.some(p => isAllin[p.pos]) && (allMatched || sa.length === 0)) {
                 return {
                     phase: 'showdown',
+                    isStreetClosed: true,
                     nextToAct: null,
                     nextActorPos: null,
                     nextActorLabel: '',
@@ -10326,15 +10442,18 @@
                     toCall: 0,
                     facingCallers: 0,
                     facingSummary: '已全下待摊牌',
-                    remainingPlayers: remaining
+                    remainingPlayers: remaining,
+                    activeNonAllinCount: activeNonAllin.length
                 };
             }
 
             if (allActed && allMatched) {
                 const anyAllin = remaining.some(p => isAllin[p.pos]);
-                const phase = anyAllin ? 'showdown' : 'street_over';
+                // A-03 闭包：若存活且未全下的深码玩家 >= 2，后续街道仍可继续争夺边池，本街仅为 street_over，不可提前裁决为 showdown
+                const phase = (anyAllin && activeNonAllin.length <= 1) ? 'showdown' : 'street_over';
                 return {
                     phase,
+                    isStreetClosed: true,
                     nextToAct: null,
                     nextActorPos: null,
                     nextActorLabel: '',
@@ -10349,7 +10468,8 @@
                     toCall: 0,
                     facingCallers: 0,
                     facingSummary: '本街行动完毕',
-                    remainingPlayers: remaining
+                    remainingPlayers: remaining,
+                    activeNonAllinCount: activeNonAllin.length
                 };
             }
 
@@ -10381,6 +10501,7 @@
             if (!nextActor) {
                 return {
                     phase: 'street_over',
+                    isStreetClosed: true,
                     nextToAct: null,
                     nextActorPos: null,
                     nextActorLabel: '',
@@ -10436,6 +10557,7 @@
 
             return {
                 phase,
+                isStreetClosed: false,
                 nextToAct: isHeroNext ? 'hero' : 'villain',
                 nextActor,
                 nextActorPos,
@@ -10454,7 +10576,8 @@
                 toCall,
                 facingCallers: callersAfterBet.length,
                 facingSummary,
-                remainingPlayers: remaining
+                remainingPlayers: remaining,
+                activeNonAllinCount: activeNonAllin.length
             };
         }
 
@@ -10472,8 +10595,8 @@
         function setActionRecord(player, action, amount = 0, pos = null) {
             const validCards = postState.board.filter(c => c !== null);
             const count = validCards.length;
-            if (count < 3) return;
-            const street = count === 3 ? 'flop' : count === 4 ? 'turn' : 'river';
+            if (count < 3 && !postState._entered) return;
+            const street = count === 4 ? 'turn' : count === 5 ? 'river' : 'flop';
             let curMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
             const heroPos = globalPosHero || 'BTN';
             if (curMainV === heroPos) {
@@ -10487,16 +10610,30 @@
                 const _cn = { check: '过牌', bet: '下注', call: '跟注', raise: '加注', fold: '弃牌', allin: '全下' }[action] || action;
                 const pLabel = actPos ? (POS_LABEL[actPos] || actPos) : (player === 'hero' ? '我方' : '对手');
                 pushUndo(`${pLabel}${_cn}${amount > 0 ? ' ' + amount + 'BB' : ''}`);
-                postState.potTracker.actions.push({ street, player, pos: actPos, action, amount });
+                const actItem = { street, player, pos: actPos, action, amount };
+                if (action === 'fold') {
+                    if (Array.isArray(postState.extraVillains) && postState.extraVillains.includes(actPos)) {
+                        actItem._removedExtra = actPos;
+                        postState.extraVillains = postState.extraVillains.filter(p => p !== actPos);
+                    } else if (actPos === curMainV || (!pos && player === 'villain')) {
+                        actItem._prevGlobalPosVillain = globalPosVillain;
+                        if (Array.isArray(postState.extraVillains) && postState.extraVillains.length > 0) {
+                            const nextV = postState.extraVillains.shift();
+                            globalPosVillain = nextV;
+                            actItem._migratedVillain = nextV;
+                        }
+                    }
+                }
+                postState.potTracker.actions.push(actItem);
             }
             // O3(2026-07)：对手任一动作已记录，Vision 预填值即消费/失效
             if (player === 'villain') postState._pendingVillainBet = null;
             recalculatePot();
-            // 引擎修复(2026-07) & T-29(2026-09-23)：对手激进动作(bet/raise/allin)或跟注(call)均实质收窄其范围 →
+            // 引擎修复(2026-07) & T-29(2026-09-23)：对手激进动作(bet/raise/allin)或跟注(call)/弃牌(fold)均实质改变局面 →
             // 重跑完整分析管线（范围收窄 + 胜率重算 + postEngine 决策），消除胜率时效性滞后。
             // checkStreetAnalysis 自带 postCalcVersion 防串，重算期间显示 loading。
             if (player === 'villain' && ['bet', 'raise', 'allin', 'call'].includes(action)) {
-                checkStreetAnalysis();
+                if (count >= 3) checkStreetAnalysis();
             } else {
                 // 风险点3修复：对手每次行动后重新估算范围，使多街动态收窄实时生效
                 // （否则动态收窄只在"公牌选满"触发计算时更新，行动后不刷新 → 收窄形同虚设）
@@ -10537,6 +10674,21 @@
         function undoLastAction() {
             if (!postState.potTracker.actions || postState.potTracker.actions.length === 0) return;
             const popped = postState.potTracker.actions.pop();
+            if (popped && popped.action === 'fold') {
+                if (popped._migratedVillain) {
+                    if (!Array.isArray(postState.extraVillains)) postState.extraVillains = [];
+                    postState.extraVillains.unshift(popped._migratedVillain);
+                }
+                if (popped._prevGlobalPosVillain) {
+                    globalPosVillain = popped._prevGlobalPosVillain;
+                }
+                if (popped._removedExtra) {
+                    if (!Array.isArray(postState.extraVillains)) postState.extraVillains = [];
+                    if (!postState.extraVillains.includes(popped._removedExtra)) {
+                        postState.extraVillains.push(popped._removedExtra);
+                    }
+                }
+            }
             recalculatePot();
             renderBettingPanel();
             renderActionSummary();
@@ -10598,10 +10750,12 @@
                 });
                 const streetTotal = Object.values(pIn).reduce((acc, v) => acc + (v || 0), 0);
                 pot += streetTotal;
-                const hKey = globalPosHero || 'BTN';
-                const hIn = pIn[hKey] || pIn['hero'] || 0;
-                const vIns = Object.entries(pIn).filter(([k]) => k !== hKey && k !== 'hero').map(e => e[1]);
-                const maxV = vIns.length ? Math.max(...vIns) : 0;
+                const saHero = sa.filter(a => a.player === 'hero' || (a.pos && a.pos === (globalPosHero || 'BTN')));
+                const saVillain = sa.filter(a => a.player === 'villain' || (a.pos && a.pos !== (globalPosHero || 'BTN')));
+                const getActAmt = a => (a.action === 'call' && (!a.amount || a.amount <= 0)) ? curMax : (a.amount || 0);
+                const hIn = saHero.length ? Math.max(0, ...saHero.map(getActAmt)) : (pIn[globalPosHero || 'BTN'] || pIn['hero'] || 0);
+                const vList = Object.entries(pIn).filter(([k]) => k !== (globalPosHero || 'BTN') && k !== 'hero').map(e => e[1]);
+                const maxV = saVillain.length ? Math.max(0, ...saVillain.map(getActAmt)) : (vList.length ? Math.max(...vList) : 0);
                 if (idx >= baseIdx && idx < curIdx) spent += Math.min(hIn, maxV);
             });
 
@@ -10938,7 +11092,7 @@
                 // 对加注范围严重高估己方胜率（曾致中对+听牌被加注时错误推全押）。
                 const vAction = (street) => {
                     const acts = (postState.potTracker?.actions || [])
-                        .filter(a => a.street === street && a.player === 'villain');
+                        .filter(a => a.street === street && (a.pos ? a.pos === villainPos : a.player === 'villain'));
                     if (acts.some(a => ['raise','allin'].includes(a.action))) return 'raise';
                     if (acts.some(a => a.action === 'bet'))   return 'aggro';
                     if (acts.some(a => a.action === 'call'))  return 'call';
@@ -11390,7 +11544,11 @@
         // 作为覆盖层在常规管线出结果后运行，postCalcVersion 防串，不碰 equityEngine 核心。
         function runMultiwayOverride(version) {
             try {
-                const extras = postState.extraVillains || [];
+                // B1.2 闭包：使用 getActiveContenders 过滤已弃牌对手，消除弃牌者参与最终权益 (关闭 A-02)
+                const contenders = (typeof getActiveContenders === 'function')
+                    ? getActiveContenders()
+                    : { extras: (postState.extraVillains || []).filter(p => typeof isSeatFolded !== 'function' || !isSeatFolded(p)) };
+                const extras = contenders.extras || [];
                 if (!extras.length || !postState.villainRange || !postState.heroCards) return;
                 const ranges = [postState.villainRange.hands];
                 extras.forEach(p => {
@@ -11499,9 +11657,18 @@
             const ph = getStreetState(sa).phase;
             return ph === 'street_over' || ph === 'showdown';
         }
-        /** 本手是否已结束（有人弃牌）——用于"下一手"大按钮 */
+        /** 本手是否已结束（仅剩一人在池收池，或已到终态）——用于"下一手"大按钮与发牌槽高亮 (A-03 闭包) */
         function isHandOver() {
-            return (postState.potTracker.actions || []).some(a => a.action === 'fold');
+            if (typeof isSeatFolded === 'function' && isSeatFolded(globalPosHero || 'BTN')) return true;
+            if (typeof getActiveContenders === 'function') {
+                const contenders = getActiveContenders();
+                if (contenders) {
+                    if (contenders.totalActiveCount <= 1) return true;
+                    // 只要在池存活玩家 >= 2，绝不可仅凭历史有人弃牌就判定整手结束
+                    return false;
+                }
+            }
+            return (postState?.potTracker?.actions || []).some(a => a.action === 'fold');
         }
 
         /** 给"下一张该发的空槽"加/去呼吸高亮（renderBoard 与每次行动后都会调用） */
@@ -12223,16 +12390,21 @@
             const streetActions = postState.potTracker.actions.filter(a => a.street === street);
             const ss = getStreetState(streetActions);
 
-            // P1-4：若任意先前街道已发生 allin+call，当前街道也进入摊牌终局
+            // P1-4：若任意先前街道已发生 allin+call，且当前已无两名及以上未全下深码玩家（无后续边池），当前街才进入摊牌终局 (A-03 / X05)
             if (ss.phase !== 'showdown') {
-                const prevStreets = street === 'flop' ? [] : street === 'turn' ? ['flop'] : ['flop','turn'];
-                const prevShowdown = prevStreets.some(ps => {
-                    const acts = postState.potTracker.actions.filter(a => a.street === ps);
-                    const hasal = acts.some(a => a.action === 'allin');
-                    const last  = acts[acts.length - 1];
-                    return hasal && last?.action === 'call';
-                });
-                if (prevShowdown) ss.phase = 'showdown';
+                const canBetFurther = (typeof ss.activeNonAllinCount === 'number')
+                    ? ss.activeNonAllinCount >= 2
+                    : ((ss.remainingPlayers || []).filter(p => !p.isAllin).length >= 2);
+                if (!canBetFurther) {
+                    const prevStreets = street === 'flop' ? [] : street === 'turn' ? ['flop'] : ['flop','turn'];
+                    const prevShowdown = prevStreets.some(ps => {
+                        const acts = postState.potTracker.actions.filter(a => a.street === ps);
+                        const hasal = acts.some(a => a.action === 'allin');
+                        const last  = acts[acts.length - 1];
+                        return hasal && last?.action === 'call';
+                    });
+                    if (prevShowdown) ss.phase = 'showdown';
+                }
             }
 
             // 四舍五入到 0.5BB
@@ -14094,17 +14266,13 @@
         async function calculatePostflopEquity(heroCards, boardCards, villainRange, extraVillainRanges = null) {
             if (!boardCards) return { error: '公共牌数据不存在' };
 
-            // T-28: 探测多人在池额外对手
-            if (!extraVillainRanges && typeof getMultiwayContext === 'function') {
-                const mw = getMultiwayContext();
-                if (mw && mw.isMultiway) {
-                    const heroPos = globalPosHero || 'BTN';
-                    let mainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
-                    if (mainV === heroPos) mainV = (heroPos === 'BB') ? 'BTN' : 'BB';
-                    const extras = (postState.extraVillains || []).filter(p => p && p !== heroPos && p !== mainV);
-                    if (extras.length > 0 && typeof rangeEstimator === 'function') {
-                        extraVillainRanges = extras.map(p => rangeEstimator(p, { skipActions: true })).filter(r => r && r.hands && r.hands.length > 0);
-                    }
+            // T-28 & B1.2: 探测多人在池额外对手，统一且唯一消费 getActiveContenders 过滤弃牌者 (关闭 A-02)
+            if (!extraVillainRanges && typeof getActiveContenders === 'function') {
+                const contenders = getActiveContenders();
+                if (contenders && contenders.extras && contenders.extras.length > 0 && typeof rangeEstimator === 'function') {
+                    extraVillainRanges = contenders.extras
+                        .map(p => rangeEstimator(p, { skipActions: true }))
+                        .filter(r => r && r.hands && r.hands.length > 0);
                 }
             }
 
@@ -14150,6 +14318,9 @@
                 });
                 return;
             }
+
+            // 跨街即时重新核算底池与剩余筹码 (Y03 修复)
+            recalculatePot();
 
             // boardPicker 已禁用 heroCards，此处仅做安全校验
             const boardSet = new Set(validCards);
@@ -14771,13 +14942,18 @@
          *
          *  @param oppRanges 每家的推注范围（牌类数组）
          *  @param oppAmts   每家的全下额（BB）
-         *  @param heroCall  我方需投入（= min(我方筹码, 最大全下额)）
+         *  @param heroTotalContribution 我方总投入上限（= min(我方筹码, 最大全下额)）
          *  @param deadChips 不属于任何全下者的死钱（盲注 + ante + 已弃牌者的投入）
+         *  @param sims      采样次数
+         *  @param heroAlreadyCommitted 我方已入池筹码（如盲注、先前加注），用于计算新增跟注成本
          */
-        function preflopMultiAllinEquity(heroCards, oppRanges, oppAmts, heroCall, deadChips, sims = 6000) {
+        function preflopMultiAllinEquity(heroCards, oppRanges, oppAmts, heroTotalContribution, deadChips, sims = 6000, heroAlreadyCommitted = 0) {
             try {
                 if (typeof Hand === 'undefined' || !heroCards || heroCards.length !== 2) return null;
                 if (!oppRanges.length || oppRanges.length !== oppAmts.length) return null;
+                const heroCall = Number(heroTotalContribution) || 0;
+                const heroCommitted = Math.min(heroCall, Math.max(0, Number(heroAlreadyCommitted) || 0));
+                const additionalCall = Math.max(0, heroCall - heroCommitted);
                 const RK = '23456789TJQKA', SU = 'shdc';
                 // 每人实际参与的投入上限 = min(他的全下额, 我方跟注额)
                 const contrib = oppAmts.map(a => Math.min(a, heroCall));
@@ -14820,9 +14996,20 @@
                 }
                 if (!used) return null;
                 const totalPot = contrib.reduce((a, b) => a + b, 0) + heroCall + deadChips;
-                return { eqEff: winSum / used / totalPot * 100,   // 等效胜率（可直接与所需赔率比）
-                         pWinAll: allWin / used * 100,            // 同时打赢所有人的概率（展示用）
-                         totalPot, reqEq: heroCall / totalPot * 100, sims: used };
+                const expChips = winSum / used;
+                // 正确 chipEV 跟注门槛 = additionalCall / totalPot (A-01 闭包)
+                const reqEq = totalPot > 0 ? (additionalCall / totalPot) * 100 : 0;
+                return {
+                    eqEff: totalPot > 0 ? (expChips / totalPot) * 100 : 0, // 等效胜率（可直接与所需赔率比）
+                    pWinAll: (allWin / used) * 100,          // 同时打赢所有人的概率（展示用）
+                    totalPot,
+                    heroTotalContribution: heroCall,
+                    heroAlreadyCommitted: heroCommitted,
+                    additionalCall,
+                    reqEq,                                  // 正确的多人保本胜率门槛
+                    chipEV: expChips - additionalCall,       // 净期望筹码 (BB)
+                    sims: used
+                };
             } catch (e) { return null; }
         }
 
@@ -15406,36 +15593,39 @@
         // 用途：结构化识别翻牌、转牌、河牌连贯行动线（Action Line）与战术节点，
         //       解决单街决策孤立、三桶极化断裂、XR后续连贯缺失与探针下注误判。
         // ════════════════════════════════════════════════════
-        function classifyActionLine(actions, heroPos, heroIsPFA, street) {
+        function classifyActionLine(actions, heroPos, heroIsPFA, street, targetVillainPos = null) {
             if (!Array.isArray(actions)) actions = [];
             const isIP = heroPos === 'IP' || heroPos === 'BTN' || heroPos === 'CO' || heroPos === 'HJ';
             const isOOP = !isIP;
+            const curVPos = targetVillainPos || (typeof globalPosVillain !== 'undefined' ? globalPosVillain : 'BB');
+            const isHeroAct = a => a.player === 'hero' || (a.pos && a.pos === (globalPosHero || 'BTN'));
+            const isTargetVAct = a => (a.pos ? a.pos === curVPos : a.player === 'villain');
 
             const flopActs = actions.filter(a => a.street === 'flop');
             const turnActs = actions.filter(a => a.street === 'turn');
             const riverActs = actions.filter(a => a.street === 'river');
 
             // 翻牌行动特征
-            const flopHeroBets = flopActs.some(a => a.player === 'hero' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
-            const flopHeroChecks = flopActs.some(a => a.player === 'hero' && a.action === 'check');
-            const flopHeroCalls = flopActs.some(a => a.player === 'hero' && a.action === 'call');
-            const flopHeroXR = flopActs.some(a => a.player === 'hero' && a.action === 'raise') &&
-                               flopActs.some(a => a.player === 'villain' && (a.action === 'bet' || a.action === 'raise'));
-            const flopVillainBets = flopActs.some(a => a.player === 'villain' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
-            const flopVillainChecks = flopActs.some(a => a.player === 'villain' && a.action === 'check');
+            const flopHeroBets = flopActs.some(a => isHeroAct(a) && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
+            const flopHeroChecks = flopActs.some(a => isHeroAct(a) && a.action === 'check');
+            const flopHeroCalls = flopActs.some(a => isHeroAct(a) && a.action === 'call');
+            const flopHeroXR = flopActs.some(a => isHeroAct(a) && a.action === 'raise') &&
+                               flopActs.some(a => isTargetVAct(a) && (a.action === 'bet' || a.action === 'raise'));
+            const flopVillainBets = flopActs.some(a => isTargetVAct(a) && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
+            const flopVillainChecks = flopActs.some(a => isTargetVAct(a) && a.action === 'check');
             const flopBothChecked = flopActs.length >= 2 && flopActs.every(a => a.action === 'check');
 
             // 转牌行动特征
-            const turnHeroBets = turnActs.some(a => a.player === 'hero' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
-            const turnHeroChecks = turnActs.some(a => a.player === 'hero' && a.action === 'check');
-            const turnHeroCalls = turnActs.some(a => a.player === 'hero' && a.action === 'call');
-            const turnVillainBets = turnActs.some(a => a.player === 'villain' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
-            const turnVillainChecks = turnActs.some(a => a.player === 'villain' && a.action === 'check');
+            const turnHeroBets = turnActs.some(a => isHeroAct(a) && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
+            const turnHeroChecks = turnActs.some(a => isHeroAct(a) && a.action === 'check');
+            const turnHeroCalls = turnActs.some(a => isHeroAct(a) && a.action === 'call');
+            const turnVillainBets = turnActs.some(a => isTargetVAct(a) && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
+            const turnVillainChecks = turnActs.some(a => isTargetVAct(a) && a.action === 'check');
             const turnHeroDelayedBet = flopBothChecked && turnHeroBets;
 
             // 河牌行动特征
-            const riverVillainBet = riverActs.some(a => a.player === 'villain' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
-            const riverVillainCheck = riverActs.some(a => a.player === 'villain' && a.action === 'check');
+            const riverVillainBet = riverActs.some(a => isTargetVAct(a) && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
+            const riverVillainCheck = riverActs.some(a => isTargetVAct(a) && a.action === 'check');
 
             // 1. 三桶进攻线 (Triple Barrel Node):
             // 河牌街，Hero 翻牌下注、转牌下注，河牌对手未下注
@@ -15949,6 +16139,25 @@
 
             const icmTighten = stage === 'bubble' ? 1.15 : stage === 'final' ? 1.08 : 1.0;
             const sprZone    = spr < 2 ? 'commit' : spr < 5 ? 'flex' : 'deep';
+
+            // 零筹码行动权拦截 (A06 修复)
+            if (typeof effStack === 'number' && effStack <= 0) {
+                const primaryAction = toCall > 0 ? (equity >= potOdds ? 'CALL' : 'FOLD') : 'CHECK';
+                const frequencies = primaryAction === 'CALL' ? { call: 100 } : primaryAction === 'FOLD' ? { fold: 100 } : { check: 100 };
+                return {
+                    primaryAction,
+                    sizing: '0BB',
+                    confidence: eq.confidence || 'high',
+                    frequencies,
+                    reasons: ['筹码已全下打光 (effStack=0)，无后续下注或加注行动权'],
+                    posture: 'commit',
+                    streetCN,
+                    equity,
+                    potOdds: Math.round(potOdds),
+                    mdf: Math.round(mdf),
+                    spr: 0
+                };
+            }
 
             // ── 子任务二：commit/flex 边界平滑（过渡带 [1.8, 2.2]）──
             // spr=2.0 处原本 commit↔flex 悬崖跳变（主动 全押↔过牌 / 被动 全押↔跟注）。
@@ -16819,7 +17028,7 @@
                         frequencies = { bet: 65, check: 35 };
                         reasoning = `💡 Pokercode ICM 3-1-3 [筹码压制] 我方大码覆盖对手（${_hs313}BB vs ${_vs313}BB），对手面临淘汰风险溢价，过牌转为施压下注（${sizing}）`;
                     }
-                } else if (icm313 && icm313.posture === 'commit' && spr <= 1.0) {
+                } else if (icm313 && icm313.posture === 'commit' && spr <= 1.0 && (street !== 'turn' || !_tTier)) {
                     if (primaryAction === 'BET' && sizing !== sc.sizes.push) {
                         sizing = sc.sizes.push;
                         frequencies = { bet: 95, check: 5 };
@@ -17087,6 +17296,9 @@
                     frequencies = { fold: 100 };
                     if (street === 'river' && blk && blk.isAirBlocker && !isMultiway) {
                         reasoning = `⚠️ [阻断对手诈唬] 胜率${equity.toFixed(0)}%（未满足阻断校准门槛+${sc.callMargin}%），手牌阻断对手大量空气/诈唬端（${blk.blockerTypeDesc}），对手下注范围偏向真实价值，抓诈期望为负，果断弃牌止损`;
+                    } else if (equity >= potOdds) {
+                        const compositeThreshold = (potOdds + sc.callMargin).toFixed(0);
+                        reasoning = `胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%但未达到综合跟注门槛（赔率+容差/边际=${compositeThreshold}%）${street === 'river' ? '（河牌无进张）' : ''}，MDF=${mdf.toFixed(0)}%${isMultiway ? `（${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%）` : ''}，弃牌`;
                     } else {
                         reasoning = `胜率${equity.toFixed(0)}% < 赔率${potOdds.toFixed(0)}%${street === 'river' ? '（河牌无进张）' : ''}，MDF=${mdf.toFixed(0)}%${isMultiway ? `（${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%）` : ''}，弃牌`;
                     }
@@ -17554,7 +17766,7 @@
 
 <!-- ═══════════════════════════════════════════════════
      VISION INTEGRATION v2 — 完全独立，不修改主系统逻辑
-     撤回方法：删除此 <script> 块、visionHistoryBar div、
+     撤回方法：删除此 script 块、visionHistoryBar div、
               赛事配置区的 qwenApiKey / visionModel 两行
      ═══════════════════════════════════════════════════ -->
 <script>
