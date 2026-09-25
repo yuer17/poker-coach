@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.8 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.83 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -13,13 +13,14 @@
             -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;
             background-color: #0b0d11;
             color: #f0f3f8;
+            scroll-padding-top: 120px;
         }
         /* 关键数字/标题用负字距收紧（Linear 式 measured tracking），仅作用于拉丁/数字显示元素 */
         h1, h2, #decisionAction, #decisionSizing, #decMathOdds, #decMathMdf, #decMathSpr,
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.8 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Stage 3 & Stage 4) ══
+            /* ══ PokerCode v2.83 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Batch B4) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -974,9 +975,9 @@
         .st-pot { flex: 0 0 56px; font-family: var(--font-mono); color: var(--gold); font-size: var(--fs-micro); }
         .st-chain { flex: 1; min-width: 0; font-family: var(--font-mono); line-height: 1.5; }
         @media (max-width: 767.98px) { .st-row { flex-wrap: wrap; gap: 4px; } .st-chain { flex-basis: 100%; } }
-        /* 触控目标下限(2026-07-21)：环节键/详情/速记等小幽灵键统一 ≥24px，手机端 ≥32px */
-        .macro-btn { min-height: 24px; display: inline-flex; align-items: center; justify-content: center; }
-        @media (max-width: 767.98px) { .macro-btn { min-height: 32px; padding: 4px 10px; } }
+        /* 触控目标下限与吸顶防遮挡(2026-07-21 / 2026-09-25 Batch B4)：全局 scroll-margin-top 避让吸顶 HUD，手机端 ≥44px */
+        .macro-btn { min-height: 24px; scroll-margin-top: 120px; display: inline-flex; align-items: center; justify-content: center; }
+        @media (max-width: 767.98px) { .macro-btn { min-height: 44px; padding: 6px 12px; } }
         /* zone-head 已有 ::after 分隔线撑满剩余空间，右侧操作键自然靠右——不再叠加 space-between */
         .tl-amt-inline::-webkit-outer-spin-button, .tl-amt-inline::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         /* 第二轮应对(2026-09-08)：我加注后，前方已行动者的再次表态 */
@@ -985,7 +986,8 @@
         #moneyWidget.urgent { border-color: #e5484d; color: #ff7a7d; animation: blPulse 1s ease-in-out infinite; }
         @keyframes blPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.0); } 50% { box-shadow: 0 0 0 3px rgba(229,72,77,.35); } }
         .act-btn {
-            min-height: 42px;
+            min-height: 44px;
+            scroll-margin-top: 120px;
             font-size: var(--fs-body) !important;
             font-weight: 700;
             border-radius: var(--radius-sm);
@@ -1173,9 +1175,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.8 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.83 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.8</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.83</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1195,7 +1197,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.8 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.83 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -1869,6 +1871,7 @@
         }
 
         function onConfigChange() {
+            try { blSave(); } catch (e) {}
             // 桌型变化时，重新渲染位置选择器
             if (currentMode) switchMode(currentMode);
             updateCfgSummary();
@@ -2358,9 +2361,9 @@
         }
 
         function updateCfgSummary() {
-            const gt = gameTypeOpts.find(o => o.val === gameConfig.gameType).label;
-            const ts = tableSizeOpts.find(o => o.val === gameConfig.tableSize).label;
-            const st = stageOpts.find(o => o.val === gameConfig.stage).label;
+            const gt = (gameTypeOpts.find(o => o.val === gameConfig.gameType) || {}).label || '';
+            const ts = (tableSizeOpts.find(o => o.val === gameConfig.tableSize) || {}).label || '';
+            const st = (stageOpts.find(o => o.val === gameConfig.stage) || {}).label || '常规阶段';
             const ante = gameConfig.ante ? ' · Ante' : '';
             const psLabel = gameConfig.playStyle === 'tight' ? ' · 紧' : gameConfig.playStyle === 'loose' ? ' · 松' : '';
             const vmLabel = gameConfig.villainModel === 'gto' ? ' · GTO对手' : ''; // M5
@@ -3945,22 +3948,46 @@
 
         /** 将 heroCard1/heroCard2 同步到翻前引擎兼容变量 val1/val2/isSuited (I01 修复) */
         function syncHeroCardCompat() {
+            let ps = null;
+            try { ps = postState; } catch (e) {}
             if (!heroCard1 || !heroCard2) {
-                // 清空或未选满时，同步失效底牌与翻后分析，防旧决策残留
-                if (typeof postState !== 'undefined' && postState) {
-                    postState.heroCards = [];
-                    postState.decisionResult = null;
-                    postState.equityResult = null;
+                // 清空或未选满时，同步失效底牌与翻后分析，防旧决策残留 (I01 / TODO-B4.1)
+                if (ps) {
+                    ps.heroCards = [];
+                    ps.decisionResult = null;
+                    ps.equityResult = null;
+                    ps.analysisStatus = 'idle';
+                    ps.isAnalyzing = false;
+                    ps.postCalcVersion = (ps.postCalcVersion || 0) + 1;
                 }
+                if (typeof _autoTriggerTimer !== 'undefined' && _autoTriggerTimer) {
+                    clearTimeout(_autoTriggerTimer);
+                    _autoTriggerTimer = null;
+                }
+                if (typeof hideAnalysisLoading === 'function') hideAnalysisLoading();
                 val1 = null; val2 = null; isSuited = false;
                 updateHandStr();
                 updateHeroPickerHint();
+                try {
+                    const rp = document.getElementById('resultPanel');
+                    if (rp) rp.classList.add('invisible');
+                    const dp = document.getElementById('decisionPanel');
+                    if (dp) dp.classList.add('hidden');
+                    const slot = document.getElementById('postDecisionSlot');
+                    if (slot) slot.style.display = 'none';
+                    const ep = document.getElementById('equityPanel');
+                    if (ep) ep.classList.add('hidden');
+                    updateDecisionHUD();
+                } catch (e) {}
                 return;
             }
             val1 = heroCard1[0];
             val2 = heroCard2[0];
             // 对子不算同花
             isSuited = (val1 !== val2) && (heroCard1[1] === heroCard2[1]);
+            if (ps) {
+                ps.heroCards = [heroCard1, heroCard2];
+            }
             updateHandStr();
             updateHeroPickerHint();
         }
@@ -4569,6 +4596,7 @@
             if (/混合|边缘/.test(s)) return 'mixed';
             if (/下注|加注|3-Bet|4-Bet|开池|全下|Squeeze|Iso|Push|RAISE|BET|挤压|隔离/i.test(s)) return 'attack';
             if (/跟注|过牌|Cold Call|接全下|CALL|CHECK|平跟/i.test(s)) return 'passive';
+            if (/失败|错误|error/i.test(s)) return 'negative';
             return 'neutral';
         }
         // ══════════ 来源分级（2026-09-08）══════════
@@ -4625,9 +4653,22 @@
             const CN = { BET: '下注', CHECK: '过牌', CALL: '跟注', RAISE: '加注', FOLD: '弃牌' };
             if (boardN >= 3) {
                 stage = boardN === 3 ? '翻牌' : boardN === 4 ? '转牌' : '河牌';
+                const hasHeroCards = postState.heroCards && postState.heroCards.length === 2 && !postState.heroCards.includes(null);
                 const d = postState.decisionResult;
-                if (!d) {
+                const status = (postState && postState.analysisStatus) ? postState.analysisStatus : (d ? 'ready' : (hasHeroCards ? 'computing' : 'idle'));
+                if (!hasHeroCards) {
+                    action = '等待底牌';
+                    why = '请先在选牌网格选满两张底牌';
+                } else if (status === 'failed') {
+                    action = '分析失败';
+                    const errEl = document.getElementById('postErrorPanel');
+                    const errTxt = (errEl && !errEl.classList.contains('hidden') && errEl.innerText.trim()) ? errEl.innerText.trim().replace(/\s+/g, ' ') : '';
+                    why = errTxt ? `计算未通过：${errTxt}` : '数据校验或胜率计算失败，请查看报错面板';
+                    sem = 'negative';
+                } else if (status === 'pending' || status === 'computing' || !d) {
                     action = '计算中…';
+                    why = '正在解算翻后胜率与博弈论建议…';
+                    sem = 'neutral';
                 } else {
                     action = CN[d.primaryAction] || d.primaryAction || '';
                     sizing = d.sizing || '';
@@ -4696,7 +4737,7 @@
             whyEl.style.display = coreWhy ? '' : 'none';
             badgeEl.textContent = badge; badgeEl.dataset.level = badge; badgeEl.style.display = badge ? '' : 'none';
             // 来源分级(2026-09-08)：只在真出了建议时显示
-            const hasAdvice = action && !/等待输入|计算中|悖论|未校准/.test(action);
+            const hasAdvice = action && !/等待输入|等待底牌|计算中|分析失败|计算失败|悖论|未校准/.test(action);
             const srcInfo = hasAdvice ? adviceSourceOf(boardN) : null;
             [document.getElementById('hudSrc'), document.getElementById('decisionSrc')].forEach(el => {
                 if (!el) return;
@@ -4865,6 +4906,7 @@
                 heroCard2 = null;
             }
             pickTarget = 'hero'; // 融合单页：取消底牌后网格回到选底牌
+            syncHeroCardCompat(); // I01/ASTRA-B4-02 闭环：取消单张底牌时必须同步失效底牌与翻后分析
             renderHeroPicker();   // 重建网格（同步 currentSelected）
             renderHeroSlots();
             updateHeroPickerHint();
@@ -4879,6 +4921,7 @@
             isSuited = false;
             pickTarget = 'hero'; // 融合单页
             setPickerOpen(true);  // 没牌了当然要展开(2026-09-11)
+            syncHeroCardCompat(); // I01 闭环：同步置空 postState.heroCards 与决策缓存
             renderHeroPicker();
             renderHeroSlots();
             updateHandStr();
@@ -4935,13 +4978,49 @@
             if (el) el.classList.add('hidden');
         }
 
-        // 自动触发分析：公共牌 >= 3 张时调用
+        // 自动触发分析：公共牌 >= 3 张时调用（A-09 / TODO-B4.2 防抖治理与即时版本失效）
+        let _autoTriggerTimer = null;
         function autoTriggerAnalysis() {
-            const count = postState.board.filter(c => c !== null).length;
-            if (count < 3) return;
+            if (_autoTriggerTimer) {
+                clearTimeout(_autoTriggerTimer);
+                _autoTriggerTimer = null;
+            }
+            if (typeof postState !== 'undefined' && postState) {
+                postState.postCalcVersion = (postState.postCalcVersion || 0) + 1;
+                postState.decisionResult = null;
+                postState.equityResult = null;
+            }
+            const count = postState.board ? postState.board.filter(c => c !== null).length : 0;
+            if (count < 3) {
+                if (typeof postState !== 'undefined' && postState) {
+                    postState.analysisStatus = 'idle';
+                    postState.isAnalyzing = false;
+                }
+                hideAnalysisLoading();
+                ['postErrorPanel', 'decisionPanel', 'equityPanel', 'postHandCard',
+                 'postRangeCard', 'postTextureCard', 'postDebugCard'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.add('hidden');
+                });
+                try { updateDecisionHUD(); } catch (e) {}
+                return;
+            }
+            // ASTRA-B4-06 状态契约闭环：公牌 >= 3 进入待计算状态，立即隐藏旧决策与胜率卡片并刷新 HUD 为计算中
+            if (typeof postState !== 'undefined' && postState) {
+                postState.analysisStatus = 'pending';
+                postState.isAnalyzing = true;
+            }
             showAnalysisLoading();
+            ['decisionPanel', 'equityPanel'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+            try { updateDecisionHUD(); } catch (e) {}
             // 让 renderBoard 先刷新 DOM，再启动计算
-            setTimeout(() => checkStreetAnalysis(), 30);
+            _autoTriggerTimer = setTimeout(() => {
+                _autoTriggerTimer = null;
+                checkStreetAnalysis();
+            }, 30);
         }
 
         // 多选跛入位置（vsLimp 模式）
@@ -5449,7 +5528,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v2.8',
+                    v: 'v2.83',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5468,7 +5547,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5542,7 +5621,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.8 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.83 正式版';
             renderWindowColorChips(key);
         };
 
@@ -6253,6 +6332,11 @@
         // 对手的 4-Bet 范围高度极化（价值 + 用 A 阻断张做的诈唬），按 4-Bet 者位置分两桶。
         // 这是 HEURISTIC 级数据（无解算器来源），但**结构**是公认的：
         // 4-Bet 范围窄且两极，价值段以 QQ+/AK 为核心，诈唬段用 Ax 同花阻断 AA/AK。
+        /** 统一 4-Bet 位置分桶映射 (Q-2 提取通用 helper) */
+        function get4BetBucket(pos) {
+            return ['UTG','UTG1','MP','LJ'].includes(pos) ? 'tight' : 'wide';
+        }
+
         const FOURBET_RANGES = {
             // 早/中位 4-Bet：他从前位开池又敢 4-Bet，范围最紧
             tight: { value: ['AA','KK','QQ','AKs','AKo'],
@@ -6268,12 +6352,21 @@
          * 所以这部分是真算的；跟注需要翻后价值无法精确计算，用价格 + SPR 闸门（启发式，已注明）。
          */
         function getFacing4BetAction(handStr, heroCards, effStack, threeBetSize, fourBetSize, posH, posV) {
-            const bucket = ['UTG','UTG1','MP','LJ'].includes(posV) ? 'tight' : 'wide';
+            const bucket = get4BetBucket(posV);
             const R = FOURBET_RANGES[bucket];
-            const comboOf = h => h.length === 2 ? 6 : h[2] === 's' ? 4 : 12;
-            const nVal = R.value.reduce((a, h) => a + comboOf(h), 0);
-            const nBlf = R.bluff.reduce((a, h) => a + comboOf(h), 0);
-            const pFold = nBlf / (nVal + nBlf);           // 他用诈唬段弃牌，用价值段跟
+            const known = (heroCards && heroCards.length)
+                ? new Set(heroCards.filter(c => c).map(c => typeof normalizeCard === 'function' ? normalizeCard(c) : c))
+                : new Set();
+            const countCombos = (hands) => {
+                if (known.size > 0 && typeof buildVillainCombosFromRange === 'function') {
+                    return buildVillainCombosFromRange(hands, known).length;
+                }
+                const comboOf = h => h.length === 2 ? 6 : h[2] === 's' ? 4 : 12;
+                return hands.reduce((a, h) => a + comboOf(h), 0);
+            };
+            const nVal = countCombos(R.value);
+            const nBlf = countCombos(R.bluff);
+            const pFold = (nVal + nBlf) > 0 ? nBlf / (nVal + nBlf) : 0;           // 他用诈唬段弃牌，用价值段跟
 
             // 死钱：与 initPotTracker 同一判据（盲注位自己的盲注已在其投入里）
             let dead = getAnteBB();
@@ -6297,8 +6390,8 @@
             const coreValue = R.value.filter(h => ['AA','KK','QQ','AKs'].includes(h));
             const committed = t4 > 0 && (S - t4) / t4 <= 1.2;
             const callRange = committed ? R.value : coreValue;
-            const nCall = callRange.reduce((a, h) => a + comboOf(h), 0);
-            const pFoldJam = 1 - nCall / (nVal + nBlf);   // 诈唬段 + 未进跟注段都会弃
+            const nCall = countCombos(callRange);
+            const pFoldJam = (nVal + nBlf) > 0 ? 1 - nCall / (nVal + nBlf) : 0;   // 诈唬段 + 未进跟注段都会弃
 
             // 两个决策要用两个不同的对手范围：
             //   跟注 → 面对他**整个 4-Bet 范围**（含会继续打的诈唬段），范围弱得多
@@ -7607,14 +7700,47 @@
             localStorage.setItem('auto_pos', gameConfig.autoAdvancePos ? '1' : '0');
             localStorage.setItem('tourney_cfg', JSON.stringify(gameConfig.tourney));
             if (gameConfig.stage) localStorage.setItem('stage', gameConfig.stage);
-        } catch (e) {} } // 赛事信息与阶段随之持久化（刷新不丢，一场比赛只需录一次，I06 修复）
+            localStorage.setItem('ante_enabled', gameConfig.ante ? '1' : '0');
+            if (gameConfig.anteMode) localStorage.setItem('ante_mode', gameConfig.anteMode);
+        } catch (e) {} } // 赛事信息与阶段、Ante随之持久化（刷新不丢，一场比赛只需录一次，I06/TODO-B4.1）
         function blLoad() {
             try {
-                const s = localStorage.getItem('blind_cfg'); if (s) Object.assign(gameConfig.blinds, JSON.parse(s));
-                const u = localStorage.getItem('chip_unit'); if (u === 'chips' || u === 'bb') gameConfig.chipUnit = u;
-                const a = localStorage.getItem('auto_pos'); if (a === '0') gameConfig.autoAdvancePos = false;
-                const ty = localStorage.getItem('tourney_cfg'); if (ty) Object.assign(gameConfig.tourney, JSON.parse(ty));
-                const st = localStorage.getItem('stage'); if (st) gameConfig.stage = st;
+                const s = localStorage.getItem('blind_cfg');
+                if (s) {
+                    try { Object.assign(gameConfig.blinds, JSON.parse(s)); } catch (e) {}
+                }
+            } catch (e) {}
+            try {
+                const u = localStorage.getItem('chip_unit');
+                if (u === 'chips' || u === 'bb') gameConfig.chipUnit = u;
+            } catch (e) {}
+            try {
+                const a = localStorage.getItem('auto_pos');
+                if (a === '0') gameConfig.autoAdvancePos = false;
+                else if (a === '1') gameConfig.autoAdvancePos = true;
+            } catch (e) {}
+            try {
+                const ty = localStorage.getItem('tourney_cfg');
+                if (ty) {
+                    try { Object.assign(gameConfig.tourney, JSON.parse(ty)); } catch (e) {}
+                }
+            } catch (e) {}
+            try {
+                const st = localStorage.getItem('stage');
+                if (st && ['normal', 'bubble', 'final_table', 'headsup'].includes(st)) {
+                    gameConfig.stage = st;
+                }
+            } catch (e) {}
+            try {
+                const ae = localStorage.getItem('ante_enabled');
+                if (ae === '1') gameConfig.ante = true;
+                else if (ae === '0') gameConfig.ante = false;
+            } catch (e) {}
+            try {
+                const am = localStorage.getItem('ante_mode');
+                if (am && ['total', 'perPlayer'].includes(am)) {
+                    gameConfig.anteMode = am;
+                }
             } catch (e) {}
         }
         window.blOnInput = function(el) {
@@ -7648,6 +7774,13 @@
             const ap = document.getElementById('autoPosToggle');
             if (ap) { ap.innerText = gameConfig.autoAdvancePos ? '开启' : '关闭';
                 ap.className = (gameConfig.autoAdvancePos ? 'bg-green-600' : 'bg-gray-600') + ' text-white text-xs font-bold px-3 py-0.5 rounded'; }
+            const at = document.getElementById('anteToggle');
+            if (at) {
+                at.innerText = gameConfig.ante ? '开启' : '关闭';
+                at.className = gameConfig.ante 
+                    ? 'bg-green-600 text-white text-xs font-bold px-3 py-0.5 rounded'
+                    : 'bg-gray-600 text-white text-xs font-bold px-3 py-0.5 rounded';
+            }
             blRenderUnitLabels();
             try { renderAnteInfo(); } catch (e) {}   // 大盲/ante 变了 → 死钱显示同步
         }
@@ -9817,8 +9950,8 @@
 
         // 初始化
         // ============================================================
-        // setTheme('purple') 已移除（2026-07 Solver 换肤：单一专业主题，:root 令牌即最终值；
-        // setTheme/themes 保留为死代码防旧调用报错，不再触发）
+        // 优先加载持久化配置（I06 / TODO-B4.1）：stage, ante, blinds, chipUnit
+        blLoad();
         renderCfgGroup('grpGameType', gameTypeOpts, 'gameType');
         renderCfgGroup('grpTableSize', tableSizeOpts, 'tableSize');
         renderCfgGroup('grpStage', stageOpts, 'stage');
@@ -9833,7 +9966,7 @@
         syncHeroCardCompat();
         switchMode('open');
         applyLegacyPref(); // 翻前时间线(2026-07-21)：传统标签折叠区
-        blLoad(); blRender(); // 筹码换算基准（升盲计时器已于 2026-09-08 移除）
+        blRender(); // 筹码换算基准与 ante 状态渲染
         try { renderTimeline(); } catch (e) {} // 加载持久化的筹码单位后刷新筹码框
         initStageQuickSelect(); // 配置上移(2026-07-14b)：header 阶段下拉填充
         updateCfgSummary();
@@ -9997,6 +10130,8 @@
             heroPosition: 'IP',
             // 是否正在计算中（用于按钮加载状态）
             isAnalyzing: false,
+            // 翻后分析生命周期状态：'idle' | 'pending' | 'computing' | 'ready' | 'failed' (ASTRA-B4-06 状态契约闭环)
+            analysisStatus: 'idle',
             // R-02 对手画像与节点锁定偏转 (Nodelocking & Exploit Engine)
             opponentProfiles: {},
             villainProfile: 'balanced',
@@ -10942,6 +11077,18 @@
                 }
             }
 
+            } else if (currentMode === 'face4b') {
+                // 面对 4-Bet 进翻后（A-08 修复）：对手是 4-Bet 激进方，其翻后范围为 4-Bet 极化范围，而非普通开池范围
+                const bucket = get4BetBucket(villainPos);
+                const R = (typeof FOURBET_RANGES !== 'undefined' && FOURBET_RANGES[bucket]) ? FOURBET_RANGES[bucket] : null;
+                if (R) {
+                    const bs = Math.round((R.bluff || []).length * bluffMult);
+                    baseHands = [...(R.value || []), ...(R.bluff || []).slice(0, bs)];
+                } else {
+                    baseHands = ['AA','KK','QQ','AKs','AKo','A5s','A4s'];
+                }
+                vActionLabel = `4-Bet 极化范围 (${villainPos}，${bucket === 'tight' ? '紧/前中位' : '宽/后盲位'})`;
+
             } else if (currentMode === 'squeeze') {
                 // 英雄 Squeeze，对手跟注进翻牌：顶端超强牌（AA/KK）面对 Squeeze 必 4-Bet，跟注范围为 Capped 范围
                 const rawOpen = GTO_RANGES[tableSize]?.[villainPos]?.open || [];
@@ -11377,7 +11524,7 @@
             const icmNote = icmKeep < 1.0 ? `（ICM 收紧至 ${(icmKeep*100).toFixed(0)}%）` : '';
             const desc = `约 ${rangePct.toFixed(1)}% 范围，${vActionLabel}${icmNote}${narrowNote}`;
 
-            return { hands, combos, desc, rangePct };
+            return { hands, combos, desc, label: desc, rangePct };
         }
 
         function updatePotUI() {
@@ -11568,16 +11715,51 @@
                 // 胜率再抖 3 点就会来回翻转结论。2000 次抖动降到 1.4 点，耗时仅 81ms。
                 const TRIALS = 2000;
                 for (let i = 0; i < TRIALS; i++) {
-                    const used = new Set([...hero, ...board]);
-                    const vHands = [];
-                    let ok = true;
-                    for (const rh of ranges) {
-                        const h = sampleHandFromRange(rh, used);
-                        if (!h) { ok = false; break; }
-                        vHands.push(h);
-                        h.forEach(c => used.add(c));
+                    const baseUsed = new Set([...hero, ...board]);
+                    let vHands = null;
+
+                    if (ranges.length === 1) {
+                        const h = sampleHandFromRange(ranges[0], baseUsed, board);
+                        if (!h) continue;
+                        vHands = [h];
+                    } else {
+                        // B2.3 联合拒绝采样 (关闭 A-06): 各席位从自身独立先验抽取，整组冲突则拒绝重抽
+                        for (let att = 0; att < 20; att++) {
+                            const cand = [];
+                            const seen = new Set(baseUsed);
+                            let col = false;
+                            for (const rh of ranges) {
+                                const h = sampleHandFromRange(rh, baseUsed, board);
+                                if (!h || seen.has(h[0]) || seen.has(h[1])) {
+                                    col = true;
+                                    break;
+                                }
+                                seen.add(h[0]); seen.add(h[1]);
+                                cand.push(h);
+                            }
+                            if (!col && cand.length === ranges.length) {
+                                vHands = cand;
+                                break;
+                            }
+                        }
+
+                        if (!vHands) {
+                            // 降级保底：顺序条件采样
+                            const used = new Set(baseUsed);
+                            const fb = [];
+                            let ok = true;
+                            for (const rh of ranges) {
+                                const h = sampleHandFromRange(rh, used, board);
+                                if (!h) { ok = false; break; }
+                                fb.push(h);
+                                h.forEach(c => used.add(c));
+                            }
+                            if (!ok) continue;
+                            vHands = fb;
+                        }
                     }
-                    if (!ok) continue;
+
+                    const used = new Set([...baseUsed, ...vHands.flat()]);
                     const avail = fullDeck.filter(c => !used.has(c));
                     const fill = [];
                     for (let k = 0; k < 5 - board.length; k++) {
@@ -11716,6 +11898,12 @@
 
         // 清空公共牌（联动清空所有下注动作）
         function clearBoard() {
+            if (_autoTriggerTimer) {
+                clearTimeout(_autoTriggerTimer);
+                _autoTriggerTimer = null;
+            }
+            hideAnalysisLoading();
+            postState.postCalcVersion = (postState.postCalcVersion || 0) + 1; // A-09 / TODO-B4.2: 递增版本失效旧异步
             if (postState.board.some(c => c !== null)) pushUndo('清公共牌'); // 全局撤回栈(2026-07-21)
             postState.board = [null, null, null, null, null];
             pickTarget = (heroCard1 && heroCard2) ? 'board' : 'hero'; // 融合单页：清公共牌后网格继续选公共牌
@@ -11723,6 +11911,8 @@
             postState.potTracker.actions = [];
             postState.equityResult = null;
             postState.decisionResult = null;
+            postState.analysisStatus = 'idle';
+            postState.isAnalyzing = false;
             postState._pendingVillainBet = null; // O3：清牌即清 Vision 预填
             initPotTracker();
             recalculatePot();
@@ -11825,7 +12015,9 @@
                 const dp = slot ? slot.querySelector('#decisionPanel') : document.getElementById('decisionPanel');
                 const cnt = postState.board ? postState.board.filter(c => c !== null).length : 0;
                 const inPost = cnt >= 3;
-                if (!inPost) {
+                const hasValidCards = postState.heroCards && postState.heroCards.length === 2 && !postState.heroCards.includes(null);
+                const hasValidDecision = inPost && hasValidCards && postState.decisionResult !== null;
+                if (!hasValidDecision) {
                     if (slot) slot.style.display = 'none';
                     if (dp) dp.classList.add('hidden');
                 } else {
@@ -11858,7 +12050,9 @@
                 mountDecision();   // 翻后决策卡挂到左列同一个槽位
                 const slot = document.getElementById('postDecisionSlot');
                 const dp = slot ? slot.querySelector('#decisionPanel') : document.getElementById('decisionPanel');
-                if (!inPost) {
+                const hasValidCards = postState.heroCards && postState.heroCards.length === 2 && !postState.heroCards.includes(null);
+                const hasValidDecision = inPost && hasValidCards && postState.decisionResult !== null;
+                if (!hasValidDecision) {
                     if (slot) slot.style.display = 'none';
                     if (dp) dp.classList.add('hidden');
                 } else {
@@ -11914,6 +12108,9 @@
             if (idx < 0 || idx >= postState.board.length || postState.board[idx] === null) return;
             postState.board.splice(idx, 1);
             postState.board.push(null);
+            postState.postCalcVersion = (postState.postCalcVersion || 0) + 1;
+            postState.decisionResult = null;
+            postState.equityResult = null;
             renderBoardPicker();
             renderBoard();
             try { renderBettingPanel(); } catch (e) {}
@@ -13716,6 +13913,11 @@
             const container = document.getElementById('postRightContent');
             if (!container) return;
             container.innerHTML = `
+                <!-- 计算中 loading 条 -->
+                <div id="analysisLoading" class="hidden text-center text-gray-400 text-sm py-3 panel-bg rounded">
+                    ⏳ 正在计算胜率...
+                </div>
+
                 <!-- 卡片1：错误/警告提示（有问题时显示） -->
                 <div id="postErrorPanel" class="hidden"></div>
 
@@ -13858,7 +14060,11 @@
         }
 
         function renderPostErrorPanel(errors, warnings) {
-            const panel = document.getElementById('postErrorPanel');
+            let panel = document.getElementById('postErrorPanel');
+            if (!panel) {
+                if (typeof initPostRightCards === 'function') initPostRightCards();
+                panel = document.getElementById('postErrorPanel');
+            }
             if (!panel) return;
 
             if ((!errors || errors.length === 0) && (!warnings || warnings.length === 0)) {
@@ -14056,7 +14262,9 @@
                     const heroPos = globalPosHero || 'BTN';
                     let mainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
                     if (mainV === heroPos) mainV = (heroPos === 'BB') ? 'BTN' : 'BB';
-                    const extras = (postState.extraVillains || []).filter(p => p && p !== heroPos && p !== mainV);
+                    const extras = (typeof getActiveContenders === 'function')
+                        ? (getActiveContenders().extras || [])
+                        : (postState.extraVillains || []).filter(p => p && p !== heroPos && p !== mainV);
                     if (extras.length > 0 && typeof rangeEstimator === 'function') {
                         extraVillainRanges = extras.map(p => rangeEstimator(p, { skipActions: true })).filter(r => r && r.hands && r.hands.length > 0);
                     }
@@ -14084,27 +14292,64 @@
             // 全盘审计修复(2026-07-21，用户授权)：500→1500 次。实测 500 次仅 ~15ms，
             // 提到 1500 把抽样噪声从 ±3.5 点压到 ±2 点，延迟仍 <60ms。
             const SIM_COUNT = 1500;
-            let wins = 0, ties = 0, losses = 0, validSims = 0;
+            let wins = 0, ties = 0, losses = 0, validSims = 0, tieShare = 0;
+            const allOppRanges = [villainRange.hands, ...activeExtraRanges.map(r => r.hands)];
+            const isMultiOpponent = allOppRanges.length > 1;
 
             for (let i = 0; i < SIM_COUNT; i++) {
                 try {
-                    const usedThisRound = new Set(baseUsed);
-
-                    // 1. 从主对手范围采样 (Stage 4 第四战役: 传入 normBoard 激活花色微观加权)
-                    const villHand = sampleHandFromRange(villainRange.hands, usedThisRound, normBoard);
-                    if (!villHand) continue;
-                    villHand.forEach(c => usedThisRound.add(c));
-
-                    // 2. T-28: 从额外在池对手范围依次采样，确保各对手手牌互斥
+                    let villHand = null;
                     const extraHands = [];
-                    let extraFailed = false;
-                    for (const evr of activeExtraRanges) {
-                        const eh = sampleHandFromRange(evr.hands, usedThisRound, normBoard);
-                        if (!eh) { extraFailed = true; break; }
-                        eh.forEach(c => usedThisRound.add(c));
-                        extraHands.push(eh);
+
+                    if (!isMultiOpponent) {
+                        // 单挑单对手：直接从主对手范围采样
+                        villHand = sampleHandFromRange(villainRange.hands, baseUsed, normBoard);
+                        if (!villHand) continue;
+                    } else {
+                        // B2.3 联合拒绝采样 (关闭 A-06): 各席位从自身独立先验抽取，整组冲突则拒绝重抽
+                        let jointSample = null;
+                        for (let att = 0; att < 20; att++) {
+                            const cand = [];
+                            const seen = new Set(baseUsed);
+                            let col = false;
+                            for (const rHands of allOppRanges) {
+                                const h = sampleHandFromRange(rHands, baseUsed, normBoard);
+                                if (!h || seen.has(h[0]) || seen.has(h[1])) {
+                                    col = true;
+                                    break;
+                                }
+                                seen.add(h[0]); seen.add(h[1]);
+                                cand.push(h);
+                            }
+                            if (!col && cand.length === allOppRanges.length) {
+                                jointSample = cand;
+                                break;
+                            }
+                        }
+
+                        if (jointSample) {
+                            villHand = jointSample[0];
+                            for (let k = 1; k < jointSample.length; k++) {
+                                extraHands.push(jointSample[k]);
+                            }
+                        } else {
+                            // 极窄互斥范围降级保底（顺序条件采样）
+                            const usedFallback = new Set(baseUsed);
+                            villHand = sampleHandFromRange(villainRange.hands, usedFallback, normBoard);
+                            if (!villHand) continue;
+                            villHand.forEach(c => usedFallback.add(c));
+                            let extraFailed = false;
+                            for (const evr of activeExtraRanges) {
+                                const eh = sampleHandFromRange(evr.hands, usedFallback, normBoard);
+                                if (!eh) { extraFailed = true; break; }
+                                eh.forEach(c => usedFallback.add(c));
+                                extraHands.push(eh);
+                            }
+                            if (extraFailed) continue;
+                        }
                     }
-                    if (extraFailed) continue;
+
+                    const usedThisRound = new Set([...baseUsed, ...villHand, ...extraHands.flat()]);
 
                     // 补全公共牌到 5 张（若 River 则 runout 长度为 0）
                     const remainingDeck = deck.filter(c => !usedThisRound.has(c));
@@ -14131,6 +14376,8 @@
                             wins++;
                         } else {
                             ties++;
+                            // B2.1 多人平局权益分池算法 (关闭 A-05 / F-25-1)
+                            tieShare += 1 / winners.length;
                         }
                     } else {
                         losses++;
@@ -14147,13 +14394,15 @@
             const winRate = (wins / validSims) * 100;
             const tieRate = (ties / validSims) * 100;
             const loseRate = (losses / validSims) * 100;
+            const equity = ((wins + tieShare) / validSims) * 100;
 
             const poolDesc = activeExtraRanges.length > 0 ? ` (${activeExtraRanges.length + 2}人联合池)` : '';
-            console.log(`[calcEquity] ${street.toUpperCase()} MonteCarlo${poolDesc}: 胜${winRate.toFixed(1)}% 平${tieRate.toFixed(1)}% 负${loseRate.toFixed(1)}% (${validSims}次有效样本)`);
+            console.log(`[calcEquity] ${street.toUpperCase()} MonteCarlo${poolDesc}: 权益${equity.toFixed(1)}% (胜${winRate.toFixed(1)}% 平${tieRate.toFixed(1)}% 负${loseRate.toFixed(1)}%) (${validSims}次有效样本)`);
 
             return {
                 street,
                 method: 'monteCarlo',
+                equity: Math.round(equity * 10) / 10,
                 winRate: Math.round(winRate * 10) / 10,
                 tieRate: Math.round(tieRate * 10) / 10,
                 loseRate: Math.round(loseRate * 10) / 10,
@@ -14192,10 +14441,9 @@
             // 所有已知牌集合，用于排除对手 combo
             const knownCards = new Set([...normHero, ...normBoard]);
 
-            // 展开对手范围为所有合法具体 combo
-            const villainCombos = buildVillainCombosFromRange(villainRange.hands, knownCards);
-
-            if (villainCombos.length === 0) {
+            // B2.2 统一范围加权索引 (关闭 A-04): 接入 buildRangeComboIndex 继承同花面与听牌面微观加权
+            const entry = buildRangeComboIndex(villainRange.hands, knownCards, normBoard);
+            if (!entry || !entry.total || !entry.items.length) {
                 return { error: 'River 精准穷举：排除已知牌后，对手无合法 combo' };
             }
 
@@ -14207,42 +14455,58 @@
                 return { error: `Hero 牌型解算失败：${e.message}` };
             }
 
-            // 遍历所有合法 villain combo，逐一比较
+            // 遍历所有合法 villain combo，逐一比较并按微观权重累加
             let winCount = 0, tieCount = 0, loseCount = 0;
-            let validCombos = 0;
-            const totalCombos = villainCombos.length;
+            let winWeight = 0, tieWeight = 0, loseWeight = 0;
+            let totalWeight = 0, validCombos = 0;
+            let totalCombos = 0;
 
-            for (const villCombo of villainCombos) {
-                try {
-                    const villHand = Hand.solve([...villCombo, ...normBoard]);
-                    const winners = Hand.winners([heroHand, villHand]);
+            for (let i = 0; i < entry.items.length; i++) {
+                const combos = entry.items[i];
+                if (!combos || !combos.length) continue;
+                totalCombos += combos.length;
+                const iW = (entry.hasTextureWeights && entry.itemWeights && entry.itemWeights[i]) ? entry.itemWeights[i] : null;
 
-                    validCombos++;
-                    if (winners.length === 2) {
-                        tieCount++;
-                    } else if (winners[0] === heroHand) {
-                        winCount++;
-                    } else {
-                        loseCount++;
+                for (let j = 0; j < combos.length; j++) {
+                    const villCombo = combos[j];
+                    const w = iW ? (j === 0 ? iW.cumWeights[0] : (iW.cumWeights[j] - iW.cumWeights[j - 1])) : 1.0;
+                    try {
+                        const villHand = Hand.solve([...villCombo, ...normBoard]);
+                        const winners = Hand.winners([heroHand, villHand]);
+
+                        validCombos++;
+                        totalWeight += w;
+                        if (winners.length === 2) {
+                            tieCount++;
+                            tieWeight += w;
+                        } else if (winners[0] === heroHand) {
+                            winCount++;
+                            winWeight += w;
+                        } else {
+                            loseCount++;
+                            loseWeight += w;
+                        }
+                    } catch (e) {
+                        continue; // 单个 combo 出错跳过，不影响整体
                     }
-                } catch (e) {
-                    continue; // 单个 combo 出错跳过，不影响整体
                 }
             }
 
-            if (validCombos === 0) {
+            if (validCombos === 0 || totalWeight <= 0) {
                 return { error: 'River 精准穷举：所有 combo 计算失败' };
             }
 
-            const winRate = (winCount / validCombos) * 100;
-            const tieRate = (tieCount / validCombos) * 100;
-            const loseRate = (loseCount / validCombos) * 100;
+            const winRate = (winWeight / totalWeight) * 100;
+            const tieRate = (tieWeight / totalWeight) * 100;
+            const loseRate = (loseWeight / totalWeight) * 100;
+            const equity = ((winWeight + tieWeight * 0.5) / totalWeight) * 100;
 
-            console.log(`[calcEquity] RIVER Exact: 胜${winRate.toFixed(1)}% 平${tieRate.toFixed(1)}% 负${loseRate.toFixed(1)}% (${validCombos}/${totalCombos} combos)`);
+            console.log(`[calcEquity] RIVER Exact: 权益${equity.toFixed(1)}% (胜${winRate.toFixed(1)}% 平${tieRate.toFixed(1)}% 负${loseRate.toFixed(1)}%) (${validCombos}/${totalCombos} combos, 权重=${totalWeight.toFixed(1)})`);
 
             return {
                 street: 'river',
                 method: 'exact',
+                equity: Math.round(equity * 10) / 10,
                 winRate: Math.round(winRate * 10) / 10,
                 tieRate: Math.round(tieRate * 10) / 10,
                 loseRate: Math.round(loseRate * 10) / 10,
@@ -14297,6 +14561,14 @@
          * 加入异步防串（步骤9）。
          */
         function checkStreetAnalysis() {
+            // A-09 / TODO-B4.2 / ASTRA-B4-06: 前置自增版本号，立即同步清空旧决策与旧胜率，锁定新计算生命周期
+            postState.postCalcVersion = (postState.postCalcVersion || 0) + 1;
+            const currentVersion = postState.postCalcVersion;
+            postState.decisionResult = null;
+            postState.equityResult = null;
+            postState.analysisStatus = 'computing';
+            postState.isAnalyzing = true;
+
             const validCards = postState.board.filter(c => c !== null);
             const count = validCards.length;
             const right = document.getElementById('postRightContent');
@@ -14311,26 +14583,45 @@
 
             // 公共牌 < 3 张时，隐藏所有分析卡片
             if (count < 3) {
+                postState.analysisStatus = 'idle';
+                postState.isAnalyzing = false;
+                hideAnalysisLoading();
                 ['postErrorPanel', 'decisionPanel', 'equityPanel', 'postHandCard',
                  'postRangeCard', 'postTextureCard', 'postDebugCard'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.classList.add('hidden');
                 });
+                try { updateDecisionHUD(); } catch (e) {}
                 return;
             }
 
             // 跨街即时重新核算底池与剩余筹码 (Y03 修复)
             recalculatePot();
 
-            // boardPicker 已禁用 heroCards，此处仅做安全校验
+            // boardPicker 已禁用 heroCards，此处做选牌完整性与重复安全校验 (I01 修复)
             const boardSet = new Set(validCards);
-            if (postState.heroCards.length !== 2 || postState.heroCards.some(c => boardSet.has(c))) {
+            if (!postState.heroCards || postState.heroCards.length !== 2) {
+                postState.analysisStatus = 'idle';
+                postState.isAnalyzing = false;
+                ['decisionPanel', 'equityPanel', 'postHandCard', 'postTextureCard', 'postDebugCard'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.add('hidden');
+                });
+                renderPostErrorPanel(['请先在选牌网格选满两张底牌'], []);
+                hideAnalysisLoading();
+                try { updateDecisionHUD(); } catch (e) {}
+                return;
+            }
+            if (postState.heroCards.some(c => boardSet.has(c))) {
+                postState.analysisStatus = 'failed';
+                postState.isAnalyzing = false;
                 ['decisionPanel', 'equityPanel', 'postHandCard', 'postTextureCard', 'postDebugCard'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.classList.add('hidden');
                 });
                 renderPostErrorPanel(['底牌与公共牌重复，请重新选牌'], []);
                 hideAnalysisLoading();
+                try { updateDecisionHUD(); } catch (e) {}
                 return;
             }
 
@@ -14344,6 +14635,8 @@
             const validation = postValidateState();
 
             if (!validation.ok) {
+                postState.analysisStatus = 'failed';
+                postState.isAnalyzing = false;
                 // 有严重错误：隐藏分析卡片，显示错误和调试面板
                 ['decisionPanel', 'equityPanel', 'postHandCard', 'postTextureCard'].forEach(id => {
                     const el = document.getElementById(id);
@@ -14360,6 +14653,7 @@
                     validCombos: null
                 });
                 hideAnalysisLoading();
+                try { updateDecisionHUD(); } catch (e) {}
                 return;
             }
 
@@ -14387,10 +14681,7 @@
             }
 
             // === 步骤8.4 + 步骤9：calculatePostflopEquity + 异步防串 ===
-            // 每次触发新计算前，版本号自增，旧回调检测到版本不匹配则丢弃
-            postState.postCalcVersion += 1;
-            const currentVersion = postState.postCalcVersion;
-
+            // currentVersion 已在 checkStreetAnalysis 入口处前置自增锁定 (A-09 / TODO-B4.2)
             const streetForAudit = count === 3 ? 'Flop' : count === 4 ? 'Turn' : 'River';
             const methodForAudit = count === 5 ? 'exact' : 'monteCarlo';
 
@@ -14420,6 +14711,12 @@
                 validCards,
                 postState.villainRange
             ).then(result => {
+                // 防串检查（A-09 修复）：如果有更新的计算已触发，立即丢弃当前结果，严禁先改 DOM 状态后校验
+                if (currentVersion !== postState.postCalcVersion) {
+                    console.log(`[防串] 丢弃旧版本 ${currentVersion} 结果（当前版本 ${postState.postCalcVersion}）`);
+                    return;
+                }
+
                 // 计算完成：清除 loading 提示
                 const calcStatusEl = document.getElementById('streetCalcStatus');
                 if (calcStatusEl) {
@@ -14433,14 +14730,12 @@
                     }
                 }
 
-                // 防串检查：如果有更新的计算已触发，丢弃当前结果
-                if (currentVersion !== postState.postCalcVersion) {
-                    console.log(`[防串] 丢弃旧版本 ${currentVersion} 结果（当前版本 ${postState.postCalcVersion}）`);
-                    return;
-                }
-
                 // 检查是否有 error 字段（表示计算本身出错）
                 if (result && result.error) {
+                    postState.analysisStatus = 'failed';
+                    postState.isAnalyzing = false;
+                    postState.decisionResult = null;
+                    postState.equityResult = null;
                     renderPostErrorPanel([`胜率计算失败：${result.error}`], validation.warnings);
                     renderPostAuditPanel({
                         validateOk: true,
@@ -14452,6 +14747,7 @@
                         validCombos: null
                     });
                     hideAnalysisLoading(); // B5(2026-07)：失败路径同样收起 loading 条，防"正在计算"永久残留
+                    try { updateDecisionHUD(); } catch (e) {}
                     return;
                 }
 
@@ -14471,12 +14767,17 @@
 
                 // 结果审计失败：不进入 postEngine
                 if (!audit.ok) {
+                    postState.analysisStatus = 'failed';
+                    postState.isAnalyzing = false;
+                    postState.decisionResult = null;
+                    postState.equityResult = null;
                     renderPostErrorPanel(
                         [...validation.errors, ...audit.errors.map(e => `[结果审计] ${e}`)],
                         [...validation.warnings, ...audit.warnings]
                     );
                     console.error('[结果审计失败]', audit.errors);
                     hideAnalysisLoading(); // B5(2026-07)：审计失败路径同样收起 loading 条
+                    try { updateDecisionHUD(); } catch (e) {}
                     return;
                 }
 
@@ -14487,10 +14788,11 @@
 
                 // === 步骤8.6：把新格式结果转换为 equityResult 兼容格式 ===
                 // 兼容旧的 equityEngine 格式，供 postEngine / renderEquityPanel 使用
-                // 新格式：winRate, tieRate, loseRate
-                // 旧格式：equity（等于 winRate + tieRate/2）
+                // B2.1 优先消费核心算力返回的真实分池权益（关闭 A-05 / F-25-1）
                 const equityCompat = {
-                    equity: Math.round((result.winRate + result.tieRate * 0.5) * 10) / 10,
+                    equity: (typeof result.equity === 'number')
+                        ? result.equity
+                        : Math.round((result.winRate + (result.tieRate || 0) * (result.playerCount ? 1 / result.playerCount : 0.5)) * 10) / 10,
                     winRate: result.winRate,
                     tieRate: result.tieRate,
                     loseRate: result.loseRate,
@@ -14510,16 +14812,20 @@
 
                 // 保留旧版 equityEngine 提供的附加信息（手型、进张等）
                 // 在后台同步运行旧版 equityEngine 获取补充数据（不影响胜率数字）
+                postState.analysisStatus = 'ready';
+                postState.isAnalyzing = false;
                 postState.equityResult = equityCompat;
                 renderEquityPanel(equityCompat);
                 console.log('[胜率引擎]', result);
 
                 // === 步骤8.7：进入决策引擎 ===
                 const decision = postEngine();
+                if (currentVersion !== postState.postCalcVersion) return;
                 postState.decisionResult = decision;
                 renderPostEnginePanel(decision);
                 renderBettingPanel(); // 星标随决策结果同步刷新
                 hideAnalysisLoading(); // 计算完成，隐藏 loading
+                try { updateDecisionHUD(); } catch (e) {}
                 console.log('[决策引擎]', decision);
 
                 // 多人底池(2026-07-14)：有额外对手 → 多人 MC 覆盖胜率并重出决策
@@ -14551,9 +14857,11 @@
                         // 是 0 outs 被 Fix-7 强制弃牌）。渐进式刷新：先出快速决策，
                         // 补充数据到位后（约1秒）用完整数据重出，postCalcVersion 防串。
                         const decision2 = postEngine();
+                        if (currentVersion !== postState.postCalcVersion) return;
                         postState.decisionResult = decision2;
                         renderPostEnginePanel(decision2);
                         renderBettingPanel();
+                        try { updateDecisionHUD(); } catch (e) {}
                     }
                 }).catch(() => {});
 
@@ -14561,8 +14869,13 @@
                 // 捕获 calculatePostflopEquity 抛出的异常
                 if (currentVersion !== postState.postCalcVersion) return;
                 console.error('[胜率计算异常]', err);
-                renderPostErrorPanel([`胜率计算异常：${err.message}`], validation.warnings);
+                postState.analysisStatus = 'failed';
+                postState.isAnalyzing = false;
+                postState.decisionResult = null;
+                postState.equityResult = null;
+                renderPostErrorPanel([`胜率计算异常：${err && err.message ? err.message : err}`], validation.warnings);
                 hideAnalysisLoading();
+                try { updateDecisionHUD(); } catch (e) {}
             });
         }
         
@@ -14960,18 +15273,47 @@
                 const levels = [...new Set(contrib.concat([heroCall]))].sort((a, b) => a - b);
                 let winSum = 0, used = 0, allWin = 0;
                 for (let k = 0; k < sims; k++) {
-                    const deadSet = new Set(heroCards);
-                    const hands = []; let ok = true;
-                    for (let i = 0; i < oppRanges.length; i++) {
-                        let h = null;
-                        for (let t = 0; t < 40; t++) {
-                            const c = sampleHandFromRange(oppRanges[i], deadSet);
-                            if (c && !deadSet.has(c[0]) && !deadSet.has(c[1])) { h = c; break; }
+                    const heroSet = new Set(heroCards);
+                    let hands = null;
+
+                    // B2.3 联合拒绝采样 (关闭 A-06): 各席位从自身独立先验抽取，整组冲突则拒绝重抽
+                    for (let att = 0; att < 25; att++) {
+                        const cand = [];
+                        const seen = new Set(heroCards);
+                        let col = false;
+                        for (let i = 0; i < oppRanges.length; i++) {
+                            const c = sampleHandFromRange(oppRanges[i], heroSet);
+                            if (!c || seen.has(c[0]) || seen.has(c[1])) {
+                                col = true;
+                                break;
+                            }
+                            seen.add(c[0]); seen.add(c[1]);
+                            cand.push(c);
                         }
-                        if (!h) { ok = false; break; }
-                        deadSet.add(h[0]); deadSet.add(h[1]); hands.push(h);
+                        if (!col && cand.length === oppRanges.length) {
+                            hands = cand;
+                            break;
+                        }
                     }
-                    if (!ok) continue;
+
+                    if (!hands) {
+                        // 极窄互斥范围降级保底（顺序条件采样）
+                        const deadSet = new Set(heroCards);
+                        const fbHands = []; let ok = true;
+                        for (let i = 0; i < oppRanges.length; i++) {
+                            let h = null;
+                            for (let t = 0; t < 40; t++) {
+                                const c = sampleHandFromRange(oppRanges[i], deadSet);
+                                if (c && !deadSet.has(c[0]) && !deadSet.has(c[1])) { h = c; break; }
+                            }
+                            if (!h) { ok = false; break; }
+                            deadSet.add(h[0]); deadSet.add(h[1]); fbHands.push(h);
+                        }
+                        if (!ok) continue;
+                        hands = fbHands;
+                    }
+
+                    const deadSet = new Set([...heroCards, ...hands.flat()]);
                     const deck = [];
                     for (const r of RK) for (const su of SU) { const c = r + su; if (!deadSet.has(c)) deck.push(c); }
                     const board = [];
@@ -15470,20 +15812,74 @@
                     else for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if (i !== j) push(r1 + SUITS[i], r2 + SUITS[j]);
                 }
                 if (combos.length < 12) return null;
-                // 排序键：牌型等级为主，五张牌点数依次为辅（避免 O(n²) 两两比较）
-                const scored = combos.map(c => {
+
+                // 排序键：牌型等级为主，五张牌点数依次为辅；同分以组合扑克面值绝对字序破平（保证全排列完全不变性）
+                const uniqueComboMap = new Map();
+                for (const c of combos) {
+                    const cNorm = c[0] < c[1] ? [c[0], c[1]] : [c[1], c[0]];
+                    const key = cNorm[0] + ':' + cNorm[1];
+                    if (!uniqueComboMap.has(key)) uniqueComboMap.set(key, cNorm);
+                }
+                const uniqueCombos = Array.from(uniqueComboMap.values());
+                if (uniqueCombos.length < 12) return null;
+
+                const scored = uniqueCombos.map(c => {
                     const s = Hand.solve([...c, ...bd]);
                     let k = s.rank * 1e10;
                     (s.cards || []).slice(0, 5).forEach((cd, i) => { k += (cd.rank || 0) * Math.pow(100, 4 - i); });
                     return { c, k, blocked: heroSet.has(c[0]) || heroSet.has(c[1]) };
-                }).sort((a, b) => b.k - a.k);
+                }).sort((a, b) => (b.k - a.k) || a.c[0].localeCompare(b.c[0]) || a.c[1].localeCompare(b.c[1]));
+
                 const n = scored.length;
                 const totalBlockedCombos = scored.filter(x => x.blocked).length;
                 const blockerRemovalRatio = n > 0 ? (totalBlockedCombos / n) : 0;
-                const nutN = Math.max(1, Math.round(n * 0.20));
-                const airStart = Math.round(n * 0.55);
-                const nut = scored.slice(0, nutN);
-                const air = scored.slice(airStart);
+
+                // A-07 牌力等价组切分：同牌力组合不得任意割裂到坚果与空气桶
+                const scoreGroups = new Map();
+                for (const item of scored) {
+                    if (!scoreGroups.has(item.k)) scoreGroups.set(item.k, []);
+                    scoreGroups.get(item.k).push(item);
+                }
+                const eqGroups = Array.from(scoreGroups.values());
+
+                let nut = [];
+                let air = [];
+
+                if (eqGroups.length > 1) {
+                    // 至少存在两个不同牌力等级，方存在相对坚果/空气分位
+                    let nutCount = 0;
+                    let kNut = 0;
+                    for (let i = 0; i < eqGroups.length - 1; i++) {
+                        const nextCount = nutCount + eqGroups[i].length;
+                        if (i === 0 || nextCount <= n * 0.35 || Math.abs(nextCount - n * 0.20) < Math.abs(nutCount - n * 0.20)) {
+                            nutCount = nextCount;
+                            kNut = i;
+                            if (nutCount >= n * 0.20) break;
+                        } else {
+                            break;
+                        }
+                    }
+                    for (let i = 0; i <= kNut; i++) {
+                        nut = nut.concat(eqGroups[i]);
+                    }
+
+                    let airCount = 0;
+                    let kAir = eqGroups.length - 1;
+                    for (let j = eqGroups.length - 1; j > kNut; j--) {
+                        const nextCount = airCount + eqGroups[j].length;
+                        if (j === eqGroups.length - 1 || nextCount <= n * 0.60 || Math.abs(nextCount - n * 0.45) < Math.abs(airCount - n * 0.45)) {
+                            airCount = nextCount;
+                            kAir = j;
+                            if (airCount >= n * 0.45) break;
+                        } else {
+                            break;
+                        }
+                    }
+                    for (let j = kAir; j < eqGroups.length; j++) {
+                        air = air.concat(eqGroups[j]);
+                    }
+                }
+
                 const pct = arr => arr.length ? arr.filter(x => x.blocked).length / arr.length * 100 : 0;
                 const nutBlock = pct(nut), airBlock = pct(air);
                 const edge = Math.round((nutBlock - airBlock) * 10) / 10;
@@ -17153,7 +17549,9 @@
                             : (street === 'river' && actLine && actLine.isFacingRiverProbe
                                 ? `SPR=${spr.toFixed(1)}（承诺区）🎯 [防守河牌探针下注] 胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%，对手利用转牌过牌发起探针偷池，放宽抓诈积极跟注`
                                 : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}% ≥ 赔率${potOdds.toFixed(0)}%，跟注实现权益（不足 58% 全押线）`))
-                        : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%，弃牌`;
+                        : (equity >= potOdds
+                            ? `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%未达到防守门槛（赔率${potOdds.toFixed(0)}%+容差${(isCallMarginRelaxed ? 0 : 4)}%=${(potOdds + (isCallMarginRelaxed ? 0 : 4)).toFixed(0)}%），弃牌`
+                            : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%，弃牌`);
                 }
                 // ── E-05: Pokercode 2-1-3 翻牌面对小尺度 Mini C-Bet 的 Check-Raise 惩罚反击 ──
                 else if (isCRCandidate) {
@@ -17634,14 +18032,15 @@
             }
 
             if (!result) {
-                // loading 状态
+                // loading / 失败状态
+                const isFail = typeof postState !== 'undefined' && postState && postState.analysisStatus === 'failed';
                 panel.classList.remove('hidden');
-                document.getElementById('decisionAction').innerText = '计算中...';
-                document.getElementById('decisionAction').className = 'text-base font-black text-gray-400';
+                document.getElementById('decisionAction').innerText = isFail ? '计算失败' : '计算中...';
+                document.getElementById('decisionAction').className = 'text-base font-black ' + (isFail ? 'text-red-400' : 'text-gray-400');
                 document.getElementById('decisionSizing').innerText = '';
                 const _bEl = document.getElementById('decisionExploitBadge');
                 if (_bEl) _bEl.classList.add('hidden');
-                document.getElementById('decisionReason').innerText = '';
+                document.getElementById('decisionReason').innerText = isFail ? '数据验证或胜率解算失败，请查看下方报错卡片。' : '';
                 document.getElementById('decisionFreqBar').innerHTML = '';
                 document.getElementById('decisionFreqLabels').innerHTML = '';
                 document.getElementById('decisionWarnings').innerHTML = '';
