@@ -3191,6 +3191,7 @@
             calls: [
                 'TT', '99', '88', '77', '66', '55', '44', '33', '22',
                 'AJs', 'ATs', 'A9s', 'A8s', 'A7s', 'A6s',
+                'AQo', 'AJo', 'ATo', 'A9o',
                 'KQs', 'KJs', 'KTs', 'K9s', 'KQo', 'KJo', 'KTo',
                 'QJs', 'QTs', 'Q9s', 'QJo', 'QTo',
                 'JTs', 'J9s', 'JTo',
@@ -3205,6 +3206,10 @@
             }
             if (POKERCODE_SB_LIMP_PLAN.bluffs.includes(handStr)) {
                 return { action: 'raise', type: 'bluff', label: 'Limp-Raise (阻断反击)', desc: '持有 A/K 顶级高张阻断牌，针对 BB 宽达 44% 的 Iso 范围实施再加注/全推施压' };
+            }
+            // 浅码（<=25BB）持顶级非同花高张（AQo/AJo）反击全推
+            if (effStack && effStack <= 25 && (handStr === 'AQo' || handStr === 'AJo')) {
+                return { action: 'raise', type: 'bluff', label: 'Limp-Raise (浅码全推/反击)', desc: '短码（≤25BB）持 A 高顶级两高张，面对 BB 宽隔离坚决反击全推，收获高额弃牌权益' };
             }
             if (POKERCODE_SB_LIMP_PLAN.calls.includes(handStr)) {
                 return { action: 'call', type: 'call', label: 'Limp-Call (跟注防守)', desc: '具备优秀的翻后实现度与赔率支撑，平跟看翻牌' };
@@ -9430,7 +9435,8 @@
                             const _w = (_sq.value.concat(_sq.bluff).reduce((a, h) => a + _co(h), 0) / 1326 * 100).toFixed(1);
                             return `${handStr} 不在 ${POS_LABEL[posH] || posH} 的挤压范围内（该范围仅约 ${_w}%：` +
                                    `价值 ${_sq.value.join('/')}；诈唬 ${_sq.bluff.join('/')}）。` +
-                                   `挤压要同时把开池者和跟注者打跑，范围必须很窄——被跟住时你面对的是两家的强端。弃牌。`;
+                                   `挤压要同时把开池者和跟注者打跑，范围必须很窄——被跟住时你面对的是两家的强端。` +
+                                   `${posH === 'BB' ? '大盲关行动位且底池赔率极佳（~5:1），若持中小对子/优质同花连张等具备翻后实现价值手牌可考虑平跟 (Overcall)，其余弃牌。' : posH === 'BTN' ? '在 BTN 位若持中等口袋对/强投机同花具备绝对位置优势 (IP) 可考虑平跟控池，其余弃牌。' : '弃牌。'}`;
                         })();
                 }
 
@@ -17201,9 +17207,9 @@
                             frequencies = { bet: drawFreq, check: 100 - drawFreq };
                             reasoning = `${outs}张进张，💡 Pokercode 多人底池(${mwTotalCount}人)：转牌半诈唬折损至 ${drawFreq}%，过牌控池`;
                         } else {
-                            primaryAction = 'BET'; sizing = sc.sizes.medium;
+                            primaryAction = drawFreq >= 50 ? 'BET' : 'CHECK'; sizing = primaryAction === 'BET' ? sc.sizes.medium : '';
                             frequencies = { bet: drawFreq, check: 100 - drawFreq };
-                            reasoning = `${outs}张进张（≥10 才转牌半诈唬），${drawFreq}%频率施压`;
+                            reasoning = `${outs}张进张（≥10 才转牌半诈唬），${drawFreq}%频率${primaryAction === 'BET' ? '施压' : '下注，多数时候过牌'}`;
                         }
                     } else if (iHaveNutAdv && sprZone === 'deep' && equity < 35 && iHaveRangeAdv) {
                         // 极化诈唬：坚果范围+范围优势
@@ -17295,9 +17301,9 @@
                             frequencies = { bet: drawFreq, check: 100 - drawFreq };
                             reasoning = `${outs}张进张，💡 Pokercode 多人底池(${mwTotalCount}人)：半诈唬频率折损至 ${drawFreq}%，多数时候过牌控池/看免费牌`;
                         } else {
-                            primaryAction = 'BET'; sizing = wetness > 0.5 ? sc.sizes.medium : sc.sizes.probe;
+                            primaryAction = drawFreq >= 50 ? 'BET' : 'CHECK'; sizing = primaryAction === 'BET' ? (wetness > 0.5 ? sc.sizes.medium : sc.sizes.probe) : '';
                             frequencies = { bet: drawFreq, check: 100 - drawFreq };
-                            reasoning = `${outs}张进张，翻牌半诈唬（湿润面${(wetness*100).toFixed(0)}%）`;
+                            reasoning = `${outs}张进张，翻牌半诈唬（湿润面${(wetness*100).toFixed(0)}%，${drawFreq}%频率${primaryAction === 'BET' ? '施压' : '下注，多数时候过牌'}）`;
                         }
                     } else if (!isMultiway && heroIsPFA && ba?.pokercodeTopology?.category === 'DRY_HIGH' && (ba.straightThreat || 0) === 0 && (wetness || 0) <= 0.3 && !isSurvival && (!vProfile || vProfile.id !== 'calling_station')) {
                         // E-02: Pokercode 2-1-2 干燥高牌面开池方空气桶攻击性释放
