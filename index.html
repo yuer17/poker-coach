@@ -9476,18 +9476,66 @@
                         logic = `<b>ICM 阶段修正</b>：泡沫/决赛圈降低诈唬频率，仅 30% 挤压。${uncappedCappedDesc}`;
                         break;
                     default:
-                        f = 100;
-                        // 说清楚"为什么不适合"(2026-09-08，用户实测："弃牌 100% 背后的逻辑是什么")
-                        logic = (() => {
-                            const _sq = SQUEEZE_RANGES[gameConfig.tableSize]?.[posH] || SQUEEZE_RANGES['9max']?.[posH];
-                            if (!_sq) return '该手牌在当前位置/筹码深度不适合 squeeze。';
-                            const _co = h => h.length === 2 ? 6 : h[2] === 's' ? 4 : 12;
-                            const _w = (_sq.value.concat(_sq.bluff).reduce((a, h) => a + _co(h), 0) / 1326 * 100).toFixed(1);
-                            return `${handStr} 不在 ${POS_LABEL[posH] || posH} 的挤压范围内（该范围仅约 ${_w}%：` +
-                                   `价值 ${_sq.value.join('/')}；诈唬 ${_sq.bluff.join('/')}）。` +
-                                   `挤压要同时把开池者和跟注者打跑，范围必须很窄——被跟住时你面对的是两家的强端。` +
-                                   `${posH === 'BB' ? '大盲关行动位且底池赔率极佳（~5:1），若持中小对子/优质同花连张等具备翻后实现价值手牌可考虑平跟 (Overcall)，其余弃牌。' : posH === 'BTN' ? '在 BTN 位若持中等口袋对/强投机同花具备绝对位置优势 (IP) 可考虑平跟控池，其余弃牌。' : '弃牌。'}`;
-                        })();
+                        // P7-Defect 1: 检查是否具备极佳底池赔率或位置优势进行平跟 (Overcall / Flat)
+                        const cat = getStrictCategory(v1, v2, isSuited);
+                        const isBB = (posH === 'BB');
+                        const isIP = (posH === 'BTN' || posH === 'CO');
+                        const isSB = (posH === 'SB');
+
+                        // P7 架构加固 (Astra 审查项): 严格的价格、筹码深度与 ICM 约束
+                        const callCost = Math.max(0, raiseSize - (isBB ? 1.0 : (isSB ? 0.5 : 0)));
+                        const potBeforeCall = +deadMoney;
+                        const isCheapPrice = (callCost <= 3.5 && (callCost / effStack) <= 0.12 && effStack >= 15);
+                        const isStandardOpen = (raiseSize <= 4.0);
+                        const isExtremeIcm = (typeof icmPressure !== 'undefined' && icmPressure > 1.35) || ['bubble', 'final'].includes(gameConfig.stage);
+
+                        // 1. BB 关门位平跟：底池赔率极佳 (~4:1 - 6:1)，暗三条与同花连张具备极高翻后实现率与多人家底池隐含赔率
+                        const bbCanOvercall = isBB && isCheapPrice && isStandardOpen && !isExtremeIcm && (
+                            (typeof isHandInBBDefense === 'function' && isHandInBBDefense(handStr, posV, gameConfig.tableSize, effStack)) ||
+                            (typeof defendClosure === 'function' && defendClosure(handStr, 'BB', posV, effStack)) ||
+                            (isPair && ['MidPair', 'LowPair'].includes(cat)) ||
+                            ['SuitedBroadA', 'SuitedWheelA', 'SuitedMidA', 'SuitedBroad', 'SuitedConn'].includes(cat) ||
+                            ['KQo', 'KJo', 'QJo', 'ATo'].includes(handStr) ||
+                            (cat === 'OffsuitBroadA' && ['AQo', 'AJo'].includes(handStr))
+                        );
+
+                        // 2. BTN / CO 位置平跟：翻后享有绝对/有利位置，平跟控池利用位置优势
+                        const ipCanFlat = isIP && isCheapPrice && isStandardOpen && !isExtremeIcm && (
+                            ['MidPair', 'LowPair'].includes(cat) ||
+                            ['SuitedBroadA', 'SuitedBroad', 'SuitedConn'].includes(cat) ||
+                            ['AJs', 'ATs', 'KQs', 'KJs', 'QJs', 'JTs', 'T9s', '98s', '87s'].includes(handStr)
+                        );
+
+                        // 3. SB 深度平跟：深筹码 (>=35BB) 且为中等口袋对/强同花连张
+                        const sbCanFlat = isSB && effStack >= 35 && isCheapPrice && isStandardOpen && !isExtremeIcm && (
+                            ['MidPair'].includes(cat) || ['88', '77', '66', '98s', 'T9s', 'JTs'].includes(handStr)
+                        );
+
+                        if (bbCanOvercall) {
+                            c = 100; f = 0; sq = 0;
+                            const oddsRatio = callCost > 0 ? (potBeforeCall / callCost).toFixed(1) : '5.0';
+                            logic = `<b>极佳赔率平跟 (Overcall)</b>：大盲关行动位且底池积累约 ${deadMoney}BB 死钱（即时赔率 ~${oddsRatio}:1）。` +
+                                    `${handStr} 虽非 3-Bet 极化挤压牌，但在多人底池具备优异的潜在赔率（买暗三条/同花连张）与翻后实现价值，跟注 ${callCost.toFixed(1)}BB 便宜平跟看翻牌。`;
+                        } else if (ipCanFlat) {
+                            c = 100; f = 0; sq = 0;
+                            logic = `<b>位置优势平跟控池 (Call IP)</b>：${POS_LABEL[posH]} 位拥有翻后绝对位置优势，底池已有跟注者封顶（Capped）。` +
+                                    `${handStr} 翻后可玩性极佳，跟注 ${callCost.toFixed(1)}BB 平跟控池，利用位置优势在翻后实现超额 EV。`;
+                        } else if (sbCanFlat) {
+                            c = 100; f = 0; sq = 0;
+                            logic = `<b>深筹码投机平跟 (Call OOP)</b>：有效筹码充足（${effStack}BB），${handStr} 具备暗三条/同花隐含赔率，跟注 ${callCost.toFixed(1)}BB 平跟看翻牌。翻牌未中强牌果断控池止损。`;
+                        } else {
+                            f = 100; sq = 0; c = 0;
+                            logic = (() => {
+                                const _sq = SQUEEZE_RANGES[gameConfig.tableSize]?.[posH] || SQUEEZE_RANGES['9max']?.[posH];
+                                if (!_sq) return '该手牌在当前位置/筹码深度不适合 squeeze。';
+                                const _co = h => h.length === 2 ? 6 : h[2] === 's' ? 4 : 12;
+                                const _w = (_sq.value.concat(_sq.bluff).reduce((a, h) => a + _co(h), 0) / 1326 * 100).toFixed(1);
+                                return `${handStr} 不在 ${POS_LABEL[posH] || posH} 的挤压范围内（该范围仅约 ${_w}%：` +
+                                       `价值 ${_sq.value.join('/')}；诈唬 ${_sq.bluff.join('/')}）。` +
+                                       `挤压要同时把开池者和跟注者打跑，范围必须很窄；本手牌多人底池翻后实现率不足，果断弃牌止损。`;
+                            })();
+                        }
+                        break;
                 }
 
                 // 多人底池：诈唬成功率下降，超过 3 人时放弃诈唬（补充5）
@@ -9507,13 +9555,17 @@
 
                 f = Math.max(0, 100 - sq - c);
 
-                let color = f >= 70 ? "red" : sq >= 50 ? "green" : "yellow";
-                let verdict = f >= 70 ? "⚪ 弃牌" : sq >= 50 ? "🔴 Squeeze 挤压" : "🟡 混合";
+                let verdict;
+                if (sq >= 50) verdict = "🔴 Squeeze 挤压";
+                else if (c >= 50) verdict = (posH === 'BB') ? "🟢 平跟 (Overcall)" : "🟢 平跟 (Call)";
+                else if (f >= 70) verdict = "⚪ 弃牌";
+                else verdict = "🟡 混合";
 
-                // 解算器语义色：green(Squeeze)=进攻红 / yellow(混合)=琥珀 / red(Fold)=灰蓝
-                box.style.borderColor = color==='green'?'#e5484d':color==='yellow'?'#e0a83a':'#5c667f';
-                box.style.backgroundColor = color==='green'?'rgba(214,57,64,0.1)':color==='yellow'?'rgba(224,168,58,0.1)':'rgba(92,102,127,0.12)';
-                vText.style.color = color==='green'?'#ff7a7d':color==='yellow'?'#e0a83a':'#8b95ab';
+                // 解算器语义色：raise(Squeeze)=进攻红 / call=被动绿 / fold=灰蓝 / yellow=琥珀
+                const color = sq >= 50 ? "raise" : c >= 50 ? "call" : f >= 70 ? "fold" : "yellow";
+                box.style.borderColor = color==='raise'?'#e5484d':color==='call'?'#2ea86a':color==='fold'?'#5c667f':'#e0a83a';
+                box.style.backgroundColor = color==='raise'?'rgba(214,57,64,0.1)':color==='call'?'rgba(46,168,106,0.1)':color==='fold'?'rgba(92,102,127,0.12)':'rgba(224,168,58,0.1)';
+                vText.style.color = color==='raise'?'#ff7a7d':color==='call'?'#45d68a':color==='fold'?'#8b95ab':'#e0a83a';
                 vText.innerText = verdict;
                 logicText.innerHTML = logic;
 
@@ -9528,6 +9580,9 @@
                         ? `${effStack.toFixed(1)}BB All-in`
                         : squeezeAmt.toFixed(1) + "BB";
                     document.getElementById('sizingContent').innerText = squeezeSize;
+                } else {
+                    sizingBox.classList.add('hidden');
+                    document.getElementById('sizingContent').innerText = '';
                 }
 
                 freqBox.classList.remove('hidden');
@@ -9818,14 +9873,24 @@
                         pushHands = [...rj.set]; pushSrc = 'rejam';
                         villainPushRange = rj.pct;
                     } else {
-                        // 检查是否为面对 Open / 3-Bet 的冷推（Cold 4-Bet Shove）或深码(>25BB)推注
-                        // 此时不可回退到开池偷盲的 Nash 宽范围！
+                        // 检查是否为面对 Open / 3-Bet 的冷推（Cold 4-Bet Shove）或深码(>25BB)推注，或多人全下 (Multi-Allin)
                         const acts = typeof tlActs !== 'undefined' ? tlActs : [];
-                        const deadRaises = acts.filter(a => a.a === 'raise' && a.pos !== posV);
-                        const isColdShove = deadRaises.length >= 2;
+                        const otherAllins = acts.filter(a => a.a === 'allin' && a.pos !== posH);
+                        // Astra 审查项: 计算 posV 行动之前的进攻者数量 (包含 Hero 之前的开池或加注)
+                        const vActIndex = acts.findIndex(a => a.pos === posV && (a.a === 'raise' || a.a === 'allin'));
+                        const priorAggressors = (vActIndex > 0 ? acts.slice(0, vActIndex) : acts).filter(a => (a.a === 'raise' || a.a === 'allin') && a.pos !== posV);
+                        const isMultiAllin = otherAllins.length >= 2;
+                        const isColdShove = priorAggressors.length >= 2 || (isMultiAllin && acts.some(a => a.a === 'allin' && a.pos !== posV));
                         const isVsEpOpen = ['UTG', 'UTG1', 'MP'].includes(posH);
 
-                        if (isColdShove) {
+                        if (isMultiAllin && pushEff > 25) {
+                            // 多人全下 (Multi-Allin Defense)：面对两个或更多对手全下且深度 >25BB
+                            // 隔离重推者范围极度紧缩，且 3-Way+ 底池胜率被三方严重稀释
+                            pushHands = ['AA', 'KK', 'QQ', 'AKs', 'AKo'];
+                            pushSrc = 'multi_allin_reshove';
+                            villainPushRange = 3.0;
+                            warnings.push(`⚠️ 面对 ${otherAllins.length} 家全下且有效深度达 ${pushEff.toFixed(0)}BB：重推者范围极度紧缩（QQ+/AK），且 3-Way 胜率严重稀释，中等对子（TT/JJ）坚决弃牌，仅顶级怪兽牌接注。`);
+                        } else if (isColdShove) {
                             // 冷4-Bet全推 (面对 Open + 3-Bet)：范围极度收紧于顶级价值牌
                             pushHands = ['AA', 'KK', 'QQ', 'JJ', 'AKs', 'AKo'];
                             pushSrc = 'cold_4b_shove';
@@ -9878,8 +9943,17 @@
                     if (_shoves.length > 1) {
                         const _heroCall = Math.min(sH, Math.max(..._shoves.map(x => x.amt)));
                         // 每家按**自己的有效深度**查推注范围（与单挑分支同一口径）
-                        const _ranges = _shoves.map(x => {
+                        const _ranges = _shoves.map((x, idx) => {
                             const _eff = Math.min(sH, x.amt);
+                            // 若不是第一个全下者且有效深度 >25BB，此人属于深码 Isolation Reshove (隔离重推)
+                            // Astra 审查项: 使用严格的前缀历史判定，消除前瞻偏误
+                            const xActIndex = (typeof tlActs !== 'undefined' && Array.isArray(tlActs)) ? tlActs.findIndex(a => a.pos === x.pos && a.a === 'allin') : -1;
+                            const priorActs = (typeof tlActs !== 'undefined' && Array.isArray(tlActs) && xActIndex > 0) ? tlActs.slice(0, xActIndex) : [];
+                            const hasPriorAggressor = priorActs.some(a => (a.a === 'raise' || a.a === 'allin') && a.pos !== posH && a.pos !== x.pos);
+                            const isDeepOverShover = _eff > 25 && (idx > 0 || hasPriorAggressor);
+                            if (isDeepOverShover) {
+                                return ['AA', 'KK', 'QQ', 'AKs', 'AKo'];
+                            }
                             let _pct = getNashPushRange(_eff, x.pos);
                             if (_eff > 15) _pct = Math.max(8, _pct - (_eff - 15) * 1.8);
                             // 与单挑分支同一口径：先看是不是 Re-Jam（他在我之后行动），
