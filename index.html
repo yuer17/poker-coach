@@ -1280,6 +1280,8 @@
     <!-- pokersolver 本地化：原 CDN(cdn.jsdelivr.net) 偶发加载失败 → 报"PokerSolver 未加载"，
          改为本地 lib/pokersolver.js（内容与 CDN 一致，仅去网络依赖，不动任何引擎逻辑） -->
     <script src="lib/pokersolver.js"></script>
+    <!-- 新一代翻前极化静态 GTO 矩阵库（Phase 2: 本地离线兵工厂编译产物，142KB 零网络依赖） -->
+    <script src="lib/preflop_gto_matrix.js"></script>
 </head>
 <body>
 
@@ -6876,6 +6878,26 @@
 
         function getRejamAction(handStr, heroPos, villainPos, effStack, stage) {
             if (!(effStack > 0) || effStack > 25) return 'none';
+
+            // ── Phase 1 超短码 (<=12BB) 面对开池纳什 Reshove 核心拓扑 ──
+            // RYE 双维度表原本只针对 15-25BB 设计，其 3BC 规则把顶端强牌移出全推、
+            // 且表内无 <=10BB 的低深度记录。当 <=12BB 时，小 3-Bet 已在物理上不复存在，
+            // 顶端价值牌与中强牌必须直接走 All-in（Reshove）纯推弃通道，绝不落空。
+            if (effStack <= 12) {
+                // 10.5BB 以下：全口袋对 22-AA，全大高张 AJo+, ATs+, KQs, KJs，在任一位置面对单次开池均为高 +EV Reshove
+                const isUniversalShortShove = [
+                    'AA','KK','QQ','JJ','TT','99','88','77','66','55','44','33','22',
+                    'AKs','AKo','AQs','AQo','AJs','AJo','ATs','ATo',
+                    'KQs','KJs','KTs','QJs','QTs','JTs','KQo'
+                ].includes(handStr);
+                if (effStack <= 10.5 && isUniversalShortShove) return 'jam_value';
+
+                // 10.5-12BB：按位置强度放行核心价值段与 Blocker 诈唬段
+                const is12bbCore = ['AA','KK','QQ','JJ','TT','99','88','77','AKs','AKo','AQs','AQo','AJs','AJo','ATs','KQs'].includes(handStr);
+                if (is12bbCore) return 'jam_value';
+                if (handStr.startsWith('A') && handStr.endsWith('s') && ['A2s','A3s','A4s','A5s'].includes(handStr)) return 'jam_bluff';
+            }
+
             // ── RYE 双维度表优先（2026-09-09）────────────────────────────
             // 旧实现**接收 heroPos 却从未使用**，只按开池者分四个桶（EP/MID/LATE/SB）
             // + 两档深度。实测推注位的影响是 3 倍量级：同样面对 UTG 开池、同样 15BB，
@@ -6926,6 +6948,19 @@
 
         // 查询 Squeeze 范围表（含阶段修正 + 筹码深度过滤 + 打法风格缩放）
         function getSqueezeAction(handStr, heroPos, tableSize, stage, effStack, numCallers) {
+            // ── 物理常识熔断铁闸：浅码 (<=22BB) 挤压全推判定 (GPT-6-Astra 首席架构裁决) ──
+            // 浅码面对 Open + Flat Caller，底池死钱占筹码比重极高（通常 >= 25%），
+            // 平跟者范围被严重封顶（Capped），持有大高张 Blocker / 口袋对具备极高弃牌率与全推正 EV
+            if (effStack <= 22) {
+                const shortStackRejamHands = [
+                    'AA','KK','QQ','JJ','TT','99','88','77','66',
+                    'AKs','AKo','AQs','AQo','AJs','AJo','ATs','ATo',
+                    'KQs','KQo','KJs','QJs','A5s','A4s'
+                ];
+                if (shortStackRejamHands.includes(handStr)) {
+                    return 'squeeze_value';
+                }
+            }
             const tableRanges = SQUEEZE_RANGES[tableSize];
             if (!tableRanges) return 'fold';
             const posRanges = tableRanges[heroPos] || tableRanges['CO'];
@@ -7088,7 +7123,7 @@
             if (st.raises.length === 0) {
                 dflt = openAmt;
             } else if (st.raises.length === 1) {
-                // 3-Bet(2026-09-22)：面对单次开池，严格关联系统建议尺度（IP ~3x / OOP ~4x + Caller挤压死钱）
+                // 3-Bet：面对单次开池，关联系统建议尺度（IP ~3x / OOP ~4x + Caller挤压死钱）
                 const openerPos = st.raises[0].pos;
                 const isIP = openerPos ? ((POSTFLOP_ORDER[pos] || 0) > (POSTFLOP_ORDER[openerPos] || 0)) : true;
                 const mult = getTbMult(isIP);
@@ -7096,16 +7131,23 @@
                 const callers = st.seats.filter(s => s !== openerPos && s !== pos && tlActsOf(s).some(a => a.a === 'call'));
                 if (callers.length > 0) suggAmt += callers.length * st.curBet;
                 suggAmt = Math.round(suggAmt * 10) / 10;
-                const openerStack = (openerPos === globalPosHero ? globalHeroStack : globalVillainStack) || 40;
-                const eff = Math.min(stack, openerStack);
-                const dead3b = 1.5 + getAnteBB();
-                const sprAfter3b = (eff > suggAmt) ? (eff - suggAmt) / (2 * suggAmt + dead3b) : 0;
-                if (stack > 0 && (suggAmt >= stack * 0.85 || (eff <= 18 && sprAfter3b < 0.75))) {
-                    suggAmt = stack;
+                // 时间线录入层解耦（GPT-6-Astra 裁决）：
+                // 时间线用于客观记录牌桌物理动作，绝不能因策略建议全下而篡夺“常规加注（Raise）”档位！
+                // 只要筹码大于最小加注，默认值就必须是合法的非全下数值（< stack），保证 Raise 与 All-in 双通道独立并存。
+                if (stack > minRaise) {
+                    const maxNonAllIn = Math.max(minRaise, Math.floor((stack - 0.5) * 2) / 2);
+                    dflt = Math.max(minRaise, Math.min(maxNonAllIn, suggAmt));
+                } else {
+                    dflt = stack;
                 }
-                dflt = Math.min(stack, Math.max(minRaise, suggAmt));
             } else {
-                dflt = Math.min(stack, Math.max(minRaise, Math.round(st.curBet * 2.2 * 2) / 2));
+                const suggAmt = Math.round(st.curBet * 2.2 * 2) / 2;
+                if (stack > minRaise) {
+                    const maxNonAllIn = Math.max(minRaise, Math.floor((stack - 0.5) * 2) / 2);
+                    dflt = Math.max(minRaise, Math.min(maxNonAllIn, suggAmt));
+                } else {
+                    dflt = stack;
+                }
             }
 
             // T-31(2026-09-23): 裁判级规则判断 Reopen (Under-raise 不重新打开全额行动过玩家的加注权)
@@ -8196,6 +8238,39 @@
             return true;
         }
 
+        // ── Phase 2: 新一代翻前极化静态 GTO 矩阵运行时查询引擎 ──
+        function interpolateGtoFrequencies(vLo, vHi, weight) {
+            const f = vLo[0] * (1 - weight) + vHi[0] * weight;
+            const c = vLo[1] * (1 - weight) + vHi[1] * weight;
+            const r = vLo[2] * (1 - weight) + vHi[2] * weight;
+            const j = vLo[3] * (1 - weight) + vHi[3] * weight;
+            const fN = Math.round(f), cN = Math.round(c), rN = Math.round(r);
+            const jN = 100 - fN - cN - rN;
+            return [fN, cN, rN, jN];
+        }
+
+        window.queryGtoPreflop = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI') {
+            const matrix = window.PREFLOP_GTO_MATRIX;
+            if (!matrix || !matrix.nodes) return null;
+            let seqKey = actionSeq;
+            if (actionSeq === 'vs_RFI') seqKey = `vs_${vsPos}_RFI`;
+            const depths = matrix.depths || [8, 10, 12, 15, 20, 25, 30, 40, 60];
+            let loDepth = depths[0], hiDepth = depths[depths.length - 1];
+            for (let i = 0; i < depths.length; i++) {
+                if (depths[i] <= effStack) loDepth = depths[i];
+                if (depths[i] >= effStack) { hiDepth = depths[i]; break; }
+            }
+            const keyLo = `${loDepth}_${heroPos}_${seqKey}`;
+            const keyHi = `${hiDepth}_${heroPos}_${seqKey}`;
+            const nodeLo = matrix.nodes[keyLo] || {};
+            const nodeHi = matrix.nodes[keyHi] || {};
+            const vecLo = nodeLo[hand] || [100, 0, 0, 0];
+            const vecHi = nodeHi[hand] || [100, 0, 0, 0];
+            if (loDepth === hiDepth) return vecLo;
+            const weight = (effStack - loDepth) / (hiDepth - loDepth);
+            return interpolateGtoFrequencies(vecLo, vecHi, weight);
+        };
+
         function executeEngineCore() {
             delete document.getElementById('resultPanel').dataset.bbMix;
             delete document.getElementById('resultPanel').dataset.sbMixFallback;
@@ -9033,6 +9108,19 @@
                         logic = `ICM 阶段修正：Re-Jam 诈唬降频至 35%（泡沫/决赛圈慎用无摊牌价值全推）。`;
                     }
 
+                    // ── 物理常识熔断铁闸 1：超短码 (<=10.5BB) 面对单次加注禁止弃掉强牌 ──
+                    if (!rejamChosen && effStack <= 10.5 && raiseSize <= 3.5) {
+                        const ultraShortPremiumJam = [
+                            'AA','KK','QQ','JJ','TT','99','88','77','66','55','44','33','22',
+                            'AKs','AKo','AQs','AQo','AJs','AJo','ATs','ATo',
+                            'KQs','KJs','KTs','QJs','QTs','JTs','KQo'
+                        ];
+                        if (ultraShortPremiumJam.includes(handStr)) {
+                            b = 100; c = 0; f = 0; rejamChosen = true; action3bValue = true;
+                            logic = `${effStack}BB 超短码面对单次开池（${raiseSize}BB）：底池死钱占比极高，${handStr} 具备顶端摊牌胜率与巨大弃牌收益（Fold Equity），直接 All-in 全推（Reshove）。`;
+                        }
+                    }
+
                     if (!rejamChosen) {
                     if (posH === 'SB' && posV === 'BB') {
                         // Pokercode BvB: SB Limp 面对 BB Iso-Raise 专属决策树
@@ -9236,17 +9324,27 @@
                                 logic = '投机平跟，买同花或顺子。';
                             }
                         } else if (['BTN','CO','HJ'].includes(posH) && POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV]) {
-                            // IP 高质量平跟牌：AQo、AJo、KQs、AJs 等面对 EP 开池
-                            const flatCallHands = ['AQs','AQo','AJs','AJo','KQs','KQo','KJs'];
-                            if (flatCallHands.includes(handStr) && effStack >= 20) {
+                            // ── IP 高质量平跟牌手牌族完整开放（彻底废除 7 张牌白名单）──
+                            // 包含所有同花高张 (SuitedBroad: QTs, QJs, JTs, KTs, KJs, KQs, ATs, AJs, AQs)、强同花 A (A2s-A5s) 与优质两张大牌
+                            const isIpSuitedBroad = ['SuitedBroad', 'SuitedBroadA'].includes(cat) ||
+                                ['QTs','QJs','JTs','KTs','KJs','KQs','ATs','AJs','AQs'].includes(handStr);
+                            const isIpSuitedWheel = ['A5s','A4s','A3s','A2s'].includes(handStr);
+                            const isIpOffsuitBroad = ['AQo','AJo','KQo','KJo'].includes(handStr);
+                            const isIpPlayable = isIpSuitedBroad || isIpSuitedWheel || isIpOffsuitBroad;
+
+                            if (isIpPlayable && effStack >= 18) {
                                 c = 100; b = 0; f = 0;
-                                logic = `${handStr} 是高质量 IP 平跟牌，面对 ${POS_LABEL[posV]} 开池，平跟控 SPR，翻后有利位置决策。`;
+                                logic = `${handStr} 是高质量 IP 在位平跟牌，在 ${POS_LABEL[posH] || posH} 拥有绝对/有利位置，面对 ${POS_LABEL[posV] || posV} 开池（${raiseSize}BB），平跟控 SPR，翻后发挥位置优势高 EV 决策。`;
                             } else if (defendClosure(handStr, posH, posV, effStack)) {
                                 // 防守段闭包（2026-09-11 发现 I）：3-Bet 段与跟注段是两套独立数据拼起来的，
-                            // 拼接处会漏牌 —— 若它**严格支配**的某个同族牌已在防守集合里，
-                            // 它自己就不该弃（可证判据，不加宽任何一张表，只补最保守的跟注）。
+                                // 拼接处会漏牌 —— 若它**严格支配**的某个同族牌已在防守集合里，
+                                // 它自己就不该弃（可证判据，不加宽任何一张表，只补最保守的跟注）。
                                 c = 100; b = 0; f = 0;
                                 logic = `防守段闭包：${handStr} 严格强于某个已在防守范围内的同族牌，按跟注防守（发现 I）。`;
+                            } else if (posH === 'BTN' && isIpPlayable && raiseSize <= 2.8) {
+                                // ── 物理常识熔断铁闸 2：BTN 在位持高质量同花/大牌面对标准开池绝对禁止弃牌 ──
+                                c = 100; b = 0; f = 0;
+                                logic = `${handStr} 在庄位(BTN)面对标准开池（${raiseSize}BB）拥有翻后绝对位置优势，高质量手牌坚决进池平跟看翻牌。`;
                             } else {
                                 f = 100; b = 0; c = 0;
                                 logic = '不在 3-Bet 或平跟范围，弃牌。';
@@ -9636,7 +9734,13 @@
                 switch (sqAction) {
                     case 'squeeze_value':
                         sq = 100;
-                        logic = `<b>价值 Squeeze</b>：顶级手牌，100% 挤压建立大底池。${uncappedCappedDesc}以强牌压榨死钱并以 ${isOOP ? 'OOP 5x' : 'IP 4x'} 极化尺度隔离底池。`;
+                        if (effStack <= 22) {
+                            logic = `<b>浅码全下挤压 (Squeeze All-in / Re-Jam)</b>：有效筹码仅 ${effStack}BB，底池死钱已达约 ${deadMoney}BB（占筹码 ${((parseFloat(deadMoney)||5.5)/effStack*100).toFixed(0)}%）。` +
+                                    `${handStr} 具有强大的高张阻挡效应（Blocker），且平跟者范围已被严重封顶（Capped，已排除最强范围）；` +
+                                    `全推挤压具备巨大的弃牌收益（Fold Equity），即使被跟注亦有充分摊牌胜率，果断 All-in 扫荡底池！`;
+                        } else {
+                            logic = `<b>价值 Squeeze</b>：顶级手牌，100% 挤压建立大底池。${uncappedCappedDesc}以强牌压榨死钱并以 ${isOOP ? 'OOP 5x' : 'IP 4x'} 极化尺度隔离底池。`;
+                        }
                         break;
                     case 'squeeze_bluff':
                         sq = 60; f = 40;
@@ -9661,14 +9765,15 @@
                         const isExtremeIcm = (typeof icmPressure !== 'undefined' && icmPressure > 1.35) || ['bubble', 'final'].includes(gameConfig.stage);
 
                         // 1. BB 关门位平跟：底池赔率极佳 (~4:1 - 6:1)，暗三条与同花连张具备极高翻后实现率与多人家底池隐含赔率
-                        const bbCanOvercall = isBB && isCheapPrice && isStandardOpen && !isExtremeIcm && (
-                            (typeof isHandInBBDefense === 'function' && isHandInBBDefense(handStr, posV, gameConfig.tableSize, effStack)) ||
-                            (typeof defendClosure === 'function' && defendClosure(handStr, 'BB', posV, effStack)) ||
-                            (isPair && ['MidPair', 'LowPair'].includes(cat)) ||
+                        // ── 物理常识熔断铁闸 3：多人底池严禁借用单挑 75% 宽防守表！杂色弱牌 100% 物理阻断 ──
+                        const isMultiwayNutSeeker = (isPair && ['MidPair', 'LowPair'].includes(cat)) ||
                             ['SuitedBroadA', 'SuitedWheelA', 'SuitedMidA', 'SuitedBroad', 'SuitedConn'].includes(cat) ||
-                            ['KQo', 'KJo', 'QJo', 'ATo'].includes(handStr) ||
-                            (cat === 'OffsuitBroadA' && ['AQo', 'AJo'].includes(handStr))
-                        );
+                            ['AQs','AJs','ATs','KQs','KJs','QJs','JTs','98s','87s','76s','65s','54s','T9s','97s','86s'].includes(handStr) ||
+                            ['KQo', 'AJo', 'AQo'].includes(handStr);
+
+                        const isMultiwayOffsuitTrash = !isSuited && !isPair && !['KQo', 'AJo', 'AQo', 'AKo'].includes(handStr);
+
+                        const bbCanOvercall = isBB && isCheapPrice && isStandardOpen && !isExtremeIcm && isMultiwayNutSeeker && !isMultiwayOffsuitTrash;
 
                         // 2. BTN / CO 位置平跟：翻后享有绝对/有利位置，平跟控池利用位置优势
                         const ipCanFlat = isIP && isCheapPrice && isStandardOpen && !isExtremeIcm && (
@@ -9685,8 +9790,13 @@
                         if (bbCanOvercall) {
                             c = 100; f = 0; sq = 0;
                             const oddsRatio = callCost > 0 ? (potBeforeCall / callCost).toFixed(1) : '5.0';
+                            let handAdvText = '高翻后实现价值';
+                            if (isPair) handAdvText = '优异的潜在赔率（买暗三条/Set-mining）';
+                            else if (isSuited) handAdvText = '优异的潜在赔率（买坚果同花/顺子听牌）';
+                            else handAdvText = '强两张高牌摊牌价值与踢脚压制';
+
                             logic = `<b>极佳赔率平跟 (Overcall)</b>：大盲关行动位且底池积累约 ${deadMoney}BB 死钱（即时赔率 ~${oddsRatio}:1）。` +
-                                    `${handStr} 虽非 3-Bet 极化挤压牌，但在多人底池具备优异的潜在赔率（买暗三条/同花连张）与翻后实现价值，跟注 ${callCost.toFixed(1)}BB 便宜平跟看翻牌。`;
+                                    `${handStr} 虽非 3-Bet 极化挤压牌，但在多人底池具备${handAdvText}，跟注 ${callCost.toFixed(1)}BB 便宜平跟看翻牌。`;
                         } else if (ipCanFlat) {
                             c = 100; f = 0; sq = 0;
                             logic = `<b>位置优势平跟控池 (Call IP)</b>：${POS_LABEL[posH]} 位拥有翻后绝对位置优势，底池已有跟注者封顶（Capped）。` +
@@ -9697,6 +9807,10 @@
                         } else {
                             f = 100; sq = 0; c = 0;
                             logic = (() => {
+                                if (isMultiwayOffsuitTrash) {
+                                    return `<b>多人底池防守收紧</b>：${handStr} 为杂色弱断张手牌，在多人底池（面对 ${POS_LABEL[posV] || posV} 开池 + 跟注者）严重受制于逆向潜在赔率（Reverse Implied Odds）。` +
+                                           `击中单对极易被更大踢脚支配，且翻后处于 OOP 不利位置无法实现权益，坚决弃牌止损。`;
+                                }
                                 const _sq = SQUEEZE_RANGES[gameConfig.tableSize]?.[posH] || SQUEEZE_RANGES['9max']?.[posH];
                                 if (!_sq) return '该手牌在当前位置/筹码深度不适合 squeeze。';
                                 const _co = h => h.length === 2 ? 6 : h[2] === 's' ? 4 : 12;
@@ -9727,7 +9841,7 @@
                 f = Math.max(0, 100 - sq - c);
 
                 let verdict;
-                if (sq >= 50) verdict = "🔴 Squeeze 挤压";
+                if (sq >= 50) verdict = (effStack <= 22) ? "🔴 Squeeze All-in" : "🔴 Squeeze 挤压";
                 else if (c >= 50) verdict = (posH === 'BB') ? "🟢 平跟 (Overcall)" : "🟢 平跟 (Call)";
                 else if (f >= 70) verdict = "⚪ 弃牌";
                 else verdict = "🟡 混合";
@@ -9747,7 +9861,7 @@
                     const baseMul = isOOP ? 5.0 : 4.0;
                     const safeRaise = Math.max(1.0, raiseSize || 2.0);
                     const squeezeAmt = safeRaise * baseMul + safeRaise * Math.max(0, numCallers - 1);
-                    const squeezeSize = (effStack > 0 && squeezeAmt >= effStack * 0.35)
+                    const squeezeSize = (effStack > 0 && (squeezeAmt >= effStack * 0.35 || effStack <= 22))
                         ? `${effStack.toFixed(1)}BB All-in`
                         : squeezeAmt.toFixed(1) + "BB";
                     document.getElementById('sizingContent').innerText = squeezeSize;
@@ -17855,7 +17969,30 @@
                 const preBetPotE05 = pot - villainBet;
                 const isMiniCBet = (street === 'flop' && heroPos === 'OOP' && !isFacingAllin && !isMultiway &&
                                     preBetPotE05 > 0 && villainBet > 0 && (villainBet / preBetPotE05) <= 0.38);
-                const isCRCandidate = isMiniCBet && (equity >= 65 || outs >= 8 || (outs >= 6 && equity >= 30));
+
+                let isPolarizedBackdoorCR = false;
+                try {
+                    const _hc = (postState.heroCards || []).filter(c => c).map(normalizeCard);
+                    const _bd = board.map(normalizeCard);
+                    if (isMiniCBet && _hc.length === 2 && _bd.length >= 3) {
+                        const _suits = [..._hc, ..._bd].map(c => c[1]);
+                        const _hasBdFlush = ['s', 'h', 'd', 'c'].some(s =>
+                            _suits.filter(x => x === s).length === 3 && _hc.some(c => c[1] === s));
+                        const _RK = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
+                        const _vals = [...new Set([..._hc.map(c=>c[0]), ..._bd.map(c=>c[0])].map(r => _RK[r]))].sort((a, b) => a - b);
+                        let _hasBdStraight = false;
+                        for (let i = 0; i + 2 < _vals.length; i++) {
+                            if (_vals[i + 2] - _vals[i] <= 4) { _hasBdStraight = true; break; }
+                        }
+                        const _bdRanks = _bd.map(c => c[0]);
+                        const _isPairedBoard = new Set(_bdRanks).size < _bdRanks.length;
+                        if ((_isPairedBoard || wetness <= 0.3) && (_hasBdFlush || _hasBdStraight)) {
+                            isPolarizedBackdoorCR = true;
+                        }
+                    }
+                } catch(e) {}
+
+                const isCRCandidate = isMiniCBet && (equity >= 65 || outs >= 8 || (outs >= 6 && equity >= 30) || isPolarizedBackdoorCR);
 
                 // Fix-7: 底对/弱牌相对牌力极低 → 直接弃牌（防止单凭赔率错误跟注）
                 // 硬伤修复H3(2026-07-10)：加尺度门槛 potOdds≥25（约半池以上）才强制弃牌。
@@ -17913,7 +18050,7 @@
                 // ── E-05: Pokercode 2-1-3 翻牌面对小尺度 Mini C-Bet 的 Check-Raise 惩罚反击 ──
                 else if (isCRCandidate) {
                     const isStrongValue = (equity >= 65);
-                    const isSemiBluff = !isStrongValue && (outs >= 8 || (outs >= 6 && equity >= 30));
+                    const isSemiBluff = !isStrongValue && (outs >= 8 || (outs >= 6 && equity >= 30) || isPolarizedBackdoorCR);
                     const isStation = (vProfile && vProfile.id === 'calling_station');
 
                     if (isSemiBluff && (isStation || isSurvival)) {
@@ -17921,18 +18058,22 @@
                         primaryAction = 'CALL'; sizing = '';
                         frequencies = { call: 75, fold: 25 };
                         reasoning = isStation
-                            ? `💡 Pokercode 2-1-3 [面对跟注站]：对手不弃牌，${outs}张进张听牌放弃 Check-Raise 诈唬，改用底池赔率平跟`
-                            : `💡 Pokercode ICM 3-1-3 [规避淘汰]：${outs}张进张听牌避免 Check-Raise 被反击全下，平跟控池`;
+                            ? `💡 Pokercode 2-1-3 [面对跟注站]：对手不弃牌，${outs > 0 ? `${outs}张进张` : '后门'}听牌放弃 Check-Raise 诈唬，改用底池赔率平跟`
+                            : `💡 Pokercode ICM 3-1-3 [规避淘汰]：${outs > 0 ? `${outs}张进张` : '后门'}听牌避免 Check-Raise 被反击全下，平跟控池`;
                     } else {
                         primaryAction = 'RAISE';
                         const crAmt = Math.min(effStack, Math.max(villainBet * 3.2, villainBet + preBetPotE05 * 0.70));
                         sizing = (effStack > 0 && crAmt >= effStack * 0.85) ? '全押' : crAmt.toFixed(1) + 'BB';
-                        const raiseF = isStrongValue ? (iHaveNutAdv ? 90 : 80) : 45;
-                        frequencies = { raise: raiseF, call: 100 - raiseF };
+                        const raiseF = isStrongValue ? (iHaveNutAdv ? 90 : 80) : isPolarizedBackdoorCR ? 40 : 45;
+                        frequencies = isPolarizedBackdoorCR
+                            ? { raise: raiseF, call: 35, fold: 25 }
+                            : { raise: raiseF, call: 100 - raiseF };
                         const betPctStr = ((villainBet / preBetPotE05) * 100).toFixed(0);
                         const posLabel = POS_LABEL[heroPos] || heroPos;
                         reasoning = isStrongValue
                             ? `💡 Pokercode 2-1-3 [翻牌 Check-Raise 惩罚]：${posLabel}面对对手 ${betPctStr}% 底池小尺度下注，持强牌（胜率${equity.toFixed(0)}%）以 ${raiseF}% 频率主动加注至 ${sizing} 榨取价值并保护手牌`
+                            : isPolarizedBackdoorCR
+                            ? `💡 Pokercode [极化 Check-Raise / 捍卫 MDF]：${posLabel}面对对手 ${betPctStr}% 小尺度 Mini C-Bet，公牌面（${board.join(' ')}）对手范围包含大量未击中高牌空气诈唬；手牌持双后门潜力（后门同花+后门顺子），以 ${raiseF}% 频率发起极化 Check-Raise 半诈唬反击（至 ${sizing}，亦可混合平跟浮动），捍卫 MDF 防守底线（MDF=${mdf.toFixed(0)}%），惩罚对手过宽偷池`
                             : `💡 Pokercode 2-1-3 [翻牌 Check-Raise 惩罚]：${posLabel}面对对手 ${betPctStr}% 底池小尺度下注，持优质听牌（${outs}张进张，胜率${equity.toFixed(0)}%），以 ${raiseF}% 频率半诈唬加注至 ${sizing} 实施反击，利用对手过宽 C-Bet 范围剥削弃牌率`;
                     }
                 }
