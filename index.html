@@ -175,17 +175,16 @@
                 width: 100%;
                 max-width: none;
                 flex-shrink: 1;
-                display: grid !important;
-                grid-template-columns: 54% 1fr;
-                gap: 0.75rem;
-                align-items: start;
+                display: flex !important;
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: stretch;
             }
             #preDecisionHead {
-                grid-column: 1 / -1;
+                display: none !important;
             }
             #decisionHUD {
-                grid-column: 1;
-                grid-row: 2;
+                width: 100%;
                 height: 148px !important;
                 min-height: 148px !important;
                 max-height: 148px !important;
@@ -194,37 +193,39 @@
                 display: flex;
                 flex-direction: column;
                 justify-content: space-between;
-                align-self: start;
+                padding: 10px 16px;
+                background: linear-gradient(180deg, #11151e 0%, #0c0f16 100%);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 8px;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
             }
-            #resultPanel {
-                grid-column: 2;
-                grid-row: 2;
-                height: 148px !important;
-                min-height: 148px !important;
-                max-height: 148px !important;
-                min-width: 0;
-                overflow: hidden !important;
-                box-sizing: border-box;
-                align-self: start;
+            #decisionHUD::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 2px;
+                background: linear-gradient(90deg, transparent, #ff5353, #f59e0b, transparent);
+                opacity: 0.9;
+                border-radius: 8px 8px 0 0;
             }
-            #postDecisionSlot {
-                grid-column: 2;
-                grid-row: 2;
-                height: 148px !important;
-                min-height: 148px !important;
-                max-height: 148px !important;
-                min-width: 0;
-                overflow: hidden !important;
-                box-sizing: border-box;
-                align-self: start;
+            #decisionHUD .hud-action { font-size: var(--fs-display); line-height: 1.05; }
+            #decisionHUD .hud-sizing { font-size: 13px; font-weight: 800; padding: 1px 7px; }
+            #decisionHUD .hud-why {
+                font-size: 12px;
+                line-height: 1.45;
+                color: #94a3b8;
+                max-height: 36px;
+                overflow: hidden;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                text-overflow: ellipsis;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }
-            #resultPanel:not(.zone-fold) ~ #postDecisionSlot:not([style*="none"]) {
-                grid-column: 2;
-                grid-row: 3;
-            }
-            #actionBox {
-                min-height: 0;
-                height: 100%;
+            #resultPanel, #postDecisionSlot {
+                display: none !important;
             }
             #postDecisionSlot > #decisionPanel {
                 min-height: 100%;
@@ -291,7 +292,6 @@
         @media (min-width: 1920px) {
             .app-container { max-width: 1800px; }
             .scroll-area { grid-template-columns: 52% 1fr; }
-            .col-dec { grid-template-columns: 52% 1fr; }
             #postRightContent {
                 display: block;
                 column-count: 2;
@@ -441,8 +441,8 @@
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         
         /* 频率条：解算器语义色（进攻红 / 被动绿 / 弃牌灰蓝），条内 mono 数字 */
-        .freq-bar { height: 16px; border-radius: var(--radius-xs); overflow: hidden; display: flex; margin-top: 4px; width: 100%; border: 1px solid var(--glass-border); background: var(--bg-deep); }
-        .freq-fill { display: flex; align-items: center; justify-content: center; font-size: var(--fs-micro); font-weight: 700; font-family: var(--font-mono); min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1; padding: 0 4px; }
+        .freq-bar { height: 20px; min-height: 20px; border-radius: var(--radius-xs); overflow: hidden; display: flex; margin-top: 4px; width: 100%; border: 1px solid var(--glass-border); background: var(--bg-deep); }
+        .freq-fill { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; font-family: var(--font-mono); min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 20px; padding: 0 4px; height: 100%; box-sizing: border-box; }
         .bg-call { background-color: var(--act-passive); color: #06281a; }   /* call = 被动绿 */
         .bg-raise { background-color: var(--act-aggr); color: #fff; }        /* raise/bet = 进攻红 */
         .bg-fold { background-color: var(--act-fold); color: #fff; }
@@ -639,12 +639,19 @@
             text-shadow: none;
             box-shadow: none;
         }
-        /* Hero 位置选中：身份红填充（与对手区分） */
+        /* Hero 位置选中：黑金尊贵身份统一体系（与下方座位卡金框呼应，彻底与下注进攻红解耦） */
         .pos-btn-hero.active {
-            background: var(--hero-red);
-            border-color: #d9556a;
-            color: #fff;
-            box-shadow: none;
+            background: linear-gradient(180deg, rgba(245, 158, 11, 0.28) 0%, rgba(180, 83, 9, 0.40) 100%) !important;
+            border: 1.5px solid #f59e0b !important;
+            color: #fef08a !important;
+            font-weight: 800;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.35) !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+        .pos-btn-hero.active::before {
+            content: "👑 ";
+            font-size: 10px;
+            filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.6));
         }
         /* 输入框：仪表底 + accent 聚焦环 */
         input[type="number"], select { background-color: var(--bg-deep); }
@@ -838,7 +845,8 @@
         .hud-sizing { font-family: var(--font-mono); color: var(--gold); font-weight: 700; font-size: 14px;
                       background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.35);
                       padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
-        .hud-freq { width: 100%; min-width: 0; max-width: 100%; height: 12px; margin-top: 5px; margin-bottom: 3px; border-radius: var(--radius-xs, 4px); }
+        .hud-freq { width: 100%; min-width: 0; max-width: 100%; height: 20px; min-height: 20px; line-height: 20px; margin-top: 5px; margin-bottom: 3px; border-radius: var(--radius-xs, 4px); overflow: hidden; }
+        .hud-freq .freq-fill { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; font-family: var(--font-mono); line-height: 20px; padding: 0 4px; box-sizing: border-box; }
         .hud-why { font-size: 12px; color: var(--text-secondary); margin-top: 3px; line-height: 1.35; max-height: 34px;
                    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .macro-strip { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
@@ -900,44 +908,48 @@
            任何宽度/缩放下都不冲出卡片；加注额输入在格内独占一行 */
         /* 架构重构(2026-09-21，2026-09-22 优化排版与紧凑度)：我的位置按钮与座位行动卡片垂直绑定（同一列容器 .tl-seat-col），
            上排位置按钮矮小紧凑(22px)，下排卡片固定高度(52px)锁死不抖动；英文紧凑排版适配各屏幕 */
-        .tl-ribbon { display: grid; grid-template-columns: repeat(var(--tl-seat-count, 9), minmax(0, 1fr)); gap: 0; width: 100%; overflow: visible; position: relative; padding: 10px 4px 4px 4px; box-sizing: border-box; }
+        .tl-ribbon { display: grid; grid-template-columns: repeat(var(--tl-seat-count, 9), minmax(0, 1fr)); gap: 4px; width: 100%; overflow: visible; position: relative; padding: 6px 2px 2px 2px; box-sizing: border-box; }
         .tl-seat-col { display: flex; flex-direction: column; gap: 2px; min-width: 0;
                        will-change: transform; transform-origin: center bottom; backface-visibility: hidden;
                        transition: transform 180ms ease-out, box-shadow 150ms ease-out;
                        position: relative; }
-        .tl-seat-col:not(:first-child) { margin-left: -6px; }
-        .tl-seat-col .pos-btn-hero { width: 100%; min-width: 0; height: 22px; min-height: 22px; line-height: 22px; padding: 0; font-size: 11px; font-weight: 700; border-radius: var(--radius-xs, 3px); }
-        .tl-seat { min-width: 0; height: 52px; min-height: 52px; max-height: 52px; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
-                   padding: 4px 1px; text-align: center; cursor: pointer; background: #141822; user-select: none;
-                   box-shadow: -2px 0 6px rgba(0,0,0,0.45);
+        .tl-seat-col:not(:first-child) { margin-left: 0 !important; }
+        .tl-seat-col .pos-btn-hero { width: 100%; min-width: 0; height: 25px; min-height: 25px; line-height: 25px; padding: 0; font-size: 12px; font-weight: 800; border-radius: var(--radius-xs, 3px); }
+        .tl-seat { min-width: 0; height: 64px; min-height: 64px; max-height: 64px; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
+                   padding: 4px 1px; text-align: center; cursor: pointer; background: #131822; user-select: none;
+                   box-shadow: 0 2px 8px rgba(0,0,0,0.4);
                    transition: background .12s, border-color .12s, box-shadow 150ms ease-out; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .tl-seat:hover { background: #1a202c; }
+        .tl-seat:hover { background: #1a202c; border-color: rgba(255,255,255,0.18); }
         .tl-seat .tl-pos { display: none; font-size: 12px; } /* 隐式保留以供不变量检验，上排按钮已显示位置，下卡不再重复 */
         .tl-seat .tl-act { font-size: 11px; font-family: var(--font-mono); font-weight: 700; margin-top: 0; color: var(--text-muted); white-space: nowrap; line-height: 1.15;
                            min-width: 0; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-        .tl-seat-col.dock-active { z-index: 50 !important; }
+        .tl-seat-col.dock-active { z-index: 50 !important; transform: none !important; }
         .tl-seat-col.dock-active .tl-seat {
-            box-shadow: 0 12px 28px -2px rgba(0,0,0,0.85), 0 0 0 1px rgba(87,169,255,0.6) !important;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.7), 0 0 0 1.5px rgba(87,169,255,0.7) !important;
             background: #1c2230 !important;
             overflow: visible;
         }
         .tl-seat-col.dock-active .tl-act {
             overflow: visible; text-overflow: clip; z-index: 55;
         }
-        .tl-seat.fold { background: #0f1218 !important; border-color: rgba(255,255,255,0.05); }
+        .tl-seat.fold { background: rgba(100, 116, 139, 0.08) !important; border-color: rgba(255,255,255,0.05); opacity: 0.38; }
         .tl-seat.fold .tl-act { color: #64748b; }
-        .tl-seat.limp { background: #0d2319 !important; border-color: rgba(46,168,106,.5); } .tl-seat.limp .tl-act { color: #45d68a; }
-        .tl-seat.call { background: #0f2b1e !important; border-color: rgba(46,168,106,.7); } .tl-seat.call .tl-act { color: #45d68a; }
-        .tl-seat.raise { background: #2b1215 !important; border-color: rgba(229,72,77,0.6); } .tl-seat.raise .tl-act { color: #ff7a7d; }
-        .tl-seat.allin { background: #2b2110 !important; border-color: rgba(224,168,58,0.6); } .tl-seat.allin .tl-act { color: #e0a83a; }
-        .tl-seat.hero { background: #2e1518 !important; border: 1.5px solid #e5484d; } .tl-seat.hero .tl-act { color: #fff; }
+        .tl-seat.limp { background: rgba(96, 165, 250, 0.14) !important; border-color: rgba(96, 165, 250, 0.5); } .tl-seat.limp .tl-act { color: #60a5fa; font-weight: 800; }
+        .tl-seat.call { background: rgba(52, 211, 133, 0.16) !important; border-color: rgba(52, 211, 133, 0.6); } .tl-seat.call .tl-act { color: #34d385; font-weight: 800; }
+        .tl-seat.raise { background: rgba(255, 83, 83, 0.16) !important; border-color: rgba(255, 83, 83, 0.6); } .tl-seat.raise .tl-act { color: #ff5353; font-weight: 800; }
+        .tl-seat.is-3bet { background: rgba(192, 132, 252, 0.18) !important; border-color: rgba(192, 132, 252, 0.65) !important; } .tl-seat.is-3bet .tl-act { color: #c084fc !important; font-weight: 900; }
+        .tl-seat.allin { background: rgba(245, 158, 11, 0.20) !important; border-color: rgba(245, 158, 11, 0.7); box-shadow: 0 0 10px rgba(245, 158, 11, 0.35); } .tl-seat.allin .tl-act { color: #f59e0b; font-weight: 900; }
+        .tl-seat.hero { border: 1.5px solid #f59e0b !important; box-shadow: 0 0 10px rgba(245, 158, 11, 0.28), inset 0 0 4px rgba(245, 158, 11, 0.12) !important; }
+        .tl-seat.hero.idle .tl-act { color: #fde047; }
         .tl-seat.disabled { opacity: .28; cursor: not-allowed; }
         /* 按流水重写(2026-09-11)：轮到谁谁脉冲；多次行动的座位补一行"Tot X" */
         .tl-seat.idle .tl-act { color: var(--text-secondary); }
         .tl-seat.turn { background: #122135 !important; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(87,169,255,.28); animation: tlTurnPulse 1.6s ease-in-out infinite; }
         .tl-seat.turn .tl-act { color: #9fd0ff; font-weight: 800; }
-        .tl-seat.hero.turn { background: #2e1518 !important; border-color: #e5484d; box-shadow: 0 0 0 2px rgba(229,72,77,.35); }
-        .tl-seat.hero.turn .tl-act { color: #ff9ea1; }
+        /* 轮到 Hero 行动：金辉脉冲（避免与加注进攻红混淆） */
+        .tl-seat.hero.turn { background: rgba(245, 158, 11, 0.16) !important; border-color: #fbbf24 !important; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4), 0 0 12px rgba(245, 158, 11, 0.35) !important; animation: heroTurnPulse 1.4s ease-in-out infinite; }
+        .tl-seat.hero.turn .tl-act { color: #fde047 !important; font-weight: 800; }
+        @keyframes heroTurnPulse { 0%,100% { box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3), 0 0 8px rgba(245, 158, 11, 0.25); } 50% { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.6), 0 0 16px rgba(245, 158, 11, 0.45); } }
         @keyframes tlTurnPulse { 0%,100% { box-shadow: 0 0 0 2px rgba(87,169,255,.20); } 50% { box-shadow: 0 0 0 4px rgba(87,169,255,.34); } }
         .tl-seat .tl-sub { font-size: 10px; color: var(--gold); margin-top: 1px; font-family: var(--font-mono); line-height: 1; }
         .tl-turnbar { margin-top: 6px; font-size: var(--fs-caption); color: var(--text-secondary); font-family: var(--font-mono);
@@ -950,9 +962,9 @@
                   padding: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.5); display: flex; gap: 4px; flex-wrap: wrap; align-items: center; min-width: 260px; max-width: 96%; }
         .tl-pop .macro-btn { padding: 6px 10px; font-size: var(--fs-caption); display: inline-flex; align-items: center; gap: 4px; }
         .tl-pop .tl-amt { width: 62px; height: 24px; padding: 0 4px; text-align: center; font-family: var(--font-mono); font-size: var(--fs-caption); }
-        #tlHeroRow .pos-btn-hero { min-height: 22px; height: 22px; }
-        .tl-amt-inline { display: block; width: 100%; max-width: 38px; margin: 2px auto 0; height: 16px !important; min-height: 16px !important; max-height: 16px !important; padding: 0 2px; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700; line-height: 14px !important;
-                         background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.22); border-radius: 3px; color: inherit; -moz-appearance: textfield; }
+        #tlHeroRow .pos-btn-hero { min-height: 25px; height: 25px; }
+        .tl-amt-inline { display: block; width: 100%; max-width: 58px; margin: 2px auto 0; height: 26px !important; min-height: 26px !important; max-height: 26px !important; padding: 0 4px; text-align: center; font-family: var(--font-mono); font-size: 13px !important; font-weight: 800; line-height: 24px !important;
+                         background: rgba(0,0,0,.65); border: 1px solid rgba(255,255,255,.22); border-radius: 4px; color: #ffffff; -moz-appearance: textfield; }
         .tl-amt-inline:focus { outline: none; border-color: var(--accent); background: rgba(0,0,0,.75); box-shadow: 0 0 0 1px var(--accent); }
         .hud-chip-mc { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.35); color: #93c5fd; }
         .hud-chip-bubble.urgent { border-color: #e5484d !important; color: #ff7a7d !important; animation: blPulse 1s ease-in-out infinite; }
@@ -986,13 +998,25 @@
         #moneyWidget.urgent { border-color: #e5484d; color: #ff7a7d; animation: blPulse 1s ease-in-out infinite; }
         @keyframes blPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.0); } 50% { box-shadow: 0 0 0 3px rgba(229,72,77,.35); } }
         .act-btn {
-            min-height: 44px;
+            min-height: 46px;
             scroll-margin-top: 120px;
             font-size: var(--fs-body) !important;
             font-weight: 700;
             border-radius: var(--radius-sm);
             transition: transform 0.15s ease-out, box-shadow 0.15s ease-out, background-color 0.15s ease-out, border-color 0.15s ease-out;
             will-change: transform;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .btn-main-act { display: block; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.1; }
+        .btn-sub-act { display: block; font-size: 9px; font-weight: 600; opacity: 0.85; line-height: 1.1; margin-top: 1px; }
+        .act-btn kbd {
+            position: absolute; top: 3px; right: 4px; font-size: 8px; font-family: var(--font-mono);
+            opacity: 0.65; line-height: 1; padding: 1px 3px; border-radius: 2px;
+            background: rgba(255,255,255,0.08); border: 0.5px solid rgba(255,255,255,0.15);
         }
         .act-btn:hover:not(:disabled) {
             transform: translateY(-1.5px);
@@ -1001,9 +1025,9 @@
             transform: translateY(0.5px) scale(0.98);
         }
         /* 行动区排版重做(2026-09-10)：动作四键等宽 grid + 独立尺度行，整组限宽，大屏不拉伸 */
-        .act-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 720px; }
+        .act-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 720px; box-sizing: border-box; }
         .act-row.act-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 420px; }
-        .act-row .act-btn { width: 100%; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+        .act-row .act-btn { width: 100%; padding: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 
         /* ─── 翻后行动按钮色彩体系（高定黑曜石 Anti-AI-Slop & Laser Accent 规范） ─── */
         /* 我方行动：弃牌 (玄武黑曜石) · 过牌/跟注 (祖母绿微光) · 下注/加注 (深空蓝进取) · 全押 (绯红爆燃) */
@@ -1077,12 +1101,21 @@
         .villain-act-btn.act-btn-betraise:hover { background: #381f14 !important; border-color: #f97316 !important; color: #ffffff !important; }
         .villain-act-btn.act-allin { background: #2e1017 !important; border: 1px solid rgba(244, 63, 94, 0.55) !important; color: #fecdd3 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 10px rgba(244, 63, 94, 0.20) !important; }
         .villain-act-btn.act-allin:hover { background: #3d141e !important; border-color: #f43f5e !important; color: #ffffff !important; }
-        /* 尺度行与动作行同宽、一起撑满(2026-09-11，用户第6点"按钮没排满")：
-           快捷键均分剩余宽度；对手一侧没有快捷键，就让金额框自己撑开 */
-        .size-row { display: flex; align-items: center; gap: 6px; max-width: 720px; margin-bottom: 8px; }
-        .size-lbl { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 700; flex: 0 0 auto; letter-spacing: .04em; }
-        .qc-btn.qc-size { flex: 1 1 0; min-width: 0; padding: 6px 4px; min-height: 32px; height: 32px; font-size: var(--fs-caption); border-radius: var(--radius-sm); transition: transform 0.15s ease-out, background-color 0.15s; }
+        /* 尺度行与动作行同宽、撑满容器并锁死单行不折行（2026-09-26 根治阻断/超池文字溢出与右侧留白） */
+        .size-row { display: flex; align-items: center; gap: 6px; width: 100%; max-width: 720px; margin-bottom: 8px; box-sizing: border-box; }
+        .size-lbl { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 700; flex: 0 0 auto; letter-spacing: .04em; white-space: nowrap; }
+        .qc-btn.qc-size {
+            flex: 1 1 auto; min-width: 0; padding: 0 4px; min-height: 32px; height: 32px;
+            font-size: var(--fs-caption); border-radius: var(--radius-sm);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            display: inline-flex; align-items: center; justify-content: center; gap: 2px;
+            transition: transform 0.15s ease-out, background-color 0.15s;
+        }
         .qc-btn.qc-size:hover { transform: translateY(-1px); }
+        #geomShortcutBtn {
+            flex: 1.45 1 auto !important; min-width: fit-content; padding: 0 8px !important;
+            font-size: 11px !important; white-space: nowrap !important;
+        }
         .amt-box { display: flex; align-items: stretch; border: 1px solid var(--border-primary); border-radius: var(--radius-sm);
                    overflow: hidden; background: rgba(0,0,0,.3); flex: 0 0 auto; min-height: 32px; height: 32px; }
         .size-row-villain .amt-box { flex: 1 1 auto; }
@@ -1094,7 +1127,7 @@
                    cursor: pointer; font-size: var(--fs-title); line-height: 1; font-weight: 700; transition: background 0.15s; }
         .amt-box .step-btn:hover { background: rgba(255,255,255,.18); color: var(--text-primary); }
         .pct-hint { font-size: var(--fs-micro); color: var(--text-muted); font-family: var(--font-mono); flex: 0 0 auto;
-                    min-width: 72px; text-align: right; }
+                    min-width: 68px; text-align: right; white-space: nowrap; }
         /* 位置切换收成分段控件（2026-09-10）：原来是整行两个大按钮，在流程视图里过度抢戏，
            而它只是个"判定不对时才点"的覆盖开关——依据文字已写在同一行 */
         .seg-ctl { display: inline-flex; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); overflow: hidden; flex: 0 0 auto; min-height: 24px; }
@@ -1149,7 +1182,7 @@
             .act-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .tl-ribbon { gap: 3px; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
             .tl-seat-col:not(.dock-active) { transform: none !important; }
-            .tl-seat-col.dock-active { transform: translateY(-8px) scale(1.22) !important; z-index: 50 !important; }
+            .tl-seat-col.dock-active { transform: none !important; z-index: 50 !important; }
             .tl-seat-col .pos-btn-hero { min-height: 44px; min-width: 44px; }
             .tl-seat { padding: 4px 1px; }
             .tl-seat .tl-act { font-size: var(--fs-micro); }
@@ -1164,6 +1197,84 @@
                 min-height: 44px; min-width: 44px;
             }
             .tl-seat .tl-act { font-size: var(--fs-caption); }
+        }
+
+        /* ══════════ 多桌分屏 / 1/4 屏幕高密紧凑适配 (Multi-Table Pro View) ══════════ */
+        body.mode-multitable .app-container {
+            padding: 4px 6px !important;
+            border-radius: var(--radius-sm) !important;
+        }
+        body.mode-multitable .hud-main-row {
+            gap: 6px !important;
+        }
+        body.mode-multitable .hud-action {
+            font-size: 18px !important;
+        }
+        body.mode-multitable .hud-sizing {
+            font-size: 12px !important;
+            padding: 1px 6px !important;
+        }
+        body.mode-multitable .hud-why {
+            font-size: 11px !important;
+            max-height: 26px !important;
+        }
+        body.mode-multitable .tl-seat {
+            height: 58px !important;
+            min-height: 58px !important;
+            max-height: 58px !important;
+            padding: 2px 1px !important;
+        }
+        body.mode-multitable .tl-amt-inline {
+            height: 22px !important;
+            min-height: 22px !important;
+            max-height: 22px !important;
+            font-size: 12px !important;
+            line-height: 20px !important;
+        }
+        body.mode-multitable .act-row {
+            gap: 6px !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+        body.mode-multitable .size-row {
+            gap: 4px !important;
+            margin-bottom: 6px !important;
+        }
+        body.mode-multitable .qc-btn.qc-size {
+            height: 30px !important;
+            min-height: 30px !important;
+            font-size: 11px !important;
+            padding: 0 2px !important;
+        }
+        body.mode-multitable .amt-box {
+            height: 30px !important;
+            min-height: 30px !important;
+        }
+        body.mode-multitable .amt-box input[type="number"] {
+            width: 60px !important;
+            height: 28px !important;
+            font-size: 12px !important;
+        }
+        body.mode-multitable .amt-box .step-btn {
+            width: 24px !important;
+        }
+        body.mode-multitable .pct-hint {
+            min-width: 56px !important;
+            font-size: 10px !important;
+        }
+
+        /* 牌桌行动呼吸光环 (Turn Focus Ambient Aura)：轮到我方决策时外框高光呼吸 */
+        .app-container.hero-turn-active {
+            border-color: rgba(245, 158, 11, 0.75) !important;
+            box-shadow: 0 0 0 1.5px rgba(245, 158, 11, 0.5), 0 0 24px rgba(245, 158, 11, 0.3) !important;
+            animation: appTurnPulse 1.8s ease-in-out infinite;
+        }
+        @keyframes appTurnPulse {
+            0%, 100% {
+                box-shadow: 0 0 0 1.5px rgba(245, 158, 11, 0.4), 0 0 16px rgba(245, 158, 11, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 0 2.5px rgba(245, 158, 11, 0.8), 0 0 28px rgba(245, 158, 11, 0.45);
+            }
         }
     </style>
     <!-- pokersolver 本地化：原 CDN(cdn.jsdelivr.net) 偶发加载失败 → 报"PokerSolver 未加载"，
@@ -1189,7 +1300,8 @@
                     <span id="topMiniStreet" class="text-blue-300">翻前</span>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5">
+                <div id="topWindowColorChips" class="flex items-center gap-0.5" title="牌桌身份色点（点击选择桌号色标）"></div>
                 <button onclick="toggleHeaderDrawer()" id="headerDrawerBtn" class="nav-phase-btn text-[11px] px-2.5 inline-flex items-center justify-center" style="height:24px;line-height:22px;background:rgba(255,255,255,0.06);border-radius:var(--radius-sm);">⚙ 功能与配置 ▾</button>
             </div>
         </div>
@@ -1232,24 +1344,18 @@
                                     <button onclick="tyClear()" class="cfg-btn bl-btn" style="padding:0 6px;">清空</button>
                                 </div>
                                 <div id="tyName" class="text-xs text-gray-400 truncate mb-1" style="display:none;"></div>
-                                <!-- 字段瘦身(2026-09-08)：只留能改变决策的维度。
-                                     前三项开赛后固定，**一场比赛只录一次**；只有「剩余玩家」会变，
-                                     而它也只在临近钱圈时才影响决策。平均筹码不再手填/截图——
-                                     由 总参赛×起始筹码÷剩余÷当前大盲 精确算出（实测 44.2BB，与 GG 显示一致）。 -->
-                                <div class="text-xs text-gray-500 mb-1">下面 3 项开赛后固定，录一次即可 ↓</div>
                                 <div class="grid grid-cols-3 gap-1">
                                     <label class="text-xs text-gray-400">总参赛
                                         <input id="tyEntrants" class="bl-input" oninput="tyOnInput()" placeholder="277"></label>
-                                    <label class="text-xs text-gray-400">奖金分配%
+                                    <label class="text-xs text-gray-400">奖金%
                                         <input id="tyPayoutPct" class="bl-input" oninput="tyOnInput()" placeholder="15"></label>
-                                    <label class="text-xs text-gray-400">起始筹码
+                                    <label class="text-xs text-gray-400">起始码
                                         <input id="tyStartStack" class="bl-input" oninput="tyOnInput()" placeholder="6000"></label>
                                 </div>
-                                <div class="text-xs text-gray-500 mt-1 mb-1">↓ 只有这项会变（临近钱圈时才需要更新）</div>
-                                <div class="grid grid-cols-2 gap-1">
+                                <div class="grid grid-cols-2 gap-1 mt-1">
                                     <label class="text-xs text-gray-400">剩余玩家
                                         <input id="tyRemaining" class="bl-input" oninput="tyOnInput()" placeholder="235"></label>
-                                    <label class="text-xs text-gray-400">盲注间隔分
+                                    <label class="text-xs text-gray-400">涨盲(分)
                                         <input id="tyLevelMin" class="bl-input" oninput="tyOnInput()" placeholder="3"></label>
                                 </div>
                                 <div id="tyDerived" class="text-xs mt-1 leading-relaxed" style="color:var(--accent);"></div>
@@ -1272,76 +1378,65 @@
                                 <div class="grid grid-cols-3 gap-1" id="grpPlayStyle"></div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-400 mb-1">对手模型（翻后范围估计）</div>
+                                <div class="text-xs text-gray-400 mb-1">对手模型</div>
                                 <div class="grid grid-cols-2 gap-1" id="grpVillainModel"></div>
                             </div>
                             <!-- 尺度可选(2026-09-08)：范围表按 2.2x/2.5x 校准，选别的尺度会同步调整该开多宽 -->
                             <div>
-                                <div class="text-xs text-gray-400 mb-1">我的开池尺度</div>
+                                <div class="text-xs text-gray-400 mb-1">开池尺度</div>
                                 <div class="grid grid-cols-5 gap-1" id="grpOpenSize"></div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-400 mb-1">我的 3-Bet 尺度（开池额的倍数）</div>
+                                <div class="text-xs text-gray-400 mb-1">3-Bet 尺度</div>
                                 <div class="grid grid-cols-5 gap-1" id="grpTbSize"></div>
                                 <div id="sizingAdvice" class="text-xs mt-1 leading-relaxed text-gray-400"></div>
                             </div>
                             <div class="pt-1 border-t border-white/10">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-xs text-yellow-500 font-bold">Ante (MTT)</span>
-                                    <button id="anteToggle" onclick="toggleAnte()" class="bg-green-600 text-white text-xs font-bold px-3 py-0.5 rounded">开启</button>
+                                    <span class="text-xs text-yellow-500 font-bold">Ante</span>
+                                    <div class="flex items-center gap-1">
+                                        <button id="anteModePer" onclick="setAnteMode('perPlayer')" class="cfg-btn bl-btn active" title="每人一份">每人</button>
+                                        <button id="anteModeTotal" onclick="setAnteMode('total')" class="cfg-btn bl-btn" title="全桌总额">全桌</button>
+                                        <button id="anteToggle" onclick="toggleAnte()" class="bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded">开启</button>
+                                    </div>
                                 </div>
-                                <!-- ante 口径(2026-09-08)：牌桌显示的 ante 是全桌总额还是每人一份，
-                                     两种读法差约 8 倍，而死钱直接决定底池/赔率/SPR。
-                                     下方实时显示算出的死钱，开一手牌对一眼即可确认。 -->
-                                <div class="flex items-center gap-1 mt-1">
-                                    <span class="text-xs text-gray-400 shrink-0">上面填的 ante 是</span>
-                                    <button id="anteModePer" onclick="setAnteMode('perPlayer')" class="cfg-btn bl-btn active" title="时钟/牌桌标题栏显示的数（如 80/160 (20) 的 20）——每人一份，总额 = 该值 × 桌上人数">每人一份</button>
-                                    <button id="anteModeTotal" onclick="setAnteMode('total')" class="cfg-btn bl-btn" title="手牌回顾里的 All Ante——已经是全桌总额，不用再乘人数">全桌总额</button>
-                                </div>
-                                <div id="anteInfo" class="text-xs mt-1 leading-relaxed"></div>
+                                <div id="anteInfo" class="text-xs mt-0.5 text-gray-400 leading-relaxed"></div>
                             </div>
                             <!-- 自动移位 + 升盲同步 + 筹码单位（2026-07-21） -->
                             <div class="flex justify-between items-center pt-1 border-t border-white/10">
-                                <span class="text-xs text-yellow-500 font-bold" title="下一手时我的位置自动往前退一格（BTN→CO→…→UTG→BB→SB→BTN），错位时点座位带修正">下一手自动移位</span>
-                                <button id="autoPosToggle" onclick="toggleAutoPos()" class="bg-green-600 text-white text-xs font-bold px-3 py-0.5 rounded">开启</button>
+                                <span class="text-xs text-yellow-500 font-bold" title="下一手时我的位置自动往前退一格（BTN→CO→…→UTG→BB→SB→BTN），错位时点座位带修正">自动移位 (下一手)</span>
+                                <button id="autoPosToggle" onclick="toggleAutoPos()" class="bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded">开启</button>
                             </div>
-                            <!-- 升盲计时机器移除(2026-09-08，用户："不要一直做加法")：
-                                 原来这里有大盲/Ante/每级时长/本级剩余 + 倒计时 + 自动升盲 + 盲注结构表，
-                                 约 250 行。但**引擎全程用 BB 计算，0 处读取 gameConfig.blinds**——那套机器
-                                 对决策的唯一贡献就是"筹码数 → BB"的换算基准，却带来了输入回滚、盲注误读、
-                                 ante 公式靠猜等一连串 bug。现在只留换算基准本身，且它由每手的牌桌截图
-                                 自动更新（OCR 一直在读标题栏盲注），无需任何手工维护。 -->
                             <div class="pt-1 border-t border-white/10">
                                 <div class="flex justify-between items-center mb-1 gap-2">
-                                    <span class="text-xs text-yellow-500 font-bold shrink-0">筹码换算基准</span>
-                                    <div class="flex gap-1 items-center"><span class="text-xs text-gray-400 shrink-0">筹码框单位</span>
+                                    <span class="text-xs text-yellow-500 font-bold shrink-0">筹码换算</span>
+                                    <div class="flex gap-1 items-center">
                                         <button id="unitBB" onclick="setChipUnit('bb')" class="cfg-btn bl-btn active">BB</button>
-                                        <button id="unitChips" onclick="setChipUnit('chips')" class="cfg-btn bl-btn">筹码数</button></div>
+                                        <button id="unitChips" onclick="setChipUnit('chips')" class="cfg-btn bl-btn">筹码数</button>
+                                    </div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-1">
-                                    <div><div class="text-xs text-gray-300">当前大盲(筹码)</div><input type="number" id="blBb" oninput="blOnInput(this)" class="bl-input" placeholder="160"></div>
-                                    <div><div class="text-xs text-gray-300">Ante(筹码)</div><input type="number" id="blAnte" oninput="blOnInput(this)" class="bl-input" placeholder="20"></div>
+                                    <div><div class="text-xs text-gray-400">大盲</div><input type="number" id="blBb" oninput="blOnInput(this)" class="bl-input" placeholder="160"></div>
+                                    <div><div class="text-xs text-gray-400">Ante</div><input type="number" id="blAnte" oninput="blOnInput(this)" class="bl-input" placeholder="20"></div>
                                 </div>
                                 <div id="blStatus" class="text-xs text-gray-500 mt-1 leading-relaxed"></div>
                             </div>
                             <div class="panel-bg p-1.5 rounded flex items-center gap-2 mt-1">
-                                <label class="text-xs text-gray-400 shrink-0 w-24">Vision API Key</label>
-                                <input type="password" id="qwenApiKey" placeholder="填入 Qwen API Key"
+                                <label class="text-xs text-gray-400 shrink-0 w-20">Vision Key</label>
+                                <input type="password" id="qwenApiKey" placeholder="API Key"
                                     class="flex-1 p-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white"
                                     oninput="localStorage.setItem('vision_api_key', this.value)">
                             </div>
                             <div class="panel-bg p-1.5 rounded flex items-center gap-2 mt-1">
-                                <label class="text-xs text-gray-400 shrink-0 w-24">Vision 模型</label>
+                                <label class="text-xs text-gray-400 shrink-0 w-20">Vision 模型</label>
                                 <select id="visionModel" onchange="onVisionModelChange()"
                                     class="flex-1 text-xs h-[26px] rounded border border-white/10 bg-black/30 text-white px-1">
-                                    <!-- 模型升级(2026-07-21)：Qwen3.8 系列 2026-08 发布，原生多模态且更快；
-                                         调用失败会自动降级到 qwen3-vl-flash 并提示，故可安全置顶为默认 -->
-                                    <option value="qwen3.8-flash">Qwen3.8-Flash（最新·2026-08，推荐）</option>
-                                    <option value="qwen3.7-flash">Qwen3.7-Flash（2026-07）</option>
-                                    <option value="qwen3-vl-flash">Qwen3-VL-Flash（2025-10·稳定回退）</option>
-                                    <option value="qwen3-vl-plus">Qwen3-VL-Plus（2025-09·更强较慢）</option>
-                                    <option value="qwen-vl-max">Qwen-VL-Max（旧代最强）</option>
-                                    <option value="qwen-vl-plus">Qwen-VL-Plus（旧代）</option>
+                                    <option value="qwen3.8-flash">Qwen3.8-Flash (推荐)</option>
+                                    <option value="qwen3.7-flash">Qwen3.7-Flash</option>
+                                    <option value="qwen3-vl-flash">Qwen3-VL-Flash</option>
+                                    <option value="qwen3-vl-plus">Qwen3-VL-Plus</option>
+                                    <option value="qwen-vl-max">Qwen-VL-Max</option>
+                                    <option value="qwen-vl-plus">Qwen-VL-Plus</option>
                                     <option value="custom">自定义</option>
                                 </select>
                                 <input type="text" id="visionModelCustom" placeholder="自定义模型 ID"
@@ -1420,7 +1515,7 @@
             <div class="col-dec w-full shrink-0">
                 <div class="zone-head" id="preDecisionHead"><span>决策</span><span id="decisionSrc" class="dec-src" style="display:none"></span><span id="preDecisionSummary" style="display:none" hidden></span><button id="preDecisionToggle" onclick="togglePreDecision()" class="macro-btn" style="display:none" title="展开/收起决策详情">展开 ▾</button></div>
                 <div id="decisionHUD" class="decision-hero hud-empty" data-sem="neutral">
-                    <div class="hud-top"><span id="hudStage" class="hud-stage">翻前</span><span id="hudSrc" class="hud-src" style="display:none"></span><span id="hudBadge" class="hud-badge" style="display:none"></span></div>
+                    <div class="hud-top flex items-center justify-between"><div class="flex items-center gap-2"><span id="hudStage" class="hud-stage">翻前</span><span id="hudSrc" class="hud-src" style="display:none"></span><span id="hudBadge" class="hud-badge" style="display:none"></span></div><div id="hudMetrics" class="hud-metrics flex items-center gap-2 text-xs font-mono text-gray-400"></div></div>
                     <div class="hud-main-row">
                         <div id="hudAction" class="hud-action">等待输入</div>
                         <div id="hudSizing" class="hud-sizing" style="display:none"></div>
@@ -1543,15 +1638,15 @@
                     <div class="grid grid-cols-3 gap-1.5 mt-1.5">
                         <div class="panel-bg p-1.5 rounded border-red-900/50">
                             <label id="tlStackHeroLabel" class="text-xs text-red-400 block mb-1">我的筹码 (BB)</label>
-                            <input type="number" id="tlStackHero" value="40" oninput="tlOnStackInput('hero')" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[26px]">
+                            <input type="number" id="tlStackHero" value="40" oninput="tlOnStackInput('hero')" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[34px]">
                         </div>
                         <div class="panel-bg p-1.5 rounded">
                             <label id="tlStackVillainLabel" class="text-xs text-green-400 block mb-1">对手筹码 (BB)</label>
-                            <input type="number" id="tlStackVillain" value="40" oninput="tlOnStackInput('villain')" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
+                            <input type="number" id="tlStackVillain" value="40" oninput="tlOnStackInput('villain')" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[34px]">
                         </div>
                         <div class="panel-bg p-1.5 rounded">
                             <label id="tlAvgStackLabel" class="text-xs text-yellow-500 block mb-1">桌面平均码 (BB)</label>
-                            <input type="number" id="tlAvgStack" value="40" oninput="tlOnStackInput('avg')" onfocus="this.select()" class="p-1 text-center text-sm h-[26px]">
+                            <input type="number" id="tlAvgStack" value="40" oninput="tlOnStackInput('avg')" onfocus="this.select()" class="p-1 text-center font-bold text-sm h-[34px]">
                         </div>
                     </div>
                     <div id="tlUnitHint" class="text-xs mt-1" style="color:var(--gold);display:none;"></div>
@@ -1814,20 +1909,17 @@
             const d = getOpenSizeAdjust();
             const base = getOpenBaselineBB();
             if (d === 0) {
-                el.innerHTML = `开池 <b>${getOpenSizeBB()}x</b>（= 校准基准 ${base}x），开池范围不做尺度修正。`;
+                el.innerHTML = '';
             } else {
-                el.innerHTML = `开池 <b>${getOpenSizeBB()}x</b> 偏离校准基准 ${base}x → 开池范围` +
+                el.innerHTML = `开池 <b>${getOpenSizeBB()}x</b> (基准 ${base}x)：开池范围` +
                     (d > 0
-                      ? `<b style="color:#e0a83a">收紧 ${d.toFixed(1)}</b> 个胜率点。` +
-                        `<span style="color:#8b95ab">尺度越大越需要对手弃牌，范围必须越紧。</span>`
-                      : `<b style="color:#45d68a">放宽 ${(-d).toFixed(1)}</b> 个胜率点。` +
-                        `<span style="color:#8b95ab">注意：放宽只能抵消阶段（泡沫/决赛桌）造成的收紧；` +
-                        `常规期本来就是完整范围表，不会再宽——范围表就是天花板。</span>`);
+                      ? `<b style="color:#e0a83a">收紧 ${d.toFixed(1)}</b> 个胜率点`
+                      : `<b style="color:#45d68a">放宽 ${(-d).toFixed(1)}</b> 个胜率点`);
             }
         }
         // M5 诈唬极化(2026-07-20)：对手模型两档——剥削(默认，纯价值收窄)/GTO均衡(补回诈唬)
         const villainModelOpts = [
-            { val: 'exploit', label: '剥削（少诈唬池）' },
+            { val: 'exploit', label: '剥削' },
             { val: 'gto',     label: 'GTO 均衡' }
         ];
         function renderVillainModelGroup() {
@@ -4731,15 +4823,28 @@
             actEl.textContent = action || '等待输入';
             sizeEl.textContent = sizing; sizeEl.style.display = sizing ? '' : 'none';
             freqEl.innerHTML = freqHTML; freqEl.style.display = freqHTML ? '' : 'none';
-            // 提取第一句核心依据供大卡片展示（R6：答案第一，输入第二，解释第三，技术细节第四）
             let coreWhy = String(why).replace(/<[^>]+>/g, '').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
             if (coreWhy) {
                 if (coreWhy.includes('💡')) coreWhy = coreWhy.split('💡')[0].trim();
-                const m = coreWhy.match(/^([^。！？\n]+[。！？]?)/);
-                if (m && m[1]) coreWhy = m[1].trim();
             }
             whyEl.textContent = coreWhy;
             whyEl.style.display = coreWhy ? '' : 'none';
+            const metricsEl = document.getElementById('hudMetrics');
+            if (metricsEl) {
+                if (boardN >= 3) {
+                    const d = postState.decisionResult;
+                    const m = (d && d.math) ? d.math : {};
+                    const parts = [];
+                    if (m.spr !== undefined && m.spr !== null) parts.push(`<span>SPR <b class="text-amber-400 font-bold">${(+m.spr).toFixed(1)}</b></span>`);
+                    if (m.requiredEq !== undefined && m.requiredEq !== null) parts.push(`<span>需胜率 <b class="text-sky-400 font-bold">${Math.round(m.requiredEq)}%</b></span>`);
+                    if (m.mdf !== undefined && m.mdf !== null) parts.push(`<span>MDF <b class="text-emerald-400 font-bold">${Math.round(m.mdf)}%</b></span>`);
+                    metricsEl.innerHTML = parts.join('<span class="text-white/20"> · </span>');
+                    metricsEl.style.display = parts.length ? '' : 'none';
+                } else {
+                    metricsEl.innerHTML = '';
+                    metricsEl.style.display = 'none';
+                }
+            }
             badgeEl.textContent = badge; badgeEl.dataset.level = badge; badgeEl.style.display = badge ? '' : 'none';
             // 来源分级(2026-09-08)：只在真出了建议时显示
             const hasAdvice = action && !/等待输入|等待底牌|计算中|分析失败|计算失败|悖论|未校准/.test(action);
@@ -4752,6 +4857,7 @@
             // 流程轴(2026-09-10)：HUD 是"状态一变就刷新"的统一钩子，摘要/折叠跟着它走
             try { updateFlowStage(); } catch (e) {}
             try { updateTopStatusHUD(); } catch (e) {}
+            try { updateTurnFocusHighlight(); } catch (e) {}
         }
 
         // ══════════ 分层显示(2026-07-21)：默认只看牌局状态 + 决策 + 理由 ══════════
@@ -4779,6 +4885,21 @@
             try { localStorage.setItem('proof_open', _proofOpen() ? '0' : '1'); } catch (e) {}
             applyProofPref();
         };
+        // 决策依据卡：折叠/展开（置于分析·翻后详情，默认折叠，需要时自选点开）
+        function _decPanelOpen() {
+            try { return localStorage.getItem('decision_panel_open') === '1'; } catch (e) { return false; }
+        }
+        window.toggleDecisionPanelFold = function() {
+            try { localStorage.setItem('decision_panel_open', _decPanelOpen() ? '0' : '1'); } catch (e) {}
+            applyDecisionPanelFold();
+        };
+        function applyDecisionPanelFold() {
+            const body = document.getElementById('decisionPanelBody');
+            const icon = document.getElementById('decisionFoldIcon');
+            const open = _decPanelOpen();
+            if (body) body.classList.toggle('hidden', !open);
+            if (icon) icon.textContent = open ? '▾' : '▸';
+        }
         // 截图栏：手动收起/展开（默认展开，记住选择；不再按"有无截图"自动折叠）
         function _vbarCollapsed() { try { return localStorage.getItem('vbar_collapsed') === '1'; } catch (e) { return false; } }
         function initVisionBarCollapse() {
@@ -4866,8 +4987,8 @@
                         : '0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.35)';
                     div.style.cursor = 'pointer';
                     div.innerHTML = `
-                        <span style="font-size:19px;font-weight:900;color:#ffffff;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,0.6);">${rank}</span>
-                        <span style="font-size:14px;color:#ffffff;line-height:1;margin-top:3px;text-shadow:0 1px 2px rgba(0,0,0,0.6);">${SUIT_SYMBOLS[suit]}</span>
+                        <span style="font-size:20px;font-weight:900;color:#ffffff;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,0.6);">${rank}</span>
+                        <span style="font-size:22px;font-weight:900;color:#ffffff;line-height:1;margin-top:2px;text-shadow:0 1px 2px rgba(0,0,0,0.6);">${SUIT_SYMBOLS[suit]}</span>
                         <span style="position:absolute;top:2px;right:3px;font-size:12px;color:rgba(255,255,255,0.7);line-height:1">×</span>`;
                     div.title = `${rank}${SUIT_SYMBOLS[suit]}（点击取消选中）`;
                     div.addEventListener('mouseenter', () => { 
@@ -5654,20 +5775,23 @@
         };
         function renderWindowColorChips(activeKey) {
             const host = document.getElementById('windowColorChips');
-            if (!host) return;
-            // 布局R3(2026-07-14b)：「本窗口」文字标签删除（色点自明）；
-            // 「无」从透明×改为深灰实心圆点，与彩色点同一视觉语言（仅色点外观，不染 banner）
+            const topHost = document.getElementById('topWindowColorChips');
             let html = '';
+            let topHtml = '';
             Object.entries(WINDOW_COLORS).forEach(([k, v]) => {
                 const on = k === activeKey;
                 const dotColor = v.c || '#3a4150';
-                // 触控目标(2026-07-21)：18px 圆点太小，外扩到 26px 可点区域（色点视觉仍 16px）
                 html += `<button onclick="applyWindowColor('${k}')" title="窗口标记：${v.name}${v.e ? '（浏览器标签显示 ' + v.e + '）' : '（清除窗口颜色标记）'}"
                     style="width:26px;height:26px;padding:0;border:none;background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
                     <span style="width:16px;height:16px;border-radius:50%;display:block;transition:0.12s;
                     background:${dotColor};border:2px solid ${on ? '#fff' : dotColor + '66'};"></span></button>`;
+                topHtml += `<button onclick="applyWindowColor('${k}')" title="牌桌身份：${v.name}${v.e ? ' ' + v.e : ''}"
+                    style="width:18px;height:18px;padding:0;border:none;background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">
+                    <span style="width:11px;height:11px;border-radius:50%;display:block;transition:0.12s;
+                    background:${dotColor};border:1.5px solid ${on ? '#fff' : dotColor + '66'};box-shadow:${on ? '0 0 6px ' + dotColor : 'none'};"></span></button>`;
             });
-            host.innerHTML = html;
+            if (host) host.innerHTML = html;
+            if (topHost) topHost.innerHTML = topHtml;
         }
         (function initWindowColor() {
             let saved = 'none';
@@ -5681,6 +5805,52 @@
                 }
             } catch (e) {}
         })();
+
+        /**
+         * 多桌分屏 / 1/4 屏幕高密紧凑视图切换 (Phase 3)
+         */
+        window.toggleMultiTableMode = function(force) {
+            const isMulti = force !== undefined ? force : false;
+            document.body.classList.remove('mode-multitable');
+            try { sessionStorage.removeItem('pc_multitable_mode'); } catch (e) {}
+        };
+        (function initMultiTableMode() {
+            try {
+                document.body.classList.remove('mode-multitable');
+                sessionStorage.removeItem('pc_multitable_mode');
+            } catch (e) {}
+        })();
+
+        /**
+         * 牌桌全局行动高亮 (Turn Focus Ambient Aura - Phase 3)
+         * 轮到我方行动时，全屏/外框泛起金色呼吸高光，多桌下瞬间锁定目标窗口
+         */
+        function updateTurnFocusHighlight() {
+            const app = document.querySelector('.app-container');
+            if (!app) return;
+            let isHeroTurn = false;
+            const validCards = (postState && postState.board) ? postState.board.filter(c => c !== null) : [];
+            if (validCards.length >= 3) {
+                try {
+                    const curSt = validCards.length === 3 ? 'flop' : validCards.length === 4 ? 'turn' : 'river';
+                    const curSa = (postState.potTracker.actions || []).filter(a => a.street === curSt);
+                    const curSs = (typeof getStreetState === 'function') ? getStreetState(curSa) : null;
+                    if (curSs) {
+                        isHeroTurn = !!curSs.isHeroNext && !['street_over', 'showdown'].includes(curSs.phase);
+                    }
+                } catch (e) {}
+            } else {
+                try {
+                    const st = tlState();
+                    isHeroTurn = (st.nextToAct === globalPosHero && !st.folded.has(globalPosHero));
+                } catch (e) {}
+            }
+            if (isHeroTurn) {
+                app.classList.add('hero-turn-active');
+            } else {
+                app.classList.remove('hero-turn-active');
+            }
+        }
 
         function nextHand() {
             if (typeof _tlTimer !== 'undefined') clearTimeout(_tlTimer);
@@ -7529,7 +7699,7 @@
                 const folded = st.folded.has(p);
                 const com = st.committed[p] || 0;
                 let cls = folded ? 'fold'
-                        : last ? (last.a === 'raise' ? 'raise' : last.a === 'allin' ? 'allin'
+                        : last ? (last.a === 'raise' ? (_raiseSeqAll.indexOf(last) > 0 ? 'raise is-3bet' : 'raise') : last.a === 'allin' ? 'allin'
                                  : last.a === 'call' ? 'call' : 'limp')
                         : 'idle';
                 if (isHero) cls += ' hero';
@@ -7560,7 +7730,7 @@
                 </div>`;
             }).join('');
 
-            // ── UI-02 动效：横向叠放卡组 + 纯垂直上浮置顶（消除水平推挤抖动，对标实体卡组） ──
+            // ── UI-02 交互：平整卡组 + 零位移置顶高亮（彻底根除滚轮滑过时的上下跳动与震颤） ──
             const cols = Array.from(ribbon.querySelectorAll('.tl-seat-col'));
             const resetCols = () => cols.forEach((c, idx) => {
                 c.style.transform = '';
@@ -7571,12 +7741,12 @@
 
             cols.forEach((col, idx) => {
                 col.addEventListener('mouseenter', () => {
-                    // 支持所有带鼠标/触控指针的环境（包含单屏、分屏与窄屏视口），仅无 hover 指针的纯触控设备跳过
+                    // 支持所有带鼠标/触控指针的环境，仅无 hover 指针的纯触控设备跳过
                     if (window.matchMedia && !window.matchMedia('(hover: hover)').matches) return;
                     cols.forEach((c, i) => {
                         if (i === idx) {
-                            // 纯垂直上浮 8px，保持水平坐标与宽度零位移，彻底根除横向挤压与震颤
-                            c.style.transform = 'translateY(-8px)';
+                            // 保持垂直与水平零位移，彻底根除滚轮滑过时的跳动
+                            c.style.transform = '';
                             c.style.zIndex = '50';
                             c.classList.add('dock-active');
                         } else {
@@ -7647,6 +7817,7 @@
             setIf('tlStackHero', disp(globalHeroStack, 'hero')); setIf('tlStackVillain', disp(globalVillainStack, 'villain'));
             setIf('tlAvgStack', disp(avgStackTouched ? globalAvgStack : globalHeroStack, 'avg'));
             try { blRenderUnitLabels(); } catch (e) {}
+            try { updateTurnFocusHighlight(); } catch (e) {}
             _restoreFocus(_foc);
         }
 
@@ -10121,7 +10292,7 @@
                 renderCfgGroup('grpTbSize', tbSizeOpts, 'tbSize');
                 renderSizingAdvice(); // M5：对手模型组初始化渲染
         // 分层显示 + 撤回栈 + HUD (2026-07-21) 初始化
-        applyDetailsPref(); applyProofPref(); initVisionBarCollapse(); _updateUndoBtn();
+        applyDetailsPref(); applyProofPref(); applyDecisionPanelFold(); initVisionBarCollapse(); _updateUndoBtn();
         renderHeroPicker();
         syncHeroCardCompat();
         switchMode('open');
@@ -11980,8 +12151,8 @@
             const bdr = suitBdr[suit] || 'rgba(255,255,255,0.25)';
             const col = '#ffffff';
             return `<div style="background:${bg};border:1px solid ${bdr};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),0 2px 8px rgba(0,0,0,0.45);" class="rounded w-full h-full flex flex-col items-center justify-center select-none">
-                <span style="font-size:19px;font-weight:900;line-height:1;color:${col};text-shadow:0 1px 2px rgba(0,0,0,0.6);">${rank}</span>
-                <span style="font-size:14px;line-height:1;margin-top:3px;color:${col};text-shadow:0 1px 2px rgba(0,0,0,0.6);">${SUIT_SYMBOLS[suit]}</span>
+                <span style="font-size:20px;font-weight:900;line-height:1;color:${col};text-shadow:0 1px 2px rgba(0,0,0,0.6);">${rank}</span>
+                <span style="font-size:22px;font-weight:900;line-height:1;margin-top:2px;color:${col};text-shadow:0 1px 2px rgba(0,0,0,0.6);">${SUIT_SYMBOLS[suit]}</span>
             </div>`;
         }
 
@@ -12156,33 +12327,27 @@
             } catch (e) { return '—'; }
         }
         /**
-         * 把翻后的 decisionPanel 搬到左列的决策槽(2026-09-11)。
-         * 翻前用 resultPanel、翻后用 decisionPanel，但它们在界面上必须是**同一个位置**——
-         * 否则一个"结论"在左、一个在右，又回到信息分散。decisionPanel 由 initPostRightCards
-         * 用 innerHTML 重建，所以每次重建后都要重新挂一次。
+        /**
+         * 翻后决策依据卡片(2026-09-26)：常驻右侧「分析·翻后 详情」区域，支持手动折叠/展开
          */
         function mountDecision() {
             try {
-                const slot = document.getElementById('postDecisionSlot');
-                const container = document.getElementById('postRightContent');
-                if (container && slot) {
-                    const dpInContainer = container.querySelector('#decisionPanel');
-                    if (dpInContainer) {
-                        slot.innerHTML = '';
-                        slot.appendChild(dpInContainer);
-                    }
+                const dec = document.getElementById('decisionPanel');
+                const prc = document.getElementById('postRightContent');
+                if (prc && dec && !prc.contains(dec)) {
+                    prc.prepend(dec);
                 }
-                const dp = slot ? slot.querySelector('#decisionPanel') : document.getElementById('decisionPanel');
                 const cnt = postState.board ? postState.board.filter(c => c !== null).length : 0;
                 const inPost = cnt >= 3;
                 const hasValidCards = postState.heroCards && postState.heroCards.length === 2 && !postState.heroCards.includes(null);
                 const hasValidDecision = inPost && hasValidCards && postState.decisionResult !== null;
                 if (!hasValidDecision) {
-                    if (slot) slot.style.display = 'none';
-                    if (dp) dp.classList.add('hidden');
+                    if (dec) dec.classList.add('hidden');
                 } else {
-                    if (slot) slot.style.display = '';
-                    if (dp) dp.classList.remove('hidden');
+                    if (dec) {
+                        dec.classList.remove('hidden');
+                        applyDecisionPanelFold();
+                    }
                 }
             } catch (e) {}
         }
@@ -13065,19 +13230,19 @@
                         html += `<div class="text-xs text-orange-400/80 mb-1.5 px-1 font-bold">⚠ 对手全下 ${allinAmt.toFixed(1)}BB，仅可跟注或弃牌</div>`;
                     }
                     html += `<div class="act-row act-row-2">
-                        <button onclick="${foldClick}" class="act-btn rounded-md border ${foldCls} active:scale-95 transition-all">${foldStar ? '★ ' : ''}弃牌${isHero ? '<kbd>L</kbd>' : ''}</button>
-                        <button onclick="${passClick}" class="act-btn rounded-md border ${passCls} active:scale-95 transition-all">${passiveStar ? '★ ' : ''}${passiveLbl}${isHero ? '<kbd>J</kbd>' : ''}</button>
+                        <button onclick="${foldClick}" class="act-btn rounded-md border ${foldCls} active:scale-95 transition-all"><span class="btn-main-act">FOLD</span><span class="btn-sub-act">${foldStar ? '★ ' : ''}弃牌</span>${isHero ? '<kbd>L</kbd>' : ''}</button>
+                        <button onclick="${passClick}" class="act-btn rounded-md border ${passCls} active:scale-95 transition-all"><span class="btn-main-act">CALL</span><span class="btn-sub-act">${passiveStar ? '★ ' : ''}${passiveLbl}</span>${isHero ? '<kbd>J</kbd>' : ''}</button>
                     </div>`;
                 } else {
                     const preNum = prefill !== '' ? parseFloat(prefill) : 0;
                     const aggrLabel = (preNum > 0 ? `${aggrWord} ${preNum}` : aggrWord);
                     html += `<div class="size-row${isHero ? '' : ' size-row-villain'}">
-                        <span class="size-lbl">${isHero ? '尺度' : '对手下注（照牌桌上的数字填）'}</span>
+                        <span class="size-lbl">${isHero ? '尺度' : '对手下注'}</span>
                         ${isHero ? (!isFacing ? `
-                        <button onclick="quickCommit('hero','bet',0.33,'${actorPos}')" class="qc-btn qc-size">33%池<kbd>1</kbd></button>
-                        <button onclick="quickCommit('hero','bet',0.5,'${actorPos}')" class="qc-btn qc-size">半池<kbd>2</kbd></button>
-                        <button onclick="quickCommit('hero','bet',0.75,'${actorPos}')" class="qc-btn qc-size">75%池<kbd>3</kbd></button>
-                        <button onclick="quickCommit('hero','bet',1.0,'${actorPos}')" class="qc-btn qc-size">满池<kbd>4</kbd></button>` +
+                        <button onclick="quickCommit('hero','bet',0.33,'${actorPos}')" class="qc-btn qc-size">33%</button>
+                        <button onclick="quickCommit('hero','bet',0.5,'${actorPos}')" class="qc-btn qc-size">50%</button>
+                        <button onclick="quickCommit('hero','bet',0.75,'${actorPos}')" class="qc-btn qc-size">75%</button>
+                        <button onclick="quickCommit('hero','bet',1.0,'${actorPos}')" class="qc-btn qc-size">100%</button>` +
                         (geom && geom.rGeomPct > 0 ? (() => {
                             const recKey = geom.recommendedProfile || 'standard';
                             const recP = geom.profiles[recKey] || geom.profiles.standard;
@@ -13090,10 +13255,10 @@
                             class="qc-btn qc-size border border-amber-500/60 text-amber-300 font-black bg-amber-950/40 hover:bg-amber-900/50"
                             title="Pokercode 几何 SPR 规划（${recP.name} ${recP.pct}% · ${recP.amount.toFixed(1)}BB）：${recP.tactics}">${geomLabel}</button>`;
                         })() : '') : `
-                        <button onclick="quickCommit('hero','raise',{mult:2.5},'${actorPos}')" class="qc-btn qc-size">2.5x<kbd>1</kbd></button>
-                        <button onclick="quickCommit('hero','raise',{mult:3},'${actorPos}')" class="qc-btn qc-size">3x<kbd>2</kbd></button>
-                        <button onclick="quickCommit('hero','raise',{mult:4},'${actorPos}')" class="qc-btn qc-size">4x<kbd>3</kbd></button>`) : ''}
-                        <div class="amt-box">
+                        <button onclick="quickCommit('hero','raise',{mult:2.5},'${actorPos}')" class="qc-btn qc-size">2.5x</button>
+                        <button onclick="quickCommit('hero','raise',{mult:3},'${actorPos}')" class="qc-btn qc-size">3x</button>
+                        <button onclick="quickCommit('hero','raise',{mult:4},'${actorPos}')" class="qc-btn qc-size">4x</button>`) : ''}
+                        <div class="amt-box" title="点击后可使用滚轮调值：向上滚增加，向下滚减少">
                             <button class="step-btn" onclick="stepBet('${inputId}',-1)" tabindex="-1" title="减一档（约 10% 底池）">−</button>
                             <input id="${inputId}" type="number" min="0.5" step="0.5" value="${prefill}" data-word="${aggrWord}"
                                 oninput="updateBetPct(this)"
@@ -13104,10 +13269,10 @@
                         <span id="betPctHint" class="pct-hint"></span>
                     </div>`;
                     html += `<div class="act-row">
-                        <button ${foldOn ? `onclick="${foldClick}"` : 'disabled'} class="act-btn rounded-md border ${foldCls} active:scale-95 transition-all">${foldStar ? '★ ' : ''}弃牌${isHero ? '<kbd>L</kbd>' : ''}</button>
-                        <button onclick="${passClick}" class="act-btn rounded-md border ${passCls} active:scale-95 transition-all">${passiveStar ? '★ ' : ''}${passiveLbl}${isHero ? '<kbd>J</kbd>' : ''}</button>
-                        <button onclick="commitCustomAction('${playerKey}','${inputId}','${aggrType}','${actorPos}')" class="act-btn rounded-md border ${aggrCls} active:scale-95 transition-all"><span id="aggrBtnLabel" data-star="${aggrStar ? 1 : 0}">${aggrStar ? '★ ' : ''}${aggrLabel}</span>${isHero ? '<kbd>K</kbd>' : ''}</button>
-                        <button onclick="quickCommit('${playerKey}','${aggrType}','allin','${actorPos}')" class="act-btn ${allinCls} rounded-md border active:scale-95 transition-all">全押${isHero ? '<kbd>A</kbd>' : ''}</button>
+                        <button ${foldOn ? `onclick="${foldClick}"` : 'disabled'} class="act-btn rounded-md border ${foldCls} active:scale-95 transition-all"><span class="btn-main-act">FOLD</span><span class="btn-sub-act">${foldStar ? '★ ' : ''}弃牌</span>${isHero ? '<kbd>L</kbd>' : ''}</button>
+                        <button onclick="${passClick}" class="act-btn rounded-md border ${passCls} active:scale-95 transition-all"><span class="btn-main-act">${isFacing ? 'CALL' : 'CHECK'}</span><span class="btn-sub-act">${passiveStar ? '★ ' : ''}${passiveLbl}</span>${isHero ? '<kbd>J</kbd>' : ''}</button>
+                        <button onclick="commitCustomAction('${playerKey}','${inputId}','${aggrType}','${actorPos}')" class="act-btn rounded-md border ${aggrCls} active:scale-95 transition-all"><span class="btn-main-act">${aggrWord === '加注' ? 'RAISE' : 'BET'}</span><span id="aggrBtnLabel" class="btn-sub-act" data-star="${aggrStar ? 1 : 0}">${aggrStar ? '★ ' : ''}${aggrLabel}</span>${isHero ? '<kbd>K</kbd>' : ''}</button>
+                        <button onclick="quickCommit('${playerKey}','${aggrType}','allin','${actorPos}')" class="act-btn ${allinCls} rounded-md border active:scale-95 transition-all"><span class="btn-main-act">ALL-IN</span><span class="btn-sub-act">全押</span>${isHero ? '<kbd>A</kbd>' : ''}</button>
                     </div>`;
                 }
                 html += `</div>`;
@@ -13126,6 +13291,7 @@
             // 待发牌高亮(2026-07-21)：行动后需刷新槽位提示——setActionRecord 只调本函数，
             // 不调 renderBoard，故在此单独应用（避免 renderBoard↔renderBettingPanel 互调）
             applyBoardSlotHint();
+            try { updateTurnFocusHighlight(); } catch (e) {}
             _restoreFocus(_foc);
         }
 
@@ -14081,13 +14247,13 @@
                 <!-- 卡片1：错误/警告提示（有问题时显示） -->
                 <div id="postErrorPanel" class="hidden"></div>
 
-                <!-- 卡片2：决策依据（职责分离 2026-07-21：顶部 HUD = 答案，本卡 = 依据。
-                     原本大字动作+尺度+频率条与 HUD 逐项重复，实测 255px 全是重复内容） -->
-                <div id="decisionPanel" class="panel-bg rounded overflow-hidden hidden h-full flex flex-col justify-between p-2.5 box-border" style="border: 1px solid var(--accent); background: linear-gradient(135deg, rgba(22, 27, 34, 0.95) 0%, rgba(13, 17, 23, 0.98) 100%);">
-                    <!-- 顶栏：依据标题 + 剥削徽章 + 右侧内联 3 大核心数学指标胶囊 (零纵向占位) -->
-                    <div class="flex items-center justify-between gap-2 shrink-0" style="height: 22px;">
+                <!-- 卡片2：决策依据（置于分析·翻后详情顶部，默认折叠，需要时自选点开） -->
+                <div id="decisionPanel" class="panel-bg rounded overflow-hidden hidden flex flex-col p-2.5 box-border" style="border: 1px solid var(--accent); background: linear-gradient(135deg, rgba(22, 27, 34, 0.95) 0%, rgba(13, 17, 23, 0.98) 100%);">
+                    <!-- 顶栏：点击折叠/展开 + 依据标题 + 剥削徽章 + 右侧内联 3 大核心数学指标胶囊 -->
+                    <div class="flex items-center justify-between gap-2 shrink-0 cursor-pointer select-none" onclick="toggleDecisionPanelFold()" title="点击折叠/展开决策依据详情" style="min-height: 24px;">
                         <div class="flex items-center gap-1.5 min-w-0">
-                            <span class="text-xs font-bold text-gray-400 shrink-0">决策依据</span>
+                            <span id="decisionFoldIcon" class="text-xs text-sky-400 font-mono select-none">▸</span>
+                            <span class="text-xs font-bold text-gray-300 shrink-0">决策依据</span>
                             <span id="decisionAction" class="text-xs font-black tracking-wider" style="color:#7cc0ff;">--</span>
                             <span id="decisionSizing" class="text-xs font-bold" style="color:var(--gold)"></span>
                             <span id="decisionExploitBadge" class="text-[10px] font-bold px-1.5 py-0.5 rounded hidden" style="background:rgba(87,169,255,0.18);border:1px solid rgba(87,169,255,0.4);color:#7cc0ff;"></span>
@@ -14107,13 +14273,16 @@
                             </div>
                         </div>
                     </div>
-                    <!-- 中段：完整核心理由推理 (3行完整展开，无截断无滚动) -->
-                    <div id="decisionReason" class="text-xs text-gray-300 flex-1 my-1 overflow-hidden" style="line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;"></div>
-                    <div class="hidden">
-                        <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
+                    <!-- 折叠体：核心理由与警示标签 -->
+                    <div id="decisionPanelBody" class="flex flex-col gap-1.5 pt-1.5 mt-1 border-t border-white/5 hidden">
+                        <!-- 中段：完整核心理由推理 -->
+                        <div id="decisionReason" class="text-xs text-gray-300 my-1 overflow-hidden" style="line-height: 1.45;"></div>
+                        <div class="hidden">
+                            <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
+                        </div>
+                        <!-- 底栏：横向标签化警示区 -->
+                        <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 48px;"></div>
                     </div>
-                    <!-- 底栏：横向标签化警示区 (零纵向堆叠，横向紧凑药丸流) -->
-                    <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 26px;"></div>
                 </div>
 
                 <!-- 卡片3：胜率分析（胜/平/负 + 算法标签） -->
@@ -18180,14 +18349,15 @@
             if (!panel) {
                 panel = document.createElement('div');
                 panel.id = 'decisionPanel';
-                panel.className = 'panel-bg rounded overflow-hidden h-full flex flex-col justify-between p-2.5 box-border';
+                panel.className = 'panel-bg rounded overflow-hidden flex flex-col p-2.5 box-border';
                 panel.style.border = '1px solid var(--accent)';
                 panel.style.background = 'linear-gradient(135deg, rgba(22, 27, 34, 0.95) 0%, rgba(13, 17, 23, 0.98) 100%)';
                 panel.innerHTML = `
-                    <!-- 顶栏：依据标题 + 剥削徽章 + 右侧内联 3 大核心数学指标胶囊 (零纵向占位) -->
-                    <div class="flex items-center justify-between gap-2 shrink-0" style="height: 22px;">
+                    <!-- 顶栏：点击折叠/展开 + 依据标题 + 剥削徽章 + 右侧内联 3 大核心数学指标胶囊 -->
+                    <div class="flex items-center justify-between gap-2 shrink-0 cursor-pointer select-none" onclick="toggleDecisionPanelFold()" title="点击折叠/展开决策依据详情" style="min-height: 24px;">
                         <div class="flex items-center gap-1.5 min-w-0">
-                            <span class="text-xs font-bold text-gray-400 shrink-0">决策依据</span>
+                            <span id="decisionFoldIcon" class="text-xs text-sky-400 font-mono select-none">▸</span>
+                            <span class="text-xs font-bold text-gray-300 shrink-0">决策依据</span>
                             <span id="decisionAction" class="text-xs font-black tracking-wider" style="color:#7cc0ff;">--</span>
                             <span id="decisionSizing" class="text-xs font-bold" style="color:var(--gold)"></span>
                             <span id="decisionExploitBadge" class="text-[10px] font-bold px-1.5 py-0.5 rounded hidden" style="background:rgba(87,169,255,0.18);border:1px solid rgba(87,169,255,0.4);color:#7cc0ff;"></span>
@@ -18207,13 +18377,16 @@
                             </div>
                         </div>
                     </div>
-                    <!-- 中段：完整核心理由推理 (3行完整展开，无截断无滚动) -->
-                    <div id="decisionReason" class="text-xs text-gray-300 flex-1 my-1 overflow-hidden" style="line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;"></div>
-                    <div class="hidden">
-                        <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
-                    </div>
-                    <!-- 底栏：横向标签化警示区 (零纵向堆叠，横向紧凑药丸流) -->
-                    <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 26px;"></div>`;
+                    <!-- 折叠体：核心理由与警示标签 -->
+                    <div id="decisionPanelBody" class="flex flex-col gap-1.5 pt-1.5 mt-1 border-t border-white/5 hidden">
+                        <!-- 中段：完整核心理由推理 -->
+                        <div id="decisionReason" class="text-xs text-gray-300 my-1 overflow-hidden" style="line-height: 1.45;"></div>
+                        <div class="hidden">
+                            <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
+                        </div>
+                        <!-- 底栏：横向标签化警示区 -->
+                        <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 48px;"></div>
+                    </div>`;
                 // 插入到 postRightContent 的最顶部（决策最重要，放第一位）
                 const container = document.getElementById('postRightContent');
                 container.insertBefore(panel, container.firstChild);
@@ -18223,6 +18396,7 @@
                 // loading / 失败状态
                 const isFail = typeof postState !== 'undefined' && postState && postState.analysisStatus === 'failed';
                 panel.classList.remove('hidden');
+                try { applyDecisionPanelFold(); } catch (e) {}
                 document.getElementById('decisionAction').innerText = isFail ? '计算失败' : '计算中...';
                 document.getElementById('decisionAction').className = 'text-base font-black ' + (isFail ? 'text-red-400' : 'text-gray-400');
                 document.getElementById('decisionSizing').innerText = '';
@@ -18236,6 +18410,7 @@
             }
 
             panel.classList.remove('hidden');
+            try { applyDecisionPanelFold(); } catch (e) {}
 
             // 节点锁定剥削徽章
             const badgeEl = document.getElementById('decisionExploitBadge');
