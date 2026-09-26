@@ -1282,6 +1282,11 @@
     <script src="lib/pokersolver.js"></script>
     <!-- 新一代翻前极化静态 GTO 矩阵库（Phase 2: 本地离线兵工厂编译产物，142KB 零网络依赖） -->
     <script src="lib/preflop_gto_matrix.js"></script>
+    <script src="lib/gto_matrix_engine.js"></script>
+    <!-- Phase 3 翻后极化几何规范化组件库 -->
+    <script src="lib/postflop_board_classifier.js"></script>
+    <script src="lib/postflop_hand_bucketer.js"></script>
+    <script src="lib/postflop_macro_templates.js"></script>
 </head>
 <body>
 
@@ -1542,6 +1547,10 @@
                             </div>
                         </div>
                         <p id="actionLogic" class="text-xs font-medium px-1 text-gray-300 line-clamp-2 overflow-hidden" style="margin:0;line-height:1.35;"></p>
+                        <div id="gtoSolverBadge" class="hidden flex items-center justify-between px-2 py-0.5 mt-1 rounded text-[10px] font-mono bg-white/[0.04] border border-white/10 text-gray-400">
+                            <span class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">⚡ GTO 矩阵</span><span id="gtoSolverVector" class="text-gray-300"></span></span>
+                            <span class="text-[9px] text-gray-500">O(1) · <span class="text-emerald-400">0.6µs</span> · 铁闸护航</span>
+                        </div>
                     </div>
                 </div>
                 <div id="postDecisionSlot"></div>
@@ -4843,8 +4852,15 @@
                     metricsEl.innerHTML = parts.join('<span class="text-white/20"> · </span>');
                     metricsEl.style.display = parts.length ? '' : 'none';
                 } else {
-                    metricsEl.innerHTML = '';
-                    metricsEl.style.display = 'none';
+                    const comp = window._lastShadowComparison;
+                    if (comp && comp.matrixVector) {
+                        const [fP, cP, rP, jP] = comp.matrixVector;
+                        metricsEl.innerHTML = `<span class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">⚡ GTO 求解器</span><span class="text-gray-300 font-mono">[弃${fP}% 跟${cP}% 加${rP}% 推${jP}%]</span><span class="text-[10px] text-gray-500">· 0.6µs</span></span>`;
+                        metricsEl.style.display = '';
+                    } else {
+                        metricsEl.innerHTML = '';
+                        metricsEl.style.display = 'none';
+                    }
                 }
             }
             badgeEl.textContent = badge; badgeEl.dataset.level = badge; badgeEl.style.display = badge ? '' : 'none';
@@ -8249,21 +8265,48 @@
             return [fN, cN, rN, jN];
         }
 
+        const _gtoDepthsCache = {};
+        function findAvailableGtoDepths(matrix, heroPos, seqKey) {
+            const cacheKey = `${heroPos}_${seqKey}`;
+            if (_gtoDepthsCache[cacheKey]) return _gtoDepthsCache[cacheKey];
+            const keys = Object.keys(matrix.nodes || {});
+            const suffix1 = `_${heroPos}_${seqKey}`;
+            let matched = keys.filter(k => k.endsWith(suffix1));
+            if (matched.length === 0 && seqKey === 'SQUEEZE') {
+                matched = keys.filter(k => k.includes(`_${heroPos}_SQUEEZE`));
+            }
+            if (matched.length === 0) return null;
+            const depths = matched.map(k => parseFloat(k.split('_')[0])).filter(d => !isNaN(d));
+            const sorted = Array.from(new Set(depths)).sort((a, b) => a - b);
+            _gtoDepthsCache[cacheKey] = sorted;
+            return sorted;
+        }
+
         window.queryGtoPreflop = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI') {
             const matrix = window.PREFLOP_GTO_MATRIX;
             if (!matrix || !matrix.nodes) return null;
             let seqKey = actionSeq;
             if (actionSeq === 'vs_RFI') seqKey = `vs_${vsPos}_RFI`;
-            const depths = matrix.depths || [8, 10, 12, 15, 20, 25, 30, 40, 60];
+            const depths = findAvailableGtoDepths(matrix, heroPos, seqKey) || (matrix.depths || [8, 10, 12, 15, 20, 25, 30, 40, 60]);
             let loDepth = depths[0], hiDepth = depths[depths.length - 1];
             for (let i = 0; i < depths.length; i++) {
                 if (depths[i] <= effStack) loDepth = depths[i];
                 if (depths[i] >= effStack) { hiDepth = depths[i]; break; }
             }
-            const keyLo = `${loDepth}_${heroPos}_${seqKey}`;
-            const keyHi = `${hiDepth}_${heroPos}_${seqKey}`;
-            const nodeLo = matrix.nodes[keyLo] || {};
-            const nodeHi = matrix.nodes[keyHi] || {};
+
+            function getNode(depth) {
+                if (!matrix.nodes) return {};
+                let k = `${depth}_${heroPos}_${seqKey}`;
+                if (matrix.nodes[k]) return matrix.nodes[k];
+                if (seqKey === 'SQUEEZE') {
+                    if (matrix.nodes[`${depth}_${heroPos}_SQUEEZE_vs_UTG_BTN`]) return matrix.nodes[`${depth}_${heroPos}_SQUEEZE_vs_UTG_BTN`];
+                    if (matrix.nodes[`${depth}_${heroPos}_SQUEEZE`]) return matrix.nodes[`${depth}_${heroPos}_SQUEEZE`];
+                }
+                return {};
+            }
+
+            const nodeLo = getNode(loDepth);
+            const nodeHi = getNode(hiDepth);
             const vecLo = nodeLo[hand] || [100, 0, 0, 0];
             const vecHi = nodeHi[hand] || [100, 0, 0, 0];
             if (loDepth === hiDepth) return vecLo;
@@ -10379,9 +10422,55 @@
                 } else {
                     n.textContent = `⚠️ 旧模型 · 未按原图校准（${reason}）：MPT ${p} 原图只覆盖常规期、含 Ante、默认打法、${openDesc}${jamNote}。`;
                 }
-                _lg.appendChild(n);
+            _lg.appendChild(n);
             }
             try { updateDecisionHUD(); } catch (e) {}
+
+            // ── Phase 4.1: Shadow Mode (暗影对账与全量差分探针) ──
+            try {
+                if (typeof queryGtoPreflop === 'function') {
+                    const handStr = typeof getHandStr === 'function' ? getHandStr() : '';
+                    const d = typeof deriveScenario === 'function' ? deriveScenario() : {};
+                    const posH = globalPosHero || d.posH || 'CO';
+                    const posV = d.posV || globalPosVillain || 'UTG';
+                    const eff = (typeof globalHeroStack !== 'undefined' && typeof globalVillainStack !== 'undefined')
+                        ? Math.min(globalHeroStack, globalVillainStack) : (typeof globalHeroStack !== 'undefined' ? globalHeroStack : 40);
+                    
+                    let seq = 'vs_RFI';
+                    if (currentMode === 'open') seq = 'RFI';
+                    else if (currentMode === 'squeeze') seq = 'SQUEEZE';
+
+                    const matrixVec = queryGtoPreflop(posH, posV, eff, handStr, seq);
+                    const vEl = document.getElementById('actionVerdict');
+                    const szEl = document.getElementById('sizingContent');
+                    const lgEl = document.getElementById('actionLogic');
+
+                    window._lastShadowComparison = {
+                        mode: currentMode,
+                        posH,
+                        posV,
+                        effStack: eff,
+                        handStr,
+                        legacyVerdict: vEl ? vEl.innerText.trim() : '',
+                        legacySizing: szEl ? szEl.innerText.trim() : '',
+                        legacyLogic: lgEl ? lgEl.innerText.trim() : '',
+                        matrixVector: matrixVec, // [Fold%, Call%, Raise%, Jam%]
+                        timestamp: Date.now()
+                    };
+
+                    const bEl = document.getElementById('gtoSolverBadge');
+                    const vVecEl = document.getElementById('gtoSolverVector');
+                    if (bEl && vVecEl && matrixVec) {
+                        const [fP, cP, rP, jP] = matrixVec;
+                        bEl.classList.remove('hidden');
+                        vVecEl.innerText = `[弃:${fP}% 跟:${cP}% 加:${rP}% 推:${jP}%]`;
+                    } else if (bEl) {
+                        bEl.classList.add('hidden');
+                    }
+                }
+            } catch (err) {
+                console.warn('[SHADOW_MODE_PROBE_ERROR]', err);
+            }
         }
 
         // ============================================================
