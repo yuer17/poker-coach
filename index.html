@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.94 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.95 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.94 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Phase 9A 转牌多档位注额求解与底池几何学) ══
+            /* ══ PokerCode v2.95 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Phase 9B 多人底池收紧与范围衰减矩阵) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1295,15 +1295,17 @@
     <script src="lib/postflop_river_terminal.js"></script>
     <!-- Phase 9A 翻后转牌多档位注额求解与底池几何学引擎 -->
     <script src="lib/postflop_turn_sizing.js"></script>
+    <!-- Phase 9B 翻后多人底池收紧与范围衰减矩阵引擎 -->
+    <script src="lib/postflop_multiway_engine.js"></script>
 </head>
 <body>
 
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.94 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.95 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.94</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.95</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1324,7 +1326,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.94 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.95 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -5713,7 +5715,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v2.94',
+                    v: 'v2.95',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5732,7 +5734,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5806,7 +5808,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.94 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.95 正式版';
             renderWindowColorChips(key);
         };
 
@@ -14627,6 +14629,18 @@
                                 </div>
                                 <div id="decisionRiverDesc" class="text-[10px] text-gray-400 leading-tight"></div>
                             </div>
+                            <!-- Phase 9B: 多人底池动力学与共享 MDF 矩阵卡片 -->
+                            <div id="decisionMultiwayBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-teal-400 font-bold flex items-center gap-1">
+                                        <span>👥 多人动力学:</span>
+                                        <span id="decisionMultiwayBadge" class="px-1.5 py-0.5 rounded text-[9px] font-mono border"></span>
+                                    </span>
+                                    <span id="decisionMultiwayMdfCompare" class="text-[9px] text-sky-300 font-mono"></span>
+                                </div>
+                                <div id="decisionMultiwayRoleDesc" class="text-[10px] text-gray-300 leading-tight"></div>
+                                <div id="decisionMultiwayTactics" class="text-[9.5px] text-gray-400 leading-tight"></div>
+                            </div>
                         </div>
                         <!-- 底栏：横向标签化警示区 -->
                         <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 48px;"></div>
@@ -17213,14 +17227,29 @@
             const icmTighten = stage === 'bubble' ? 1.15 : stage === 'final' ? 1.08 : 1.0;
             const sprZone    = spr < 2 ? 'commit' : spr < 5 ? 'flex' : 'deep';
 
-            // ── 多人底池与相对位置上下文 (Phase 4 Pokercode 进阶，前置声明杜绝 TDZ) ──
+            // ── 多人底池与相对位置上下文 (Phase 4 & Phase 9B 多人动力学与共享 MDF 矩阵) ──
             const mwCtx = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
             const mwTotalCount = mwCtx ? mwCtx.totalCount : ((postState.extraVillains || []).length + 2);
             const isMultiway = mwCtx ? mwCtx.isMultiway : (mwTotalCount >= 3);
             const _mwN = Math.max(0, mwTotalCount - 2); // 额外对手数量：单挑=0, 3人=1, 4人=2
             const isSandwich = isMultiway && mwCtx && mwCtx.relativeRole === 'SANDWICH';
-            const mwDefenseRatio = isMultiway ? Math.pow(1 / (mwTotalCount - 1), 0.6) : 1.0;
-            const sharedMdf = mdf * mwDefenseRatio;
+
+            // Phase 9B: 多人底池共享 MDF 纳什定理与动力学求解 (TASK-ASTRA-038)
+            const sharedMdf = (villainBet > 0 && isMultiway)
+                ? (typeof calculateMultiwayMdf === 'function' ? calculateMultiwayMdf(Math.max(0.1, pot - villainBet), villainBet, mwTotalCount) : (mdf * Math.pow(1 / (mwTotalCount - 1), 0.6)))
+                : (villainBet > 0 ? mdf : 0);
+
+            const mwDynamics = (typeof evaluateMultiwayDynamics === 'function') ? evaluateMultiwayDynamics({
+                heroPos: heroPos || 'BTN',
+                contenders: (mwCtx && mwCtx.players) ? mwCtx.players.map(p => p.pos) : [heroPos || 'BTN', 'BB'],
+                numContenders: mwTotalCount,
+                pot: pot,
+                villainBet: villainBet,
+                street: street,
+                equity: equity,
+                outs: outs,
+                handBucket: (typeof heroMadeBucket === 'function') ? heroMadeBucket(postState.heroCards, board) : '无对'
+            }) : null;
 
             // 零筹码行动权拦截 (A06 修复 & 契约闭包)
             if (typeof effStack === 'number' && effStack <= 0) {
@@ -17248,6 +17277,7 @@
                     blocker: null,
                     actionLine: null,
                     villainProfile: null,
+                    multiwayDynamics: mwDynamics,
                     exploitOffset: {
                         profile: 'balanced',
                         applied: false,
@@ -17265,6 +17295,7 @@
                         sharedMdf: 0,
                         isMultiway: !!isMultiway,
                         mwTotalCount: mwTotalCount || 2,
+                        multiwayDynamics: mwDynamics,
                         icmTighten,
                         street
                     }
@@ -18701,6 +18732,7 @@
                 actionLine: actLine,
                 villainProfile: vProfile,
                 fedorAnalysis,
+                multiwayDynamics: mwDynamics,
                 exploitOffset: {
                     profile: vProfile ? vProfile.id : 'balanced',
                     applied: exploitApplied,
@@ -18715,6 +18747,7 @@
                     sharedMdf,
                     isMultiway,
                     mwTotalCount,
+                    multiwayDynamics: mwDynamics,
                     icmTighten,
                     fedorR: fedorAnalysis.R,
                     fedorRc: fedorAnalysis.Rc,
@@ -18945,6 +18978,18 @@
                                 </div>
                                 <div id="decisionRiverDesc" class="text-[10px] text-gray-400 leading-tight"></div>
                             </div>
+                            <!-- Phase 9B: 多人底池动力学与共享 MDF 矩阵卡片 -->
+                            <div id="decisionMultiwayBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-teal-400 font-bold flex items-center gap-1">
+                                        <span>👥 多人动力学:</span>
+                                        <span id="decisionMultiwayBadge" class="px-1.5 py-0.5 rounded text-[9px] font-mono border"></span>
+                                    </span>
+                                    <span id="decisionMultiwayMdfCompare" class="text-[9px] text-sky-300 font-mono"></span>
+                                </div>
+                                <div id="decisionMultiwayRoleDesc" class="text-[10px] text-gray-300 leading-tight"></div>
+                                <div id="decisionMultiwayTactics" class="text-[9.5px] text-gray-400 leading-tight"></div>
+                            </div>
                         </div>
                         <!-- 底栏：横向标签化警示区 -->
                         <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 48px;"></div>
@@ -19081,26 +19126,32 @@
                 const lut = result.lutResult;
                 const turnTrans = result.turnTransition;
                 const riverTerm = result.riverTerminal;
+                const mwDyn = result.multiwayDynamics;
                 const boardCount = postState.board.filter(c => c !== null).length;
                 const street = result.street || (boardCount === 4 ? 'turn' : boardCount === 5 ? 'river' : 'flop');
 
                 const hasLut = !!(lut && lut.status === 'MATCHED_LUT' && lut.frequencies);
                 const hasTurn = !!(street === 'turn' && turnTrans && turnTrans.runoutType && turnTrans.runoutType !== 'UNKNOWN');
                 const hasRiver = !!(street === 'river' && riverTerm && riverTerm.frequencies);
+                const hasMultiway = !!(mwDyn && mwDyn.isMultiway);
 
-                if (hasLut || hasTurn || hasRiver) {
+                if (hasLut || hasTurn || hasRiver || hasMultiway) {
                     gtoBox.classList.remove('hidden');
 
                     const titleEl = document.getElementById('decisionGtoTitle');
                     if (titleEl) {
-                        if (street === 'turn') titleEl.innerText = '⚡ 转牌 GTO 跃迁';
+                        if (hasMultiway && street === 'turn') titleEl.innerText = '👥 转牌多人 GTO 跃迁';
+                        else if (hasMultiway) titleEl.innerText = '👥 多人底池 GTO 动力学';
+                        else if (street === 'turn') titleEl.innerText = '⚡ 转牌 GTO 跃迁';
                         else if (street === 'river') titleEl.innerText = '⚡ 河牌 GTO 终局';
                         else titleEl.innerText = '⚡ 翻后 GTO 预解';
                     }
 
                     const metaEl = document.getElementById('decisionGtoMeta');
                     if (metaEl) {
-                        if (street === 'river' && riverTerm) {
+                        if (hasMultiway && mwDyn) {
+                            metaEl.innerText = `${mwDyn.numContenders}人底池 · ${mwDyn.roleLabel}`;
+                        } else if (street === 'river' && riverTerm) {
                             metaEl.innerText = `河牌零听牌 · ${riverTerm.tierName}`;
                         } else if (street === 'turn' && turnTrans) {
                             metaEl.innerText = `${turnTrans.typeName || turnTrans.label || '转牌跃迁'} · ${turnTrans.shiftName || '均势'}`;
@@ -19115,7 +19166,7 @@
                     
                     const latEl = document.getElementById('decisionGtoLatency');
                     if (latEl) {
-                        const lat = (street === 'river' && riverTerm) ? (riverTerm.latencyUs || 2.1) : (street === 'turn' && turnTrans ? (turnTrans.latencyUs || 0.2) : (lut ? (lut.latencyUs || 2.8) : 2.8));
+                        const lat = (hasMultiway && mwDyn) ? (mwDyn.latencyUs || 0.1) : (street === 'river' && riverTerm) ? (riverTerm.latencyUs || 2.1) : (street === 'turn' && turnTrans ? (turnTrans.latencyUs || 0.2) : (lut ? (lut.latencyUs || 2.8) : 2.8));
                         latEl.innerText = `O(1) · ${lat}µs`;
                     }
 
@@ -19238,6 +19289,38 @@
                             }
                         } else {
                             riverBox.classList.add('hidden');
+                        }
+                    }
+
+                    // Phase 9B: 多人底池动力学卡片
+                    const mwBox = document.getElementById('decisionMultiwayBox');
+                    if (mwBox) {
+                        if (mwDyn && mwDyn.isMultiway) {
+                            mwBox.classList.remove('hidden');
+                            const mwBadge = document.getElementById('decisionMultiwayBadge');
+                            const mwMdfComp = document.getElementById('decisionMultiwayMdfCompare');
+                            const mwRoleDesc = document.getElementById('decisionMultiwayRoleDesc');
+                            const mwTactics = document.getElementById('decisionMultiwayTactics');
+                            const villainBet = (m && m.villainBet) ? m.villainBet : 0;
+                            if (mwBadge) {
+                                mwBadge.className = `px-1.5 py-0.5 rounded text-[9px] font-mono border ${mwDyn.badgeClass || 'text-gray-300 border-white/20'}`;
+                                mwBadge.innerText = `${mwDyn.numContenders}人池 · ${mwDyn.roleLabel}`;
+                            }
+                            if (mwMdfComp) {
+                                if (villainBet > 0) {
+                                    mwMdfComp.innerText = `共享MDF: ${mwDyn.sharedMdf}% (单挑需 ${m.mdf ? m.mdf.toFixed(0) : '0'}%)`;
+                                } else {
+                                    mwMdfComp.innerText = `公平胜率: ${mwDyn.fairShareEquity}%`;
+                                }
+                            }
+                            if (mwRoleDesc) {
+                                mwRoleDesc.innerText = `权益实现率 EQR ×${mwDyn.eqrMultiplier} · 跟注门槛收紧 +${mwDyn.callMarginShift}%${mwDyn.sandwichRisk ? ' (⚠️ 夹心位高危挤压风险)' : ''}`;
+                            }
+                            if (mwTactics) {
+                                mwTactics.innerText = mwDyn.tacticalSummary || '';
+                            }
+                        } else {
+                            mwBox.classList.add('hidden');
                         }
                     }
                 } else {
