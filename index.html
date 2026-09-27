@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.96 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.99 (3.0-RC2) - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.96 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Phase 9C 翻后过牌加注决策) ══
+            /* ══ PokerCode v2.99 (3.0-RC2) 高定黑曜石与 Liquid Glass 设计令牌 (决策中枢单一事实源仲裁版) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -125,6 +125,8 @@
         .app-container { width: 100%; max-width: 1200px; height: auto; min-height: 100vh; background-color: var(--surface-1); border-radius: var(--radius-lg); overflow: hidden; overflow: clip; box-shadow: 0 12px 36px -12px rgba(0,0,0,0.7); border: 1px solid var(--glass-border); display: flex; flex-direction: column; }
 
         .scroll-area { height: auto; overflow: visible; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        /* 彻底全局隐藏旧式决策头部栏（决策信息已全部由 #decisionHUD 承担） */
+        #preDecisionHead { display: none !important; }
         /* P2-4：窄屏右栏内容区可滚动 */
         #postRightContent { overflow-y: auto; }
 
@@ -823,19 +825,55 @@
             box-sizing: border-box;
         }
         #decisionHUD.hud-empty { border-color: var(--glass-border); box-shadow: none; opacity: 0.8; }
-        .hud-top { display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-micro); color: var(--text-muted); letter-spacing: .08em; height: 18px; }
-        .hud-stage { font-weight: 800; text-transform: uppercase; }
-        .hud-badge { font-weight: 800; padding: 1px 8px; border-radius: 999px; font-size: var(--fs-micro); letter-spacing: 0; }
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+            font-size: var(--fs-micro);
+            color: var(--text-muted);
+            letter-spacing: .04em;
+            min-height: 20px;
+            height: auto;
+        }
+        .hud-stage {
+            font-weight: 800;
+            text-transform: uppercase;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .hud-badge {
+            font-weight: 800;
+            padding: 1px 8px;
+            border-radius: 999px;
+            font-size: var(--fs-micro);
+            letter-spacing: 0;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
         .hud-badge[data-level="明确"] { background: rgba(46,168,106,.18); color: #45d68a; }
         .hud-badge[data-level="边缘"] { background: rgba(224,168,58,.18); color: #e0a83a; }
         .hud-badge[data-level="混合"] { background: rgba(87,169,255,.18); color: #7cc0ff; }
         /* 来源分级(2026-09-08)：这条建议是查表来的、实算来的，还是经验档位——悬停看构成 */
         .hud-src { font-size: var(--fs-micro); font-weight: 700; padding: 1px 7px; border-radius: 999px;
-                   margin-left: auto; margin-right: 6px; cursor: help; white-space: nowrap;
+                   margin-left: 0; margin-right: 0; cursor: help; white-space: nowrap; flex-shrink: 0;
                    border: 1px solid transparent; }
         .hud-src[data-src="ref"]  { background: rgba(87,169,255,.12);  color: #7cc0ff; border-color: rgba(87,169,255,.30); }
         .hud-src[data-src="calc"] { background: rgba(46,168,106,.12);  color: #45d68a; border-color: rgba(46,168,106,.30); }
         .hud-src[data-src="mix"]  { background: rgba(224,168,58,.12);  color: #e0a83a; border-color: rgba(224,168,58,.30); }
+        .hud-metrics {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+        .hud-metrics > * {
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
         .hud-main-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; margin-top: 3px; }
         .hud-action { font-family: var(--font-mono); font-size: var(--fs-display); font-weight: 900; line-height: 1.05; color: var(--text-primary); letter-spacing: 0.02em; white-space: nowrap; }
         #decisionHUD[data-sem="attack"]  .hud-action { color: #ff7a7d; }
@@ -896,11 +934,23 @@
         #visionHistoryBar.vbar-collapsed #visionThumbnails { display: none !important; }
         #visionHistoryBar.vbar-collapsed > div:first-child { margin-bottom: 0 !important; }
         @media (max-width: 767.98px) {
-            .scroll-area > .col-dec { display: contents !important; }
-            #decisionHUD { position: sticky; top: 0; z-index: 50; padding: 6px 10px; background: #141820; border: 1px solid var(--accent); box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
-            #decisionHUD .hud-action { font-size: 20px; }
+            .scroll-area > .col-dec { display: block !important; width: 100% !important; }
+            #decisionHUD {
+                position: sticky;
+                top: 0;
+                z-index: 50;
+                padding: 8px 12px;
+                background: linear-gradient(180deg, #11151e 0%, #0c0f16 100%);
+                border: 1px solid var(--accent);
+                box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+                border-radius: var(--radius-md, 8px);
+                height: auto !important;
+                max-height: none !important;
+                box-sizing: border-box;
+            }
+            #decisionHUD .hud-action { font-size: 22px; line-height: 1.1; }
             #decisionHUD .hud-sizing { font-size: 13px; padding: 1px 6px; }
-            #decisionHUD .hud-main-row { gap: 8px; }
+            #decisionHUD .hud-main-row { gap: 8px; margin-top: 4px; }
             .macro-btn kbd { display: none; }
         }
         /* ══════════ 翻前行动时间线 + 翻后行动条突出（2026-07-21）══════════ */
@@ -1299,15 +1349,17 @@
     <script src="lib/postflop_multiway_engine.js"></script>
     <!-- Phase 9C 翻后过牌加注 (Check-Raise) 决策引擎 -->
     <script src="lib/postflop_check_raise.js"></script>
+    <!-- 3.0-RC2 决策中枢单一事实源仲裁器 (Unified Action Resolver) -->
+    <script src="lib/postflop_unified_resolver.js"></script>
 </head>
 <body>
 
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.96 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.99 (3.0-RC2)）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.96</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.99</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1328,7 +1380,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.96 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.99 (3.0-RC2)</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -1534,7 +1586,7 @@
             <div class="col-dec w-full shrink-0">
                 <div class="zone-head" id="preDecisionHead"><span>决策</span><span id="decisionSrc" class="dec-src" style="display:none"></span><span id="preDecisionSummary" style="display:none" hidden></span><button id="preDecisionToggle" onclick="togglePreDecision()" class="macro-btn" style="display:none" title="展开/收起决策详情">展开 ▾</button></div>
                 <div id="decisionHUD" class="decision-hero hud-empty" data-sem="neutral">
-                    <div class="hud-top flex items-center justify-between"><div class="flex items-center gap-2"><span id="hudStage" class="hud-stage">翻前</span><span id="hudSrc" class="hud-src" style="display:none"></span><span id="hudBadge" class="hud-badge" style="display:none"></span></div><div id="hudMetrics" class="hud-metrics flex items-center gap-2 text-xs font-mono text-gray-400"></div></div>
+                    <div class="hud-top"><div class="flex items-center gap-1.5 shrink-0"><span id="hudStage" class="hud-stage">翻前</span><span id="hudBadge" class="hud-badge" style="display:none"></span><span id="hudSrc" class="hud-src" style="display:none"></span></div><div id="hudMetrics" class="hud-metrics text-xs font-mono text-gray-400"></div></div>
                     <div class="hud-main-row">
                         <div id="hudAction" class="hud-action">等待输入</div>
                         <div id="hudSizing" class="hud-sizing" style="display:none"></div>
@@ -4886,15 +4938,15 @@
                             const callVal = fr.CALL !== undefined ? fr.CALL : (fr.BET_SMALL || 0);
                             const raiseVal = fr.RAISE !== undefined ? fr.RAISE : (fr.BET_LARGE || 0);
                             const allinVal = fr.ALLIN || 0;
-                            parts.push(`<span class="flex items-center gap-1"><span class="text-sky-400 font-bold">${label}</span><span class="text-gray-300 font-mono">[弃${foldVal}% 跟${callVal}% 加${raiseVal}% 推${allinVal}%]</span><span class="text-[9px] text-gray-500">· ${lat}µs</span></span>`);
+                            parts.push(`<span class="flex items-center gap-1 whitespace-nowrap shrink-0"><span class="text-sky-400 font-bold">${label}</span><span class="text-gray-300 font-mono">[弃${foldVal}% 跟${callVal}% 加${raiseVal}% 推${allinVal}%]</span><span class="text-[9px] text-gray-500">· ${lat}µs</span></span>`);
                         } else if (hasTurn) {
-                            parts.push(`<span class="flex items-center gap-1"><span class="text-amber-400 font-bold">${label}</span><span class="text-gray-300 font-mono">[${d.turnTransition.typeName || '跃迁'} · ${d.turnTransition.shiftName || '均势'}]</span><span class="text-[9px] text-gray-500">· ${lat}µs</span></span>`);
+                            parts.push(`<span class="flex items-center gap-1 whitespace-nowrap shrink-0"><span class="text-amber-400 font-bold">${label}</span><span class="text-gray-300 font-mono">[${d.turnTransition.typeName || '跃迁'} · ${d.turnTransition.shiftName || '均势'}]</span><span class="text-[9px] text-gray-500">· ${lat}µs</span></span>`);
                         }
                     }
-                    if (m.spr !== undefined && m.spr !== null) parts.push(`<span>SPR <b class="text-amber-400 font-bold">${(+m.spr).toFixed(1)}</b></span>`);
-                    if (m.requiredEq !== undefined && m.requiredEq !== null) parts.push(`<span>需胜率 <b class="text-sky-400 font-bold">${Math.round(m.requiredEq)}%</b></span>`);
-                    if (m.mdf !== undefined && m.mdf !== null) parts.push(`<span>MDF <b class="text-emerald-400 font-bold">${Math.round(m.mdf)}%</b></span>`);
-                    metricsEl.innerHTML = parts.join('<span class="text-white/20"> · </span>');
+                    if (m.spr !== undefined && m.spr !== null) parts.push(`<span class="whitespace-nowrap shrink-0">SPR <b class="text-amber-400 font-bold">${(+m.spr).toFixed(1)}</b></span>`);
+                    if (m.requiredEq !== undefined && m.requiredEq !== null) parts.push(`<span class="whitespace-nowrap shrink-0">需胜率 <b class="text-sky-400 font-bold">${Math.round(m.requiredEq)}%</b></span>`);
+                    if (m.mdf !== undefined && m.mdf !== null) parts.push(`<span class="whitespace-nowrap shrink-0">MDF <b class="text-emerald-400 font-bold">${Math.round(m.mdf)}%</b></span>`);
+                    metricsEl.innerHTML = parts.join('<span class="text-white/20 whitespace-nowrap shrink-0"> · </span>');
                     metricsEl.style.display = parts.length ? '' : 'none';
                 } else {
                     const comp = window._lastShadowComparison;
@@ -5717,7 +5769,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v2.96',
+                    v: 'v2.99',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5736,7 +5788,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5810,7 +5862,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.96 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.99 (3.0-RC2)';
             renderWindowColorChips(key);
         };
 
@@ -8301,24 +8353,35 @@
 
         // ── Phase 2: 新一代翻前极化静态 GTO 矩阵运行时查询引擎 ──
         function interpolateGtoFrequencies(vLo, vHi, weight) {
-            const f = vLo[0] * (1 - weight) + vHi[0] * weight;
-            const c = vLo[1] * (1 - weight) + vHi[1] * weight;
-            const r = vLo[2] * (1 - weight) + vHi[2] * weight;
-            const j = vLo[3] * (1 - weight) + vHi[3] * weight;
-            const fN = Math.round(f), cN = Math.round(c), rN = Math.round(r);
-            const jN = 100 - fN - cN - rN;
-            return [fN, cN, rN, jN];
+            const raw = [
+                Math.max(0, vLo[0] * (1 - weight) + vHi[0] * weight),
+                Math.max(0, vLo[1] * (1 - weight) + vHi[1] * weight),
+                Math.max(0, vLo[2] * (1 - weight) + vHi[2] * weight),
+                Math.max(0, vLo[3] * (1 - weight) + vHi[3] * weight)
+            ];
+            const sum = raw[0] + raw[1] + raw[2] + raw[3];
+            if (sum <= 0) return [100, 0, 0, 0];
+            const normalized = raw.map(x => (x / sum) * 100);
+            const floors = normalized.map(Math.floor);
+            let rem = 100 - (floors[0] + floors[1] + floors[2] + floors[3]);
+            const diffs = normalized.map((x, i) => ({ idx: i, diff: x - floors[i] }))
+                                    .sort((a, b) => b.diff - a.diff);
+            for (let i = 0; i < rem; i++) {
+                floors[diffs[i].idx]++;
+            }
+            return floors;
         }
 
         const _gtoDepthsCache = {};
         function findAvailableGtoDepths(matrix, heroPos, seqKey) {
-            const cacheKey = `${heroPos}_${seqKey}`;
+            const effPos = (seqKey === 'RFI' && heroPos === 'HJ') ? 'MP' : ((seqKey === 'RFI' && heroPos === 'LJ') ? 'UTG' : heroPos);
+            const cacheKey = `${effPos}_${seqKey}`;
             if (_gtoDepthsCache[cacheKey]) return _gtoDepthsCache[cacheKey];
             const keys = Object.keys(matrix.nodes || {});
-            const suffix1 = `_${heroPos}_${seqKey}`;
+            const suffix1 = `_${effPos}_${seqKey}`;
             let matched = keys.filter(k => k.endsWith(suffix1));
             if (matched.length === 0 && seqKey === 'SQUEEZE') {
-                matched = keys.filter(k => k.includes(`_${heroPos}_SQUEEZE`));
+                matched = keys.filter(k => k.includes(`_${effPos}_SQUEEZE`));
             }
             if (matched.length === 0) return null;
             const depths = matched.map(k => parseFloat(k.split('_')[0])).filter(d => !isNaN(d));
@@ -8330,9 +8393,15 @@
         window.queryGtoPreflop = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI') {
             const matrix = window.PREFLOP_GTO_MATRIX;
             if (!matrix || !matrix.nodes) return null;
+
+            let effHeroPos = heroPos;
+            let effVsPos = vsPos;
+            if (actionSeq === 'RFI' && heroPos === 'HJ') effHeroPos = 'MP';
+            if (actionSeq === 'RFI' && heroPos === 'LJ') effHeroPos = 'UTG';
+
             let seqKey = actionSeq;
-            if (actionSeq === 'vs_RFI') seqKey = `vs_${vsPos}_RFI`;
-            const depths = findAvailableGtoDepths(matrix, heroPos, seqKey) || (matrix.depths || [8, 10, 12, 15, 20, 25, 30, 40, 60]);
+            if (actionSeq === 'vs_RFI') seqKey = `vs_${effVsPos}_RFI`;
+            const depths = findAvailableGtoDepths(matrix, effHeroPos, seqKey) || (matrix.depths || [8, 10, 12, 15, 20, 25, 30, 40, 60]);
             let loDepth = depths[0], hiDepth = depths[depths.length - 1];
             for (let i = 0; i < depths.length; i++) {
                 if (depths[i] <= effStack) loDepth = depths[i];
@@ -8341,19 +8410,36 @@
 
             function getNode(depth) {
                 if (!matrix.nodes) return {};
-                let k = `${depth}_${heroPos}_${seqKey}`;
+                let k = `${depth}_${effHeroPos}_${seqKey}`;
                 if (matrix.nodes[k]) return matrix.nodes[k];
+                if (seqKey === 'RFI') {
+                    if (effHeroPos === 'HJ' && matrix.nodes[`${depth}_MP_RFI`]) return matrix.nodes[`${depth}_MP_RFI`];
+                    if (effHeroPos === 'LJ' && matrix.nodes[`${depth}_UTG_RFI`]) return matrix.nodes[`${depth}_UTG_RFI`];
+                }
                 if (seqKey === 'SQUEEZE') {
-                    if (matrix.nodes[`${depth}_${heroPos}_SQUEEZE_vs_UTG_BTN`]) return matrix.nodes[`${depth}_${heroPos}_SQUEEZE_vs_UTG_BTN`];
-                    if (matrix.nodes[`${depth}_${heroPos}_SQUEEZE`]) return matrix.nodes[`${depth}_${heroPos}_SQUEEZE`];
+                    if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`];
+                    if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`];
                 }
                 return {};
             }
 
             const nodeLo = getNode(loDepth);
             const nodeHi = getNode(hiDepth);
-            const vecLo = nodeLo[hand] || [100, 0, 0, 0];
-            const vecHi = nodeHi[hand] || [100, 0, 0, 0];
+
+            const hasLo = Object.keys(nodeLo).length > 0;
+            const hasHi = Object.keys(nodeHi).length > 0;
+
+            if (!hasLo && !hasHi) {
+                return null; // 节点缺失返回 null，绝不误判为 100% 弃牌
+            }
+
+            const vecLo = nodeLo[hand] || (hasLo ? [100, 0, 0, 0] : null);
+            const vecHi = nodeHi[hand] || (hasHi ? [100, 0, 0, 0] : null);
+
+            if (!vecLo && !vecHi) return null;
+            if (!vecLo) return vecHi;
+            if (!vecHi) return vecLo;
+
             if (loDepth === hiDepth) return vecLo;
             const weight = (effStack - loDepth) / (hiDepth - loDepth);
             return interpolateGtoFrequencies(vecLo, vecHi, weight);
@@ -13182,10 +13268,15 @@
 
             // 决策引擎建议（每次渲染时从 postState 读最新值）
             const dec = postState.decisionResult;   // null = 尚未计算完
-            // 星标落在频率最高的动作上（而非 primaryAction，避免 BET 40% / CHECK 60% 时星标错位）
+            // 星标跟随单一权威事实源仲裁动作（兼顾混合策略与战略加注指令）
             const suggAction = (() => {
                 if (!dec) return '';
                 const freqs = dec.frequencies || {};
+                if (dec.primaryAction) {
+                    const pri = dec.primaryAction.toUpperCase();
+                    const priPct = freqs[pri.toLowerCase()] || 0;
+                    if (priPct >= 30 || pri === 'RAISE' || pri === 'ALLIN') return pri;
+                }
                 let bestAct = dec.primaryAction || '';
                 let bestPct = freqs[bestAct.toLowerCase()] || 0;
                 for (const [act, pct] of Object.entries(freqs)) {
@@ -18366,14 +18457,16 @@
                         primaryAction = 'RAISE';
                         sizing = crDecision.isAllIn ? '全押' : crDecision.recommendedRaiseToBb.toFixed(1) + 'BB';
                         const raiseF = crDecision.crFrequency;
+                        const foldF = 25;
+                        const callF = Math.max(0, 100 - raiseF - foldF);
                         frequencies = crDecision.category === 'BACKDOOR_BLUFF_CR'
-                            ? { raise: raiseF, call: 35, fold: 25 }
+                            ? { raise: raiseF, call: callF, fold: foldF }
                             : { raise: raiseF, call: Math.max(0, 100 - raiseF) };
                         reasoning = `💡 Phase 9C [${crDecision.categoryLabel}]：${crDecision.tacticalReasoning}`;
                     }
                 }
                 // ── E-05: Pokercode 2-1-3 翻牌面对小尺度 Mini C-Bet 的 Check-Raise 惩罚反击 (兜底保留) ──
-                else if (isCRCandidate) {
+                else if (isCRCandidate && !crDecision) {
                     const isStrongValue = (equity >= 65);
                     const isSemiBluff = !isStrongValue && (outs >= 8 || (outs >= 6 && equity >= 30) || isPolarizedBackdoorCR);
                     const isStation = (vProfile && vProfile.id === 'calling_station');
@@ -18390,8 +18483,10 @@
                         const crAmt = Math.min(effStack, Math.max(villainBet * 3.2, villainBet + preBetPotE05 * 0.70));
                         sizing = (effStack > 0 && crAmt >= effStack * 0.85) ? '全押' : crAmt.toFixed(1) + 'BB';
                         const raiseF = isStrongValue ? (iHaveNutAdv ? 90 : 80) : isPolarizedBackdoorCR ? 40 : 45;
+                        const foldF = 25;
+                        const callF = Math.max(0, 100 - raiseF - foldF);
                         frequencies = isPolarizedBackdoorCR
-                            ? { raise: raiseF, call: 35, fold: 25 }
+                            ? { raise: raiseF, call: callF, fold: foldF }
                             : { raise: raiseF, call: 100 - raiseF };
                         const betPctStr = ((villainBet / preBetPotE05) * 100).toFixed(0);
                         const posLabel = POS_LABEL[heroPos] || heroPos;
@@ -18825,7 +18920,7 @@
                     const _targetGlobal = (typeof window !== 'undefined') ? window : globalThis;
                     _targetGlobal._postflopShadowBuffer = _targetGlobal._postflopShadowBuffer || [];
                     const _betRatio = (villainBet > 0) ? (villainBet / Math.max(1, pot - villainBet)) : 0;
-                    const _isHeroOOP = (heroPos === 'BB' || heroPos === 'SB');
+                    const _isHeroOOP = (heroPos === 'OOP' || heroPos === 'BB' || heroPos === 'SB' || (typeof heroIsOOP !== 'undefined' ? heroIsOOP : false));
                     const _isHeroPFR = (postState.potTracker.actions || []).some(a => a.street === 'preflop' && a.player === 'hero' && (a.action === 'raise' || a.action === 'allin'));
 
                     const shadowRes = _fnGto({
@@ -18936,6 +19031,26 @@
                 } catch (e) {
                     console.warn('analyzeRiverTerminal error:', e);
                 }
+            }
+
+            // ── 3.0-RC2 决策中枢单一事实源仲裁合流 (Unified Action Resolver) ──
+            try {
+                const _fnResolve = (typeof window !== 'undefined' && window.resolveUnifiedDecision) ||
+                                   (typeof globalThis !== 'undefined' && globalThis.resolveUnifiedDecision) ||
+                                   (typeof resolveUnifiedDecision === 'function' ? resolveUnifiedDecision : null);
+                if (typeof _fnResolve === 'function') {
+                    const _isHeroOOP = (heroPos === 'OOP' || heroPos === 'BB' || heroPos === 'SB' || (typeof heroIsOOP !== 'undefined' ? heroIsOOP : false));
+                    decisionResult = _fnResolve(decisionResult, postState, {
+                        board,
+                        pot,
+                        villainBet,
+                        effStack,
+                        heroPos,
+                        heroIsOOP: _isHeroOOP
+                    });
+                }
+            } catch (arbErr) {
+                console.warn('resolveUnifiedDecision error:', arbErr);
             }
 
             return decisionResult;
