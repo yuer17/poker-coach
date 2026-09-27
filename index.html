@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.90 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.92 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.90 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Phase 6 Micro-LUT 翻后跃迁与 Fedor 动态博弈) ══
+            /* ══ PokerCode v2.92 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Phase 8 转牌跃迁与河牌终局博弈) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1290,15 +1290,18 @@
     <!-- Phase 4 翻后 Micro-LUT 预解策略矩阵与查询引擎 -->
     <script src="lib/postflop_lut.js"></script>
     <script src="lib/postflop_lut_engine.js"></script>
+    <!-- Phase 8 翻后转牌跃迁与河牌终局博弈分析引擎 -->
+    <script src="lib/postflop_turn_transition.js"></script>
+    <script src="lib/postflop_river_terminal.js"></script>
 </head>
 <body>
 
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.90 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.92 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.90</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.92</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1319,7 +1322,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.90 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.92 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -4849,9 +4852,15 @@
                     const d = postState.decisionResult;
                     const m = (d && d.math) ? d.math : {};
                     const parts = [];
-                    if (d && d.lutResult && d.lutResult.status === 'MATCHED_LUT' && d.lutResult.frequencies) {
-                        const fr = d.lutResult.frequencies;
-                        parts.push(`<span class="flex items-center gap-1"><span class="text-sky-400 font-bold">⚡ GTO</span><span class="text-gray-300 font-mono">[弃${fr.FOLD}% 跟${fr.CALL}% 加${fr.RAISE}% 推${fr.ALLIN}%]</span><span class="text-[9px] text-gray-500">· ${d.lutResult.latencyUs || 2.8}µs</span></span>`);
+                    if (d && ((d.lutResult && d.lutResult.status === 'MATCHED_LUT' && d.lutResult.frequencies) || (d.riverTerminal && d.riverTerminal.frequencies))) {
+                        const fr = (boardN === 5 && d.riverTerminal && d.riverTerminal.frequencies) ? d.riverTerminal.frequencies : (d.lutResult ? d.lutResult.frequencies : { FOLD: 0, CALL: 100, RAISE: 0, ALLIN: 0 });
+                        const label = (boardN === 4) ? '⚡ 转牌 GTO' : (boardN === 5) ? '⚡ 河牌 GTO' : '⚡ 翻后 GTO';
+                        const foldVal = fr.FOLD !== undefined ? fr.FOLD : (fr.CHECK || 0);
+                        const callVal = fr.CALL !== undefined ? fr.CALL : (fr.BET_SMALL || 0);
+                        const raiseVal = fr.RAISE !== undefined ? fr.RAISE : (fr.BET_LARGE || 0);
+                        const allinVal = fr.ALLIN || 0;
+                        const lat = (boardN === 5 && d.riverTerminal) ? (d.riverTerminal.latencyUs || 2.1) : (d.lutResult ? (d.lutResult.latencyUs || 2.8) : 2.8);
+                        parts.push(`<span class="flex items-center gap-1"><span class="text-sky-400 font-bold">${label}</span><span class="text-gray-300 font-mono">[弃${foldVal}% 跟${callVal}% 加${raiseVal}% 推${allinVal}%]</span><span class="text-[9px] text-gray-500">· ${lat}µs</span></span>`);
                     }
                     if (m.spr !== undefined && m.spr !== null) parts.push(`<span>SPR <b class="text-amber-400 font-bold">${(+m.spr).toFixed(1)}</b></span>`);
                     if (m.requiredEq !== undefined && m.requiredEq !== null) parts.push(`<span>需胜率 <b class="text-sky-400 font-bold">${Math.round(m.requiredEq)}%</b></span>`);
@@ -5679,7 +5688,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v2.90',
+                    v: 'v2.92',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5698,7 +5707,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5772,7 +5781,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.90 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.92 正式版';
             renderWindowColorChips(key);
         };
 
@@ -13628,7 +13637,19 @@
          * @param {string} turnCard - 转牌 1 张（如 '2c', 'Kd', '6c', 'Th'）
          */
         function classifyTurnRunout(flopCards, turnCard) {
-            if (!flopCards || flopCards.length < 3 || !turnCard) return null;
+            if (!flopCards || flopCards.length < 3 || !turnCard) {
+                return {
+                    runoutType: 'UNKNOWN',
+                    typeName: '未知掉牌',
+                    type: 'UNKNOWN',
+                    label: '未知掉牌',
+                    advantageShift: 'neutral',
+                    advShift: 'Neutral',
+                    shiftName: '中性平衡',
+                    tactics: '公牌数据不完整',
+                    description: '公牌数据不完整'
+                };
+            }
             const RKI = '23456789TJQKA';
             const r2v = r => {
                 const idx = RKI.indexOf(r);
@@ -13698,12 +13719,19 @@
             const isStraightCompleter = (maxConsecutive >= 4 || minSpan4 <= 4 || (maxConsecutiveNatural >= 3 && flopMaxConsecutiveNatural <= 2 && turnRank <= 12));
 
             if (isFlushCompleter) {
+                const label = isOvercard ? '成花转折 (含超牌)' : '成花转折 (Flush Completer)';
+                const tactics = '转牌成花转折：公牌形成 3 张同花，双方同花听牌完成。侵略者无同花阻断严禁盲目开第二桶，必须急刹车控池；持有坚果同花或坚果花阻断可采用极化大注或诱捕。';
                 return {
                     type: 'FLUSH_COMPLETER',
-                    label: isOvercard ? '成花转折 (含超牌)' : '成花转折 (Flush Completer)',
+                    runoutType: 'FLUSH_COMPLETER',
+                    label,
+                    typeName: label,
                     badgeClass: 'bg-blue-900/60 text-blue-300 border border-blue-500/40',
                     advShift: 'Caller',
-                    tactics: '转牌成花转折：公牌形成 3 张同花，双方同花听牌完成。侵略者无同花阻断严禁盲目开第二桶，必须急刹车控池；持有坚果同花或坚果花阻断可采用极化大注或诱捕。',
+                    advantageShift: 'caller_favored',
+                    shiftName: '偏向防守方/极化',
+                    tactics,
+                    description: tactics,
                     isOvercard,
                     isBoardPair,
                     isFlushCompleter: true,
@@ -13715,12 +13743,19 @@
             }
 
             if (isStraightCompleter) {
+                const label = '成顺转折 (Straight Completer)';
+                const tactics = '转牌连张激活/成顺：转折张深度连接防守方高频跟注区间（同花连张与两头顺）。开池方顶对/超对相对牌力急剧退化为纯抓诈牌，严禁盲目重注扩池；宜采取防守控池或窄范围极化保护。';
                 return {
                     type: 'STRAIGHT_COMPLETER',
-                    label: '成顺转折 (Straight Completer)',
+                    runoutType: 'STRAIGHT_COMPLETER',
+                    label,
+                    typeName: label,
                     badgeClass: 'bg-amber-900/60 text-amber-300 border border-amber-500/40',
                     advShift: 'Caller',
-                    tactics: '转牌连张激活/成顺：转折张深度连接防守方高频跟注区间（同花连张与两头顺）。开池方顶对/超对相对牌力急剧退化为纯抓诈牌，严禁盲目重注扩池；宜采取防守控池或窄范围极化保护。',
+                    advantageShift: 'caller_favored',
+                    shiftName: '偏向翻前平跟者',
+                    tactics,
+                    description: tactics,
                     isOvercard,
                     isBoardPair,
                     isFlushCompleter: false,
@@ -13732,12 +13767,19 @@
             }
 
             if (isBoardPair) {
+                const label = '公对成双 (Board Pair)';
+                const tactics = '转牌公牌成对：阻断对手大量两对组合（顺带将其降格或削弱），开池方超对安全性大幅提升，同时巩固顶端三条/葫芦优势。推荐采用 25%~33% 小注高频测试或控池诱捕。';
                 return {
                     type: 'BOARD_PAIR',
-                    label: '公对成双 (Board Pair)',
+                    runoutType: 'BOARD_PAIR',
+                    label,
+                    typeName: label,
                     badgeClass: 'bg-purple-900/60 text-purple-300 border border-purple-500/40',
                     advShift: 'Raiser',
-                    tactics: '转牌公牌成对：阻断对手大量两对组合（顺带将其降格或削弱），开池方超对安全性大幅提升，同时巩固顶端三条/葫芦优势。推荐采用 25%~33% 小注高频测试或控池诱捕。',
+                    advantageShift: 'pfr_favored',
+                    shiftName: '利好翻前主动方',
+                    tactics,
+                    description: tactics,
                     isOvercard,
                     isBoardPair: true,
                     isFlushCompleter: false,
@@ -13749,12 +13791,19 @@
             }
 
             if (isOvercard) {
+                const label = '超牌转折 (Overcard)';
+                const tactics = '转牌发出超牌：高频穿透对手翻牌跟注范围（中弱对与飘浮牌），翻前侵略者范围与顶端优势激增。推荐高频释放第二桶或延迟 C-Bet（33%小注或几何注），迫使其弃掉边缘对子。';
                 return {
                     type: 'OVERCARD',
-                    label: '超牌转折 (Overcard)',
+                    runoutType: 'OVERCARD',
+                    label,
+                    typeName: label,
                     badgeClass: 'bg-emerald-900/60 text-emerald-300 border border-emerald-500/40',
                     advShift: 'Raiser',
-                    tactics: '转牌发出超牌：高频穿透对手翻牌跟注范围（中弱对与飘浮牌），翻前侵略者范围与顶端优势激增。推荐高频释放第二桶或延迟 C-Bet（33%小注或几何注），迫使其弃掉边缘对子。',
+                    advantageShift: 'pfr_favored',
+                    shiftName: '显著偏向翻前开池者',
+                    tactics,
+                    description: tactics,
                     isOvercard: true,
                     isBoardPair: false,
                     isFlushCompleter: false,
@@ -13765,12 +13814,19 @@
                 };
             }
 
+            const label = '白板砖牌 (Blank/Brick)';
+            const tactics = '转牌白板砖牌：牌面动态与翻牌完全一致，双方范围未发生结构性位移。翻牌主动方延续两极化策略（强价值+高期望抽牌开第二桶），翻牌过牌线可释放延迟 C-Bet 剥削防守方弱封顶范围。';
             return {
                 type: 'BLANK',
-                label: '白板砖牌 (Blank/Brick)',
+                runoutType: 'BRICK_BLANK',
+                label,
+                typeName: label,
                 badgeClass: 'bg-slate-800 text-gray-300 border border-gray-600/40',
                 advShift: 'Neutral',
-                tactics: '转牌白板砖牌：牌面动态与翻牌完全一致，双方范围未发生结构性位移。翻牌主动方延续两极化策略（强价值+高期望抽牌开第二桶），翻牌过牌线可释放延迟 C-Bet 剥削防守方弱封顶范围。',
+                advantageShift: 'pfr_favored',
+                shiftName: '原优势纯粹延续',
+                tactics,
+                description: tactics,
                 isOvercard: false,
                 isBoardPair: false,
                 isFlushCompleter: false,
@@ -14490,11 +14546,11 @@
                         <div class="hidden">
                             <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
                         </div>
-                        <!-- GTO Micro-LUT 预解策略与 Fedor 动态博弈微卡 (Phase 7) -->
+                        <!-- GTO Micro-LUT 预解策略与 Fedor 动态博弈微卡 (Phase 7 & 8) -->
                         <div id="decisionGtoBox" class="hidden flex flex-col gap-1.5 p-2 rounded bg-black/40 border border-white/10 text-xs font-mono">
                             <div class="flex items-center justify-between text-[11px]">
                                 <span class="flex items-center gap-1.5 font-bold text-sky-400">
-                                    <span>⚡ 翻后 GTO 预解</span>
+                                    <span id="decisionGtoTitle">⚡ 翻后 GTO 预解</span>
                                     <span id="decisionGtoLatency" class="text-[9px] text-gray-400 font-normal">O(1) · 2.8µs</span>
                                 </span>
                                 <span id="decisionGtoMeta" class="text-[10px] text-gray-300"></span>
@@ -14511,6 +14567,28 @@
                                     <span id="decisionFedorFormula" class="text-gray-300"></span>
                                 </span>
                                 <span id="decisionFedorVerdict" class="font-bold"></span>
+                            </div>
+                            <!-- 转牌跃迁动态卡片 (Phase 8) -->
+                            <div id="decisionTurnBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-amber-400 font-bold flex items-center gap-1">
+                                        <span>🔄 转牌跃迁:</span>
+                                        <span id="decisionTurnType" class="text-amber-200"></span>
+                                    </span>
+                                    <span id="decisionTurnShift" class="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25 text-[9px] font-mono"></span>
+                                </div>
+                                <div id="decisionTurnDesc" class="text-[10px] text-gray-400 leading-tight"></div>
+                            </div>
+                            <!-- 河牌终局博弈卡片 (Phase 8) -->
+                            <div id="decisionRiverBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-purple-400 font-bold flex items-center gap-1">
+                                        <span>🛑 河牌终局:</span>
+                                        <span id="decisionRiverTier" class="text-purple-200 font-bold"></span>
+                                    </span>
+                                    <span id="decisionRiverBlockers" class="text-[9px] text-sky-300 font-mono"></span>
+                                </div>
+                                <div id="decisionRiverDesc" class="text-[10px] text-gray-400 leading-tight"></div>
                             </div>
                         </div>
                         <!-- 底栏：横向标签化警示区 -->
@@ -18678,6 +18756,31 @@
                 // 静默容错：影子模式绝不影响前台用户决策与主线程执行
             }
 
+            // ── Phase 8: 翻后转牌跃迁与河牌终局博弈分析 ──
+            if (typeof classifyTurnRunout === 'function' && board.length >= 4) {
+                try {
+                    const turnRes = classifyTurnRunout(board.slice(0, 3), board[3]);
+                    decisionResult.turnTransition = turnRes;
+                    if (decisionResult.math) decisionResult.math.turnTransition = turnRes;
+                } catch (e) {
+                    console.warn('classifyTurnRunout error:', e);
+                }
+            }
+
+            if (typeof analyzeRiverTerminal === 'function' && board.length >= 5 && Array.isArray(postState.heroCards) && postState.heroCards.length === 2) {
+                try {
+                    const riverRes = analyzeRiverTerminal(postState.heroCards, board, pot, villainBet, effStack, {
+                        equity,
+                        relStrength: relStr,
+                        equityResult: eq
+                    });
+                    decisionResult.riverTerminal = riverRes;
+                    if (decisionResult.math) decisionResult.math.riverTerminal = riverRes;
+                } catch (e) {
+                    console.warn('analyzeRiverTerminal error:', e);
+                }
+            }
+
             return decisionResult;
         }
 
@@ -18724,11 +18827,11 @@
                         <div class="hidden">
                             <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
                         </div>
-                        <!-- GTO Micro-LUT 预解策略与 Fedor 动态博弈微卡 (Phase 7) -->
+                        <!-- GTO Micro-LUT 预解策略与 Fedor 动态博弈微卡 (Phase 7 & 8) -->
                         <div id="decisionGtoBox" class="hidden flex flex-col gap-1.5 p-2 rounded bg-black/40 border border-white/10 text-xs font-mono">
                             <div class="flex items-center justify-between text-[11px]">
                                 <span class="flex items-center gap-1.5 font-bold text-sky-400">
-                                    <span>⚡ 翻后 GTO 预解</span>
+                                    <span id="decisionGtoTitle">⚡ 翻后 GTO 预解</span>
                                     <span id="decisionGtoLatency" class="text-[9px] text-gray-400 font-normal">O(1) · 2.8µs</span>
                                 </span>
                                 <span id="decisionGtoMeta" class="text-[10px] text-gray-300"></span>
@@ -18745,6 +18848,28 @@
                                     <span id="decisionFedorFormula" class="text-gray-300"></span>
                                 </span>
                                 <span id="decisionFedorVerdict" class="font-bold"></span>
+                            </div>
+                            <!-- 转牌跃迁动态卡片 (Phase 8) -->
+                            <div id="decisionTurnBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-amber-400 font-bold flex items-center gap-1">
+                                        <span>🔄 转牌跃迁:</span>
+                                        <span id="decisionTurnType" class="text-amber-200"></span>
+                                    </span>
+                                    <span id="decisionTurnShift" class="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25 text-[9px] font-mono"></span>
+                                </div>
+                                <div id="decisionTurnDesc" class="text-[10px] text-gray-400 leading-tight"></div>
+                            </div>
+                            <!-- 河牌终局博弈卡片 (Phase 8) -->
+                            <div id="decisionRiverBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-purple-400 font-bold flex items-center gap-1">
+                                        <span>🛑 河牌终局:</span>
+                                        <span id="decisionRiverTier" class="text-purple-200 font-bold"></span>
+                                    </span>
+                                    <span id="decisionRiverBlockers" class="text-[9px] text-sky-300 font-mono"></span>
+                                </div>
+                                <div id="decisionRiverDesc" class="text-[10px] text-gray-400 leading-tight"></div>
                             </div>
                         </div>
                         <!-- 底栏：横向标签化警示区 -->
@@ -18876,50 +19001,72 @@
                 warnEl.appendChild(div);
             });
 
-            // 翻后 GTO Micro-LUT 预解策略与 Fedor 动态博弈微卡渲染 (Phase 7)
+            // 翻后 GTO Micro-LUT 预解策略与 Fedor 动态博弈微卡渲染 (Phase 7 & 8)
             const gtoBox = document.getElementById('decisionGtoBox');
             if (gtoBox) {
                 const lut = result.lutResult;
-                if (lut && lut.status === 'MATCHED_LUT' && lut.frequencies) {
-                    gtoBox.classList.remove('hidden');
-                    const cId = (lut.clusterId !== undefined) ? lut.clusterId : (lut.boardCluster || 0);
-                    const bId = (lut.subBucketId !== undefined) ? lut.subBucketId : (lut.handSubBucket || 0);
-                    const cInfo = (typeof POSTFLOP_CLUSTERS_28 !== 'undefined' && POSTFLOP_CLUSTERS_28[cId]) ? POSTFLOP_CLUSTERS_28[cId].name : `簇#${cId}`;
-                    const bInfo = (typeof POSTFLOP_SUB_BUCKETS_24 !== 'undefined' && POSTFLOP_SUB_BUCKETS_24[bId]) ? POSTFLOP_SUB_BUCKETS_24[bId].name : (lut.macroBucket || `桶#${bId}`);
-                    
-                    const metaEl = document.getElementById('decisionGtoMeta');
-                    if (metaEl) metaEl.innerText = `${cInfo} · ${bInfo}`;
-                    
-                    const latEl = document.getElementById('decisionGtoLatency');
-                    if (latEl) latEl.innerText = `O(1) · ${lut.latencyUs || 2.8}µs`;
+                const turnTrans = result.turnTransition;
+                const riverTerm = result.riverTerminal;
+                const street = result.street || (postState.board.filter(c => c !== null).length === 4 ? 'turn' : postState.board.filter(c => c !== null).length === 5 ? 'river' : 'flop');
 
-                    const f = lut.frequencies;
-                    const lEl = document.getElementById('decisionGtoFreqLabels');
-                    if (lEl) {
-                        if (f.FOLD !== undefined || f.CALL !== undefined) {
-                            lEl.innerHTML = `<span>弃: <b class="text-gray-300 font-mono">${f.FOLD || 0}%</b></span>` +
-                                            `<span>跟: <b class="text-emerald-400 font-mono">${f.CALL || 0}%</b></span>` +
-                                            `<span>加: <b class="text-rose-400 font-mono">${f.RAISE || 0}%</b></span>` +
-                                            `<span>推: <b class="text-amber-400 font-mono">${f.ALLIN || 0}%</b></span>`;
-                        } else {
-                            lEl.innerHTML = `<span>过: <b class="text-gray-300 font-mono">${f.CHECK || 0}%</b></span>` +
-                                            `<span>小注: <b class="text-emerald-400 font-mono">${f.BET_SMALL || 0}%</b></span>` +
-                                            `<span>大注: <b class="text-rose-400 font-mono">${f.BET_LARGE || 0}%</b></span>` +
-                                            `<span>推: <b class="text-amber-400 font-mono">${f.ALLIN || 0}%</b></span>`;
+                if ((lut && lut.status === 'MATCHED_LUT' && lut.frequencies) || (riverTerm && riverTerm.frequencies)) {
+                    gtoBox.classList.remove('hidden');
+
+                    const titleEl = document.getElementById('decisionGtoTitle');
+                    if (titleEl) {
+                        if (street === 'turn') titleEl.innerText = '⚡ 转牌 GTO 跃迁';
+                        else if (street === 'river') titleEl.innerText = '⚡ 河牌 GTO 终局';
+                        else titleEl.innerText = '⚡ 翻后 GTO 预解';
+                    }
+
+                    const metaEl = document.getElementById('decisionGtoMeta');
+                    if (metaEl) {
+                        if (street === 'river' && riverTerm) {
+                            metaEl.innerText = `河牌零听牌 · ${riverTerm.tierName}`;
+                        } else if (lut) {
+                            const cId = (lut.clusterId !== undefined) ? lut.clusterId : (lut.boardCluster || 0);
+                            const bId = (lut.subBucketId !== undefined) ? lut.subBucketId : (lut.handSubBucket || 0);
+                            const cInfo = (typeof POSTFLOP_CLUSTERS_28 !== 'undefined' && POSTFLOP_CLUSTERS_28[cId]) ? POSTFLOP_CLUSTERS_28[cId].name : `簇#${cId}`;
+                            const bInfo = (typeof POSTFLOP_SUB_BUCKETS_24 !== 'undefined' && POSTFLOP_SUB_BUCKETS_24[bId]) ? POSTFLOP_SUB_BUCKETS_24[bId].name : (lut.macroBucket || `桶#${bId}`);
+                            metaEl.innerText = `${cInfo} · ${bInfo}`;
                         }
                     }
-                    const barEl = document.getElementById('decisionGtoFreqBar');
-                    if (barEl) {
-                        let barHtml = '';
-                        const f0 = f.FOLD !== undefined ? f.FOLD : (f.CHECK || 0);
-                        const f1 = f.CALL !== undefined ? f.CALL : (f.BET_SMALL || 0);
-                        const f2 = f.RAISE !== undefined ? f.RAISE : (f.BET_LARGE || 0);
-                        const f3 = f.ALLIN || 0;
-                        if (f0 > 0) barHtml += `<div class="bg-gray-600" style="width:${f0}%;"></div>`;
-                        if (f1 > 0) barHtml += `<div class="bg-emerald-500" style="width:${f1}%;"></div>`;
-                        if (f2 > 0) barHtml += `<div class="bg-rose-500" style="width:${f2}%;"></div>`;
-                        if (f3 > 0) barHtml += `<div class="bg-amber-400" style="width:${f3}%;"></div>`;
-                        barEl.innerHTML = barHtml;
+                    
+                    const latEl = document.getElementById('decisionGtoLatency');
+                    if (latEl) {
+                        const lat = (street === 'river' && riverTerm) ? (riverTerm.latencyUs || 2.1) : (lut ? (lut.latencyUs || 2.8) : 2.8);
+                        latEl.innerText = `O(1) · ${lat}µs`;
+                    }
+
+                    const f = (street === 'river' && riverTerm && riverTerm.frequencies) ? riverTerm.frequencies : (lut ? lut.frequencies : null);
+                    if (f) {
+                        const lEl = document.getElementById('decisionGtoFreqLabels');
+                        if (lEl) {
+                            if (f.FOLD !== undefined || f.CALL !== undefined) {
+                                lEl.innerHTML = `<span>弃: <b class="text-gray-300 font-mono">${f.FOLD || 0}%</b></span>` +
+                                                `<span>跟: <b class="text-emerald-400 font-mono">${f.CALL || 0}%</b></span>` +
+                                                `<span>加: <b class="text-rose-400 font-mono">${f.RAISE || 0}%</b></span>` +
+                                                `<span>推: <b class="text-amber-400 font-mono">${f.ALLIN || 0}%</b></span>`;
+                            } else {
+                                lEl.innerHTML = `<span>过: <b class="text-gray-300 font-mono">${f.CHECK || 0}%</b></span>` +
+                                                `<span>小注: <b class="text-emerald-400 font-mono">${f.BET_SMALL || 0}%</b></span>` +
+                                                `<span>大注: <b class="text-rose-400 font-mono">${f.BET_LARGE || 0}%</b></span>` +
+                                                `<span>推: <b class="text-amber-400 font-mono">${f.ALLIN || 0}%</b></span>`;
+                            }
+                        }
+                        const barEl = document.getElementById('decisionGtoFreqBar');
+                        if (barEl) {
+                            let barHtml = '';
+                            const f0 = f.FOLD !== undefined ? f.FOLD : (f.CHECK || 0);
+                            const f1 = f.CALL !== undefined ? f.CALL : (f.BET_SMALL || 0);
+                            const f2 = f.RAISE !== undefined ? f.RAISE : (f.BET_LARGE || 0);
+                            const f3 = f.ALLIN || 0;
+                            if (f0 > 0) barHtml += `<div class="bg-gray-600" style="width:${f0}%;"></div>`;
+                            if (f1 > 0) barHtml += `<div class="bg-emerald-500" style="width:${f1}%;"></div>`;
+                            if (f2 > 0) barHtml += `<div class="bg-rose-500" style="width:${f2}%;"></div>`;
+                            if (f3 > 0) barHtml += `<div class="bg-amber-400" style="width:${f3}%;"></div>`;
+                            barEl.innerHTML = barHtml;
+                        }
                     }
 
                     const fedorBox = document.getElementById('decisionFedorBox');
@@ -18938,6 +19085,48 @@
                         }
                     } else if (fedorBox) {
                         fedorBox.classList.add('hidden');
+                    }
+
+                    // Phase 8: 转牌跃迁卡片
+                    const turnBox = document.getElementById('decisionTurnBox');
+                    if (turnBox) {
+                        if (street === 'turn' && turnTrans && turnTrans.runoutType !== 'UNKNOWN') {
+                            turnBox.classList.remove('hidden');
+                            const tType = document.getElementById('decisionTurnType');
+                            const tShift = document.getElementById('decisionTurnShift');
+                            const tDesc = document.getElementById('decisionTurnDesc');
+                            if (tType) tType.innerText = turnTrans.typeName;
+                            if (tShift) tShift.innerText = turnTrans.shiftName;
+                            if (tDesc) tDesc.innerText = turnTrans.description;
+                        } else {
+                            turnBox.classList.add('hidden');
+                        }
+                    }
+
+                    // Phase 8: 河牌终局卡片
+                    const riverBox = document.getElementById('decisionRiverBox');
+                    if (riverBox) {
+                        if (street === 'river' && riverTerm && riverTerm.status === 'MATCHED_RIVER_TERMINAL') {
+                            riverBox.classList.remove('hidden');
+                            const rTier = document.getElementById('decisionRiverTier');
+                            const rBlockers = document.getElementById('decisionRiverBlockers');
+                            const rDesc = document.getElementById('decisionRiverDesc');
+                            if (rTier) rTier.innerText = riverTerm.tierName;
+                            if (rBlockers) {
+                                const bNames = {
+                                    NUT_FLUSH_BLOCKER: '坚果同花阻断 (A)',
+                                    SECOND_FLUSH_BLOCKER: '第二同花阻断 (K)',
+                                    TOP_PAIR_BLOCKER: '顶对阻断'
+                                };
+                                const bText = (riverTerm.blockers || []).map(b => bNames[b] || b).join(' · ');
+                                rBlockers.innerText = bText ? `阻断: ${bText}` : '无关键阻断';
+                            }
+                            if (rDesc) {
+                                rDesc.innerText = `终局零抽牌博弈，依据对手下注比与 MDF 防守平衡，执行 ${riverTerm.primaryAction} 纳什动作。`;
+                            }
+                        } else {
+                            riverBox.classList.add('hidden');
+                        }
                     }
                 } else {
                     gtoBox.classList.add('hidden');
