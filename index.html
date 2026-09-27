@@ -18544,7 +18544,7 @@
                     turnRunoutShift: ba.turnRunoutShift
                 }) : null;
 
-            return {
+            const decisionResult = {
                 primaryAction, sizing, frequencies, reasoning,
                 warnings, street,
                 geometry,
@@ -18569,6 +18569,65 @@
                     street
                 }
             };
+
+            // ── Phase 3.5B: 翻后 GTO 流水线影子模式 (Shadow Mode 双轨静默对账) ──
+            try {
+                const _fnGto = (typeof window !== 'undefined' && window.evaluatePostflopGto) ||
+                               (typeof globalThis !== 'undefined' && globalThis.evaluatePostflopGto);
+                if (typeof _fnGto === 'function' && Array.isArray(postState.heroCards) && postState.heroCards.length === 2 && board.length >= 3) {
+                    const _targetGlobal = (typeof window !== 'undefined') ? window : globalThis;
+                    _targetGlobal._postflopShadowBuffer = _targetGlobal._postflopShadowBuffer || [];
+                    const _betRatio = (villainBet > 0) ? (villainBet / Math.max(1, pot - villainBet)) : 0;
+                    const _isHeroOOP = (heroPos === 'BB' || heroPos === 'SB');
+                    const _isHeroPFR = (postState.potTracker.actions || []).some(a => a.street === 'preflop' && a.player === 'hero' && (a.action === 'raise' || a.action === 'allin'));
+
+                    const shadowRes = _fnGto({
+                        heroCards: postState.heroCards,
+                        boardCards: board,
+                        betRatio: _betRatio,
+                        spr: spr || 4.0,
+                        isOOP: _isHeroOOP,
+                        isPFR: _isHeroPFR
+                    });
+
+                    if (shadowRes) {
+                        const telemetryItem = {
+                            timestamp: Date.now(),
+                            handId: postState.handId || ('H_' + (postState.postCalcVersion || 1)),
+                            version: postState.postCalcVersion || 1,
+                            street,
+                            heroCards: [...postState.heroCards],
+                            board: [...board],
+                            pot,
+                            effStack,
+                            spr,
+                            villainBet,
+                            betRatio: +_betRatio.toFixed(3),
+                            legacyAction: primaryAction,
+                            shadowAction: shadowRes.primaryAction || shadowRes.action,
+                            shadowFrequencies: shadowRes.frequencies,
+                            diffAction: primaryAction !== (shadowRes.primaryAction || shadowRes.action),
+                            reason: shadowRes.reason,
+                            guardrailApplied: shadowRes.guardrailApplied || null
+                        };
+
+                        if (_targetGlobal._postflopShadowBuffer.length >= 64) {
+                            _targetGlobal._postflopShadowBuffer.shift();
+                        }
+                        _targetGlobal._postflopShadowBuffer.push(telemetryItem);
+                    }
+
+                    if (!_targetGlobal.getPostflopShadowLog) {
+                        _targetGlobal.getPostflopShadowLog = function() {
+                            return _targetGlobal._postflopShadowBuffer || [];
+                        };
+                    }
+                }
+            } catch (shadowErr) {
+                // 静默容错：影子模式绝不影响前台用户决策与主线程执行
+            }
+
+            return decisionResult;
         }
 
         /**
