@@ -4849,6 +4849,10 @@
                     const d = postState.decisionResult;
                     const m = (d && d.math) ? d.math : {};
                     const parts = [];
+                    if (d && d.lutResult && d.lutResult.status === 'MATCHED_LUT' && d.lutResult.frequencies) {
+                        const fr = d.lutResult.frequencies;
+                        parts.push(`<span class="flex items-center gap-1"><span class="text-sky-400 font-bold">⚡ GTO</span><span class="text-gray-300 font-mono">[弃${fr.FOLD}% 跟${fr.CALL}% 加${fr.RAISE}% 推${fr.ALLIN}%]</span><span class="text-[9px] text-gray-500">· ${d.lutResult.latencyUs || 2.8}µs</span></span>`);
+                    }
                     if (m.spr !== undefined && m.spr !== null) parts.push(`<span>SPR <b class="text-amber-400 font-bold">${(+m.spr).toFixed(1)}</b></span>`);
                     if (m.requiredEq !== undefined && m.requiredEq !== null) parts.push(`<span>需胜率 <b class="text-sky-400 font-bold">${Math.round(m.requiredEq)}%</b></span>`);
                     if (m.mdf !== undefined && m.mdf !== null) parts.push(`<span>MDF <b class="text-emerald-400 font-bold">${Math.round(m.mdf)}%</b></span>`);
@@ -14486,6 +14490,29 @@
                         <div class="hidden">
                             <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
                         </div>
+                        <!-- GTO Micro-LUT 预解策略与 Fedor 动态博弈微卡 (Phase 7) -->
+                        <div id="decisionGtoBox" class="hidden flex flex-col gap-1.5 p-2 rounded bg-black/40 border border-white/10 text-xs font-mono">
+                            <div class="flex items-center justify-between text-[11px]">
+                                <span class="flex items-center gap-1.5 font-bold text-sky-400">
+                                    <span>⚡ 翻后 GTO 预解</span>
+                                    <span id="decisionGtoLatency" class="text-[9px] text-gray-400 font-normal">O(1) · 2.8µs</span>
+                                </span>
+                                <span id="decisionGtoMeta" class="text-[10px] text-gray-300"></span>
+                            </div>
+                            <!-- 四动作频率分布条 -->
+                            <div class="flex flex-col gap-0.5">
+                                <div id="decisionGtoFreqLabels" class="flex justify-between text-[10px] text-gray-400"></div>
+                                <div id="decisionGtoFreqBar" class="h-2 rounded overflow-hidden flex bg-white/5 border border-white/10"></div>
+                            </div>
+                            <!-- Fedor Holz 动态保本点博弈指标 -->
+                            <div id="decisionFedorBox" class="hidden flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
+                                <span class="text-gray-400 flex items-center gap-1">
+                                    <span>博弈保本点:</span>
+                                    <span id="decisionFedorFormula" class="text-gray-300"></span>
+                                </span>
+                                <span id="decisionFedorVerdict" class="font-bold"></span>
+                            </div>
+                        </div>
                         <!-- 底栏：横向标签化警示区 -->
                         <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 48px;"></div>
                     </div>
@@ -18601,6 +18628,17 @@
                     });
 
                     if (shadowRes) {
+                        decisionResult.shadowRes = shadowRes;
+                        if (shadowRes.lutResult) {
+                            decisionResult.lutResult = shadowRes.lutResult;
+                        }
+                        if (typeof calculateFedorRc === 'function') {
+                            const potBefore = Math.max(0.1, pot - villainBet);
+                            const fedorRes = calculateFedorRc(equity, potBefore, villainBet, 2);
+                            decisionResult.fedorAnalysis = fedorRes;
+                            if (decisionResult.math) decisionResult.math.fedorRc = fedorRes;
+                        }
+
                         const telemetryItem = {
                             timestamp: Date.now(),
                             handId: postState.handId || ('H_' + (postState.postCalcVersion || 1)),
@@ -18685,6 +18723,29 @@
                         <div id="decisionReason" class="text-xs text-gray-300 my-1 overflow-hidden" style="line-height: 1.45;"></div>
                         <div class="hidden">
                             <div id="decisionFreqLabels"></div><div class="freq-bar" id="decisionFreqBar"></div>
+                        </div>
+                        <!-- GTO Micro-LUT 预解策略与 Fedor 动态博弈微卡 (Phase 7) -->
+                        <div id="decisionGtoBox" class="hidden flex flex-col gap-1.5 p-2 rounded bg-black/40 border border-white/10 text-xs font-mono">
+                            <div class="flex items-center justify-between text-[11px]">
+                                <span class="flex items-center gap-1.5 font-bold text-sky-400">
+                                    <span>⚡ 翻后 GTO 预解</span>
+                                    <span id="decisionGtoLatency" class="text-[9px] text-gray-400 font-normal">O(1) · 2.8µs</span>
+                                </span>
+                                <span id="decisionGtoMeta" class="text-[10px] text-gray-300"></span>
+                            </div>
+                            <!-- 四动作频率分布条 -->
+                            <div class="flex flex-col gap-0.5">
+                                <div id="decisionGtoFreqLabels" class="flex justify-between text-[10px] text-gray-400"></div>
+                                <div id="decisionGtoFreqBar" class="h-2 rounded overflow-hidden flex bg-white/5 border border-white/10"></div>
+                            </div>
+                            <!-- Fedor Holz 动态保本点博弈指标 -->
+                            <div id="decisionFedorBox" class="hidden flex items-center justify-between pt-1 border-t border-white/5 text-[10px]">
+                                <span class="text-gray-400 flex items-center gap-1">
+                                    <span>博弈保本点:</span>
+                                    <span id="decisionFedorFormula" class="text-gray-300"></span>
+                                </span>
+                                <span id="decisionFedorVerdict" class="font-bold"></span>
+                            </div>
                         </div>
                         <!-- 底栏：横向标签化警示区 -->
                         <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 48px;"></div>
@@ -18814,6 +18875,74 @@
                 div.innerHTML = w;
                 warnEl.appendChild(div);
             });
+
+            // 翻后 GTO Micro-LUT 预解策略与 Fedor 动态博弈微卡渲染 (Phase 7)
+            const gtoBox = document.getElementById('decisionGtoBox');
+            if (gtoBox) {
+                const lut = result.lutResult;
+                if (lut && lut.status === 'MATCHED_LUT' && lut.frequencies) {
+                    gtoBox.classList.remove('hidden');
+                    const cId = (lut.clusterId !== undefined) ? lut.clusterId : (lut.boardCluster || 0);
+                    const bId = (lut.subBucketId !== undefined) ? lut.subBucketId : (lut.handSubBucket || 0);
+                    const cInfo = (typeof POSTFLOP_CLUSTERS_28 !== 'undefined' && POSTFLOP_CLUSTERS_28[cId]) ? POSTFLOP_CLUSTERS_28[cId].name : `簇#${cId}`;
+                    const bInfo = (typeof POSTFLOP_SUB_BUCKETS_24 !== 'undefined' && POSTFLOP_SUB_BUCKETS_24[bId]) ? POSTFLOP_SUB_BUCKETS_24[bId].name : (lut.macroBucket || `桶#${bId}`);
+                    
+                    const metaEl = document.getElementById('decisionGtoMeta');
+                    if (metaEl) metaEl.innerText = `${cInfo} · ${bInfo}`;
+                    
+                    const latEl = document.getElementById('decisionGtoLatency');
+                    if (latEl) latEl.innerText = `O(1) · ${lut.latencyUs || 2.8}µs`;
+
+                    const f = lut.frequencies;
+                    const lEl = document.getElementById('decisionGtoFreqLabels');
+                    if (lEl) {
+                        if (f.FOLD !== undefined || f.CALL !== undefined) {
+                            lEl.innerHTML = `<span>弃: <b class="text-gray-300 font-mono">${f.FOLD || 0}%</b></span>` +
+                                            `<span>跟: <b class="text-emerald-400 font-mono">${f.CALL || 0}%</b></span>` +
+                                            `<span>加: <b class="text-rose-400 font-mono">${f.RAISE || 0}%</b></span>` +
+                                            `<span>推: <b class="text-amber-400 font-mono">${f.ALLIN || 0}%</b></span>`;
+                        } else {
+                            lEl.innerHTML = `<span>过: <b class="text-gray-300 font-mono">${f.CHECK || 0}%</b></span>` +
+                                            `<span>小注: <b class="text-emerald-400 font-mono">${f.BET_SMALL || 0}%</b></span>` +
+                                            `<span>大注: <b class="text-rose-400 font-mono">${f.BET_LARGE || 0}%</b></span>` +
+                                            `<span>推: <b class="text-amber-400 font-mono">${f.ALLIN || 0}%</b></span>`;
+                        }
+                    }
+                    const barEl = document.getElementById('decisionGtoFreqBar');
+                    if (barEl) {
+                        let barHtml = '';
+                        const f0 = f.FOLD !== undefined ? f.FOLD : (f.CHECK || 0);
+                        const f1 = f.CALL !== undefined ? f.CALL : (f.BET_SMALL || 0);
+                        const f2 = f.RAISE !== undefined ? f.RAISE : (f.BET_LARGE || 0);
+                        const f3 = f.ALLIN || 0;
+                        if (f0 > 0) barHtml += `<div class="bg-gray-600" style="width:${f0}%;"></div>`;
+                        if (f1 > 0) barHtml += `<div class="bg-emerald-500" style="width:${f1}%;"></div>`;
+                        if (f2 > 0) barHtml += `<div class="bg-rose-500" style="width:${f2}%;"></div>`;
+                        if (f3 > 0) barHtml += `<div class="bg-amber-400" style="width:${f3}%;"></div>`;
+                        barEl.innerHTML = barHtml;
+                    }
+
+                    const fedorBox = document.getElementById('decisionFedorBox');
+                    const fedor = result.fedorAnalysis;
+                    if (fedorBox && fedor && (typeof fedor.bRatio === 'number' || typeof fedor.Rc === 'number') && (fedor.bRatio > 0 || fedor.Rc > 0)) {
+                        fedorBox.classList.remove('hidden');
+                        const fFormula = document.getElementById('decisionFedorFormula');
+                        const rHero = (fedor.R !== undefined) ? fedor.R : (fedor.rHero || 0);
+                        const rBreakEven = (fedor.Rc !== undefined) ? fedor.Rc : (fedor.rBreakEven || 0);
+                        const bRatio = fedor.bRatio !== undefined ? fedor.bRatio : 0;
+                        if (fFormula) fFormula.innerText = `R=${rHero.toFixed(3)} vs Rc=${rBreakEven.toFixed(3)} (注额比 ${bRatio.toFixed(2)}x)`;
+                        const fVer = document.getElementById('decisionFedorVerdict');
+                        if (fVer) {
+                            fVer.className = fedor.canDefend ? 'font-bold text-emerald-400' : 'font-bold text-rose-400';
+                            fVer.innerText = fedor.canDefend ? '🟢 胜率充足支持防守' : '🔴 胜率不足建议弃牌';
+                        }
+                    } else if (fedorBox) {
+                        fedorBox.classList.add('hidden');
+                    }
+                } else {
+                    gtoBox.classList.add('hidden');
+                }
+            }
         }
 
         // 融合单页(2026-07-14)：翻前/翻后页面切换已撤除，两函数保留为空壳防旧调用报错
