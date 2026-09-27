@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.93 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.94 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.93 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Phase 8 转牌跃迁全状态常驻与河牌终局博弈) ══
+            /* ══ PokerCode v2.94 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Phase 9A 转牌多档位注额求解与底池几何学) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1293,15 +1293,17 @@
     <!-- Phase 8 翻后转牌跃迁与河牌终局博弈分析引擎 -->
     <script src="lib/postflop_turn_transition.js"></script>
     <script src="lib/postflop_river_terminal.js"></script>
+    <!-- Phase 9A 翻后转牌多档位注额求解与底池几何学引擎 -->
+    <script src="lib/postflop_turn_sizing.js"></script>
 </head>
 <body>
 
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.93 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.94 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.93</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.94</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1322,7 +1324,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.93 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.94 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -5711,7 +5713,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v2.93',
+                    v: 'v2.94',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5730,7 +5732,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5804,7 +5806,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.93 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.94 正式版';
             renderWindowColorChips(key);
         };
 
@@ -14591,8 +14593,8 @@
                                 </span>
                                 <span id="decisionFedorVerdict" class="font-bold"></span>
                             </div>
-                            <!-- 转牌跃迁动态卡片 (Phase 8) -->
-                            <div id="decisionTurnBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
+                            <!-- 转牌跃迁动态卡片与多档位注额求解 (Phase 8 & 9A) -->
+                            <div id="decisionTurnBox" class="hidden flex flex-col gap-1.5 pt-1.5 border-t border-white/5 text-[10px]">
                                 <div class="flex items-center justify-between">
                                     <span class="text-amber-400 font-bold flex items-center gap-1">
                                         <span>🔄 转牌跃迁:</span>
@@ -14601,6 +14603,18 @@
                                     <span id="decisionTurnShift" class="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25 text-[9px] font-mono"></span>
                                 </div>
                                 <div id="decisionTurnDesc" class="text-[10px] text-gray-400 leading-tight"></div>
+                                <!-- Phase 9A 转牌多档位注额与底池几何学仪表盘 -->
+                                <div id="decisionTurnSizingBox" class="hidden flex flex-col gap-1 pt-1 border-t border-amber-500/10">
+                                    <div class="flex items-center justify-between text-[10px]">
+                                        <span class="text-emerald-400 font-bold flex items-center gap-1">
+                                            <span>🎯 推荐尺度:</span>
+                                            <span id="decisionTurnPrimarySize" class="text-emerald-300 font-mono"></span>
+                                        </span>
+                                        <span id="decisionTurnGeomBadge" class="text-sky-300 text-[9px] font-mono"></span>
+                                    </div>
+                                    <div id="decisionTurnSizingBars" class="flex items-center gap-1 flex-wrap text-[9px] font-mono text-gray-300"></div>
+                                    <div id="decisionTurnGeomPlan" class="text-[9.5px] text-sky-400/80 leading-tight"></div>
+                                </div>
                             </div>
                             <!-- 河牌终局博弈卡片 (Phase 8) -->
                             <div id="decisionRiverBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
@@ -18779,14 +18793,39 @@
                 // 静默容错：影子模式绝不影响前台用户决策与主线程执行
             }
 
-            // ── Phase 8: 翻后转牌跃迁与河牌终局博弈分析 ──
+            // ── Phase 8 & Phase 9A: 翻后转牌跃迁动力学与多档位注额求解 ──
             if (typeof classifyTurnRunout === 'function' && board.length >= 4) {
                 try {
                     const turnRes = classifyTurnRunout(board.slice(0, 3), board[3]);
                     decisionResult.turnTransition = turnRes;
                     if (decisionResult.math) decisionResult.math.turnTransition = turnRes;
+
+                    if (typeof evaluateTurnSizing === 'function') {
+                        const tBucketForSizing = (typeof _tBucket !== 'undefined' && _tBucket) ? _tBucket : (typeof heroMadeBucket === 'function' ? heroMadeBucket(postState.heroCards, board.slice(0, 4)) : '无对');
+                        const turnSizingCtx = {
+                            heroCards: postState.heroCards,
+                            boardCards: board.slice(0, 4),
+                            pot,
+                            effStack,
+                            spr,
+                            heroPos,
+                            turnTransition: turnRes,
+                            handBucket: tBucketForSizing,
+                            equity,
+                            outs,
+                            isDelayedCBetNode: typeof isDelayedCBetNode !== 'undefined' ? isDelayedCBetNode : false,
+                            isFacingBet: villainBet > 0,
+                            villainBet,
+                            isMultiway,
+                            mwTotalCount,
+                            hasNutBlocker: typeof blk !== 'undefined' && blk && blk.isNutBlocker
+                        };
+                        const turnSizingRes = evaluateTurnSizing(turnSizingCtx);
+                        decisionResult.turnSizing = turnSizingRes;
+                        if (decisionResult.math) decisionResult.math.turnSizing = turnSizingRes;
+                    }
                 } catch (e) {
-                    console.warn('classifyTurnRunout error:', e);
+                    console.warn('classifyTurnRunout / evaluateTurnSizing error:', e);
                 }
             }
 
@@ -18872,8 +18911,8 @@
                                 </span>
                                 <span id="decisionFedorVerdict" class="font-bold"></span>
                             </div>
-                            <!-- 转牌跃迁动态卡片 (Phase 8) -->
-                            <div id="decisionTurnBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
+                            <!-- 转牌跃迁动态卡片与多档位注额求解 (Phase 8 & 9A) -->
+                            <div id="decisionTurnBox" class="hidden flex flex-col gap-1.5 pt-1.5 border-t border-white/5 text-[10px]">
                                 <div class="flex items-center justify-between">
                                     <span class="text-amber-400 font-bold flex items-center gap-1">
                                         <span>🔄 转牌跃迁:</span>
@@ -18882,6 +18921,18 @@
                                     <span id="decisionTurnShift" class="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25 text-[9px] font-mono"></span>
                                 </div>
                                 <div id="decisionTurnDesc" class="text-[10px] text-gray-400 leading-tight"></div>
+                                <!-- Phase 9A 转牌多档位注额与底池几何学仪表盘 -->
+                                <div id="decisionTurnSizingBox" class="hidden flex flex-col gap-1 pt-1 border-t border-amber-500/10">
+                                    <div class="flex items-center justify-between text-[10px]">
+                                        <span class="text-emerald-400 font-bold flex items-center gap-1">
+                                            <span>🎯 推荐尺度:</span>
+                                            <span id="decisionTurnPrimarySize" class="text-emerald-300 font-mono"></span>
+                                        </span>
+                                        <span id="decisionTurnGeomBadge" class="text-sky-300 text-[9px] font-mono"></span>
+                                    </div>
+                                    <div id="decisionTurnSizingBars" class="flex items-center gap-1 flex-wrap text-[9px] font-mono text-gray-300"></div>
+                                    <div id="decisionTurnGeomPlan" class="text-[9.5px] text-sky-400/80 leading-tight"></div>
+                                </div>
                             </div>
                             <!-- 河牌终局博弈卡片 (Phase 8) -->
                             <div id="decisionRiverBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
@@ -19117,7 +19168,7 @@
                         fedorBox.classList.add('hidden');
                     }
 
-                    // Phase 8: 转牌跃迁卡片
+                    // Phase 8 & Phase 9A: 转牌跃迁卡片与多档位注额求解
                     const turnBox = document.getElementById('decisionTurnBox');
                     if (turnBox) {
                         if (street === 'turn' && turnTrans && turnTrans.runoutType !== 'UNKNOWN') {
@@ -19128,6 +19179,37 @@
                             if (tType) tType.innerText = turnTrans.typeName || turnTrans.label || '转牌跃迁';
                             if (tShift) tShift.innerText = turnTrans.shiftName || (turnTrans.advShift ? `优势: ${turnTrans.advShift}` : '中性平衡');
                             if (tDesc) tDesc.innerText = turnTrans.description || turnTrans.tactics || '';
+
+                            // Phase 9A 多档位注额与底池几何学渲染
+                            const tSizingBox = document.getElementById('decisionTurnSizingBox');
+                            const tSizing = result.turnSizing;
+                            if (tSizingBox && tSizing && tSizing.status === 'MATCHED_TURN_SIZING') {
+                                tSizingBox.classList.remove('hidden');
+                                const tPri = document.getElementById('decisionTurnPrimarySize');
+                                const tGeom = document.getElementById('decisionTurnGeomBadge');
+                                const tBars = document.getElementById('decisionTurnSizingBars');
+                                const tPlan = document.getElementById('decisionTurnGeomPlan');
+
+                                if (tPri) {
+                                    tPri.innerText = `${tSizing.primaryTier}${tSizing.primaryBb > 0 ? ` (${tSizing.primaryBb}BB)` : ''}`;
+                                }
+                                if (tGeom && tSizing.potGeometry) {
+                                    tGeom.innerText = `几何比: ${(tSizing.potGeometry.geometricRatio * 100).toFixed(0)}%`;
+                                }
+                                if (tBars && tSizing.sizingTiers) {
+                                    const activeTiers = tSizing.sizingTiers.filter(ti => ti.freq > 0);
+                                    tBars.innerHTML = activeTiers.map(ti => {
+                                        const isPri = ti.label.includes(tSizing.primaryTier);
+                                        const bgCls = isPri ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 font-bold' : 'bg-white/5 text-gray-400 border border-white/10';
+                                        return `<span class="px-1.5 py-0.5 rounded text-[9px] ${bgCls}">${ti.label}: ${ti.freq}%</span>`;
+                                    }).join('');
+                                }
+                                if (tPlan && tSizing.potGeometry) {
+                                    tPlan.innerText = `底池几何学: ${tSizing.potGeometry.planDesc} (河牌预估 SPR ${tSizing.potGeometry.riverSprAfterBet})`;
+                                }
+                            } else if (tSizingBox) {
+                                tSizingBox.classList.add('hidden');
+                            }
                         } else {
                             turnBox.classList.add('hidden');
                         }
