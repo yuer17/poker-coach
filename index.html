@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.95 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.96 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.95 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Phase 9B 多人底池收紧与范围衰减矩阵) ══
+            /* ══ PokerCode v2.96 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Phase 9C 翻后过牌加注决策) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1297,15 +1297,17 @@
     <script src="lib/postflop_turn_sizing.js"></script>
     <!-- Phase 9B 翻后多人底池收紧与范围衰减矩阵引擎 -->
     <script src="lib/postflop_multiway_engine.js"></script>
+    <!-- Phase 9C 翻后过牌加注 (Check-Raise) 决策引擎 -->
+    <script src="lib/postflop_check_raise.js"></script>
 </head>
 <body>
 
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.95 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.96 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.95</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.96</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1326,7 +1328,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.95 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.96 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -5715,7 +5717,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v2.95',
+                    v: 'v2.96',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5734,7 +5736,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5808,7 +5810,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.95 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.96 正式版';
             renderWindowColorChips(key);
         };
 
@@ -14641,6 +14643,21 @@
                                 <div id="decisionMultiwayRoleDesc" class="text-[10px] text-gray-300 leading-tight"></div>
                                 <div id="decisionMultiwayTactics" class="text-[9.5px] text-gray-400 leading-tight"></div>
                             </div>
+                            <!-- Phase 9C: 翻后过牌加注 (Check-Raise) 极化决策卡片 -->
+                            <div id="decisionCheckRaiseBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-amber-400 font-bold flex items-center gap-1">
+                                        <span>⚔️ 过牌加注:</span>
+                                        <span id="decisionCrActionBadge" class="px-1.5 py-0.5 rounded text-[9px] font-mono border"></span>
+                                    </span>
+                                    <span id="decisionCrSizing" class="text-[9px] text-amber-300 font-mono font-bold"></span>
+                                </div>
+                                <div class="flex items-center justify-between text-[9px] text-gray-400 font-mono">
+                                    <span id="decisionCrFreqBar"></span>
+                                    <span id="decisionCrSpr"></span>
+                                </div>
+                                <div id="decisionCrRationale" class="text-[9.5px] text-gray-300 leading-tight"></div>
+                            </div>
                         </div>
                         <!-- 底栏：横向标签化警示区 -->
                         <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 48px;"></div>
@@ -17239,9 +17256,10 @@
                 ? (typeof calculateMultiwayMdf === 'function' ? calculateMultiwayMdf(Math.max(0.1, pot - villainBet), villainBet, mwTotalCount) : (mdf * Math.pow(1 / (mwTotalCount - 1), 0.6)))
                 : (villainBet > 0 ? mdf : 0);
 
+            const heroActualSeat = (typeof globalPosHero !== 'undefined' && globalPosHero) ? globalPosHero : (heroPos === 'OOP' ? 'BB' : 'BTN');
             const mwDynamics = (typeof evaluateMultiwayDynamics === 'function') ? evaluateMultiwayDynamics({
-                heroPos: heroPos || 'BTN',
-                contenders: (mwCtx && mwCtx.players) ? mwCtx.players.map(p => p.pos) : [heroPos || 'BTN', 'BB'],
+                heroPos: heroActualSeat,
+                contenders: (mwCtx && mwCtx.players) ? mwCtx.players.map(p => p.pos) : [heroActualSeat, 'BB'],
                 numContenders: mwTotalCount,
                 pot: pot,
                 villainBet: villainBet,
@@ -17250,6 +17268,26 @@
                 outs: outs,
                 handBucket: (typeof heroMadeBucket === 'function') ? heroMadeBucket(postState.heroCards, board) : '无对'
             }) : null;
+
+            // Phase 9C: 翻后过牌加注 (Check-Raise) 核心求解器联动
+            const isFacingBet = villainBet > 0;
+            const heroIsOOP = heroPos === 'OOP';
+            const preBetPotCR = Math.max(0.1, pot - villainBet);
+            const crDecision = (typeof solveCheckRaise === 'function' && isFacingBet && heroIsOOP)
+                ? solveCheckRaise({
+                    street: street,
+                    preBetPot: preBetPotCR,
+                    villainBet: villainBet,
+                    effStack: effStack,
+                    heroCards: postState.heroCards,
+                    boardCards: board,
+                    isMultiway: isMultiway,
+                    numContenders: mwTotalCount,
+                    multiwayRole: mwDynamics ? mwDynamics.role : (isMultiway ? 'SANDWICH' : 'ABSOLUTE_OOP'),
+                    handBucket: (typeof heroMadeBucket === 'function') ? heroMadeBucket(postState.heroCards, board) : '无对',
+                    boardTexture: (ba.wetness > 0.6 ? 'WET_CONNECTED' : (ba.wetness <= 0.3 ? 'DRY_UNCONNECTED' : 'DYNAMIC')),
+                    equity: equity
+                }) : null;
 
             // 零筹码行动权拦截 (A06 修复 & 契约闭包)
             if (typeof effStack === 'number' && effStack <= 0) {
@@ -18312,7 +18350,29 @@
                             ? `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%未达到防守门槛（赔率${potOdds.toFixed(0)}%+容差${(isCallMarginRelaxed ? 0 : 4)}%=${(potOdds + (isCallMarginRelaxed ? 0 : 4)).toFixed(0)}%），弃牌`
                             : `SPR=${spr.toFixed(1)}（承诺区），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%，弃牌`);
                 }
-                // ── E-05: Pokercode 2-1-3 翻牌面对小尺度 Mini C-Bet 的 Check-Raise 惩罚反击 ──
+                // ── Phase 9C: 翻后不利位置极化 Check-Raise 求解接管 (TASK-ASTRA-037) ──
+                else if (crDecision && crDecision.action === 'CHECK_RAISE') {
+                    const isStation = (vProfile && vProfile.id === 'calling_station');
+                    const isSemiBluff = crDecision.category === 'SEMI_BLUFF_CR' || crDecision.category === 'BACKDOOR_BLUFF_CR';
+
+                    if (isSemiBluff && (isStation || isSurvival)) {
+                        // 刹车：跟注站无法诈唬，ICM规避淘汰不造大底池，回退至平跟
+                        primaryAction = 'CALL'; sizing = '';
+                        frequencies = { call: 75, fold: 25 };
+                        reasoning = isStation
+                            ? `💡 Pokercode 2-1-3 [面对跟注站]：对手不弃牌，${outs > 0 ? `${outs}张进张` : '后门'}听牌放弃 Check-Raise 诈唬，改用底池赔率平跟`
+                            : `💡 Pokercode ICM 3-1-3 [规避淘汰]：${outs > 0 ? `${outs}张进张` : '后门'}听牌避免 Check-Raise 被反击全下，平跟控池`;
+                    } else {
+                        primaryAction = 'RAISE';
+                        sizing = crDecision.isAllIn ? '全押' : crDecision.recommendedRaiseToBb.toFixed(1) + 'BB';
+                        const raiseF = crDecision.crFrequency;
+                        frequencies = crDecision.category === 'BACKDOOR_BLUFF_CR'
+                            ? { raise: raiseF, call: 35, fold: 25 }
+                            : { raise: raiseF, call: Math.max(0, 100 - raiseF) };
+                        reasoning = `💡 Phase 9C [${crDecision.categoryLabel}]：${crDecision.tacticalReasoning}`;
+                    }
+                }
+                // ── E-05: Pokercode 2-1-3 翻牌面对小尺度 Mini C-Bet 的 Check-Raise 惩罚反击 (兜底保留) ──
                 else if (isCRCandidate) {
                     const isStrongValue = (equity >= 65);
                     const isSemiBluff = !isStrongValue && (outs >= 8 || (outs >= 6 && equity >= 30) || isPolarizedBackdoorCR);
@@ -18733,6 +18793,7 @@
                 villainProfile: vProfile,
                 fedorAnalysis,
                 multiwayDynamics: mwDynamics,
+                checkRaiseDecision: crDecision,
                 exploitOffset: {
                     profile: vProfile ? vProfile.id : 'balanced',
                     applied: exploitApplied,
@@ -18748,6 +18809,7 @@
                     isMultiway,
                     mwTotalCount,
                     multiwayDynamics: mwDynamics,
+                    checkRaiseDecision: crDecision,
                     icmTighten,
                     fedorR: fedorAnalysis.R,
                     fedorRc: fedorAnalysis.Rc,
@@ -18990,6 +19052,21 @@
                                 <div id="decisionMultiwayRoleDesc" class="text-[10px] text-gray-300 leading-tight"></div>
                                 <div id="decisionMultiwayTactics" class="text-[9.5px] text-gray-400 leading-tight"></div>
                             </div>
+                            <!-- Phase 9C: 翻后过牌加注 (Check-Raise) 极化决策卡片 -->
+                            <div id="decisionCheckRaiseBox" class="hidden flex flex-col gap-1 pt-1.5 border-t border-white/5 text-[10px]">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-amber-400 font-bold flex items-center gap-1">
+                                        <span>⚔️ 过牌加注:</span>
+                                        <span id="decisionCrActionBadge" class="px-1.5 py-0.5 rounded text-[9px] font-mono border"></span>
+                                    </span>
+                                    <span id="decisionCrSizing" class="text-[9px] text-amber-300 font-mono font-bold"></span>
+                                </div>
+                                <div class="flex items-center justify-between text-[9px] text-gray-400 font-mono">
+                                    <span id="decisionCrFreqBar"></span>
+                                    <span id="decisionCrSpr"></span>
+                                </div>
+                                <div id="decisionCrRationale" class="text-[9.5px] text-gray-300 leading-tight"></div>
+                            </div>
                         </div>
                         <!-- 底栏：横向标签化警示区 -->
                         <div id="decisionWarnings" class="flex items-center gap-1.5 flex-wrap overflow-hidden shrink-0" style="max-height: 48px;"></div>
@@ -19127,6 +19204,7 @@
                 const turnTrans = result.turnTransition;
                 const riverTerm = result.riverTerminal;
                 const mwDyn = result.multiwayDynamics;
+                const crDyn = result.checkRaiseDecision;
                 const boardCount = postState.board.filter(c => c !== null).length;
                 const street = result.street || (boardCount === 4 ? 'turn' : boardCount === 5 ? 'river' : 'flop');
 
@@ -19134,13 +19212,15 @@
                 const hasTurn = !!(street === 'turn' && turnTrans && turnTrans.runoutType && turnTrans.runoutType !== 'UNKNOWN');
                 const hasRiver = !!(street === 'river' && riverTerm && riverTerm.frequencies);
                 const hasMultiway = !!(mwDyn && mwDyn.isMultiway);
+                const hasCheckRaise = !!(crDyn && (crDyn.action === 'CHECK_RAISE' || crDyn.crFrequency > 0 || (crDyn.handFeatures && crDyn.handFeatures.isDualBackdoor)));
 
-                if (hasLut || hasTurn || hasRiver || hasMultiway) {
+                if (hasLut || hasTurn || hasRiver || hasMultiway || hasCheckRaise) {
                     gtoBox.classList.remove('hidden');
 
                     const titleEl = document.getElementById('decisionGtoTitle');
                     if (titleEl) {
-                        if (hasMultiway && street === 'turn') titleEl.innerText = '👥 转牌多人 GTO 跃迁';
+                        if (hasCheckRaise && crDyn.action === 'CHECK_RAISE') titleEl.innerText = '⚔️ 翻后过牌加注决策';
+                        else if (hasMultiway && street === 'turn') titleEl.innerText = '👥 转牌多人 GTO 跃迁';
                         else if (hasMultiway) titleEl.innerText = '👥 多人底池 GTO 动力学';
                         else if (street === 'turn') titleEl.innerText = '⚡ 转牌 GTO 跃迁';
                         else if (street === 'river') titleEl.innerText = '⚡ 河牌 GTO 终局';
@@ -19321,6 +19401,43 @@
                             }
                         } else {
                             mwBox.classList.add('hidden');
+                        }
+                    }
+
+                    // Phase 9C: 过牌加注 (Check-Raise) 卡片渲染
+                    const crBox = document.getElementById('decisionCheckRaiseBox');
+                    if (crBox) {
+                        if (crDyn && (crDyn.action === 'CHECK_RAISE' || crDyn.crFrequency > 0 || (crDyn.handFeatures && crDyn.handFeatures.isDualBackdoor))) {
+                            crBox.classList.remove('hidden');
+                            const crActionBadge = document.getElementById('decisionCrActionBadge');
+                            const crSizing = document.getElementById('decisionCrSizing');
+                            const crFreqBar = document.getElementById('decisionCrFreqBar');
+                            const crSpr = document.getElementById('decisionCrSpr');
+                            const crRationale = document.getElementById('decisionCrRationale');
+
+                            if (crActionBadge) {
+                                if (crDyn.action === 'CHECK_RAISE') {
+                                    crActionBadge.className = 'px-1.5 py-0.5 rounded text-[9px] font-mono border bg-amber-500/20 text-amber-300 border-amber-500/40';
+                                    crActionBadge.innerText = crDyn.isAllIn ? 'All-in Jam 🚀' : `${crDyn.multiplier}x 加注`;
+                                } else {
+                                    crActionBadge.className = 'px-1.5 py-0.5 rounded text-[9px] font-mono border bg-blue-500/20 text-blue-300 border-blue-500/40';
+                                    crActionBadge.innerText = crDyn.categoryLabel || '跟注控池';
+                                }
+                            }
+                            if (crSizing) {
+                                crSizing.innerText = crDyn.isAllIn ? `全押 ${crDyn.recommendedRaiseToBb.toFixed(1)}BB` : `加注至 ${crDyn.recommendedRaiseToBb.toFixed(1)}BB`;
+                            }
+                            if (crFreqBar) {
+                                crFreqBar.innerText = `加注频率: ${crDyn.crFrequency}% (${crDyn.categoryLabel})`;
+                            }
+                            if (crSpr) {
+                                crSpr.innerText = `加注后预计SPR: ${crDyn.potGeometry.sprAfterRaise.toFixed(1)}`;
+                            }
+                            if (crRationale) {
+                                crRationale.innerText = crDyn.tacticalReasoning;
+                            }
+                        } else {
+                            crBox.classList.add('hidden');
                         }
                     }
                 } else {
