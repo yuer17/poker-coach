@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.00 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v3.01 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.00 正式版 高定黑曜石与 Liquid Glass 设计令牌 (决策中枢单一事实源仲裁版) ══
+            /* ══ PokerCode v3.01 正式版 高定黑曜石与 Liquid Glass 设计令牌 (决策中枢单一事实源仲裁版) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -966,8 +966,8 @@
                        position: relative; }
         .tl-seat-col:not(:first-child) { margin-left: 0 !important; }
         .tl-seat-col .pos-btn-hero { width: 100%; min-width: 0; height: 25px; min-height: 25px; line-height: 25px; padding: 0; font-size: 12px; font-weight: 800; border-radius: var(--radius-xs, 3px); }
-        .tl-seat { min-width: 0; height: 64px; min-height: 64px; max-height: 64px; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
-                   padding: 4px 1px; text-align: center; cursor: pointer; background: #131822; user-select: none;
+        .tl-seat { min-width: 0; height: 70px; min-height: 70px; max-height: 70px; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
+                   padding: 3px 2px; text-align: center; cursor: pointer; background: #131822; user-select: none;
                    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
                    transition: background .12s, border-color .12s, box-shadow 150ms ease-out; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .tl-seat:hover { background: #1a202c; border-color: rgba(255,255,255,0.18); }
@@ -1014,9 +1014,9 @@
         .tl-pop .macro-btn { padding: 6px 10px; font-size: var(--fs-caption); display: inline-flex; align-items: center; gap: 4px; }
         .tl-pop .tl-amt { width: 62px; height: 24px; padding: 0 4px; text-align: center; font-family: var(--font-mono); font-size: var(--fs-caption); }
         #tlHeroRow .pos-btn-hero { min-height: 25px; height: 25px; }
-        .tl-amt-inline { display: block; width: 100%; max-width: 58px; margin: 2px auto 0; height: 26px !important; min-height: 26px !important; max-height: 26px !important; padding: 0 4px; text-align: center; font-family: var(--font-mono); font-size: 13px !important; font-weight: 800; line-height: 24px !important;
-                         background: rgba(0,0,0,.65); border: 1px solid rgba(255,255,255,.22); border-radius: 4px; color: #ffffff; -moz-appearance: textfield; }
-        .tl-amt-inline:focus { outline: none; border-color: var(--accent); background: rgba(0,0,0,.75); box-shadow: 0 0 0 1px var(--accent); }
+        .tl-amt-inline { display: block; width: 90%; min-width: 42px; max-width: 72px; margin: 2px auto 0; height: 28px !important; min-height: 28px !important; max-height: 28px !important; padding: 0 4px; text-align: center; font-family: var(--font-mono); font-size: 13.5px !important; font-weight: 800; line-height: 26px !important;
+                         background: rgba(0,0,0,.78); border: 1px solid rgba(255,255,255,.28); border-radius: 6px; color: #ffffff; box-sizing: border-box; -moz-appearance: textfield; transition: all 0.15s ease-out; }
+        .tl-amt-inline:focus { outline: none; border-color: var(--accent); background: #0c1018; box-shadow: 0 0 0 2px var(--accent), 0 4px 14px rgba(0,0,0,0.65); position: relative; z-index: 60; transform: scale(1.08); }
         .hud-chip-mc { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.35); color: #93c5fd; }
         .hud-chip-bubble.urgent { border-color: #e5484d !important; color: #ff7a7d !important; animation: blPulse 1s ease-in-out infinite; }
         /* 配置面板盲注区：按钮等高不折行 */
@@ -1358,9 +1358,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.00 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.01 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.00</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.01</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1381,7 +1381,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.00 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.01 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -2196,7 +2196,7 @@
                 const el = e.target;
                 if (!el || el.tagName !== 'INPUT') return;
                 const type = (el.type || '').toLowerCase();
-                if (type !== 'number' && !(type === 'text' && el.inputMode === 'numeric')) return;
+                if (type !== 'number' && !(type === 'text' && (el.inputMode === 'numeric' || el.inputMode === 'decimal' || el.classList.contains('tl-amt-inline')))) return;
                 if (el.disabled || el.readOnly) return;
                 // 防误触：聚焦才接管
                 if (document.activeElement !== el) return;
@@ -2314,12 +2314,20 @@
                 // 盲注过期检测(2026-09-08)：推算依赖「当前大盲」，大盲一旦过期平均码就会虚高，
                 // 而它直接驱动码量分档（hero/avg 之比），错了比没有更糟。
                 // 判据：真实 MTT 里平均码（BB）随赛程**下降**（盲注涨得比筹码集中快），
-                // 淘汰过半后还算出 >100BB，只可能是大盲停留在早期级别。
-                t.staleBlinds = t.avgStackBB > 100 && t.remaining < t.entrants * 0.5;
+                // 盲注过期/虚高检测：真实 MTT 里平均码极少超过 80BB（初始通常 50-100BB，随赛程推进迅速降至 25-50BB）
+                // 若推算出 > 80BB，或者淘汰过半仍算出 > 50BB，均视为盲注等级滞后的异常值
+                t.staleBlinds = t.avgStackBB > 80 || (t.remaining > 0 && t.entrants > 0 && t.remaining < t.entrants * 0.5 && t.avgStackBB > 50);
                 if (!t.staleBlinds) {
-                    try { globalAvgStack = t.avgStackBB; avgStackTouched = true;
-                          const el = document.getElementById('avgStack'); if (el) el.value = t.avgStackBB;
-                          const tl = document.getElementById('tlAvgStack'); if (tl) tl.value = t.avgStackBB; } catch (e) {}
+                    try {
+                        const tl = document.getElementById('tlAvgStack');
+                        const userTouched = tl && tl.dataset.touched === '1';
+                        // 用户未在时间线手动输入时才自动同步推算值，且绝不标记为 userTouched
+                        if (!userTouched) {
+                            globalAvgStack = t.avgStackBB;
+                            const el = document.getElementById('avgStack'); if (el) el.value = t.avgStackBB;
+                            if (tl) tl.value = t.avgStackBB;
+                        }
+                    } catch (e) {}
                 }
             }
             return t;
@@ -2504,11 +2512,12 @@
                 return;
             }
             const seats = parseInt(gameConfig.tableSize) || 9;
+            const isAutoBba = gameConfig.anteMode === 'perPlayer' && (b.ante / b.bb) >= 0.5;
             el.innerHTML = `Ante ${blFmt(b.ante)} / 大盲 ${blFmt(b.bb)} = <b>${a.toFixed(3)}BB</b>` +
-                (gameConfig.anteMode === 'perPlayer' ? `（每人 ${(b.ante / b.bb).toFixed(3)}BB × ${seats} 人 = 全桌 ${blFmt(b.ante * seats)}）` : '（已是全桌总额）') +
+                (isAutoBba ? '（≥0.5BB 自动按全桌大盲前注 BBA 计）' : (gameConfig.anteMode === 'perPlayer' ? `（每人 ${(b.ante / b.bb).toFixed(3)}BB × ${seats} 人 = 全桌 ${blFmt(b.ante * seats)}）` : '（全桌总额 BBA）')) +
                 `<br><span style="color:var(--accent)">翻前死钱 = SB 0.5 + BB 1 + Ante ${a.toFixed(2)} = <b>${(1.5 + a).toFixed(2)}BB</b>` +
                 `（筹码数约 ${blFmt(Math.round((1.5 + a) * b.bb))}）</span>` +
-                `<br><span class="text-gray-500">对照手牌回顾的「翻牌前」底池，对不上就切另一个口径</span>`;
+                `<br><span class="text-gray-500">主流比赛（如GG「所有前注 1BB」）为全桌 BBA；若手牌回顾对不上请点「全桌」</span>`;
         }
 
         function toggleAnte() {
@@ -3615,9 +3624,13 @@
             const b = gameConfig.blinds || {};
             // 没填盲注时的兜底：实测 GG 急速赛 ante 总额稳定在约 0.75BB（三手牌验证，
             // 见 gameConfig.anteMode 注释），用它而不是旧的 1.0 假设
-            if (!(b.bb > 0) || !(b.ante > 0)) return 0.75;
+            if (!(b.bb > 0) || !(b.ante > 0)) return gameConfig.anteMode === 'total' ? 1.0 : 0.75;
             const one = b.ante / b.bb;
             if (gameConfig.anteMode === 'perPlayer') {
+                // 智能保护：若输入的 ante 已达到或超过 0.5BB（如用户或OCR直接输入 1BB BBA 大盲前注），
+                // 现代赛制下物理上不可能存在每人付 1BB 前注的规则（那意味着翻前死钱高达 10.5BB）。
+                // 此时自动识别为全桌大盲前注 (BBA)，避免虚高 6-9 倍
+                if (one >= 0.5) return one;
                 const seats = parseInt(gameConfig.tableSize) || 9;
                 return one * seats;
             }
@@ -5409,8 +5422,9 @@
             // 位置同步(2026-09-09)：传统位置按钮改「我的位置」后，座位带此前不刷新。
             // 以前只是显示不同步；现在 **SB 的可选动作与其他位置不同**（多一个跛入），
             // 座位带过期就会给出错误的动作循环，必须重渲。
+            // 2026-09-27 修复：tlApply 内部切换位置时，严禁在此隐式重构座位带 DOM（破坏就地改额与正在输入的焦点）
             if (id === 'posHero') {
-                try { if (typeof renderTimeline === 'function') renderTimeline(); }
+                try { if (typeof renderTimeline === 'function' && (typeof _tlApplying === 'undefined' || !_tlApplying)) renderTimeline(); }
                 catch (e) { /* 时间线尚未初始化（TDZ）时静默跳过 */ }
             }
             // 翻前↔翻后同步(2026-07-14b)：已进翻后时，翻前改对手位置即时刷新
@@ -5777,7 +5791,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.00',
+                    v: 'v3.01',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5796,7 +5810,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5870,7 +5884,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.00 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.01 正式版';
             renderWindowColorChips(key);
         };
 
@@ -6896,8 +6910,11 @@
             if (ranges.fourbet_value.includes(handStr)) return 'fourbet';
             if (ranges.fourbet_bluff.includes(handStr)) {
                 // Blocker 牌的筹码深度分层
+                // ≥30BB：深码极化 4-Bet 诈唬（35% 4-Bet, 65% Fold）
+                // 16~29BB：中浅码推全下，混合频率 20% All-in Jam，80% Fold（覆盖 18BB A4s/A5s 极化阻断推全下）
+                // <16BB：筹码过浅无弃牌率且SPR极低，纯弃牌防送死
                 if (effStack >= 30)       return 'fourbet_bluff_deep';
-                else if (effStack >= 20)  return 'fourbet_bluff_mid';
+                else if (effStack >= 16)  return 'fourbet_bluff_mid';
                 else                      return 'fourbet_bluff_short';
             }
             // Codex交叉测试修复③(2026-07-13)：UTG1/LJ 显式映射邻位（原静默回落 MP，LJ 偏紧一档）
@@ -7851,7 +7868,7 @@
             ribbon.style.setProperty('--tl-seat-count', seats.length);
 
             // ── 座位带 + 我的位置垂直绑定列 ──
-            const amtInput = (p, amt) => `<input class="tl-amt-inline" type="number" step="0.5" min="0.5" value="${amt}" data-tlamtpos="${p}" title="就地改额，回车确认">`;
+            const amtInput = (p, amt) => `<input class="tl-amt-inline" type="text" inputmode="decimal" pattern="[0-9]*\\.?[0-9]*" value="${amt}" data-tlamtpos="${p}" autocomplete="off" spellcheck="false" title="就地改额，回车确认">`;
             const _raiseSeqAll = tlActs.filter(a => a.a === 'raise' || a.a === 'allin');
             const NTHW_EN = ['Open', '3-Bet', '4-Bet', '5-Bet', '6-Bet'];
             ribbon.innerHTML = seats.map(p => {
@@ -7962,6 +7979,7 @@
             });
             ribbon.querySelectorAll('.tl-amt-inline').forEach(inp => {
                 inp.onclick = (e) => e.stopPropagation();
+                inp.onfocus = () => { try { inp.select(); } catch (e) {} };
                 inp.oninput = () => tlSetAmount(inp.dataset.tlamtpos, inp.value);
                 inp.onchange = () => tlSetAmount(inp.dataset.tlamtpos, inp.value);
                 inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); inp.blur(); } e.stopPropagation(); };
@@ -8095,7 +8113,11 @@
             try {
                 const ty = localStorage.getItem('tourney_cfg');
                 if (ty) {
-                    try { Object.assign(gameConfig.tourney, JSON.parse(ty)); } catch (e) {}
+                    try {
+                        const parsed = JSON.parse(ty);
+                        if (parsed && parsed.avgStackBB > 80) parsed.avgStackBB = null;
+                        Object.assign(gameConfig.tourney, parsed);
+                    } catch (e) {}
                 }
             } catch (e) {}
             try {
@@ -9675,7 +9697,7 @@
                                 break;
                             case 'fourbet_bluff_mid':
                                 b=20; f=80; c=0;
-                                logic='Blocker 牌（'+handStr+'），中浅码只能推全下，频率压低至 20%。';
+                                logic='Blocker 牌（'+handStr+'），中浅码（'+effStack+'BB）纳什极化全推 20%，主弃牌 80%（防人类池缺少 3-Bet 诈唬）。';
                                 postSizing='All-in '+effStack+'BB';
                                 break;
                             case 'fourbet_bluff_short':
