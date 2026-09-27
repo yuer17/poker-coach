@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.99 (3.0-RC2) - GTO 训练与实战决策器</title>
+    <title>PokerCode v3.00 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.99 (3.0-RC2) 高定黑曜石与 Liquid Glass 设计令牌 (决策中枢单一事实源仲裁版) ══
+            /* ══ PokerCode v3.00 正式版 高定黑曜石与 Liquid Glass 设计令牌 (决策中枢单一事实源仲裁版) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -934,7 +934,8 @@
         #visionHistoryBar.vbar-collapsed #visionThumbnails { display: none !important; }
         #visionHistoryBar.vbar-collapsed > div:first-child { margin-bottom: 0 !important; }
         @media (max-width: 767.98px) {
-            .scroll-area > .col-dec { display: block !important; width: 100% !important; }
+            .app-container { overflow-x: clip !important; overflow-y: visible !important; }
+            .scroll-area > .col-dec { display: block !important; width: 100% !important; position: sticky; top: 0; z-index: 50; }
             #decisionHUD {
                 position: sticky;
                 top: 0;
@@ -1357,9 +1358,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.99 (3.0-RC2)）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.00 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.99</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.00</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1380,7 +1381,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.99 (3.0-RC2)</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.00 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -4946,6 +4947,13 @@
                     if (m.spr !== undefined && m.spr !== null) parts.push(`<span class="whitespace-nowrap shrink-0">SPR <b class="text-amber-400 font-bold">${(+m.spr).toFixed(1)}</b></span>`);
                     if (m.requiredEq !== undefined && m.requiredEq !== null) parts.push(`<span class="whitespace-nowrap shrink-0">需胜率 <b class="text-sky-400 font-bold">${Math.round(m.requiredEq)}%</b></span>`);
                     if (m.mdf !== undefined && m.mdf !== null) parts.push(`<span class="whitespace-nowrap shrink-0">MDF <b class="text-emerald-400 font-bold">${Math.round(m.mdf)}%</b></span>`);
+                    if (m.iHaveRangeAdv) {
+                        parts.push(`<span class="whitespace-nowrap shrink-0 flex items-center gap-1.5"><span class="text-emerald-400 font-bold">我方优势</span><span class="inline-block w-6 h-1.5 bg-gray-800 rounded-full overflow-hidden border border-emerald-500/30"><span class="block h-full bg-emerald-400 w-3/4"></span></span></span>`);
+                    } else if (m.oppHasRangeAdv) {
+                        parts.push(`<span class="whitespace-nowrap shrink-0 flex items-center gap-1.5"><span class="text-rose-400 font-bold">对手优势</span><span class="inline-block w-6 h-1.5 bg-gray-800 rounded-full overflow-hidden border border-rose-500/30"><span class="block h-full bg-rose-400 w-3/4"></span></span></span>`);
+                    } else if (m.rangeAdvantage) {
+                        parts.push(`<span class="whitespace-nowrap shrink-0 flex items-center gap-1.5"><span class="text-gray-400 font-medium">范围均势</span><span class="inline-block w-6 h-1.5 bg-gray-800 rounded-full overflow-hidden border border-gray-600/30"><span class="block h-full bg-gray-400 w-1/2"></span></span></span>`);
+                    }
                     metricsEl.innerHTML = parts.join('<span class="text-white/20 whitespace-nowrap shrink-0"> · </span>');
                     metricsEl.style.display = parts.length ? '' : 'none';
                 } else {
@@ -5769,7 +5777,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v2.99',
+                    v: 'v3.00',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5788,7 +5796,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5862,7 +5870,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.99 (3.0-RC2)';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.00 正式版';
             renderWindowColorChips(key);
         };
 
@@ -17291,6 +17299,12 @@
             const streetActs = actions.filter(a => a.street === street);
             const ss         = getStreetState(streetActs);
             const villainBet = ss.lastBetPlayer === 'villain' ? ss.lastBet : 0;
+            const lastAgg    = [...actions].reverse().find(a =>
+                a.street === street && a.player === 'villain' && ['bet','raise','allin'].includes(a.action));
+            const isFacingAllin = effStack > 0 &&
+                ((lastAgg && lastAgg.action === 'allin') || villainBet >= effStack * 0.99);
+            const heroStreetBets = streetActs.filter(a => a.player === 'hero' && ['bet', 'raise'].includes(a.action));
+            const isFacingReRaise = heroStreetBets.length > 0 && villainBet > 0;
             // 河牌诈唬"之前有代表性"：前街是否有 hero 主动下注/加注记录
             const hadPrevStreetBet = actions.some(a =>
                 a.street !== street &&
@@ -17364,7 +17378,7 @@
             const isFacingBet = villainBet > 0;
             const heroIsOOP = heroPos === 'OOP';
             const preBetPotCR = Math.max(0.1, pot - villainBet);
-            const crDecision = (typeof solveCheckRaise === 'function' && isFacingBet && heroIsOOP)
+            const crDecision = (typeof solveCheckRaise === 'function' && isFacingBet && heroIsOOP && !isFacingReRaise)
                 ? solveCheckRaise({
                     street: street,
                     preBetPot: preBetPotCR,
@@ -17469,6 +17483,7 @@
                                  || (rangeAdv === 'Caller' && heroIsPFA);
             const iHaveNutAdv    = (nutAdv === 'Raiser' && heroIsPFA)
                                  || (nutAdv === 'Caller' && !heroIsPFA);
+            let isDelayedCBetNode = false;
 
             // ══════════════════════════════════════════
             // 街道专属配置（三条街策略核心差异）
@@ -17975,7 +17990,7 @@
                 // ════ 转牌专属逻辑：双桶门槛高，强进张才半诈唬 ════
                 else if (street === 'turn') {
                     const flopHadBet = actions.some(a => a.street === 'flop' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
-                    const isDelayedCBetNode = (street === 'turn' && villainBet === 0 && heroIsPFA && heroPos === 'IP' && !flopHadBet);
+                    isDelayedCBetNode = (street === 'turn' && villainBet === 0 && heroIsPFA && heroPos === 'IP' && !flopHadBet);
 
                     const trs = ba.turnRunoutShift;
                     const isAdvantageFlipped = (ba.textureShiftAdvantage != null && ba.textureShiftAdvantage <= -3) || (trs && (trs.type === 'FLUSH_COMPLETER' || trs.type === 'STRAIGHT_COMPLETER'));
@@ -18361,7 +18376,7 @@
 
                 // ── E-05: Pokercode 2-1-3 翻牌面对小尺度 Mini C-Bet 的 Check-Raise 惩罚反击变量 ──
                 const preBetPotE05 = pot - villainBet;
-                const isMiniCBet = (street === 'flop' && heroPos === 'OOP' && !isFacingAllin && !isMultiway &&
+                const isMiniCBet = (street === 'flop' && heroPos === 'OOP' && !isFacingAllin && !isFacingReRaise && !isMultiway &&
                                     preBetPotE05 > 0 && villainBet > 0 && (villainBet / preBetPotE05) <= 0.38);
 
                 let isPolarizedBackdoorCR = false;
@@ -18414,15 +18429,24 @@
                     const allinPremium = (icm313 && icm313.villainCoversHero && icm313.isICMStage)
                         ? Math.max(basePremium, icm313.riskPremium)
                         : basePremium;
-                    if (equity >= potOdds + allinPremium) {
+                    const reqOdds = potOdds + allinPremium;
+                    if (equity >= reqOdds) {
                         primaryAction = 'CALL'; sizing = '';
                         frequencies = { call: 100 };
-                        reasoning = `面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%+溢价${allinPremium}%${stage !== 'normal' ? '（ICM）' : ''}，跟注`;
+                        if (isFacingReRaise) {
+                            reasoning = `⚡ [反推全下 · 终极数学兜底]：我方本街曾主动开火，遭遇对手反加推全下（需跟注 ${toCall.toFixed(1)}BB）。当前底池赔率需胜率 ${potOdds.toFixed(0)}%${allinPremium > 0 ? ` + 风险溢价 ${allinPremium}% = ${reqOdds.toFixed(0)}%` : ''}，我方真实胜率 ${equity.toFixed(0)}%（净优势 +${(equity - reqOdds).toFixed(0)}%），呈正期望 (ChipEV > 0)，锁定跟注打光！`;
+                        } else {
+                            reasoning = `面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%+溢价${allinPremium}%${stage !== 'normal' ? '（ICM）' : ''}，跟注`;
+                        }
                     } else {
                         primaryAction = 'FOLD'; sizing = '';
                         frequencies = { fold: 100 };
-                        const icmPrefix = (icm313 && icm313.posture === 'survival') ? '💡 Pokercode ICM 3-1-3 [规避淘汰] ' : '';
-                        reasoning = `${icmPrefix}面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%+溢价${allinPremium}%${stage !== 'normal' ? '（ICM）' : ''}，弃牌`;
+                        if (isFacingReRaise) {
+                            reasoning = `🛑 [反推全下 · 终极数学兜底]：我方主动开火遭遇对手反加全推，需胜率 ${reqOdds.toFixed(0)}%（底池赔率 ${potOdds.toFixed(0)}%${allinPremium > 0 ? ` + 溢价 ${allinPremium}%` : ''}），当前手牌胜率 ${equity.toFixed(0)}%（缺口 -${Math.abs(equity - reqOdds).toFixed(0)}%）不足防守线，负期望果断弃牌止损！`;
+                        } else {
+                            const icmPrefix = (icm313 && icm313.posture === 'survival') ? '💡 Pokercode ICM 3-1-3 [规避淘汰] ' : '';
+                            reasoning = `${icmPrefix}面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%+溢价${allinPremium}%${stage !== 'normal' ? '（ICM）' : ''}，弃牌`;
+                        }
                     }
                 }
                 // ── SPR 承诺区（纯 commit：spr ≤ 1.8）──
@@ -18889,6 +18913,8 @@
                 fedorAnalysis,
                 multiwayDynamics: mwDynamics,
                 checkRaiseDecision: crDecision,
+                isFacingAllin: !!isFacingAllin,
+                isFacingReRaise: !!isFacingReRaise,
                 exploitOffset: {
                     profile: vProfile ? vProfile.id : 'balanced',
                     applied: exploitApplied,
@@ -18905,6 +18931,12 @@
                     mwTotalCount,
                     multiwayDynamics: mwDynamics,
                     checkRaiseDecision: crDecision,
+                    rangeAdvantage: rangeAdv,
+                    nutAdvantage: nutAdv,
+                    iHaveRangeAdv: !!iHaveRangeAdv,
+                    oppHasRangeAdv: !!oppHasRangeAdv,
+                    isFacingAllin: !!isFacingAllin,
+                    isFacingReRaise: !!isFacingReRaise,
                     icmTighten,
                     fedorR: fedorAnalysis.R,
                     fedorRc: fedorAnalysis.Rc,
@@ -19006,6 +19038,7 @@
                             isDelayedCBetNode: typeof isDelayedCBetNode !== 'undefined' ? isDelayedCBetNode : false,
                             isFacingBet: villainBet > 0,
                             villainBet,
+                            villainProfile: vProfile ? vProfile.id : 'balanced',
                             isMultiway,
                             mwTotalCount,
                             hasNutBlocker: typeof blk !== 'undefined' && blk && blk.isNutBlocker
@@ -19024,7 +19057,10 @@
                     const riverRes = analyzeRiverTerminal(postState.heroCards, board, pot, villainBet, effStack, {
                         equity,
                         relStrength: relStr,
-                        equityResult: eq
+                        equityResult: eq,
+                        handBucket: (typeof heroMadeBucket === 'function') ? heroMadeBucket(postState.heroCards, board) : '无对',
+                        isMultiway: isMultiway,
+                        mwTotalCount: mwTotalCount
                     });
                     decisionResult.riverTerminal = riverRes;
                     if (decisionResult.math) decisionResult.math.riverTerminal = riverRes;
