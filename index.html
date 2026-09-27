@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v2.92 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v2.93 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v2.92 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Phase 8 转牌跃迁与河牌终局博弈) ══
+            /* ══ PokerCode v2.93 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Phase 8 转牌跃迁全状态常驻与河牌终局博弈) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1299,9 +1299,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.92 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v2.93 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.92</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v2.93</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1322,7 +1322,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.92 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v2.93 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -4852,15 +4852,38 @@
                     const d = postState.decisionResult;
                     const m = (d && d.math) ? d.math : {};
                     const parts = [];
-                    if (d && ((d.lutResult && d.lutResult.status === 'MATCHED_LUT' && d.lutResult.frequencies) || (d.riverTerminal && d.riverTerminal.frequencies))) {
-                        const fr = (boardN === 5 && d.riverTerminal && d.riverTerminal.frequencies) ? d.riverTerminal.frequencies : (d.lutResult ? d.lutResult.frequencies : { FOLD: 0, CALL: 100, RAISE: 0, ALLIN: 0 });
+                    const hasLut = !!(d && d.lutResult && d.lutResult.status === 'MATCHED_LUT' && d.lutResult.frequencies);
+                    const hasTurn = !!(d && boardN === 4 && d.turnTransition && d.turnTransition.runoutType && d.turnTransition.runoutType !== 'UNKNOWN');
+                    const hasRiver = !!(d && boardN === 5 && d.riverTerminal && d.riverTerminal.frequencies);
+
+                    if (hasLut || hasTurn || hasRiver) {
                         const label = (boardN === 4) ? '⚡ 转牌 GTO' : (boardN === 5) ? '⚡ 河牌 GTO' : '⚡ 翻后 GTO';
-                        const foldVal = fr.FOLD !== undefined ? fr.FOLD : (fr.CHECK || 0);
-                        const callVal = fr.CALL !== undefined ? fr.CALL : (fr.BET_SMALL || 0);
-                        const raiseVal = fr.RAISE !== undefined ? fr.RAISE : (fr.BET_LARGE || 0);
-                        const allinVal = fr.ALLIN || 0;
-                        const lat = (boardN === 5 && d.riverTerminal) ? (d.riverTerminal.latencyUs || 2.1) : (d.lutResult ? (d.lutResult.latencyUs || 2.8) : 2.8);
-                        parts.push(`<span class="flex items-center gap-1"><span class="text-sky-400 font-bold">${label}</span><span class="text-gray-300 font-mono">[弃${foldVal}% 跟${callVal}% 加${raiseVal}% 推${allinVal}%]</span><span class="text-[9px] text-gray-500">· ${lat}µs</span></span>`);
+                        const lat = (boardN === 5 && d.riverTerminal) ? (d.riverTerminal.latencyUs || 2.1) : (boardN === 4 && d.turnTransition ? (d.turnTransition.latencyUs || 0.2) : (d.lutResult ? (d.lutResult.latencyUs || 2.8) : 2.8));
+                        
+                        let fr = null;
+                        if (boardN === 5 && d.riverTerminal && d.riverTerminal.frequencies) {
+                            fr = d.riverTerminal.frequencies;
+                        } else if (d.lutResult && d.lutResult.frequencies) {
+                            fr = d.lutResult.frequencies;
+                        } else if (d && d.frequencies) {
+                            const df = d.frequencies;
+                            fr = {
+                                FOLD: df.fold || 0,
+                                CALL: df.call || df.check || 0,
+                                RAISE: df.bet || df.raise || 0,
+                                ALLIN: 0
+                            };
+                        }
+
+                        if (fr) {
+                            const foldVal = fr.FOLD !== undefined ? fr.FOLD : (fr.CHECK || 0);
+                            const callVal = fr.CALL !== undefined ? fr.CALL : (fr.BET_SMALL || 0);
+                            const raiseVal = fr.RAISE !== undefined ? fr.RAISE : (fr.BET_LARGE || 0);
+                            const allinVal = fr.ALLIN || 0;
+                            parts.push(`<span class="flex items-center gap-1"><span class="text-sky-400 font-bold">${label}</span><span class="text-gray-300 font-mono">[弃${foldVal}% 跟${callVal}% 加${raiseVal}% 推${allinVal}%]</span><span class="text-[9px] text-gray-500">· ${lat}µs</span></span>`);
+                        } else if (hasTurn) {
+                            parts.push(`<span class="flex items-center gap-1"><span class="text-amber-400 font-bold">${label}</span><span class="text-gray-300 font-mono">[${d.turnTransition.typeName || '跃迁'} · ${d.turnTransition.shiftName || '均势'}]</span><span class="text-[9px] text-gray-500">· ${lat}µs</span></span>`);
+                        }
                     }
                     if (m.spr !== undefined && m.spr !== null) parts.push(`<span>SPR <b class="text-amber-400 font-bold">${(+m.spr).toFixed(1)}</b></span>`);
                     if (m.requiredEq !== undefined && m.requiredEq !== null) parts.push(`<span>需胜率 <b class="text-sky-400 font-bold">${Math.round(m.requiredEq)}%</b></span>`);
@@ -5688,7 +5711,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v2.92',
+                    v: 'v2.93',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5707,7 +5730,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5781,7 +5804,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.92 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v2.93 正式版';
             renderWindowColorChips(key);
         };
 
@@ -19007,9 +19030,14 @@
                 const lut = result.lutResult;
                 const turnTrans = result.turnTransition;
                 const riverTerm = result.riverTerminal;
-                const street = result.street || (postState.board.filter(c => c !== null).length === 4 ? 'turn' : postState.board.filter(c => c !== null).length === 5 ? 'river' : 'flop');
+                const boardCount = postState.board.filter(c => c !== null).length;
+                const street = result.street || (boardCount === 4 ? 'turn' : boardCount === 5 ? 'river' : 'flop');
 
-                if ((lut && lut.status === 'MATCHED_LUT' && lut.frequencies) || (riverTerm && riverTerm.frequencies)) {
+                const hasLut = !!(lut && lut.status === 'MATCHED_LUT' && lut.frequencies);
+                const hasTurn = !!(street === 'turn' && turnTrans && turnTrans.runoutType && turnTrans.runoutType !== 'UNKNOWN');
+                const hasRiver = !!(street === 'river' && riverTerm && riverTerm.frequencies);
+
+                if (hasLut || hasTurn || hasRiver) {
                     gtoBox.classList.remove('hidden');
 
                     const titleEl = document.getElementById('decisionGtoTitle');
@@ -19023,6 +19051,8 @@
                     if (metaEl) {
                         if (street === 'river' && riverTerm) {
                             metaEl.innerText = `河牌零听牌 · ${riverTerm.tierName}`;
+                        } else if (street === 'turn' && turnTrans) {
+                            metaEl.innerText = `${turnTrans.typeName || turnTrans.label || '转牌跃迁'} · ${turnTrans.shiftName || '均势'}`;
                         } else if (lut) {
                             const cId = (lut.clusterId !== undefined) ? lut.clusterId : (lut.boardCluster || 0);
                             const bId = (lut.subBucketId !== undefined) ? lut.subBucketId : (lut.handSubBucket || 0);
@@ -19034,7 +19064,7 @@
                     
                     const latEl = document.getElementById('decisionGtoLatency');
                     if (latEl) {
-                        const lat = (street === 'river' && riverTerm) ? (riverTerm.latencyUs || 2.1) : (lut ? (lut.latencyUs || 2.8) : 2.8);
+                        const lat = (street === 'river' && riverTerm) ? (riverTerm.latencyUs || 2.1) : (street === 'turn' && turnTrans ? (turnTrans.latencyUs || 0.2) : (lut ? (lut.latencyUs || 2.8) : 2.8));
                         latEl.innerText = `O(1) · ${lat}µs`;
                     }
 
@@ -19095,9 +19125,9 @@
                             const tType = document.getElementById('decisionTurnType');
                             const tShift = document.getElementById('decisionTurnShift');
                             const tDesc = document.getElementById('decisionTurnDesc');
-                            if (tType) tType.innerText = turnTrans.typeName;
-                            if (tShift) tShift.innerText = turnTrans.shiftName;
-                            if (tDesc) tDesc.innerText = turnTrans.description;
+                            if (tType) tType.innerText = turnTrans.typeName || turnTrans.label || '转牌跃迁';
+                            if (tShift) tShift.innerText = turnTrans.shiftName || (turnTrans.advShift ? `优势: ${turnTrans.advShift}` : '中性平衡');
+                            if (tDesc) tDesc.innerText = turnTrans.description || turnTrans.tactics || '';
                         } else {
                             turnBox.classList.add('hidden');
                         }
