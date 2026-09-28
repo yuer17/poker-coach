@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.02 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v3.03 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.02 正式版 高定黑曜石与 Liquid Glass 设计令牌 (决策中枢单一事实源仲裁版) ══
+            /* ══ PokerCode v3.03 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Astra-042 数学与架构全闭环版) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -983,8 +983,9 @@
         .tl-seat-col.dock-active .tl-act {
             overflow: visible; text-overflow: clip; z-index: 55;
         }
-        .tl-seat.fold { background: #131822 !important; border-color: rgba(255,255,255,0.05); opacity: 0.38; }
-        .tl-seat.fold .tl-act { color: #64748b; }
+        .tl-seat.fold { background: #131822 !important; border-color: rgba(255,255,255,0.05); }
+        .tl-seat.fold .tl-act { color: #64748b; opacity: 0.55; }
+        .tl-seat.fold .tl-seat-badge { opacity: 0.55; }
         .tl-seat.limp { background: rgba(96, 165, 250, 0.14) !important; border-color: rgba(96, 165, 250, 0.5); } .tl-seat.limp .tl-act { color: #60a5fa; font-weight: 800; }
         .tl-seat.call { background: rgba(52, 211, 133, 0.16) !important; border-color: rgba(52, 211, 133, 0.6); } .tl-seat.call .tl-act { color: #34d385; font-weight: 800; }
         .tl-seat.raise { background: rgba(255, 83, 83, 0.16) !important; border-color: rgba(255, 83, 83, 0.6); } .tl-seat.raise .tl-act { color: #ff5353; font-weight: 800; }
@@ -1358,9 +1359,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.02 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.03 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.02</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.03</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1381,7 +1382,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.02 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.03 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -4973,7 +4974,8 @@
                     const comp = window._lastShadowComparison;
                     const v = document.getElementById('actionVerdict');
                     const vTxt = v ? v.innerText.trim() : '';
-                    const isSuppressed = !vTxt || /未校准|等待|已弃牌|已全下|已结束/.test(vTxt);
+                    const isContractBlocked = window._currentDecisionContract && window._currentDecisionContract.status !== 'READY';
+                    const isSuppressed = !vTxt || isContractBlocked || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vTxt);
                     if (!isSuppressed && comp && comp.matrixVector) {
                         const [fP, cP, rP, jP] = comp.matrixVector;
                         metricsEl.innerHTML = `<span class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">⚡ GTO 求解器</span><span class="text-gray-300 font-mono">[弃${fP}% 跟${cP}% 加${rP}% 推${jP}%]</span><span class="text-[10px] text-gray-500">· 0.6µs</span></span>`;
@@ -5799,7 +5801,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.02',
+                    v: 'v3.03',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5818,7 +5820,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5892,7 +5894,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.02 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.03 正式版';
             renderWindowColorChips(key);
         };
 
@@ -7174,7 +7176,6 @@
          * 全部由它算出，不再有任何按场景硬编码的底池公式。
          */
         function tlState() {
-            tlAdoptLegacy();
             const seats = tlSeatOrder();
             const committed = {}, folded = new Set(), allIn = new Set();
             seats.forEach(p => committed[p] = 0);
@@ -7408,12 +7409,6 @@
         }
         /** 外部（旧测试 / tlSyncFromMode / 撤回恢复）直接写了 tlEvents / tlHero → 反向重建流水 */
         function tlAdoptLegacy() {
-            const hasLegacyEvents = (tlEvents && Object.keys(tlEvents).length > 0) || (tlHero && tlHero.action && tlHero.action !== 'none');
-            const hasRealActs = tlActs && tlActs.some(a => !a.isHypothesis && a.a !== 'fold');
-            if (!hasLegacyEvents && hasRealActs) {
-                _tlLegacySig = JSON.stringify({ e: tlEvents || {}, h: tlHero, hero: globalPosHero });
-                return;
-            }
             const sig = JSON.stringify({ e: tlEvents, h: tlHero, hero: globalPosHero });
             if (sig === _tlLegacySig) return;
             const seats = getPositions();
@@ -7430,11 +7425,11 @@
                 }
                 const e = tlEvents[p];
                 // 旧模型里"没有记录"就等于弃牌（座位格显示"弃"）——补出来，流水才是完整的一轮。
-                // 若 Hero 尚未表态且该座位在 Hero 之后，行动尚未轮到该座位，绝不假定其已弃牌！
+                // 若 Hero 尚未表态且该座位在 Hero 之后，行动尚未轮到该座位，不假定其已弃牌
                 if (!e || !e.action) {
                     const heroHasActed = tlHero && tlHero.action && tlHero.action !== 'none';
                     if (!heroHasActed && hi !== -1 && idx > hi) return;
-                    acts.push({ pos: p, a: 'fold', amt: 0, auto: true, isHypothesis: true });
+                    acts.push({ pos: p, a: 'fold', amt: 0, auto: true });
                     return;
                 }
                 acts.push({ pos: p, a: e.action, amt: e.amount || 0 });
@@ -7476,6 +7471,7 @@
          * initPotTracker 与 goToPostFlop 直接用它们。
          */
         function deriveScenario() {
+            tlAdoptLegacy();
             const st = tlState();
             const seats = st.seats, hero = globalPosHero;
             const R = st.raises;                       // [{pos, amt, idx}] 按时间序的加注（含开池）
@@ -8693,7 +8689,7 @@
                 if (!v || !Array.isArray(v) || v.length !== 4) return null;
                 if (v.some(x => typeof x !== 'number' || isNaN(x) || !Number.isFinite(x) || x < 0)) return null;
                 const s = v.reduce((a, b) => a + b, 0);
-                if (s <= 0) return null;
+                if (s <= 0 || !Number.isFinite(s)) return null;
                 const floors = v.map(x => Math.floor(x / s * 100));
                 let rem = 100 - floors.reduce((a, b) => a + b, 0);
                 const diffs = v.map((x, i) => ({ idx: i, diff: (x / s * 100) - floors[i] }))
@@ -8705,11 +8701,10 @@
             const cLo = vecLo ? _cleanGtoVec(vecLo) : null;
             const cHi = vecHi ? _cleanGtoVec(vecHi) : null;
 
-            if (!cLo && !cHi) return null;
-            if (!cLo) return cHi;
-            if (!cHi) return cLo;
+            if (loDepth === hiDepth) return cLo || cHi;
+            // 插值必须两端端点同时有效，任意一端损坏或缺失坚决拒绝并返回 null，绝不单侧静默替代 (ASTRA-042-04)
+            if (!cLo || !cHi) return null;
 
-            if (loDepth === hiDepth) return cLo;
             const weight = (effStack - loDepth) / (hiDepth - loDepth);
             return interpolateGtoFrequencies(cLo, cHi, weight);
         };
@@ -8797,6 +8792,7 @@
                     document.getElementById('resultPanel').classList.remove('invisible');
                     updateCfgSummary();
                     window._lastShadowComparison = null;
+                    window._currentDecisionContract = { status: 'TERMINAL', reason: 'Hero 已弃牌' };
                     return;
                 }
 
@@ -8810,6 +8806,7 @@
                     document.getElementById('resultPanel').classList.remove('invisible');
                     updateCfgSummary();
                     window._lastShadowComparison = null;
+                    window._currentDecisionContract = { status: 'TERMINAL', reason: 'Hero 已全下' };
                     return;
                 }
 
@@ -8823,6 +8820,7 @@
                     document.getElementById('resultPanel').classList.remove('invisible');
                     updateCfgSummary();
                     window._lastShadowComparison = null;
+                    window._currentDecisionContract = { status: 'TERMINAL', reason: '翻前行动轮已结束' };
                     return;
                 }
 
@@ -8839,6 +8837,7 @@
                     document.getElementById('resultPanel').classList.remove('invisible');
                     updateCfgSummary();
                     window._lastShadowComparison = null;
+                    window._currentDecisionContract = { status: 'WAITING', reason: `等待 ${_opp} 表态` };
                     return;
                 }
             }
@@ -8895,13 +8894,17 @@
             // （BB 2026-09-19；SB 2026-09-20，坚决切断未校准与无覆盖向旧模型的穿透，见 D-91）
             // ════════════════════════════════════════════════════
             if (currentMode === 'faceBet' && (posH === 'BB' || (posH === 'SB' && posV !== 'BB'))) {
-                const anteVal = (typeof getAnteBB === 'function') ? getAnteBB() : 0;
-                const totalAnte = anteVal * ((gameConfig && gameConfig.tableSize === '6max') ? 6 : 8);
+                // ASTRA-042-01: getAnteBB() 返回的是全桌 Ante 总额（含 perPlayer 换算后的总和），绝不可重复乘以人数！
+                const totalAnte = (typeof getAnteBB === 'function') ? getAnteBB() : 0;
                 const curPot = (typeof tlState === 'function') ? (tlState().pot + totalAnte) : (raiseSize + 1.5 + totalAnte);
                 const myCommit = (typeof tlState === 'function' && tlState().committed && tlState().committed[posH] !== undefined)
                     ? tlState().committed[posH]
                     : ((posH === 'SB') ? 0.5 : (posH === 'BB' ? 1.0 : 0));
-                const toCall = Math.max(0, raiseSize - myCommit);
+                // ASTRA-042-01: 限制 Hero 剩余筹码上限，跟注额绝不可超过剩余可投入额
+                const heroStack = (typeof globalHeroStack !== 'undefined') ? globalHeroStack : effStack;
+                const heroRemaining = Math.max(0, heroStack - myCommit);
+                const rawToCall = Math.max(0, raiseSize - myCommit);
+                const toCall = Math.min(heroRemaining, rawToCall);
                 const breakEvenPct = toCall > 0 ? (toCall / (curPot + toCall) * 100).toFixed(1) : '0.0';
 
                 if (raiseSize >= effStack) {
@@ -8916,6 +8919,7 @@
                     document.getElementById('resultPanel').classList.remove('invisible');
                     updateCfgSummary();
                     window._lastShadowComparison = null;
+                    window._currentDecisionContract = { status: 'BLOCKED', reason: '面对全下开池' };
                     return;
                 } else {
                     const mix = posH === 'BB' ? bbMixedFrequencies(handStr, posV, effStack)
@@ -8940,6 +8944,7 @@
                         document.getElementById('resultPanel').classList.remove('invisible');
                         updateCfgSummary();
                         window._lastShadowComparison = null;
+                        window._currentDecisionContract = { status: 'BLOCKED', reason };
                         return;
                     } else if (unsupported) {
                         // ── 优雅降级与未校准安全契约 (TASK-ASTRA-039 / D-91 废除穿透) ──
@@ -8957,6 +8962,7 @@
                         document.getElementById('resultPanel').classList.remove('invisible');
                         updateCfgSummary();
                         window._lastShadowComparison = null;
+                        window._currentDecisionContract = { status: 'BLOCKED', reason: unsupported };
                         return;
                     } else {
                         const actions = [
@@ -10959,7 +10965,8 @@
                     const st = (typeof tlState === 'function') ? tlState() : null;
                     const vEl = document.getElementById('actionVerdict');
                     const vText = vEl ? vEl.innerText.trim() : '';
-                    const isBlockedOrTerminal = !vText || /未校准|等待|已弃牌|已全下|已结束/.test(vText);
+                    const isContractBlocked = window._currentDecisionContract && window._currentDecisionContract.status !== 'READY';
+                    const isBlockedOrTerminal = !vText || isContractBlocked || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vText);
                     const isWaitingOpponent = st && !st.closed && st.nextToAct && st.nextToAct !== posH;
                     const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal;
 
@@ -10992,6 +10999,7 @@
                         vVecEl.innerText = `[弃:${fP}% 跟:${cP}% 加:${rP}% 推:${jP}%]`;
                     } else if (bEl) {
                         bEl.classList.add('hidden');
+                        if (vVecEl) vVecEl.innerText = '';
                     }
                 } else {
                     window._lastShadowComparison = null;
