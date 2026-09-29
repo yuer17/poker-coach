@@ -8501,7 +8501,26 @@
             return sorted;
         }
 
+        const VALID_GTO_HAND_REGEX = /^([2-9TJQKA])(\1|(?!\1)[2-9TJQKA][so])$/;
+
+        function sanitizeGtoVector(v) {
+            if (!v || !Array.isArray(v) || v.length !== 4) return null;
+            if (v.some(x => typeof x !== 'number' || isNaN(x) || !Number.isFinite(x) || x < 0)) return null;
+            const s = v.reduce((a, b) => a + b, 0);
+            if (s <= 0 || !Number.isFinite(s)) return null;
+            const floors = v.map(x => Math.floor(x / s * 100));
+            let rem = 100 - floors.reduce((a, b) => a + b, 0);
+            const diffs = v.map((x, i) => ({ idx: i, diff: (x / s * 100) - floors[i] }))
+                             .sort((a, b) => b.diff - a.diff);
+            for (let i = 0; i < rem; i++) floors[diffs[i].idx]++;
+            return floors;
+        }
+
         window.queryGtoPreflop = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI') {
+            if (typeof effStack !== 'number' || isNaN(effStack) || !Number.isFinite(effStack)) return null;
+            if (typeof hand !== 'string' || !VALID_GTO_HAND_REGEX.test(hand.trim())) return null;
+            const cleanHand = hand.trim();
+
             const matrix = window.PREFLOP_GTO_MATRIX;
             if (!matrix || !matrix.nodes) return null;
 
@@ -8513,6 +8532,10 @@
             let seqKey = actionSeq;
             if (actionSeq === 'vs_RFI') seqKey = `vs_${effVsPos}_RFI`;
             const depths = findAvailableGtoDepths(matrix, effHeroPos, seqKey) || (matrix.depths || [8, 10, 12, 15, 20, 25, 30, 40, 60]);
+            if (!depths || !depths.length) return null;
+            const minD = depths[0], maxD = depths[depths.length - 1];
+            if (effStack < minD || effStack > maxD) return null;
+
             let loDepth = depths[0], hiDepth = depths[depths.length - 1];
             for (let i = 0; i < depths.length; i++) {
                 if (depths[i] <= effStack) loDepth = depths[i];
@@ -8544,16 +8567,17 @@
                 return null; // 节点缺失返回 null，绝不误判为 100% 弃牌
             }
 
-            const vecLo = nodeLo[hand] || (hasLo ? [100, 0, 0, 0] : null);
-            const vecHi = nodeHi[hand] || (hasHi ? [100, 0, 0, 0] : null);
+            const rawLo = nodeLo[cleanHand] || (hasLo ? [100, 0, 0, 0] : null);
+            const rawHi = nodeHi[cleanHand] || (hasHi ? [100, 0, 0, 0] : null);
 
-            if (!vecLo && !vecHi) return null;
-            if (!vecLo) return vecHi;
-            if (!vecHi) return vecLo;
+            const cLo = rawLo ? sanitizeGtoVector(rawLo) : null;
+            const cHi = rawHi ? sanitizeGtoVector(rawHi) : null;
 
-            if (loDepth === hiDepth) return vecLo;
+            if (loDepth === hiDepth) return cLo || cHi;
+            if (!cLo || !cHi) return null;
+
             const weight = (effStack - loDepth) / (hiDepth - loDepth);
-            return interpolateGtoFrequencies(vecLo, vecHi, weight);
+            return interpolateGtoFrequencies(cLo, cHi, weight);
         };
 
         function executeEngineCore() {
@@ -10761,6 +10785,22 @@
                     const vEl = document.getElementById('actionVerdict');
                     const szEl = document.getElementById('sizingContent');
                     const lgEl = document.getElementById('actionLogic');
+                    const bEl = document.getElementById('gtoSolverBadge');
+                    const vVecEl = document.getElementById('gtoSolverVector');
+
+                    const vText = vEl ? vEl.innerText.trim() : '';
+                    const lgText = lgEl ? lgEl.innerText.trim() : '';
+                    const isBlockedOrTerminal = !vText || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vText) || /超出原图覆盖|未按原图校准/.test(lgText);
+                    const st = (typeof tlState === 'function') ? tlState() : null;
+                    const isWaitingOpponent = st && !st.closed && st.nextToAct && st.nextToAct !== posH;
+                    const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal;
+
+                    if (shouldSuppress) {
+                        window._lastShadowComparison = null;
+                        if (bEl) bEl.classList.add('hidden');
+                        if (vVecEl) vVecEl.innerText = '';
+                        return;
+                    }
 
                     window._lastShadowComparison = {
                         mode: currentMode,
@@ -10768,15 +10808,13 @@
                         posV,
                         effStack: eff,
                         handStr,
-                        legacyVerdict: vEl ? vEl.innerText.trim() : '',
+                        legacyVerdict: vText,
                         legacySizing: szEl ? szEl.innerText.trim() : '',
-                        legacyLogic: lgEl ? lgEl.innerText.trim() : '',
+                        legacyLogic: lgText,
                         matrixVector: matrixVec, // [Fold%, Call%, Raise%, Jam%]
                         timestamp: Date.now()
                     };
 
-                    const bEl = document.getElementById('gtoSolverBadge');
-                    const vVecEl = document.getElementById('gtoSolverVector');
                     if (bEl && vVecEl && matrixVec) {
                         const [fP, cP, rP, jP] = matrixVec;
                         bEl.classList.remove('hidden');
