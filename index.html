@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.01 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v3.07 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.01 正式版 高定黑曜石与 Liquid Glass 设计令牌 (决策中枢单一事实源仲裁版) ══
+            /* ══ PokerCode v3.07 正式版 高定黑曜石与 Liquid Glass 设计令牌 (先行推演预案与冷推防御架构版) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1358,9 +1358,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.01 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.07 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.01</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.07</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1381,13 +1381,13 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.01 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.07 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
                     <div class="hud-chip hud-chip-stack"><span class="chip-label">筹码</span><span id="topHudStack" class="chip-val">40BB</span></div>
                     <div class="hud-chip hud-chip-pot"><span class="chip-label">底池</span><span id="topHudPot" class="chip-val">1.5BB</span></div>
-                    <div class="hud-chip hud-chip-bubble" id="topHudBubbleBox" style="display:none;"><span class="chip-label">钱圈</span><span id="topHudBubble" class="chip-val">距钱圈 590人</span></div>
+                    <div class="hud-chip hud-chip-bubble" id="topHudBubbleBox" style="display:none;cursor:pointer;" onclick="promptEditBubble(event)" title="点击就地修改距钱圈人数；右侧 ✕ 一键清空重置"><span class="chip-label">钱圈</span><span id="topHudBubble" class="chip-val">距钱圈 590人</span><span class="bubble-clear-x" onclick="clearBubble(event)" title="一键清除钱圈状态" style="margin-left:4px;font-size:10px;opacity:0.8;padding:0 3px;border-radius:3px;background:rgba(255,255,255,0.15);">✕</span></div>
                     <div class="hud-chip hud-chip-mc" id="topHudMCBox" style="display:none;"><span class="chip-label">算力</span><span id="topHudMC" class="chip-val">MC×1500</span></div>
                     <div class="hud-chip hud-chip-street"><span id="topHudStreet" class="chip-val street-badge">翻前</span></div>
                     <span id="topHudStage" style="display:none;">常规期</span>
@@ -1413,7 +1413,10 @@
                             <div class="pb-1 border-b border-white/10">
                                 <div class="flex justify-between items-center mb-1">
                                     <span class="text-xs text-yellow-500 font-bold">🏆 赛事信息</span>
-                                    <button onclick="tyClear()" class="cfg-btn bl-btn" style="padding:0 6px;">清空</button>
+                                    <div style="display:flex;gap:4px;">
+                                        <button onclick="clearBubble(event)" class="cfg-btn bl-btn" style="padding:0 6px;" title="一键清除钱圈人数与泡沫状态">清钱圈</button>
+                                        <button onclick="tyClear()" class="cfg-btn bl-btn" style="padding:0 6px;">清空</button>
+                                    </div>
                                 </div>
                                 <div id="tyName" class="text-xs text-gray-400 truncate mb-1" style="display:none;"></div>
                                 <div class="grid grid-cols-3 gap-1">
@@ -2410,7 +2413,7 @@
             const bubbleEl = document.getElementById('topHudBubble');
             if (bubbleBox && bubbleEl) {
                 if (t && t.toBubble != null) {
-                    bubbleBox.style.display = '';
+                    bubbleBox.style.display = 'inline-flex';
                     bubbleEl.textContent = t.toBubble === 0 ? '已进钱' : `距钱圈 ${t.toBubble}人`;
                     bubbleBox.classList.toggle('urgent', t.toBubble <= 9);
                 } else {
@@ -2426,6 +2429,46 @@
                 } else {
                     w.innerText = '';
                 }
+            }
+        }
+        /** 交互式钱圈状态管理 (v3.07 根治 OCR 误识死锁)：一键清除或输入任意人数 */
+        function clearBubble(e) {
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            if (gameConfig.tourney) {
+                gameConfig.tourney.toBubble = null;
+                gameConfig.tourney.remaining = null;
+            }
+            if (typeof onStageQuickChange === 'function') onStageQuickChange('normal');
+            renderMoneyWidget();
+            if (typeof updateTopHUD === 'function') updateTopHUD();
+            if (typeof showToast === 'function') showToast('已清除钱圈状态 · 恢复常规期', 'ok');
+            try { if (typeof recalcAdvice === 'function') recalcAdvice(); } catch (err) {}
+            try { if (typeof executeEngine === 'function') executeEngine(); } catch (err) {}
+        }
+        function promptEditBubble(e) {
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            const current = (gameConfig.tourney && gameConfig.tourney.toBubble != null) ? gameConfig.tourney.toBubble : '';
+            const input = prompt('修改距钱圈人数（输入数字；输入 0 为已进钱；留空或输入 c 清空重置）：', current);
+            if (input === null) return;
+            const trimmed = String(input).trim().toLowerCase();
+            if (trimmed === '' || trimmed === 'c' || trimmed === 'clear') {
+                clearBubble(e);
+                return;
+            }
+            const val = parseInt(trimmed, 10);
+            if (!isNaN(val) && val >= 0) {
+                if (!gameConfig.tourney) gameConfig.tourney = {};
+                gameConfig.tourney.toBubble = val;
+                let stg = 'normal';
+                if (val === 0) stg = 'itm';
+                else if (val <= 2) stg = 'bubble';
+                else if (val <= 10) stg = 'near_bubble';
+                if (typeof onStageQuickChange === 'function') onStageQuickChange(stg);
+                renderMoneyWidget();
+                if (typeof updateTopHUD === 'function') updateTopHUD();
+                if (typeof showToast === 'function') showToast(`距钱圈已更新为 ${val} 人 (${stg})`, 'ok');
+                try { if (typeof recalcAdvice === 'function') recalcAdvice(); } catch (err) {}
+                try { if (typeof executeEngine === 'function') executeEngine(); } catch (err) {}
             }
         }
         function tyOnInput() {
@@ -5791,7 +5834,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.01',
+                    v: 'v3.07',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5810,7 +5853,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5884,7 +5927,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.01 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.07 正式版';
             renderWindowColorChips(key);
         };
 
@@ -8606,11 +8649,18 @@
                     const mix = posH === 'BB' ? bbMixedFrequencies(handStr, posV, effStack)
                                               : sbMixedFrequencies(handStr, posV, effStack);
                     const [call, raise, jam, fold] = mix ? mix.frequencies : [];
+                    // 自适应尺度兼容：若对手开池尺寸比基准更小（赔率更便宜），或偏差在合理容差内，或属于顶端纯全下/纯弃牌牌型，直接平滑适配
+                    const sizeDiff = mix ? (raiseSize - mix.open) : 0;
+                    const isCheaperOpen = mix && sizeDiff <= 0.05;
+                    const isSmallSizingDev = mix && Math.abs(sizeDiff) <= 0.65;
+                    const isPureActionHand = mix && (jam >= 80 || fold >= 80);
+                    const sizingSupported = mix && (isCheaperOpen || isSmallSizingDev || isPureActionHand);
+
                     const unsupported = !mix ? ''
                         : gameConfig.stage !== 'normal' || gameConfig.gameType !== 'normal' ? `${posH} ICM / 赛制未校准`
                         : !gameConfig.ante ? `无 Ante 的 ${posH} 混合未校准`
                         : gameConfig.playStyle !== 'normal' ? `自定义打法的 ${posH} 混合未校准`
-                        : Math.abs(raiseSize - mix.open) > 0.300001 ? `此开池尺度的 ${posH} 混合未校准`
+                        : !sizingSupported ? `此开池尺度的 ${posH} 混合未校准`
                         : raise > 0 && gameConfig.tbSize !== 'auto' ? '自定义 3-Bet 尺度未校准' : '';
                     if (!mix) {
                         const rp = document.getElementById('resultPanel');
@@ -8644,9 +8694,15 @@
                         box.style.borderColor = color; box.style.backgroundColor = 'var(--surface-2)';
                         vText.style.color = color;
                         vText.innerText = isMix ? '🟡 混合策略' : `${main.name} ${main.f}%`;
+                        let sizingHint = '';
+                        if (Math.abs(raiseSize - mix.open) > 0.05) {
+                            sizingHint = isCheaperOpen
+                                ? `开池 ${raiseSize}BB 低于基准 ${mix.open}BB（底池赔率更优，平滑适用基准防守）。`
+                                : `开池 ${raiseSize}BB 偏离基准 ${mix.open}BB（自适应适配）。`;
+                        }
                         logicText.innerText = `MPT ${posH} 四动作 ChipEV 基准：${handStr} 对 ${POS_LABEL[posV] || posV}，${effStack}BB。` +
                             (mix.interpolated ? '位置/深度间按频率线性插值（近似）。' : '保留原图混合，像素提取后取整，存在读图误差。') +
-                            (Math.abs(raiseSize-mix.open)>0.01 ? `开池${raiseSize}BB近似采用${mix.open}BB基准。` : '') +
+                            (sizingHint ? sizingHint : (Math.abs(raiseSize-mix.open)>0.01 ? `开池${raiseSize}BB近似采用${mix.open}BB基准。` : '')) +
                             (posV === 'SB' && raise ? '非全下尺度沿用既有IP规则（启发式）。' : '非全下尺度按MPT Table43；不同动作使用各自尺度。');
                         const sizes = [];
                         if (raise) sizes.push(`3-Bet 到 ${(mix.raiseTo ?? raiseSize * getTbMult(true)).toFixed(1)}BB (${raise}%)`);
@@ -10372,7 +10428,33 @@
                         const isColdShove = priorAggressors.length >= 2 || (isMultiAllin && acts.some(a => a.a === 'allin' && a.pos !== posV));
                         const isVsEpOpen = ['UTG', 'UTG1', 'MP'].includes(posH);
 
-                        if (isMultiAllin && pushEff > 25) {
+                        // 识别 3-Bet Jam vs Open (冷反推全下 / 隔离推入):
+                        // 对手 posV 在前位已有加注者 (priorAggressors.length >= 1) 的情况下全下
+                        const is3bJamOverOpen = priorAggressors.length >= 1 && (posV !== priorAggressors[0].pos);
+                        // Hero 是否为该开池者？若 Hero 并非原开池者（例如 UTG 开池，BTN 全推，Hero 在 SB/BB），
+                        // 则 Hero 属于冷接 3-Bet Jam（Cold Defense vs 3-Bet Jam），池中不仅有推全下的对手，原开池者仍在池中未弃牌！
+                        const heroIsOriginalOpener = priorAggressors.length >= 1 && priorAggressors[0].pos === posH;
+                        const isColdDefenseVs3bJam = is3bJamOverOpen && !heroIsOriginalOpener;
+
+                        if (isColdDefenseVs3bJam) {
+                            // 冷接 3-Bet Jam：面对开池 + 第三方反推全下，推全者范围高度极化收敛（TT+/AK），
+                            // 且原开池者仍在池中未表态！Hero 处于极其凶险的多方夹板池
+                            pushHands = pushEff > 20
+                                ? ['AA', 'KK', 'QQ', 'JJ', 'AKs', 'AKo']
+                                : ['AA', 'KK', 'QQ', 'JJ', 'TT', '99', 'AKs', 'AKo', 'AQs'];
+                            pushSrc = 'cold_3b_jam';
+                            villainPushRange = pushEff > 20 ? 3.0 : 4.5;
+                            warnings.push(`⚠️ 面对 ${POS_LABEL[priorAggressors[0].pos] || priorAggressors[0].pos} 开池与 ${POS_LABEL[posV] || posV} 的 3-Bet 全推（Cold 3-Bet Jam）：推全者范围高度极化收敛（约前 ${villainPushRange.toFixed(1)}%），且原开池者仍在池中未表态。非怪兽牌坚决弃牌止损！`);
+                            if (!['AA', 'KK', 'QQ', 'AKs'].includes(handStr)) {
+                                box.style.borderColor = '#5c667f'; box.style.backgroundColor = 'rgba(92,102,127,0.12)';
+                                vText.style.color = '#8b95ab'; vText.innerText = '⚪ 弃牌 (Fold)';
+                                logicText.innerHTML = `⚠️ 面对 ${POS_LABEL[priorAggressors[0].pos] || priorAggressors[0].pos} 开池与 ${POS_LABEL[posV] || posV} 的 3-Bet 全推（Cold 3-Bet Jam），推全者范围高度极化收敛（TT+/AK，约前 ${villainPushRange.toFixed(1)}%），且原开池者 ${POS_LABEL[priorAggressors[0].pos] || priorAggressors[0].pos} 仍在池中未弃牌。<br>你的 <b>${handStr}</b> 处于极其凶险的多方被统治高危状态，果断弃牌止损！`;
+                                proofPanel.classList.remove('hidden');
+                                document.getElementById('resultPanel').classList.remove('invisible');
+                                updateCfgSummary();
+                                return;
+                            }
+                        } else if (isMultiAllin && pushEff > 25) {
                             // 多人全下 (Multi-Allin Defense)：面对两个或更多对手全下且深度 >25BB
                             // 隔离重推者范围极度紧缩，且 3-Way+ 底池胜率被三方严重稀释
                             pushHands = ['AA', 'KK', 'QQ', 'AKs', 'AKo'];
