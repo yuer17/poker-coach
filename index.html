@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.06 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v3.01 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.06 正式版 高定黑曜石与 Liquid Glass 设计令牌 (39项系统缺陷全面清零根治版) ══
+            /* ══ PokerCode v3.01 正式版 高定黑曜石与 Liquid Glass 设计令牌 (决策中枢单一事实源仲裁版) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -983,9 +983,8 @@
         .tl-seat-col.dock-active .tl-act {
             overflow: visible; text-overflow: clip; z-index: 55;
         }
-        .tl-seat.fold { background: #131822 !important; border-color: rgba(255,255,255,0.05); }
-        .tl-seat.fold .tl-act { color: #64748b; opacity: 0.55; }
-        .tl-seat.fold .tl-seat-badge { opacity: 0.55; }
+        .tl-seat.fold { background: rgba(100, 116, 139, 0.08) !important; border-color: rgba(255,255,255,0.05); opacity: 0.38; }
+        .tl-seat.fold .tl-act { color: #64748b; }
         .tl-seat.limp { background: rgba(96, 165, 250, 0.14) !important; border-color: rgba(96, 165, 250, 0.5); } .tl-seat.limp .tl-act { color: #60a5fa; font-weight: 800; }
         .tl-seat.call { background: rgba(52, 211, 133, 0.16) !important; border-color: rgba(52, 211, 133, 0.6); } .tl-seat.call .tl-act { color: #34d385; font-weight: 800; }
         .tl-seat.raise { background: rgba(255, 83, 83, 0.16) !important; border-color: rgba(255, 83, 83, 0.6); } .tl-seat.raise .tl-act { color: #ff5353; font-weight: 800; }
@@ -1153,8 +1152,8 @@
         .villain-act-btn.act-btn-betraise:hover { background: #381f14 !important; border-color: #f97316 !important; color: #ffffff !important; }
         .villain-act-btn.act-allin { background: #2e1017 !important; border: 1px solid rgba(244, 63, 94, 0.55) !important; color: #fecdd3 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 10px rgba(244, 63, 94, 0.20) !important; }
         .villain-act-btn.act-allin:hover { background: #3d141e !important; border-color: #f43f5e !important; color: #ffffff !important; }
-        /* 尺度行与动作行同宽、撑满容器并支持小屏自适应换行 (DEF-UI-01) */
-        .size-row { display: flex; align-items: center; gap: 6px; width: 100%; max-width: 720px; margin-bottom: 8px; box-sizing: border-box; flex-wrap: wrap; }
+        /* 尺度行与动作行同宽、撑满容器并锁死单行不折行（2026-09-26 根治阻断/超池文字溢出与右侧留白） */
+        .size-row { display: flex; align-items: center; gap: 6px; width: 100%; max-width: 720px; margin-bottom: 8px; box-sizing: border-box; }
         .size-lbl { font-size: var(--fs-micro); color: var(--text-muted); font-weight: 700; flex: 0 0 auto; letter-spacing: .04em; white-space: nowrap; }
         .qc-btn.qc-size {
             flex: 1 1 auto; min-width: 0; padding: 0 4px; min-height: 32px; height: 32px;
@@ -1359,9 +1358,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.06 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.01 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.06</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.01</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1382,7 +1381,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.06 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.01 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -2847,16 +2846,8 @@
             'LJ_vs_UTG':   { value:['AA','KK','QQ','AKs','AKo'],                             bluff:['A5s','A4s','KQs'] },
             'LJ_vs_MP':    { value:['AA','KK','QQ','JJ','AKs','AKo'],                        bluff:['A5s','A4s','A3s','KQs','QJs'] },
             'MP_vs_UTG':   { value:['AA','KK','QQ','AKs','AKo'],                             bluff:['A5s','A4s','KQs'] },
-            'SB_vs_UTG':   { value:['AA','KK','QQ','AKs','AKo'],                             bluff:['A5s','A4s','A3s','KQs'] },
-            'SB_vs_MP':    { value:['AA','KK','QQ','JJ','AKs','AKo'],                        bluff:['A5s','A4s','A3s','KQs','QJs'] },
-            'SB_vs_LJ':    { value:['AA','KK','QQ','JJ','AKs','AQs','AKo'],                  bluff:['A5s','A4s','A3s','A2s','KQs','QJs'] },
-            'SB_vs_HJ':    { value:['AA','KK','QQ','JJ','TT','AKs','AQs','AKo'],             bluff:['A5s','A4s','A3s','A2s','KQs','QJs','JTs'] },
             'SB_vs_CO':    { value:['AA','KK','QQ','JJ','TT','AKs','AQs','AKo'],             bluff:['A5s','A4s','A3s','A2s','KQs','QJs','JTs','T8s'] },
             'SB_vs_BTN':   { value:['AA','KK','QQ','JJ','TT','AKs','AQs','AKo'],             bluff:['A5s','A4s','A3s','KQs','QJs','J9s','T8s'] },
-            'BB_vs_UTG':   { value:['AA','KK','QQ','AKs','AKo'],                             bluff:['A5s','A4s','KQs','QJs'] },
-            'BB_vs_MP':    { value:['AA','KK','QQ','JJ','AKs','AKo'],                        bluff:['A5s','A4s','A3s','KQs','QJs','J9s'] },
-            'BB_vs_LJ':    { value:['AA','KK','QQ','JJ','AKs','AQs','AKo'],                  bluff:['A5s','A4s','A3s','A2s','KQs','QJs','J9s'] },
-            'BB_vs_HJ':    { value:['AA','KK','QQ','JJ','AKs','AQs','AKo'],                  bluff:['A5s','A4s','A3s','A2s','KQs','QJs','J9s','T8s'] },
             'BB_vs_CO':    { value:['AA','KK','QQ','JJ','AKs','AQs','AKo'],                  bluff:['A5s','A4s','A3s','K9s','QJs','J9s'] },
             'BB_vs_BTN':   { value:['AA','KK','QQ','JJ','TT','AKs','AQs','AKo','AQo'],       bluff:['A5s','A4s','A3s','A2s','K9s','QJs','J9s','T8s','87s'] },
             'BB_vs_SB':    { value:['AA','KK','QQ','JJ','TT','99','AKs','AQs','AJs','AKo','AQo'], bluff:['A5s','A4s','A3s','A2s','K9s','Q9s','J9s','T8s','87s','76s'] },
@@ -2934,7 +2925,7 @@
         // 这是本项目第四次撞见同一个形状：**全下的是范围的中段，不是顶端。**
         // 注意方向随开池位反转：UTG 40bb 的全下段只有 AKo/KK/QQ 三手——
         // 因为 UTG 范围强、盲位的 3-Bet 更偏价值，此时顶端反而该全下。
-        const MPT_F3B = {'BTN':{'BB':{'25':{'jam':['AJo','AKo','AQo','A2s','A4s','A5s','AKs','33','ATo','A3s'],'call':['KJo','KQo','QJo','AA','JJ','KK','QQ','A6s','A7s','A8s','A9s','AJs','ATs','J9s','JTs','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KTs','Q8s','Q9s','QJs','QTs','TT','99','88','T8s','T9s','87s','A8o','98s','66','A7o','76s','KTo','55','A5o','77','AQs','A9o','KQs','QTo','A4o'],'mix':['44']},'40':{'jam':['AKo','AQo','A2s','33','A5s','66','KTs','AKs','JJ'],'call':['KJo','KQo','QJo','AA','KK','QQ','A4s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','Q8s','Q9s','QJs','ATo','T8s','T9s','KTo','A8o','A9o','98s','99','88','44','97s','76s','87s','54s','77','65s','QTo','55','Q7s','A3s','K3s','QTs','Q6s','A5o','JTo','TT'],'mix':['AJo']},'60':{'jam':['AKo','TT','AKs','44','KK','99'],'call':['AJo','KQo','QJo','QTo','AA','JJ','QQ','A2s','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J7s','J8s','J9s','JTs','K2s','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q5s','Q6s','Q7s','Q8s','Q9s','QJs','QTs','A9o','96s','98s','88','86s','T9s','ATo','JTo','T8s','KTo','87s','97s','76s','64s','T7s','54s','75s','77','66','53s','65s','55','KJo','Q4s','33','K9o'],'mix':['AQo','22']}},'SB':{'25':{'jam':['AJo','AKo','AQo','QQ','A2s','A3s','A4s','A5s','AKs','AQs','A9o','33','ATo','A8o','55','88'],'call':['KJo','QJo','AA','JJ','A6s','A7s','A8s','AJs','ATs','J9s','JTs','K6s','K7s','K8s','K9s','KJs','KTs','Q8s','Q9s','QJs','QTs','T8s','T9s','98s','87s','TT','A7o','66','76s','A9s','77','KQo','K3s','44','99','KK','97s','K4s'],'mix':['A5o','KQs']},'40':{'jam':['AKo','AQo','JJ','A4s','A5s','TT','22','AKs','QQ'],'call':['KJo','KQo','QJo','QTo','AA','KK','A2s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K2s','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q4s','Q5s','Q6s','Q7s','Q8s','Q9s','QJs','QTs','T7s','JTo','T8s','KTo','T9s','ATo','A8o','96s','99','98s','A9o','97s','88','86s','44','A3s','76s','64s','87s','75s','54s','77','65s','53s','55','A5o','AJo'],'mix':['A6s','33','66']},'60':{'jam':['AKo','KK','TT','AKs','QJs','Q2s','AQs','22','K9o'],'call':['AJo','AQo','KJo','KQo','QJo','QTo','AA','A2s','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','ATs','J7s','J8s','J9s','JTs','K2s','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q3s','Q4s','Q5s','Q6s','Q7s','Q8s','Q9s','QTs','A9o','99','96s','98s','88','86s','44','T6s','85s','T8s','T9s','43s','ATo','KTo','97s','87s','76s','64s','T7s','54s','75s','66','77','53s','33','65s','55','JTo','JJ','A5o','QQ'],'mix':['A8o']}}},'CO':{'BB':{'25':{'jam':['AJo','AKo','AQo','A2s','A4s','AKs'],'call':['KJo','KQo','AA','JJ','KK','QQ','A7s','A8s','A9s','AJs','AQs','ATs','J9s','JTs','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q9s','QJs','QTs','98s','T8s','88','87s','99','TT','A9o','T9s','ATo','76s','55','77','66','K5s','A6s','54s','A8o','44','KTo'],'mix':['A5s','A3s']},'40':{'jam':['AKo','JJ','AKs','AQo','KJs'],'call':['KJo','KQo','AA','KK','QQ','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J9s','JTs','K6s','K7s','K8s','K9s','KQs','KTs','Q8s','Q9s','QTs','T8s','ATo','T9s','99','98s','88','76s','QJs','77','66','55','54s','AJo','87s','44','K5s','A4s','KTo','QJo'],'mix':['A3s','A2s','TT']},'60':{'jam':['AKo','ATo','KK','AKs','K5s'],'call':['AJo','AQo','KJo','KQo','AA','A2s','A3s','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q9s','QJs','QTs','76s','77','99','88','54s','98s','44','55','T8s','T9s','65s','97s','JTo','87s','66','33','Q8s','QQ','A4s','TT','KTo'],'mix':['JJ']}},'SB':{'25':{'jam':['AJo','AKo','AQo','QQ','A4s','AKs','AQs','66','55','A6s','77','A3s'],'call':['KJo','KQo','AA','JJ','KK','A7s','A8s','A9s','AJs','ATs','J9s','JTs','K6s','K7s','K9s','KJs','KTs','Q9s','QJs','QTs','88','TT','A9o','T9s','44','98s','54s','87s','65s','76s','A5s','99','KQs','K4s'],'mix':['ATo','A2s']},'40':{'jam':['AKo','AQo','JJ','AKs','A7s','33','QQ','TT'],'call':['AJo','KJo','KQo','AA','KK','A2s','A3s','A6s','A8s','A9s','AJs','AQs','ATs','J9s','JTs','K5s','K6s','K7s','K9s','KQs','KTs','Q9s','QJs','QTs','ATo','87s','T8s','T9s','88','98s','44','54s','66','76s','65s','97s','55','KJs','K8s','A4s','Q8s','QJo'],'mix':['A5s','99','77']},'60':{'jam':['AKo','KK','QQ','AKs','A9o'],'call':['AJo','AQo','KJo','KQo','JJ','A2s','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q8s','Q9s','QJs','QTs','75s','77','76s','86s','54s','96s','98s','44','65s','87s','55','97s','T8s','T9s','66','TT','99','33','22','88','AA','ATo'],'mix':['QJo']}}},'LJ':{'BB':{'25':{'jam':['AKo','AQo','QQ','AKs'],'call':['AJo','KQo','AA','JJ','KK','A3s','A4s','A8s','A9s','AJs','AQs','ATs','JTs','K8s','K9s','KJs','KQs','KTs','QJs','QTs','TT','ATo','99','77','66','98s','T9s','A5s','A2s','K6s'],'mix':['88','A6s','A7s']},'40':{'jam':['AKo'],'call':['AJo','AQo','AA','JJ','KK','A5s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','JTs','K8s','K9s','KJs','KTs','QJs','QTs','T9s','TT','99','88','76s','KQo','77','54s','66','65s','K6s','KQs','A3s','J9s','KJo','87s'],'mix':['QQ','A4s']},'60':{'jam':['KK','KQo'],'call':['AQo','JJ','QQ','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','J9s','JTs','K9s','KJs','KQs','KTs','QJs','QTs','76s','88','99','44','65s','87s','T9s','66','TT','33','AKo','77','AJo'],'mix':['AA']}},'SB':{'25':{'jam':['AKo','AQo','QQ','A6s','A7s','AKs','88'],'call':['KQo','AA','A3s','A4s','A8s','A9s','AJs','ATs','JTs','K9s','KJs','KQs','KTs','QJs','QTs','ATo','99','77','66','65s','AJo','K7s','KK','A2s','JJ','98s','TT','76s'],'mix':['A5s','AQs']},'40':{'jam':['AKo','QQ','A5s'],'call':['AJo','AQo','KQo','AA','KK','A2s','A3s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','J9s','JTs','K9s','KJs','KQs','KTs','QJs','QTs','T9s','99','44','88','76s','87s','77','54s','66','65s','55','98s','Q9s','T8s','A4s','A6s','K6s','K5s'],'mix':['JJ','TT']},'60':{'jam':['JJ','KK','AKo'],'call':['AJo','AQo','KQo','QQ','A3s','A4s','A5s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','J9s','JTs','K9s','KJs','KQs','KTs','QJs','QTs','99','88','98s','44','T8s','T9s','76s','87s','A6s','A2s','TT','77','66','33','65s','55','K6s'],'mix':['AA']}}},'UTG':{'SB':{'25':{'jam':['KK','99','TT','A5s','AQs','QJs','A8s','QQ','T9s','AKo'],'call':['KQo','A4s','AJs','ATs','K9s','KJs','KTs','QTs','86s','98s','87s','88','JJ','AKs','76s','77','K8s','75s','66','JTs','A7s','AJo','AA','KJo'],'mix':['KQs','A9s']},'40':{'jam':['AKo','QQ','KK'],'call':['AQo','AA','A4s','AJs','AKs','AQs','ATs','JTs','K6s','KJs','KQs','KTs','QJs','QTs','TT','99','88','76s','66','65s','55','A9s','K9s','77'],'mix':['JJ','A5s']},'60':{'jam':['K6s','AA','AKo'],'call':['AQo','JJ','QQ','A3s','A4s','A5s','A6s','A9s','AJs','AKs','AQs','ATs','JTs','KJs','KQs','KTs','QJs','QTs','99','44','T9s','87s','76s','TT','66','65s','A8s','55','88','77','KK']}},'BB':{'25':{'jam':['AKo','QQ','TT','KK','A9s','A4s'],'call':['AA','JJ','A8s','AJs','AQs','ATs','K9s','KJs','KQs','KTs','QJs','99','88','76s','66','A7s','AQo','QTs','A5s','AJo'],'mix':['AKs']},'40':{'jam':['AKo','KK'],'call':['AQo','AA','JJ','A5s','A9s','AJs','AQs','ATs','KJs','KQs','KTs','QJs','QTs','TT','99','88','76s','66','65s','55','AKs','A4s','A8s','JTs'],'mix':['QQ']},'60':{'jam':['K6s'],'call':['JJ','QQ','A3s','A4s','A5s','A8s','A9s','AJs','AKs','AQs','ATs','KQs','QJs','QTs','76s','44','T9s','65s','87s','TT','KK','KJs','AA','AQo','66','99'],'mix':['AKo']}}}};
+        const MPT_F3B = {'BTN':{'BB':{'25':{'jam':['AJo','AKo','AQo','A2s','A4s','A5s','AKs','33','ATo','A3s'],'call':['KJo','KQo','QJo','AA','JJ','KK','QQ','A6s','A7s','A8s','A9s','AJs','ATs','J9s','JTs','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KTs','Q8s','Q9s','QJs','QTs','TT','99','88','T8s','T9s','87s','A8o','98s','66','A7o','76s','KTo','55','A5o','77','AQs','A9o','KQs','QTo','A4o'],'mix':['44']},'40':{'jam':['AKo','AQo','A2s','33','A5s','66','KTs','AKs','JJ'],'call':['KJo','KQo','QJo','AA','KK','QQ','A4s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','Q8s','Q9s','QJs','ATo','T8s','T9s','KTo','A8o','A9o','98s','99','88','44','97s','76s','87s','54s','77','65s','QTo','55','Q7s','A3s','K3s','QTs','Q6s','A5o','JTo','TT'],'mix':['AJo']},'60':{'jam':['AKo','TT','AKs','44','KK','99'],'call':['AJo','KQo','QJo','QTo','AA','JJ','QQ','A2s','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J7s','J8s','J9s','JTs','K2s','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q5s','Q6s','Q7s','Q8s','Q9s','QJs','QTs','A9o','96s','98s','88','86s','T9s','ATo','JTo','T8s','KTo','87s','97s','76s','64s','T7s','54s','75s','77','66','53s','65s','55','KJo','Q4s','33','K9o'],'mix':['AQo','22']}},'SB':{'25':{'jam':['AJo','AKo','AQo','QQ','A2s','A3s','A4s','A5s','AKs','AQs','A9o','33','ATo','A8o','55','88'],'call':['KJo','QJo','AA','JJ','A6s','A7s','A8s','AJs','ATs','J9s','JTs','K6s','K7s','K8s','K9s','KJs','KTs','Q8s','Q9s','QJs','QTs','T8s','T9s','98s','87s','TT','A7o','66','76s','A9s','77','KQo','K3s','44','99','KK','97s','K4s'],'mix':['A5o','KQs']},'40':{'jam':['AKo','AQo','JJ','A4s','A5s','TT','22','AKs','QQ'],'call':['KJo','KQo','QJo','QTo','AA','KK','A2s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K2s','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q4s','Q5s','Q6s','Q7s','Q8s','Q9s','QJs','QTs','T7s','JTo','T8s','KTo','T9s','ATo','A8o','96s','99','98s','A9o','97s','88','86s','44','A3s','76s','64s','87s','75s','54s','77','65s','53s','55','A5o','AJo'],'mix':['A6s','33','66']},'60':{'jam':['AKo','KK','TT','AKs','QJs','Q2s','AQs','22','K9o'],'call':['AJo','AQo','KJo','KQo','QJo','QTo','AA','A2s','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','ATs','J7s','J8s','J9s','JTs','K2s','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q3s','Q4s','Q5s','Q6s','Q7s','Q8s','Q9s','QTs','A9o','99','96s','98s','88','86s','44','T6s','85s','T8s','T9s','43s','ATo','KTo','97s','87s','76s','64s','T7s','54s','75s','66','77','53s','33','65s','55','JTo','JJ','A5o','QQ'],'mix':['A8o']}}},'CO':{'BB':{'25':{'jam':['AJo','AKo','AQo','A2s','A4s','AKs'],'call':['KJo','KQo','AA','JJ','KK','QQ','A7s','A8s','A9s','AJs','AQs','ATs','J9s','JTs','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q9s','QJs','QTs','98s','T8s','88','87s','99','TT','A9o','T9s','ATo','76s','55','77','66','K5s','A6s','54s','A8o','44','KTo'],'mix':['A5s','A3s']},'40':{'jam':['AKo','JJ','AKs','AQo','KJs'],'call':['KJo','KQo','AA','KK','QQ','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J9s','JTs','K6s','K7s','K8s','K9s','KQs','KTs','Q8s','Q9s','QTs','T8s','ATo','T9s','99','98s','88','76s','QJs','77','66','55','54s','AJo','87s','44','K5s','A4s','KTo','QJo'],'mix':['A3s','A2s','TT']},'60':{'jam':['AKo','ATo','KK','AKs','K5s'],'call':['AJo','AQo','KJo','KQo','AA','A2s','A3s','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q9s','QJs','QTs','76s','77','99','88','54s','98s','44','55','T8s','T9s','65s','97s','JTo','87s','66','33','Q8s','QQ','A4s','TT','KTo'],'mix':['JJ']}},'SB':{'25':{'jam':['AJo','AKo','AQo','QQ','A4s','AKs','AQs','66','55','A6s','77','A3s'],'call':['KJo','KQo','AA','JJ','KK','A7s','A8s','A9s','AJs','ATs','J9s','JTs','K6s','K7s','K9s','KJs','KTs','Q9s','QJs','QTs','88','TT','A9o','T9s','44','98s','54s','87s','65s','76s','A5s','99','KQs','K4s'],'mix':['ATo','A2s']},'40':{'jam':['AKo','AQo','JJ','AKs','A7s','33','QQ','TT'],'call':['AJo','KJo','KQo','AA','KK','A2s','A3s','A6s','A8s','A9s','AJs','AQs','ATs','J9s','JTs','K5s','K6s','K7s','K9s','KQs','KTs','Q9s','QJs','QTs','ATo','87s','T8s','T9s','88','98s','44','54s','66','76s','65s','97s','55','KJs','K8s','A4s','Q8s','QJo'],'mix':['A5s','99','77']},'60':{'jam':['AKo','KK','QQ','AKs','A9o'],'call':['AJo','AQo','KJo','KQo','JJ','A2s','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','AQs','ATs','J8s','J9s','JTs','K3s','K4s','K5s','K6s','K7s','K8s','K9s','KJs','KQs','KTs','Q8s','Q9s','QJs','QTs','75s','77','76s','86s','54s','96s','98s','44','65s','87s','55','97s','T8s','T9s','66','TT','99','33','22','88','AA','ATo'],'mix':['QJo']}}},'LJ':{'BB':{'25':{'jam':['AKo','AQo','QQ','AKs'],'call':['AJo','KQo','AA','JJ','KK','A3s','A4s','A8s','A9s','AJs','AQs','ATs','JTs','K8s','K9s','KJs','KQs','KTs','QJs','QTs','TT','ATo','99','77','66','98s','T9s','A5s','A2s','K6s'],'mix':['88','A6s','A7s']},'40':{'jam':['AKo'],'call':['AJo','AQo','AA','JJ','KK','A5s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','JTs','K8s','K9s','KJs','KTs','QJs','QTs','T9s','TT','99','88','76s','KQo','77','54s','66','65s','K6s','KQs','A3s','J9s','KJo','87s'],'mix':['QQ','A4s']},'60':{'jam':['KK','KQo'],'call':['AQo','JJ','QQ','A3s','A4s','A5s','A6s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','J9s','JTs','K9s','KJs','KQs','KTs','QJs','QTs','76s','88','99','44','65s','87s','T9s','66','TT','33','AKo','77','AJo'],'mix':['AA']}},'SB':{'25':{'jam':['AKo','AQo','QQ','A6s','A7s','AKs','88'],'call':['KQo','AA','A3s','A4s','A8s','A9s','AJs','ATs','JTs','K9s','KJs','KQs','KTs','QJs','QTs','ATo','99','77','66','65s','AJo','K7s','KK','A2s','JJ','98s','TT','76s'],'mix':['A5s','AQs']},'40':{'jam':['AKo','QQ','A5s'],'call':['AJo','AQo','KQo','AA','KK','A2s','A3s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','J9s','JTs','K9s','KJs','KQs','KTs','QJs','QTs','T9s','99','44','88','76s','87s','77','54s','66','65s','55','98s','Q9s','T8s','A4s','A6s','K6s','K5s'],'mix':['JJ','TT']},'60':{'jam':['JJ','KK','AKo'],'call':['AJo','AQo','KQo','QQ','A3s','A4s','A5s','A7s','A8s','A9s','AJs','AKs','AQs','ATs','J9s','JTs','K9s','KJs','KQs','KTs','QJs','QTs','99','88','98s','44','T8s','T9s','76s','87s','A6s','A2s','TT','77','66','33','65s','55','K6s'],'mix':['AA']}}},'UTG':{'BB':{'25':{'jam':['AKo','QQ','TT','KK','A9s','A4s'],'call':['AA','JJ','A8s','AJs','AQs','ATs','K9s','KJs','KQs','KTs','QJs','99','88','76s','66','A7s','AQo','QTs','A5s','AJo'],'mix':['AKs']},'40':{'jam':['AKo','KK'],'call':['AQo','AA','JJ','A5s','A9s','AJs','AQs','ATs','KJs','KQs','KTs','QJs','QTs','TT','99','88','76s','66','65s','55','AKs','A4s','A8s','JTs'],'mix':['QQ']},'60':{'jam':['K6s'],'call':['JJ','QQ','A3s','A4s','A5s','A8s','A9s','AJs','AKs','AQs','ATs','KQs','QJs','QTs','76s','44','T9s','65s','87s','TT','KK','KJs','AA','AQo','66','99'],'mix':['AKo']}},'SB':{'25':{'jam':['KK','99','TT','A5s','AQs','QJs','A8s','QQ','T9s'],'call':['KQo','A4s','AJs','ATs','K9s','KJs','KTs','QTs','86s','98s','87s','88','JJ','AKs','76s','77','K8s','75s','66','JTs','A7s','AJo','AA','KJo'],'mix':['KQs','A9s']},'40':{'jam':['AKo','QQ','KK'],'call':['AQo','AA','A4s','AJs','AKs','AQs','ATs','JTs','K6s','KJs','KQs','KTs','QJs','QTs','TT','99','88','76s','66','65s','55','A9s','K9s','77'],'mix':['JJ','A5s']},'60':{'jam':['K6s','AA','AKo'],'call':['AQo','JJ','QQ','A3s','A4s','A5s','A6s','A9s','AJs','AKs','AQs','ATs','JTs','KJs','KQs','KTs','QJs','QTs','99','44','T9s','87s','76s','TT','66','65s','A8s','55','88','77','KK']}}}};
 
         const FACING_3BET_RANGES = {
         '9max': {
@@ -3838,11 +3829,11 @@
         // Gambler's Ruin 讨论，结论是有技术优势时反而应当略微冒险——方向与"加溢价"相反。
         // 所以常规期给 0.15 是我自己的外推，没有原文支持，已撤回为 0（＝早期按 chipEV 打）。
         const RP_STAGE = { normal: 0, prebubble: 0.55, bubble: 1.0,
-                           postbubble: 0.35, final: 0.9, headsup: 0.0 };
+                           postbubble: 0.35, final: 0.9, headsup: 0.15 };
         // 码量分档：以桌面平均码为基准（与 getStageOpenAdjust 同口径），
-        // 另加绝对下限——12BB 以下无论比例如何都是短码（与 getTier 保持严格一致 · DEF-ICM-05）。
+        // 另加绝对下限——10BB 以下无论比例如何都是短码（已进推/弃区）。
         function rpClass(stackBB, avgBB) {
-            if (stackBB > 0 && stackBB <= 12) return 'short';
+            if (stackBB > 0 && stackBB <= 10) return 'short';
             const r = stackBB / (avgBB || stackBB || 1);
             if (r >= 1.4) return 'big';
             if (r < 0.7)  return 'short';
@@ -3895,17 +3886,17 @@
             const villainCoversHero = (vs >= hs * 0.90) && hs > 0;
             const heroCoversVillain = hs > vs && vs > 0;
 
-            // 3. 风险溢价 (利用既有 RP_MATRIX / RP_STAGE 计算淘汰威胁下的风险溢价 · DEF-ICM-04)
+            // 3. 风险溢价 (利用既有 RP_MATRIX / RP_STAGE 计算淘汰威胁下的风险溢价)
             const isICMStage = (st === 'bubble' || st === 'prebubble' || st === 'final');
             const rpObj = getRiskPremium(hs, vs, avg, st, 1.0);
-            const riskPremium = isICMStage ? (villainCoversHero ? rpObj.premium : Math.round(rpObj.premium * 0.45 * 10) / 10) : 0;
+            const riskPremium = (isICMStage && villainCoversHero) ? rpObj.premium : 0;
 
-            // 4. 3 种战术姿态 (P1-3: 泡沫期大码施压仅对非大码对手生效，大码面对短码为 bully 而非 commit · DEF-ICM-02)
+            // 4. 3 种战术姿态 (P1-3: 泡沫期大码施压仅对非大码对手生效，避免大码双雄火拼)
             let posture = 'normal';
-            if (isICMStage && heroCoversVillain && heroTier === 'big' && villainTier !== 'big') {
-                posture = 'bully';
-            } else if (heroTier === 'short' || hs <= 12) {
+            if (heroTier === 'short' || vs <= 12 || hs <= 12) {
                 posture = 'commit';
+            } else if (isICMStage && heroCoversVillain && heroTier === 'big' && villainTier !== 'big') {
+                posture = 'bully';
             } else if (isICMStage && villainCoversHero) {
                 posture = 'survival';
             }
@@ -4938,7 +4929,7 @@
                     const hasRiver = !!(d && boardN === 5 && d.riverTerminal && d.riverTerminal.frequencies);
 
                     if (hasLut || hasTurn || hasRiver) {
-                        const label = (boardN === 4) ? '⚡ 转牌策略先验 (Prior)' : (boardN === 5) ? '⚡ 河牌策略先验 (Prior)' : '⚡ 策略先验 (Prior)';
+                        const label = (boardN === 4) ? '⚡ 转牌 GTO' : (boardN === 5) ? '⚡ 河牌 GTO' : '⚡ 翻后 GTO';
                         const lat = (boardN === 5 && d.riverTerminal) ? (d.riverTerminal.latencyUs || 2.1) : (boardN === 4 && d.turnTransition ? (d.turnTransition.latencyUs || 0.2) : (d.lutResult ? (d.lutResult.latencyUs || 2.8) : 2.8));
                         
                         let fr = null;
@@ -4980,11 +4971,7 @@
                     metricsEl.style.display = parts.length ? '' : 'none';
                 } else {
                     const comp = window._lastShadowComparison;
-                    const v = document.getElementById('actionVerdict');
-                    const vTxt = v ? v.innerText.trim() : '';
-                    const isContractBlocked = window._currentDecisionContract && window._currentDecisionContract.status !== 'READY';
-                    const isSuppressed = !vTxt || isContractBlocked || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vTxt);
-                    if (!isSuppressed && comp && comp.matrixVector) {
+                    if (comp && comp.matrixVector) {
                         const [fP, cP, rP, jP] = comp.matrixVector;
                         metricsEl.innerHTML = `<span class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">⚡ GTO 求解器</span><span class="text-gray-300 font-mono">[弃${fP}% 跟${cP}% 加${rP}% 推${jP}%]</span><span class="text-[10px] text-gray-500">· 0.6µs</span></span>`;
                         metricsEl.style.display = '';
@@ -5440,11 +5427,6 @@
                 try { if (typeof renderTimeline === 'function' && (typeof _tlApplying === 'undefined' || !_tlApplying)) renderTimeline(); }
                 catch (e) { /* 时间线尚未初始化（TDZ）时静默跳过 */ }
             }
-            if (typeof _tlApplying === 'undefined' || !_tlApplying) {
-                if (typeof tlSyncFromMode === 'function') {
-                    try { tlSyncFromMode(); } catch (e) {}
-                }
-            }
             // 翻前↔翻后同步(2026-07-14b)：已进翻后时，翻前改对手位置即时刷新
             // 翻后主对手选择器；已有胜率结果则重跑分析（对手范围随位置变化）
             if (id === 'posVillain') {
@@ -5809,7 +5791,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.06',
+                    v: 'v3.01',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5828,7 +5810,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5902,7 +5884,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.06 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.01 正式版';
             renderWindowColorChips(key);
         };
 
@@ -6084,9 +6066,6 @@
             const svEl = document.getElementById('stackVillain');
             if (shEl) { shEl.value = savedHero;   globalHeroStack = savedHero; }
             if (svEl) { svEl.value = savedVillain; globalVillainStack = savedVillain; }
-            // DEF-UI-STATE-01: 在 switchMode('open') 及筹码写回之后重新初始化底池追踪器，根治时序倒挂
-            initPotTracker();
-            updatePotUI();
 
             // 清空 Vision 历史（如有）
             // ownEntry:false —— nextHand 自己已压过一条"下一手"，截图挂到那条上，
@@ -6782,7 +6761,7 @@
                 // 实测 72o 的 EV 正好卡在盈亏平衡线（需 15.4%，实有约 13-15%），MC 噪声就能
                 // 把它翻成"建议全下"——而 72o 根本不会出现在我们的 3-Bet 范围里。
                 // 判据：含 A 或 K（阻断 AA/KK/AK），或同花大牌；否则直接弃牌。
-                const hasBlocker = handStr === 'QQ' || handStr === 'JJ' || handStr[0] === 'A' || handStr[0] === 'K' ||
+                const hasBlocker = handStr[0] === 'A' || handStr[0] === 'K' ||
                                    (handStr.length === 3 && handStr[2] === 's' && 'AKQJT'.includes(handStr[1]));
                 if (isBluffJam && !hasBlocker) {
                     out.action = 'fold'; out.freq = { fold: 100 };
@@ -6910,26 +6889,6 @@
             return node || null;
         }
         function getFacing3BetAction(handStr, heroPos, tableSize, effStack, tbPos) {
-            const sH = effStack > 0 ? effStack : 40;
-
-            // ── 短码面对 3-Bet 强价值全推铁律 (effStack <= 20BB) ──
-            // 当我方开池后面对 3-Bet，且有效筹码 ≤20BB 时，SPR 坍缩至 0.8~1.3。
-            // 起手口袋对与顶尖高张此时严禁平跟（无法按赔率投中暗条，翻后极易被反超）更绝不可弃牌（严重负 EV 弃牌泄漏），
-            // 必须直接执行 4-Bet All-in (fivebet_jam)！
-            if (sH <= 20) {
-                const pairs16 = ['AA','KK','QQ','JJ','TT','99','88','77'];
-                const pairs20 = ['AA','KK','QQ','JJ','TT','99','88'];
-                const broadways16 = ['AKs','AKo','AQs','AQo','AJs','ATs','KQs'];
-                const broadways20 = ['AKs','AKo','AQs','AQo','AJs'];
-
-                const isShortPair = (sH <= 12 && handStr === '66') || (sH <= 16 ? pairs16.includes(handStr) : pairs20.includes(handStr));
-                const isShortBroadway = sH <= 16 ? broadways16.includes(handStr) : broadways20.includes(handStr);
-
-                if (isShortPair || isShortBroadway) {
-                    return 'fivebet_jam';
-                }
-            }
-
             // 盲位 3-Bet 走实测表（2026-09-09）。旧表既无深度维度、也不分 3-Bet 者位置，
             // 而实测显示两者都是一级变量：同是 BTN 面对 3-Bet，25bb 全下 12.4%、
             // 40bb 8.8%；3-Bet 者是 SB 时全下 21.1%（对 BB 时 12.4%）。
@@ -7207,6 +7166,7 @@
          * 全部由它算出，不再有任何按场景硬编码的底池公式。
          */
         function tlState() {
+            tlAdoptLegacy();
             const seats = tlSeatOrder();
             const committed = {}, folded = new Set(), allIn = new Set();
             seats.forEach(p => committed[p] = 0);
@@ -7245,26 +7205,6 @@
                 }
             });
 
-            const everActed = new Set(tlActs.map(a => a.pos));
-            // 德扑基本公理：翻前行动顺时针推进。若动作已推进到更靠后的位置，
-            // 则在此之前跳过且从未行动过的座位已在第一轮弃牌 (Auto-Fold)。Hero 必须拥有显式动作，绝不可被自动折叠。
-            if (tlActs.length > 0) {
-                let maxFirstRoundIdx = -1;
-                seats.forEach((pos, sIdx) => {
-                    const firstActIdx = tlActs.findIndex(a => a.pos === pos && !a.isHypothesis);
-                    if (firstActIdx !== -1 && sIdx > maxFirstRoundIdx) {
-                        maxFirstRoundIdx = sIdx;
-                    }
-                });
-                if (maxFirstRoundIdx > 0) {
-                    seats.slice(0, maxFirstRoundIdx).forEach(pos => {
-                        if (pos !== globalPosHero && !everActed.has(pos)) {
-                            folded.add(pos);
-                        }
-                    });
-                }
-            }
-
             const inPot = seats.filter(p => !folded.has(p));
             // 已经把钱投到位的人 —— 翻前一结束，这批人就是进翻后的人（盲注位只投了盲注不算）
             const contenders = seats.filter(p => !folded.has(p) && committed[p] > 0 && committed[p] >= curBet);
@@ -7274,6 +7214,7 @@
             // 规则：最后一次加注之后，按座位顺序从加注者的下一位起，
             //       找第一个「未弃牌 且 (投入不足 curBet 或 这一轮还没表过态)」的人。
             const actedAfter = new Set(tlActs.slice(lastAggIdx + 1).map(a => a.pos));
+            const everActed = new Set(tlActs.map(a => a.pos));
             let order;
             if (lastAggIdx >= 0) {
                 const i0 = seats.indexOf(tlActs[lastAggIdx].pos);
@@ -7420,7 +7361,6 @@
             const ev = {};
             tlActs.forEach(a => {
                 if (a.pos === globalPosHero) return;
-                if (a.isHypothesis) return;
                 ev[a.pos] = { action: a.a === 'allin' ? 'allin' : a.a, amount: a.amt || 0 };
             });
             tlEvents = ev;
@@ -7436,17 +7376,18 @@
                 }
                 tlHero = { action, amount: last.amt || 0 };
             }
-            _tlLegacySig = JSON.stringify({ e: tlEvents, h: tlHero, hero: globalPosHero });
+            _tlLegacySig = JSON.stringify({ e: tlEvents, h: tlHero });
         }
         /** 外部（旧测试 / tlSyncFromMode / 撤回恢复）直接写了 tlEvents / tlHero → 反向重建流水 */
         function tlAdoptLegacy() {
-            const sig = JSON.stringify({ e: tlEvents, h: tlHero, hero: globalPosHero });
+            const sig = JSON.stringify({ e: tlEvents, h: tlHero });
             if (sig === _tlLegacySig) return;
             const seats = getPositions();
             const acts = [];
             const hi = seats.indexOf(globalPosHero);
+            // 第一轮：按座位顺序把每个人的单一动作排成流水（旧模型本来就只表达得了一轮）
             // 第一轮：按座位顺序（旧模型只表达得了这一轮）
-            seats.forEach((p, idx) => {
+            seats.forEach((p) => {
                 if (p === globalPosHero) {
                     if (tlHero && tlHero.action && tlHero.action !== 'none') {
                         const a = tlHero.action === 'open' || tlHero.action === '3bet' ? 'raise' : tlHero.action;
@@ -7455,14 +7396,9 @@
                     return;
                 }
                 const e = tlEvents[p];
-                // 旧模型里"没有记录"就等于弃牌（座位格显示"弃"）——补出来，流水才是完整的一轮。
-                // 若 Hero 尚未表态且该座位在 Hero 之后，行动尚未轮到该座位，不假定其已弃牌
-                if (!e || !e.action) {
-                    const heroHasActed = tlHero && tlHero.action && tlHero.action !== 'none';
-                    if (!heroHasActed && hi !== -1 && idx > hi) return;
-                    acts.push({ pos: p, a: 'fold', amt: 0, auto: true });
-                    return;
-                }
+                // 旧模型里"没有记录"就等于弃牌（座位格显示"弃"）——补出来，流水才是完整的一轮，
+                // 否则"轮到谁"会指向一个从没说过话的前位，提示文案看着莫名其妙。
+                if (!e || !e.action) { acts.push({ pos: p, a: 'fold', amt: 0 }); return; }
                 acts.push({ pos: p, a: e.action, amt: e.amount || 0 });
             });
             // 第二轮：旧模型的 resp（对手的再表态 / 我的应对）**整体排在第一轮之后**——
@@ -7485,7 +7421,7 @@
             const m = gameConfig.tbSize === 'auto' ? 3.4 : gameConfig.tbSize;
             return Math.max(openAmt + 2, Math.round(openAmt * m * 2) / 2);
         }
-        function tlReset() { if (typeof _tlTimer !== 'undefined') clearTimeout(_tlTimer); tlActs = []; tlEvents = {}; tlHero = null; _tlLegacySig = JSON.stringify({ e: {}, h: null, hero: globalPosHero }); }
+        function tlReset() { if (typeof _tlTimer !== 'undefined') clearTimeout(_tlTimer); tlActs = []; tlEvents = {}; tlHero = null; _tlLegacySig = JSON.stringify({ e: {}, h: null }); }
         const tlLbl = p => p === 'UTG1' ? 'U+1' : (POS_LABEL[p] || p);
 
         /**
@@ -7502,7 +7438,6 @@
          * initPotTracker 与 goToPostFlop 直接用它们。
          */
         function deriveScenario() {
-            tlAdoptLegacy();
             const st = tlState();
             const seats = st.seats, hero = globalPosHero;
             const R = st.raises;                       // [{pos, amt, idx}] 按时间序的加注（含开池）
@@ -7532,7 +7467,7 @@
 
             // ══ 情形 1：我已弃牌 ══
             if (myLast && myLast.a === 'fold') {
-                out.blocked = true; out.heroFolded = true; out.label = '我已弃牌';
+                out.blocked = true; out.label = '我已弃牌';
                 out.note = '本手已弃牌，无需决策。点我的座位可改回来重新推演。';
                 return out;
             }
@@ -7611,13 +7546,6 @@
             }
 
             // ══ 情形 3：我已行动 ══
-            if (myLast && myLast.a === 'fold') {
-                out.mode = 'open';
-                out.label = '我方已弃牌';
-                out.note = '你已在本局中弃牌，不参与后续底池竞争';
-                out.heroFolded = true;
-                return out;
-            }
             // 第几次加注：按**加注动作的序号**数（含金额没超过前一次的非法/记错情形——
             // 用户截图7 就是"我标的加注额与前一次相同"，旧模型把它算作 3-Bet，此行为保留）
             const raiseActs = acts.filter(a => a.a === 'raise' || a.a === 'allin');
@@ -7854,18 +7782,6 @@
             }
             if (runEngine) {
                 if (d.blocked) {
-                    if (d.heroFolded) {
-                        const box = document.getElementById('actionBox');
-                        const vText = document.getElementById('actionVerdict');
-                        const logicText = document.getElementById('actionLogic');
-                        if (box) { box.style.borderColor = '#5c667f'; box.style.backgroundColor = 'rgba(92,102,127,0.12)'; }
-                        if (vText) { vText.style.color = '#8b95ab'; vText.innerText = '⚪ Hero 已弃牌'; }
-                        if (logicText) { logicText.innerHTML = 'Hero 在本局中已执行弃牌。<br><span style="color:#8b95ab;font-size:12px;">已弃牌状态下不生成新的下注或全下行动指令。</span>'; }
-                        const fb = document.getElementById('freqBar'); if (fb) fb.innerHTML = '';
-                        const sc = document.getElementById('sizingContent'); if (sc) sc.innerText = '';
-                        const sb = document.getElementById('sizingBox'); if (sb) sb.classList.add('hidden');
-                        window._lastShadowComparison = null;
-                    }
                     const rp = document.getElementById('resultPanel'); if (rp) rp.classList.add('invisible');
                     try { updateDecisionHUD(); } catch (e) {}
                 } else if (heroCard1 && heroCard2) {
@@ -7896,171 +7812,17 @@
             const m = currentMode;
             const H = globalPosHero, V = globalPosVillain, C = globalPosCaller;
             const openAmt = tlOpenDefault();
-            const seats = (typeof tlSeatOrder === 'function') ? tlSeatOrder() : getPositions();
-            const hIdx = seats.indexOf(H);
-            const vIdx = seats.indexOf(V);
-            const cIdx = seats.indexOf(C);
             let acts = [];
-            if (m === 'open') {
-                acts = [];
-                if (hIdx > 0) {
-                    for (let i = 0; i < hIdx; i++) {
-                        acts.push({ pos: seats[i], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                    }
-                }
-            } else if (m === 'faceBet') {
-                if (H === 'SB' && V === 'BB') {
-                    acts = [];
-                    if (hIdx > 0) {
-                        for (let i = 0; i < hIdx; i++) {
-                            acts.push({ pos: seats[i], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        }
-                    }
-                    acts.push({ pos: 'SB', a: 'limp', amt: 1 });
-                    acts.push({ pos: 'BB', a: 'raise', amt: globalRaiseSize });
-                } else {
-                    acts = [{ pos: V, a: 'raise', amt: globalRaiseSize }];
-                    if (vIdx !== -1 && hIdx !== -1) {
-                        let cur = (vIdx + 1) % seats.length;
-                        while (cur !== hIdx) {
-                            acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                            cur = (cur + 1) % seats.length;
-                        }
-                    }
-                }
-            } else if (m === 'squeeze') {
-                acts = [{ pos: V, a: 'raise', amt: globalRaiseSize }];
-                if (vIdx !== -1 && cIdx !== -1 && hIdx !== -1) {
-                    let cur = (vIdx + 1) % seats.length;
-                    while (cur !== cIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                    acts.push({ pos: C, a: 'call', amt: globalRaiseSize });
-                    cur = (cIdx + 1) % seats.length;
-                    while (cur !== hIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                }
-            } else if (m === 'face3b') {
-                acts = [{ pos: H, a: 'raise', amt: openAmt }];
-                if (hIdx !== -1 && vIdx !== -1) {
-                    let cur = (hIdx + 1) % seats.length;
-                    while (cur !== vIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                    acts.push({ pos: V, a: 'raise', amt: globalThreeBetSize });
-                    cur = (vIdx + 1) % seats.length;
-                    while (cur !== hIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                }
-            } else if (m === 'face4b') {
-                acts = [{ pos: V, a: 'raise', amt: globalRaiseSize }];
-                if (vIdx !== -1 && hIdx !== -1) {
-                    let cur = (vIdx + 1) % seats.length;
-                    while (cur !== hIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                    acts.push({ pos: H, a: 'raise', amt: globalThreeBetSize });
-                    cur = (hIdx + 1) % seats.length;
-                    while (cur !== vIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                    acts.push({ pos: V, a: 'raise', amt: globalFourBetSize });
-                    cur = (vIdx + 1) % seats.length;
-                    while (cur !== hIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                }
-            } else if (m === 'coldCall') {
-                acts = [];
-                if (vIdx !== -1) {
-                    let cur = 0;
-                    while (cur !== vIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                }
-                acts.push({ pos: V, a: 'raise', amt: openAmt });
-                if (vIdx !== -1 && cIdx !== -1) {
-                    let cur = (vIdx + 1) % seats.length;
-                    while (cur !== cIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                }
-                acts.push({ pos: C, a: 'raise', amt: globalThreeBetSize });
-                if (cIdx !== -1 && hIdx !== -1) {
-                    let cur = (cIdx + 1) % seats.length;
-                    while (cur !== hIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                }
-            } else if (m === 'vsLimp') {
-                const limpers = (selectedLimperPositions || []).filter(p => p !== H);
-                acts = [];
-                if (hIdx !== -1) {
-                    let cur = 0;
-                    while (cur !== hIdx) {
-                        const p = seats[cur];
-                        if (limpers.includes(p)) {
-                            acts.push({ pos: p, a: 'limp', amt: 1 });
-                        } else {
-                            acts.push({ pos: p, a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        }
-                        cur = (cur + 1) % seats.length;
-                    }
-                } else {
-                    acts = limpers.map(p => ({ pos: p, a: 'limp', amt: 1 }));
-                }
-            } else if (m === 'defend') {
-                if (hIdx !== -1 && vIdx !== -1 && hIdx < vIdx) {
-                    // Re-Jam 场景：Hero 在前位开池，Villain 在后位全推 (例如 BTN vs BB)
-                    let cur = 0;
-                    while (cur !== hIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                    acts.push({ pos: H, a: 'raise', amt: openAmt });
-                    cur = (hIdx + 1) % seats.length;
-                    while (cur !== vIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                    acts.push({ pos: V, a: 'allin', amt: globalVillainStack });
-                    cur = (vIdx + 1) % seats.length;
-                    while (cur !== hIdx) {
-                        acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                        cur = (cur + 1) % seats.length;
-                    }
-                } else {
-                    // Open Jam 场景：Villain 开池全下，我方防守 (例如 BB vs BTN 全下)
-                    if (vIdx !== -1) {
-                        let cur = 0;
-                        while (cur !== vIdx) {
-                            acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                            cur = (cur + 1) % seats.length;
-                        }
-                    }
-                    acts.push({ pos: V, a: 'allin', amt: globalVillainStack });
-                    if (vIdx !== -1 && hIdx !== -1) {
-                        let cur = (vIdx + 1) % seats.length;
-                        while (cur !== hIdx) {
-                            acts.push({ pos: seats[cur], a: 'fold', amt: 0, auto: true, isHypothesis: true });
-                            cur = (cur + 1) % seats.length;
-                        }
-                    }
-                }
-            }
-            tlActs = acts.filter(a => a.pos && (a.pos !== H || m === 'face3b' || m === 'face4b' || (m === 'defend' && hIdx < vIdx)));
+            if (m === 'faceBet')       acts = [{ pos: V, a: 'raise', amt: globalRaiseSize }];
+            else if (m === 'squeeze')  acts = [{ pos: V, a: 'raise', amt: globalRaiseSize }, { pos: C, a: 'call', amt: 0 }];
+            else if (m === 'face3b')   acts = [{ pos: H, a: 'raise', amt: openAmt }, { pos: V, a: 'raise', amt: globalThreeBetSize }];
+            else if (m === 'face4b')   acts = [{ pos: V, a: 'raise', amt: globalRaiseSize },
+                                               { pos: H, a: 'raise', amt: globalThreeBetSize },
+                                               { pos: V, a: 'raise', amt: globalFourBetSize }];
+            else if (m === 'coldCall') acts = [{ pos: V, a: 'raise', amt: openAmt }, { pos: C, a: 'raise', amt: globalThreeBetSize }];
+            else if (m === 'vsLimp')   acts = (selectedLimperPositions || []).filter(p => p !== H).map(p => ({ pos: p, a: 'limp', amt: 1 }));
+            else if (m === 'defend')   acts = [{ pos: V, a: 'allin', amt: globalVillainStack }];
+            tlActs = acts.filter(a => a.pos && (a.pos !== H || m === 'face3b' || m === 'face4b'));
             tlRebuildLegacy();
             renderTimeline();
             const d = deriveScenario();
@@ -8175,8 +7937,7 @@
                     });
                 });
             });
-            // DEF-UI-STATE-02: 改用属性绑定，彻底消除重绘闭包监听器泄漏
-            ribbon.onmouseleave = resetCols;
+            ribbon.addEventListener('mouseleave', resetCols);
 
             // ── 我的位置按钮交互 ──
             ribbon.querySelectorAll('[data-tlhero]').forEach(b => b.onclick = () => {
@@ -8185,21 +7946,9 @@
                 const hadActions = tlActs.length > 0;
                 pushUndo(`我的位置 → ${tlLbl(b.dataset.tlhero)}`);
                 globalPosHero = b.dataset.tlhero;
-                const elPosH = document.getElementById('posHero');
-                if (elPosH) elPosH.value = b.dataset.tlhero;
-                const grpH = document.getElementById('posHero_grp');
-                if (grpH) {
-                    Array.from(grpH.children).forEach(btn => {
-                        btn.className = btn.dataset.val === b.dataset.tlhero ? 'pos-btn-hero active' : 'pos-btn-hero';
-                    });
-                }
-                if (typeof tlSyncFromMode === 'function') {
-                    tlSyncFromMode();
-                } else {
-                    tlActs = [];
-                    tlRebuildLegacy();
-                }
+                tlActs = [];                      // 换位置＝重新开始这手牌的行动线
                 if (hadActions) showToast('位置已改变，行动线已清空；按 Z 或点撤回可恢复', 'info');
+                tlRebuildLegacy();
                 tlScheduleApply();
             });
 
@@ -8608,15 +8357,13 @@
 
             const effStack = (sH > 0 && sV > 0) ? Math.min(sH, sV) : sH;
 
-            // 对手下注 > 有效筹码：截断 + 提示 (DEF-PRF-03: 拦截 <= 0 异常输入)
+            // 对手下注 > 有效筹码：截断 + 提示
             if (currentMode === 'faceBet' && elR) {
                 const rs = parseFloat(elR.value);
-                if (isNaN(rs) || rs <= 0) { markErr(elR); showToast('加注额必须大于 0', 'error'); return false; }
                 if (rs > effStack) { elR.value = effStack.toFixed(1); showToast(`对手加注超出有效筹码，按全下 ${effStack.toFixed(1)}BB 计算`, 'warn'); }
             }
             if (currentMode === 'face3b' && el3) {
                 const ts = parseFloat(el3.value);
-                if (isNaN(ts) || ts <= 0) { markErr(el3); showToast('3-Bet 额必须大于 0', 'error'); return false; }
                 if (ts > effStack) { el3.value = effStack.toFixed(1); showToast(`对手 3-Bet 超出有效筹码，按全下 ${effStack.toFixed(1)}BB 计算`, 'warn'); }
             }
             // 面对 4-Bet(2026-09-08)：4-Bet 额必须大于我的 3-Bet 额，且不超过有效筹码
@@ -8674,14 +8421,6 @@
         }
 
         window.queryGtoPreflop = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI') {
-            if (typeof effStack !== 'number' || isNaN(effStack) || !Number.isFinite(effStack)) return null;
-            if (typeof hand !== 'string' || !hand) return null;
-            const HAND_RE = /^([2-9TJQKA])([2-9TJQKA])([so]?)$/;
-            const hm = hand.match(HAND_RE);
-            if (!hm) return null;
-            if (hm[1] === hm[2] && hm[3] !== '') return null;
-            if (hm[1] !== hm[2] && !hm[3]) return null;
-
             const matrix = window.PREFLOP_GTO_MATRIX;
             if (!matrix || !matrix.nodes) return null;
 
@@ -8693,10 +8432,6 @@
             let seqKey = actionSeq;
             if (actionSeq === 'vs_RFI') seqKey = `vs_${effVsPos}_RFI`;
             const depths = findAvailableGtoDepths(matrix, effHeroPos, seqKey) || (matrix.depths || [8, 10, 12, 15, 20, 25, 30, 40, 60]);
-            if (!depths || !depths.length) return null;
-            const minD = depths[0], maxD = depths[depths.length - 1];
-            if (effStack < minD || effStack > maxD) return null;
-
             let loDepth = depths[0], hiDepth = depths[depths.length - 1];
             for (let i = 0; i < depths.length; i++) {
                 if (depths[i] <= effStack) loDepth = depths[i];
@@ -8728,31 +8463,16 @@
                 return null; // 节点缺失返回 null，绝不误判为 100% 弃牌
             }
 
-            const vecLo = nodeLo[hand];
-            const vecHi = nodeHi[hand];
+            const vecLo = nodeLo[hand] || (hasLo ? [100, 0, 0, 0] : null);
+            const vecHi = nodeHi[hand] || (hasHi ? [100, 0, 0, 0] : null);
 
-            function _cleanGtoVec(v) {
-                if (!v || !Array.isArray(v) || v.length !== 4) return null;
-                if (v.some(x => typeof x !== 'number' || isNaN(x) || !Number.isFinite(x) || x < 0)) return null;
-                const s = v.reduce((a, b) => a + b, 0);
-                if (s <= 0 || !Number.isFinite(s)) return null;
-                const floors = v.map(x => Math.floor(x / s * 100));
-                let rem = 100 - floors.reduce((a, b) => a + b, 0);
-                const diffs = v.map((x, i) => ({ idx: i, diff: (x / s * 100) - floors[i] }))
-                                 .sort((a, b) => b.diff - a.diff);
-                for (let i = 0; i < rem; i++) floors[diffs[i].idx]++;
-                return floors;
-            }
+            if (!vecLo && !vecHi) return null;
+            if (!vecLo) return vecHi;
+            if (!vecHi) return vecLo;
 
-            const cLo = vecLo ? _cleanGtoVec(vecLo) : null;
-            const cHi = vecHi ? _cleanGtoVec(vecHi) : null;
-
-            if (loDepth === hiDepth) return cLo || cHi;
-            // 插值必须两端端点同时有效，任意一端损坏或缺失坚决拒绝并返回 null，绝不单侧静默替代 (ASTRA-042-04)
-            if (!cLo || !cHi) return null;
-
+            if (loDepth === hiDepth) return vecLo;
             const weight = (effStack - loDepth) / (hiDepth - loDepth);
-            return interpolateGtoFrequencies(cLo, cHi, weight);
+            return interpolateGtoFrequencies(vecLo, vecHi, weight);
         };
 
         function executeEngineCore() {
@@ -8769,12 +8489,6 @@
                 postState.decisionResult = null;
             }
             saveCurrentInputs();
-
-            // DEF-MW-07: 接入对手画像偏转 (Villain Profile Exploitation)
-            const curProfileKey = typeof getVillainProfile === 'function' ? getVillainProfile(globalPosVillain) : (gameConfig?.villainProfile || 'balanced');
-            const vProfile = (typeof VILLAIN_PROFILES !== 'undefined' && VILLAIN_PROFILES[curProfileKey])
-                ? VILLAIN_PROFILES[curProfileKey]
-                : (typeof VILLAIN_PROFILES !== 'undefined' ? VILLAIN_PROFILES.balanced : null);
 
             if (!validatePreFlopInputs()) {
                 // P2-2：非法输入（如筹码≤0）被拦截时，除 toast 外还要清掉失效的旧建议，
@@ -8825,79 +8539,9 @@
             // P2-1：清空 sizingContent / freqLabels / freqBar DOM 残留——隐藏 box 不够，
             //       Fold 等分支不会重设它们，旧值（如 "2.2x"、旧频率标签）会留在 DOM。
             //       每次出新决策前统一置空，由后续价值分支按需重填。
+            document.getElementById('sizingContent').innerText = '';
+            document.getElementById('freqLabels').innerHTML = '';
             document.getElementById('freqBar').innerHTML = '';
-            window._currentDecisionContract = { status: 'READY' };
-
-            // ── Turn Ownership & Terminal State 强门禁 (TASK-ASTRA-039/040 / INV-01 / INV-02) ──
-            // 未轮到 Hero、已弃牌、已全下或终局时，严禁将假定场景作为当前确定性行动指令冒顶展示！
-            let _st = null;
-            const _curHero = globalPosHero || 'SB';
-            const _boardCount = (postState.board || []).filter(c => c !== null).length;
-            if (_boardCount < 3 && typeof tlState === 'function') {
-                _st = tlState();
-
-                // 1. Hero 已弃牌 (INV-02)
-                if (_st.folded && _st.folded.has(_curHero)) {
-                    box.style.borderColor = '#5c667f';
-                    box.style.backgroundColor = 'rgba(92,102,127,0.12)';
-                    vText.style.color = '#8b95ab';
-                    vText.innerText = '⚪ Hero 已弃牌';
-                    logicText.innerHTML = `Hero (${POS_LABEL[_curHero] || _curHero}) 在本局中已执行弃牌。<br><span style="color:#8b95ab;font-size:12px;">已弃牌状态下不生成新的下注或全下行动指令。</span>`;
-                    document.getElementById('resultPanel').classList.remove('invisible');
-                    updateCfgSummary();
-                    window._lastShadowComparison = null;
-                    window._currentDecisionContract = { status: 'TERMINAL', reason: 'Hero 已弃牌' };
-                    return;
-                }
-
-                // 2. Hero 已全下 (INV-02)
-                if (_st.allIn && _st.allIn.has(_curHero)) {
-                    box.style.borderColor = '#2ea86a';
-                    box.style.backgroundColor = 'rgba(46,168,106,0.1)';
-                    vText.style.color = '#45d68a';
-                    vText.innerText = '🟢 Hero 已全下';
-                    logicText.innerHTML = `Hero (${POS_LABEL[_curHero] || _curHero}) 已全下投入全部筹码。<br><span style="color:#8b95ab;font-size:12px;">当前等待其他玩家表态及最终摊牌，无需重复下注。</span>`;
-                    document.getElementById('resultPanel').classList.remove('invisible');
-                    updateCfgSummary();
-                    window._lastShadowComparison = null;
-                    window._currentDecisionContract = { status: 'TERMINAL', reason: 'Hero 已全下' };
-                    return;
-                }
-
-                // 3. 终局 / 翻前行动轮已结束 (INV-02)
-                if (_st.closed) {
-                    box.style.borderColor = '#5c667f';
-                    box.style.backgroundColor = 'rgba(92,102,127,0.12)';
-                    vText.style.color = '#8b95ab';
-                    vText.innerText = '⏹️ 翻前行动轮已结束';
-                    logicText.innerHTML = `翻前各方投入已齐，当前行动轮结束。<br><span style="color:#8b95ab;font-size:12px;">请进入翻后录入公共牌以获取后续街道建议。</span>`;
-                    document.getElementById('resultPanel').classList.remove('invisible');
-                    updateCfgSummary();
-                    window._lastShadowComparison = null;
-                    window._currentDecisionContract = { status: 'TERMINAL', reason: '翻前行动轮已结束' };
-                    return;
-                }
-
-                // 4. 行动权尚未轮到 Hero (INV-01)
-                // 实战先行推演契约：若 Hero 此前已入池/开池，且身后出现加注/3-Bet（Hero 需面对加注抉择）：
-                // 德扑实战体验默认后续玩家（如 BTN/SB/BB）弃牌，先行输出我方应对加注的精准策略！
-                const _isHeroFacingRaiseAfterAction = _st.heroActs && _st.heroActs.length > 0 && (_st.curBet > (_st.committed[_curHero] || 0));
-
-                if (_st.nextToAct && _st.nextToAct !== _curHero && !_isHeroFacingRaiseAfterAction) {
-                    const _opp = tlLbl(_st.nextToAct);
-                    const _need = Math.max(0, _st.curBet - (_st.committed[_st.nextToAct] || 0));
-                    box.style.borderColor = '#5c667f';
-                    box.style.backgroundColor = 'rgba(92,102,127,0.12)';
-                    vText.style.color = '#8b95ab';
-                    vText.innerText = `⏳ 等待 ${_opp} 表态`;
-                    logicText.innerHTML = `当前行动轮到 <b>${_opp}</b>（需跟注 ${_need.toFixed(1)}BB · 底池 ${_st.pot.toFixed(1)}BB · 在池 ${_st.inPot.length} 人）。<br><span style="color:#8b95ab;font-size:12px;">系统已锁定行动指令，待轮到我方时将即时输出精准策略。</span>`;
-                    document.getElementById('resultPanel').classList.remove('invisible');
-                    updateCfgSummary();
-                    window._lastShadowComparison = null;
-                    window._currentDecisionContract = { status: 'WAITING', reason: `等待 ${_opp} 表态` };
-                    return;
-                }
-            }
 
             const elStackH = document.getElementById('stackHero');
             const elStackV = document.getElementById('stackVillain');
@@ -8948,36 +8592,16 @@
             }
             // ════════════════════════════════════════════════════
             // 盲位单次开池：源图四动作，不经过旧价值/诈唬标签
-            // （BB 2026-09-19；SB 2026-09-20，坚决切断未校准与无覆盖向旧模型的穿透，见 D-91）
+            // （BB 2026-09-19；SB 2026-09-20，SB 原图未覆盖时回退旧模型并标注——用户决定，见 D-25）
             // ════════════════════════════════════════════════════
             if (currentMode === 'faceBet' && (posH === 'BB' || (posH === 'SB' && posV !== 'BB'))) {
-                // ASTRA-042-01: getAnteBB() 返回的是全桌 Ante 总额（含 perPlayer 换算后的总和），绝不可重复乘以人数！
-                const totalAnte = (typeof getAnteBB === 'function') ? getAnteBB() : 0;
-                const curPot = (typeof tlState === 'function') ? (tlState().pot + totalAnte) : (raiseSize + 1.5 + totalAnte);
-                const myCommit = (typeof tlState === 'function' && tlState().committed && tlState().committed[posH] !== undefined)
-                    ? tlState().committed[posH]
-                    : ((posH === 'SB') ? 0.5 : (posH === 'BB' ? 1.0 : 0));
-                // ASTRA-042-01: 限制 Hero 剩余筹码上限，跟注额绝不可超过剩余可投入额
-                const heroStack = (typeof globalHeroStack !== 'undefined') ? globalHeroStack : effStack;
-                const heroRemaining = Math.max(0, heroStack - myCommit);
-                const rawToCall = Math.max(0, raiseSize - myCommit);
-                const toCall = Math.min(heroRemaining, rawToCall);
-                const breakEvenPct = toCall > 0 ? (toCall / (curPot + toCall) * 100).toFixed(1) : '0.0';
-
                 if (raiseSize >= effStack) {
-                    // 面对全下开池：坚决阻断向旧 3-Bet 诈唬表的穿透，输出真实全下防御赔率
-                    box.style.borderColor = '#e0a83a';
-                    box.style.backgroundColor = 'rgba(224,168,58,0.08)';
-                    vText.style.color = '#e0a83a';
-                    vText.innerText = '⚠️ 面对全下开池 · 策略已安全阻断';
-                    logicText.innerHTML = `对手开池尺度（${raiseSize.toFixed(1)}BB）已达到或超过我方有效筹码（${effStack.toFixed(1)}BB），构成全下施压。<br>` +
-                        `系统已阻断常规 3-Bet 极化策略，请转入 All-in 接注模型评估。<br>` +
-                        `<span style="color:#e0a83a;font-size:12px;">【底池事实】当前底池: ${curPot.toFixed(1)}BB · 需跟注: ${toCall.toFixed(1)}BB · 保本底池赔率: ${breakEvenPct}%。</span>`;
-                    document.getElementById('resultPanel').classList.remove('invisible');
-                    updateCfgSummary();
-                    window._lastShadowComparison = null;
-                    window._currentDecisionContract = { status: 'BLOCKED', reason: '面对全下开池' };
-                    return;
+                    const rp = document.getElementById('resultPanel');
+                    if (rp) {
+                        const reason = '面对全下开池';
+                        rp.dataset.mixFallback = `${posH}:${reason}`;
+                        rp.dataset.sbMixFallback = reason;
+                    }
                 } else {
                     const mix = posH === 'BB' ? bbMixedFrequencies(handStr, posV, effStack)
                                               : sbMixedFrequencies(handStr, posV, effStack);
@@ -8986,41 +8610,24 @@
                         : gameConfig.stage !== 'normal' || gameConfig.gameType !== 'normal' ? `${posH} ICM / 赛制未校准`
                         : !gameConfig.ante ? `无 Ante 的 ${posH} 混合未校准`
                         : gameConfig.playStyle !== 'normal' ? `自定义打法的 ${posH} 混合未校准`
-                        : Math.abs(raiseSize - mix.open) > 0.51 ? `此开池尺度的 ${posH} 混合未校准`
+                        : Math.abs(raiseSize - mix.open) > 0.300001 ? `此开池尺度的 ${posH} 混合未校准`
                         : raise > 0 && gameConfig.tbSize !== 'auto' ? '自定义 3-Bet 尺度未校准' : '';
                     if (!mix) {
-                        const covRange = (posH === 'BB' && posV === 'SB') ? '25–60BB' : '15–60BB';
-                        const reason = `深度/位置超出原图覆盖（${covRange}）`;
-                        box.style.borderColor = '#e0a83a';
-                        box.style.backgroundColor = 'rgba(224,168,58,0.08)';
-                        vText.style.color = '#e0a83a';
-                        vText.innerText = `⚠️ ${posH} 深度超出覆盖 · 策略已安全阻断`;
-                        logicText.innerHTML = `当前有效筹码（${effStack.toFixed(1)}BB）超出预解矩阵认证范围（${covRange}）。<br>` +
-                            `为保障真金白银实战资金安全，系统已拦截旧模型启发式推注建议。<br>` +
-                            `<span style="color:#e0a83a;font-size:12px;">【底池事实】当前底池: ${curPot.toFixed(1)}BB · 需跟注: ${toCall.toFixed(1)}BB · 保本底池赔率: ${breakEvenPct}%。</span>`;
-                        document.getElementById('resultPanel').classList.remove('invisible');
-                        updateCfgSummary();
-                        window._lastShadowComparison = null;
-                        window._currentDecisionContract = { status: 'BLOCKED', reason };
-                        return;
+                        const rp = document.getElementById('resultPanel');
+                        if (rp) {
+                            const covRange = (posH === 'BB' && posV === 'SB') ? '25–60BB' : '15–60BB';
+                            const reason = `深度/位置超出原图覆盖（${covRange}）`;
+                            rp.dataset.mixFallback = `${posH}:${reason}`;
+                            rp.dataset.sbMixFallback = reason;
+                        }
                     } else if (unsupported) {
-                        // ── 优雅降级与未校准安全契约 (TASK-ASTRA-039 / D-91 废除穿透) ──
-                        // 超出认证赛制/参数时，坚决切断向旧模型硬编码的穿透！
-                        box.style.borderColor = '#e0a83a';
-                        box.style.backgroundColor = 'rgba(224,168,58,0.08)';
-                        vText.style.color = '#e0a83a';
-                        vText.innerText = `⚠️ ${unsupported} · 策略已安全阻断`;
-
-                        logicText.innerHTML = `当前赛制/深度参数（<b>${unsupported}</b>）超出 GTO 预解矩阵校准范围。<br>` +
-                            `为保障真金白银实战资金安全，系统已拦截旧模型硬编码推注策略。<br>` +
-                            `<span style="color:#e0a83a;font-size:12px;">【底池事实】当前底池: ${curPot.toFixed(1)}BB · 需跟注: ${toCall.toFixed(1)}BB · 保本底池赔率: ${breakEvenPct}%。</span>` +
-                            (mix ? `<br><span style="color:#8b95ab;font-size:11px;">（常规期 ChipEV 基准参考：跟注 ${mix.frequencies[0]}% / 3-Bet ${mix.frequencies[1]}% / 全下 ${mix.frequencies[2]}% / 弃牌 ${mix.frequencies[3]}%，仅供审慎权衡，切勿盲目全押）</span>` : '');
-
-                        document.getElementById('resultPanel').classList.remove('invisible');
-                        updateCfgSummary();
-                        window._lastShadowComparison = null;
-                        window._currentDecisionContract = { status: 'BLOCKED', reason: unsupported };
-                        return;
+                        // 不 return：落入下方旧 BB/SB 模型，executeEngine 包装层在理由末尾追加标注
+                        const rp = document.getElementById('resultPanel');
+                        if (rp) {
+                            rp.dataset.mixFallback = `${posH}:${unsupported}`;
+                            rp.dataset.sbMixFallback = unsupported;
+                            if (mix.open) rp.dataset.mixOpen = mix.open;
+                        }
                     } else {
                         const actions = [
                             { name:'跟注 (Call)', short:'跟注', f:call, cls:'bg-call' },
@@ -9051,15 +8658,6 @@
                         document.getElementById('resultPanel').dataset.bbMix = posH;
                         document.getElementById('resultPanel').classList.remove('invisible');
                         updateCfgSummary();
-                        if (_st && _st.nextToAct && _st.nextToAct !== _curHero &&
-                            (!_st.heroActs || _st.heroActs.length === 0 || (_st.curBet > (_st.committed[_curHero] || 0)))) {
-                            const _opp = tlLbl(_st.nextToAct);
-                            const lgEl = document.getElementById('actionLogic');
-                            if (lgEl && !lgEl.innerHTML.includes('先行决策推演')) {
-                                lgEl.innerHTML = `<div style="display:inline-block;padding:2px 8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:4px;color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:6px;">⚡ 先行决策推演（当前等待 ${_opp} 表态，默认前位/其间玩家弃牌；若有人入池将自动调整）</div><br>` + lgEl.innerHTML;
-                            }
-                            window._currentDecisionContract = { status: 'READY', isAnticipated: true, pendingActor: _st.nextToAct };
-                        }
                         return;
                     }
                 }
@@ -9165,11 +8763,9 @@
                 // SB vs BB 单挑特权
                 if (posH === 'SB') playabilityMod -= 4.0;
 
-                // 短码 Nash Push (DEF-ICM-01: 接入 getStageOpenAdjust 赛段濒死保命调整)
+                // 短码 Nash Push
                 if (sH <= 12) {
-                    const _avg = (globalAvgStack > 0) ? globalAvgStack : sH;
-                    const stageAdj = getStageOpenAdjust(gameConfig.stage, sH, _avg);
-                    const pushRange = Math.max(5, Math.min(100, getNashPushRange(sH, posH) + stageCfg.pushMod - (stageAdj.delta || 0)));
+                    const pushRange = getNashPushRange(sH, posH) + stageCfg.pushMod;
                     const handPct = getPushCombopct(handStr);   // 2026-09-08：真实组合百分比
                     isPushMode = true;
                     
@@ -9708,27 +9304,12 @@
                             b = 100; c = 0; f = 0; rejamChosen = true;
                             logic = `${effStack}BB 中短码面对开池：3-Bet 即全推（Re-Jam）。价值与阻断兼具，压制对手开池范围。`;
                         }
-                    } else if (rejamAct === 'jam_bluff' || rejamAct === 'jam_bluff_reduced') {
-                        // ── 淘汰旧模型 70/30 硬编码，优先对齐 GTO 预解矩阵向量 (TASK-ASTRA-039 / Phase B) ──
-                        const matrixVec = (typeof queryGtoPreflop === 'function')
-                            ? queryGtoPreflop(posH, posV, effStack, handStr, 'vs_RFI') : null;
-                        if (matrixVec && Array.isArray(matrixVec)) {
-                            const [mF, mC, mR, mJ] = matrixVec;
-                            f = mF;
-                            c = mC;
-                            b = mJ + mR;
-                            rejamChosen = true;
-                            logic = `${effStack}BB ${posH} 面对 ${POS_LABEL[posV] || posV} 开池：${handStr} 具有阻断效应与权益。GTO 混合建议（全推/加注 ${b}% · 平跟 ${c}% · 弃牌 ${f}%）。`;
-                        } else {
-                            // 降频与安全阻断：无独立 GTO 矩阵支持时，严禁宣称精确 70% 诈唬，按保本底池赔率与弃牌率保守提示
-                            b = (rejamAct === 'jam_bluff_reduced') ? 35 : 50;
-                            f = 100 - b;
-                            c = 0;
-                            rejamChosen = true;
-                            logic = (rejamAct === 'jam_bluff_reduced')
-                                ? `ICM 阶段修正：Re-Jam 诈唬降频至 35%（泡沫/决赛圈慎用无摊牌价值全推）。`
-                                : `${effStack}BB Re-Jam 诈唬（Blocker 牌，无摊牌价值弃牌率挤压）。建议低频混合（推 ${b}% / 弃 ${f}%），避免过度激进。`;
-                        }
+                    } else if (rejamAct === 'jam_bluff') {
+                        b = 70; f = 30; c = 0; rejamChosen = true;
+                        logic = `${effStack}BB Re-Jam 诈唬（Blocker 牌），对开池范围施加最大弃牌压力。`;
+                    } else if (rejamAct === 'jam_bluff_reduced') {
+                        b = 35; f = 65; c = 0; rejamChosen = true;
+                        logic = `ICM 阶段修正：Re-Jam 诈唬降频至 35%（泡沫/决赛圈慎用无摊牌价值全推）。`;
                     }
 
                     // ── 物理常识熔断铁闸 1：超短码 (<=10.5BB) 面对单次加注禁止弃掉强牌 ──
@@ -9897,23 +9478,12 @@
                     } else if (action3b === 'threebet_value') {
                         b = 100; c = 0; f = 0; action3bValue = true;
                         logic = '价值 3-Bet，强牌榨取。';
-                    } else if (action3b === 'threebet_bluff' || action3b === 'threebet_bluff_reduced') {
-                        const matrixVec = (typeof queryGtoPreflop === 'function')
-                            ? queryGtoPreflop(posH, posV, effStack, handStr, 'vs_RFI') : null;
-                        if (matrixVec && Array.isArray(matrixVec)) {
-                            const [mF, mC, mR, mJ] = matrixVec;
-                            f = mF;
-                            c = mC;
-                            b = mR + mJ;
-                            logic = `${effStack}BB ${posH} 面对 ${POS_LABEL[posV] || posV} 开池：${handStr} 极化 3-Bet / 阻断手牌。GTO 建议加注/全下 ${b}% · 平跟 ${c}% · 弃牌 ${f}%。`;
-                        } else {
-                            b = (action3b === 'threebet_bluff_reduced') ? 35 : 50;
-                            f = 100 - b;
-                            c = 0;
-                            logic = (action3b === 'threebet_bluff_reduced')
-                                ? 'ICM 阶段修正：泡沫/决赛圈降低 3-Bet 诈唬频率（35%↓）。'
-                                : '极化 3-Bet 诈唬（有 Blocker）。建议混合策略，防范 4-Bet 挤压。';
-                        }
+                    } else if (action3b === 'threebet_bluff') {
+                        b = 70; f = 30; c = 0;
+                        logic = '极化 3-Bet 诈唬（有 Blocker）。';
+                    } else if (action3b === 'threebet_bluff_reduced') {
+                        b = 35; f = 65; c = 0;
+                        logic = 'ICM 阶段修正：泡沫/决赛圈降低 3-Bet 诈唬频率（35%↓）。';
                     } else {
                         // SB 跟注段（2026-09-09，MPT 实测）：SB 翻后恒 OOP，
                         // 下面的 set-mining / IP 平跟两条路都要求 Hero 在位置上，
@@ -10103,10 +9673,9 @@
                                             `按占多数的 4-Bet 出）。`;
                                     postSizing = fourBetSize();
                                 } else {
-                                    logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在全推段（${effStack.toFixed(1)}BB 深度）。` +
-                                            (effStack <= 20
-                                                ? `已投入开池筹码且有效筹码浅（SPR ≤ 1.5），起手对子与顶尖牌力具有高绝对胜率，4-Bet All-in 直接全下兼具压制率与摊牌权益。`
-                                                : `该节点全下约 ${effStack <= 32 ? '12-21' : '9-13'}%。注意全下段是范围的中段——阻断牌与翻后难打的牌；AA/KK/QQ 在跟注段留住对手诈唬。`);
+                                    logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的全下段` +
+                                            `（${effStack}BB 深度，该节点全下约 ${effStack <= 32 ? '12-21' : '9-13'}%）。` +
+                                            `注意全下段是范围的**中段**——阻断牌与翻后难打的牌；AA/KK/QQ 在跟注段留住对手诈唬。`;
                                     postSizing = `${effStack.toFixed(1)}BB All-in`;
                                 }
                                 break;
@@ -10755,8 +10324,9 @@
                 //   风险溢价同时取决于双方码量档，而不是我方码量的单一标量；
                 //   而且那个 −8 让"大码泡沫期接短码全下"变成比 chipEV 还松，
                 //   MPT 实测是 **+2~4**（仍高于底池赔率）——方向反了。
-                // 接全下＝全部筹码进池，Table 41 基准已按接全下建模，atRisk 严格为 1.0
-                const _rp = getRiskPremium(sH, sV, avgStack, gameConfig.stage, 1.0);
+                // 接全下＝全部筹码进池，故 atRisk 取有效筹码占我方筹码之比（通常为 1）。
+                const _rp = getRiskPremium(sH, sV, avgStack, gameConfig.stage,
+                                           Math.min(1, (Math.min(sH, sV) || sH) / (sH || 1)));
                 let riskPrem = _rp.premium;
                 const warnings = [];
                 const heroToVillainRatio = sH / (sV || 1);
@@ -11015,7 +10585,9 @@
                 }
             _lg.appendChild(n);
             }
-            // ── Phase 4.1: Shadow Mode (先计算 GTO 向量，杜绝 HUD 时序脏读) ──
+            try { updateDecisionHUD(); } catch (e) {}
+
+            // ── Phase 4.1: Shadow Mode (暗影对账与全量差分探针) ──
             try {
                 if (typeof queryGtoPreflop === 'function') {
                     const handStr = typeof getHandStr === 'function' ? getHandStr() : '';
@@ -11029,71 +10601,37 @@
                     if (currentMode === 'open') seq = 'RFI';
                     else if (currentMode === 'squeeze') seq = 'SQUEEZE';
 
-                    // 检查是否未轮到 Hero、已终局或处于未校准安全阻断态
-                    const st = (typeof tlState === 'function') ? tlState() : null;
+                    const matrixVec = queryGtoPreflop(posH, posV, eff, handStr, seq);
                     const vEl = document.getElementById('actionVerdict');
-                    const vText = vEl ? vEl.innerText.trim() : '';
-                    const isContractBlocked = window._currentDecisionContract && window._currentDecisionContract.status !== 'READY';
-                    const isBlockedOrTerminal = !vText || isContractBlocked || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vText);
-                    const hasHeroActed = st && st.heroActs && st.heroActs.length > 0;
-                    const isHeroFacingRaise = st && (st.curBet > (st.committed[posH] || 0));
-                    const isWaitingOpponent = st && !st.closed && st.nextToAct && st.nextToAct !== posH && hasHeroActed && !isHeroFacingRaise;
-                    const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal;
-
-                    const matrixVec = shouldSuppress ? null : queryGtoPreflop(posH, posV, eff, handStr, seq);
                     const szEl = document.getElementById('sizingContent');
                     const lgEl = document.getElementById('actionLogic');
 
-                    if (matrixVec && !shouldSuppress) {
-                        window._lastShadowComparison = {
-                            mode: currentMode,
-                            posH,
-                            posV,
-                            effStack: eff,
-                            handStr,
-                            legacyVerdict: vText,
-                            legacySizing: szEl ? szEl.innerText.trim() : '',
-                            legacyLogic: lgEl ? lgEl.innerText.trim() : '',
-                            matrixVector: matrixVec, // [Fold%, Call%, Raise%, Jam%]
-                            timestamp: Date.now()
-                        };
-                    } else {
-                        window._lastShadowComparison = null;
-                    }
+                    window._lastShadowComparison = {
+                        mode: currentMode,
+                        posH,
+                        posV,
+                        effStack: eff,
+                        handStr,
+                        legacyVerdict: vEl ? vEl.innerText.trim() : '',
+                        legacySizing: szEl ? szEl.innerText.trim() : '',
+                        legacyLogic: lgEl ? lgEl.innerText.trim() : '',
+                        matrixVector: matrixVec, // [Fold%, Call%, Raise%, Jam%]
+                        timestamp: Date.now()
+                    };
 
                     const bEl = document.getElementById('gtoSolverBadge');
                     const vVecEl = document.getElementById('gtoSolverVector');
-                    if (bEl && vVecEl && matrixVec && !shouldSuppress) {
+                    if (bEl && vVecEl && matrixVec) {
                         const [fP, cP, rP, jP] = matrixVec;
                         bEl.classList.remove('hidden');
                         vVecEl.innerText = `[弃:${fP}% 跟:${cP}% 加:${rP}% 推:${jP}%]`;
                     } else if (bEl) {
                         bEl.classList.add('hidden');
-                        if (vVecEl) vVecEl.innerText = '';
                     }
-                } else {
-                    window._lastShadowComparison = null;
                 }
             } catch (err) {
                 console.warn('[SHADOW_MODE_PROBE_ERROR]', err);
-                window._lastShadowComparison = null;
             }
-
-            // 实战先行推演提示（若行动权未到 Hero，但 Hero 需做决策：先行推演模式）
-            const _stEval = (typeof tlState === 'function') ? tlState() : null;
-            const _heroPos = globalPosHero || 'CO';
-            const _isHeroFacingRaiseAfter = _stEval && _stEval.heroActs && _stEval.heroActs.length > 0 && (_stEval.curBet > (_stEval.committed[_heroPos] || 0));
-            if (_stEval && _stEval.nextToAct && _stEval.nextToAct !== _heroPos && _isHeroFacingRaiseAfter) {
-                const _opp = tlLbl(_stEval.nextToAct);
-                const lgEl = document.getElementById('actionLogic');
-                if (lgEl && !lgEl.innerHTML.includes('先行决策推演')) {
-                    lgEl.innerHTML = `<div style="display:inline-block;padding:2px 8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:4px;color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:6px;">⚡ 先行决策推演（当前等待 ${_opp} 表态，默认其间玩家弃牌；若有人入池将自动调整）</div><br>` + lgEl.innerHTML;
-                }
-                window._currentDecisionContract = { status: 'READY', isAnticipated: true, pendingActor: _stEval.nextToAct };
-            }
-
-            // GTO 向量计算完成后，再统一原子刷新 HUD
-            try { updateDecisionHUD(); } catch (e) {}
         }
 
         // ============================================================
@@ -12866,7 +12404,7 @@
                 const SUITS = ['s','h','d','c'];
                 const fullDeck = [];
                 RANKS.forEach(r => SUITS.forEach(s => fullDeck.push(r + s)));
-                let wins = 0, ties = 0, valid = 0, tieShare = 0, sumShare = 0, sumShareSq = 0;   // tieShare：平局时按 1/分池人数 累加
+                let wins = 0, ties = 0, valid = 0, tieShare = 0;   // tieShare：平局时按 1/分池人数 累加
                 // 采样量 400→2000(2026-09-08)：实测三人局 400 次抖动达 3.1 点（两次运行
                 // 34.9% vs 40.5%），而多人底池恰恰是最需要准的场合——门槛已按人数收紧，
                 // 胜率再抖 3 点就会来回翻转结论。2000 次抖动降到 1.4 点，耗时仅 81ms。
@@ -12933,11 +12471,8 @@
                             // 审计修复#11(2026-09-08)：原来只数"是否平局"，下面一律按 ×0.5 折算，
                             // 三人分池实为 1/3、四人 1/4。公牌成顺/成同花等多人 chop 局面
                             // 权益被高估 16.7-25 个点。改为累加实际分得的份额。
-                            const curShare = 1 / winners.length;
-                            sumShare += curShare;
-                            sumShareSq += curShare * curShare;
                             if (winners.length === 1) wins++;
-                            else { ties++; tieShare += curShare; }
+                            else { ties++; tieShare += 1 / winners.length; }
                         }
                     } catch (e) { continue; }
                 }
@@ -12948,10 +12483,10 @@
                     winRate:  Math.round(wins / valid * 1000) / 10,
                     tieRate:  Math.round(ties / valid * 1000) / 10,
                     loseRate: Math.round((valid - wins - ties) / valid * 1000) / 10,
+                    // 样本数同步(2026-09-08)：原来沿用了 postState.equityResult 的 1500，
+                    // 但多人覆盖实际只跑 valid 次 —— 胜率卡徽章会显示"MC×1500"而底下写着
+                    // "多人MC×400"，同一屏两个口径（正是交叉审计里批评过的问题）。
                     sampleCount: valid,
-                    playerCount: ranges.length + 1,
-                    s1: sumShare,
-                    s2: sumShareSq,
                     method:   `多人MC×${valid}·${ranges.length}名对手`
                 };
                 postState.equityResult = merged;
@@ -14618,7 +14153,7 @@
         const VILLAIN_PROFILES = {
             balanced: {
                 id: 'balanced',
-                name: '均衡基准 (Balanced)',
+                name: 'GTO 均衡',
                 icon: '⚖️',
                 desc: '标准博弈论均衡，无偏向防守',
                 cbetBias: 0,
@@ -14786,8 +14321,8 @@
                 };
             }
 
-            // 极浅码 (SPR <= 0.90) 或河牌单街终局中浅筹 (n === 1 && spr <= 2.5)：直接进入全押规划
-            if (spr <= 0.90 || (n === 1 && spr <= 2.5)) {
+            // 极浅码 (SPR <= 0.25) 或河牌单街终局：直接进入全押规划
+            if (spr <= 0.25 || n === 1) {
                 const shoveRatio = eff / p;
                 const shovePct = Math.round(shoveRatio * 100);
                 const shoveAmt = eff;
@@ -14821,11 +14356,7 @@
 
             // 通用几何计算
             const growth = (2 * eff + p) / p;
-            let rGeomExact = (Math.pow(growth, 1 / n) - 1) / 2;
-            if (n === 1) {
-                // 河牌单街深筹 (SPR > 2.5)，无后续街次分摊，几何尺寸封顶为标准价值下注 (75% 底池)
-                rGeomExact = Math.min(0.75, rGeomExact);
-            }
+            const rGeomExact = (Math.pow(growth, 1 / n) - 1) / 2;
             const rGeom = Math.max(0.1, rGeomExact);
             const rGeomPct = Math.round(rGeom * 100);
             const stdAmt = Math.min(eff, rh(p * rGeom));
@@ -14845,8 +14376,6 @@
                 const p1 = p + 2 * b0;
                 const s1 = Math.max(0, eff - b0);
                 planDesc = `转牌 ${rGeomPct}% (${b0.toFixed(1)}BB) → 河牌 (${s1.toFixed(1)}BB 全押)`;
-            } else {
-                planDesc = `河牌单街 ${rGeomPct}% (${stdAmt.toFixed(1)}BB)`;
             }
 
             // 档位 2: 超池施压 (Overbet / Nut Advantage)
@@ -15593,7 +15122,6 @@
             // 提到 1500 把抽样噪声从 ±3.5 点压到 ±2 点，延迟仍 <60ms。
             const SIM_COUNT = 1500;
             let wins = 0, ties = 0, losses = 0, validSims = 0, tieShare = 0;
-            let sumShare = 0, sumShareSq = 0;
             const allOppRanges = [villainRange.hands, ...activeExtraRanges.map(r => r.hands)];
             const isMultiOpponent = allOppRanges.length > 1;
 
@@ -15675,15 +15203,10 @@
                     if (winners.includes(heroFull)) {
                         if (winners.length === 1) {
                             wins++;
-                            sumShare += 1.0;
-                            sumShareSq += 1.0;
                         } else {
                             ties++;
                             // B2.1 多人平局权益分池算法 (关闭 A-05 / F-25-1)
-                            const curShare = 1 / winners.length;
-                            tieShare += curShare;
-                            sumShare += curShare;
-                            sumShareSq += curShare * curShare;
+                            tieShare += 1 / winners.length;
                         }
                     } else {
                         losses++;
@@ -15715,8 +15238,6 @@
                 sampleCount: validSims,
                 isMultiway: activeExtraRanges.length > 0,
                 playerCount: activeExtraRanges.length + 2,
-                s1: sumShare,
-                s2: sumShareSq,
                 confidence: validSims >= 200 ? 'high' : validSims >= 100 ? 'medium' : 'low',
                 warnings: validSims < 100 ? ['有效样本偏少，结果可能不稳定'] : []
             };
@@ -16109,9 +15630,6 @@
                     sampleCount: result.sampleCount,
                     validCombos: result.validCombos,
                     confidence: result.confidence,
-                    playerCount: result.playerCount || 2,
-                    s1: result.s1,
-                    s2: result.s2,
                     // 以下字段由旧 equityEngine 额外提供，在新架构里重新计算
                     handStrength: '',
                     relStrength: 0,
@@ -16129,43 +15647,52 @@
                 renderEquityPanel(equityCompat);
                 console.log('[胜率引擎]', result);
 
-                // DEF-PST-07: 补充手型与进张信息（完成后再执行决策引擎，根除 outs=0 导致的 Fix-7 误杀）
+                // === 步骤8.7：进入决策引擎 ===
+                const decision = postEngine();
+                if (currentVersion !== postState.postCalcVersion) return;
+                postState.decisionResult = decision;
+                renderPostEnginePanel(decision);
+                renderBettingPanel(); // 星标随决策结果同步刷新
+                hideAnalysisLoading(); // 计算完成，隐藏 loading
+                try { updateDecisionHUD(); } catch (e) {}
+                console.log('[决策引擎]', decision);
+
+                // 多人底池(2026-07-14)：有额外对手 → 多人 MC 覆盖胜率并重出决策
+                if ((postState.extraVillains || []).length > 0) {
+                    runMultiwayOverride(currentVersion);
+                }
+
+                // 后台补充旧版手型/进张信息（不阻塞显示）
                 equityEngine().then(oldResult => {
                     if (currentVersion !== postState.postCalcVersion) return;
-                    const merged = {
-                        ...(postState.equityResult || equityCompat),
-                        handStrength: oldResult ? (oldResult.handStrength || '') : '',
-                        relStrength: oldResult ? (oldResult.relStrength || 0) : 0,
-                        outs: oldResult ? (oldResult.outs || 0) : 0,
-                        outsDesc: oldResult ? (oldResult.outsDesc || '') : '',
-                        handTypeCN: oldResult ? (oldResult.handTypeCN || '') : ''
-                    };
-                    postState.equityResult = merged;
-                    renderEquityPanel(merged);
-
-                    // 多人底池(2026-07-14)：有额外对手 → 多人 MC 覆盖胜率并重出决策
-                    if ((postState.extraVillains || []).length > 0) {
-                        runMultiwayOverride(currentVersion);
+                    if (oldResult) {
+                        // 只补充附加信息，不覆盖胜率数字
+                        // 多人底池(2026-07-14)：基底改用当前 equityResult（可能已被
+                        // runMultiwayOverride 覆盖为多人胜率），勿回退到单挑 equityCompat
+                        const merged = {
+                            ...(postState.equityResult || equityCompat),
+                            handStrength: oldResult.handStrength || '',
+                            relStrength: oldResult.relStrength || 0,
+                            outs: oldResult.outs || 0,
+                            outsDesc: oldResult.outsDesc || '',
+                            handTypeCN: oldResult.handTypeCN || ''
+                        };
+                        postState.equityResult = merged;
+                        renderEquityPanel(merged);
+                        // 管线一致性修复(2026-07-13)：outs/relStrength 补齐后重跑决策。
+                        // 原来决策只在占位数据（outs:0/relStrength:0，见上方 equityCompat）
+                        // 上计算且从不刷新——Fix-7、进张跟注、半诈唬等所有依赖 outs/relStr
+                        // 的分支在实时管线中形同虚设（实测 8♠7♠ 的 4 张卡顺在决策时刻
+                        // 是 0 outs 被 Fix-7 强制弃牌）。渐进式刷新：先出快速决策，
+                        // 补充数据到位后（约1秒）用完整数据重出，postCalcVersion 防串。
+                        const decision2 = postEngine();
+                        if (currentVersion !== postState.postCalcVersion) return;
+                        postState.decisionResult = decision2;
+                        renderPostEnginePanel(decision2);
+                        renderBettingPanel();
+                        try { updateDecisionHUD(); } catch (e) {}
                     }
-
-                    // === 步骤8.7：进入决策引擎（使用完整手型与进张数据）===
-                    const decision = postEngine();
-                    if (currentVersion !== postState.postCalcVersion) return;
-                    postState.decisionResult = decision;
-                    renderPostEnginePanel(decision);
-                    renderBettingPanel(); // 星标随决策结果同步刷新
-                    hideAnalysisLoading(); // 计算完成，隐藏 loading
-                    try { updateDecisionHUD(); } catch (e) {}
-                    console.log('[决策引擎]', decision);
-                }).catch(() => {
-                    if (currentVersion !== postState.postCalcVersion) return;
-                    const decision = postEngine();
-                    postState.decisionResult = decision;
-                    renderPostEnginePanel(decision);
-                    renderBettingPanel();
-                    hideAnalysisLoading();
-                    try { updateDecisionHUD(); } catch (e) {}
-                });
+                }).catch(() => {});
 
             }).catch(err => {
                 // 捕获 calculatePostflopEquity 抛出的异常
@@ -17205,27 +16732,26 @@
                         }
                     }
                     const heroFlushCards = hero.filter(c => c[1].toLowerCase() === flushSuit);
-                    if (nutFlushCard && heroSet.has(nutFlushCard)) {
+                    const heroHasFlush = (suitCounts[flushSuit] + heroFlushCards.length) >= 5;
+                    if (nutFlushCard && heroSet.has(nutFlushCard) && !heroHasFlush) {
                         isNutFlushBlocker = true;
                     }
                 }
 
                 // 2. 顺子坚果阻断 (Nut Straight Blocker)
                 const bRanks = [...new Set(bd.map(c => RKI.indexOf(c[0])))].sort((a,b)=>a-b);
-                let nutStraightRanks = [];
                 let nutStraightRank = null;
                 let isStraightNutBlocker = false;
                 for (let high = 12; high >= 3; high--) {
                     const straightWindow = high === 3 ? [12, 0, 1, 2, 3] : [high-4, high-3, high-2, high-1, high];
                     const needed = straightWindow.filter(r => !bRanks.includes(r));
                     if (needed.length === 1 || needed.length === 2) {
-                        nutStraightRanks = needed.map(r => RKI[r]);
                         nutStraightRank = RKI[Math.max(...needed)];
                         break;
                     }
                 }
-                if (nutStraightRanks.length > 0) {
-                    const heroHasNutRank = hero.some(c => nutStraightRanks.includes(c[0]));
+                if (nutStraightRank) {
+                    const heroHasNutRank = hero.some(c => c[0] === nutStraightRank);
                     const allRanks = [...new Set([...bd, ...hero].map(c => RKI.indexOf(c[0])))];
                     let heroHasStraight = false;
                     for (let high = 12; high >= 3; high--) {
@@ -17308,11 +16834,8 @@
             const flopHeroBets = flopActs.some(a => isHeroAct(a) && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
             const flopHeroChecks = flopActs.some(a => isHeroAct(a) && a.action === 'check');
             const flopHeroCalls = flopActs.some(a => isHeroAct(a) && a.action === 'call');
-            // 翻牌真正 Check-Raise: Hero 必须处于 OOP 并且先有过牌 (check)，在对手下注后执行加注 (raise)
-            const heroCheckIdx = flopActs.findIndex(a => isHeroAct(a) && a.action === 'check');
-            const villainBetAfterCheck = heroCheckIdx !== -1 && flopActs.some((a, idx) => idx > heroCheckIdx && isTargetVAct(a) && (a.action === 'bet' || a.action === 'raise'));
-            const heroRaiseAfterBet = villainBetAfterCheck && flopActs.some((a, idx) => idx > heroCheckIdx && isHeroAct(a) && a.action === 'raise');
-            const flopHeroXR = isOOP && heroRaiseAfterBet;
+            const flopHeroXR = flopActs.some(a => isHeroAct(a) && a.action === 'raise') &&
+                               flopActs.some(a => isTargetVAct(a) && (a.action === 'bet' || a.action === 'raise'));
             const flopVillainBets = flopActs.some(a => isTargetVAct(a) && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
             const flopVillainChecks = flopActs.some(a => isTargetVAct(a) && a.action === 'check');
             const flopBothChecked = flopActs.length >= 2 && flopActs.every(a => a.action === 'check');
@@ -18009,8 +17532,8 @@
                     betThresh:      iHaveRangeAdv ? 55 : oppHasRangeAdv ? 68 : 62,
                     strongThresh:   68,
                     raiseThresh:    68,
-                    semiBluffOuts:  8,    // 转牌 8+ 出路（两头顺/同花听牌）构成合法半诈唬
-                    callMargin:     3,    // 转牌跟注容差收敛为 3% (替代过紧的 6%)
+                    semiBluffOuts:  10,   // 转牌进张门槛更高
+                    callMargin:     6,
                     canRangeBet:    false,
                     sizes: {
                         probe:  '67% 底池',
@@ -18046,18 +17569,14 @@
             // 单挑基准是 50%，3人池基准是 33.3%，4人池基准是 25.0%。
             // 废除单挑 62% 硬加 4*mwN 变成 66% 的致命数学倒挂，改为相对公平胜率标定：
             const _mwBetRatio = iHaveRangeAdv ? 0.98 : oppHasRangeAdv ? 1.22 : 1.12;
-            const mwDyn = mwDynamics;
-            // DEF-MW-06: 前后端统一共享 mwDyn.callMarginShift 修正 sc.callMargin
-            const mwCallShift = (mwDyn && typeof mwDyn.callMarginShift === 'number') ? mwDyn.callMarginShift : (2 * _mwN + (isSandwich ? 4 : 0));
             const sc = isMultiway ? {
                 ..._scBase,
                 canRangeBet:  false, // 多人底池严禁纯范围盲目探测
                 betThresh:    Math.round(fairShare * _mwBetRatio),
                 strongThresh: Math.round(fairShare * 1.35),
                 raiseThresh:  _scBase.raiseThresh + 4 * _mwN,
-                callMargin:   _scBase.callMargin + mwCallShift // DEF-MW-06: 统一前后端口径，共享 mwDyn.callMarginShift 修正 sc.callMargin
+                callMargin:   _scBase.callMargin + 2 * _mwN + (isSandwich ? 4 : 0) // 夹心位跟注门槛额外收紧 +4
             } : _scBase;
-            if (isMultiway) sc.callMargin = _scBase.callMargin + mwCallShift;
 
             const actLine = (typeof classifyActionLine === 'function')
                 ? classifyActionLine(actions, heroPos, heroIsPFA, street)
@@ -18154,7 +17673,7 @@
                 : (gameConfig.villainProfile || 'balanced');
             const vProfile = (typeof VILLAIN_PROFILES !== 'undefined' && VILLAIN_PROFILES[villainProfileKey])
                 ? VILLAIN_PROFILES[villainProfileKey]
-                : (typeof VILLAIN_PROFILES !== 'undefined' ? VILLAIN_PROFILES.balanced : { id: 'balanced', name: '均衡基准 (Balanced)', icon: '⚖️', desc: '标准博弈论均衡', cbetBias: 0, bluffBias: 0, callMarginBias: 0, trapBias: 0 });
+                : (typeof VILLAIN_PROFILES !== 'undefined' ? VILLAIN_PROFILES.balanced : { id: 'balanced', name: 'GTO 均衡', icon: '⚖️', desc: '标准博弈论均衡', cbetBias: 0, bluffBias: 0, callMarginBias: 0, trapBias: 0 });
 
             // ICM 3-1-3 规避淘汰硬屏障 (Survival Posture Safeguard)
             const isSurvival = (icm313 && icm313.posture === 'survival');
@@ -18742,13 +18261,8 @@
                     // 原对混合频率取 argmax——当某侧频率是"防守混合"（如 CALL 分支
                     // 输出 call40/fold60）时，argmax 会产生两侧主动作都不是的第三动作，
                     // 且并列时对浮点误差敏感（实测 +1.4e-14 翻转动作）。
-                    // DEF-PST-13: 消除 SPR=2.0 临界区二进制悬崖跳变，按混合频次最高频动作平滑确定主动作
-                    const _entriesA = Object.entries(frequencies).filter(([k, v]) => typeof v === 'number' && v > 0);
-                    _entriesA.sort((a, b) => b[1] - a[1]);
-                    primaryAction = _entriesA.length > 0 ? _entriesA[0][0].toUpperCase() : (commitWeight >= 0.55 ? commitStrat.action : flexAction);
-                    sizing = (primaryAction === 'ALLIN' || primaryAction === 'RAISE')
-                        ? (commitWeight >= 0.55 ? commitStrat.sizing : flexSizing)
-                        : (primaryAction === 'BET' ? flexSizing : '');
+                    primaryAction = commitWeight >= 0.5 ? commitStrat.action : flexAction;
+                    sizing = commitWeight >= 0.5 ? commitStrat.sizing : flexSizing;
                     reasoning = `SPR=${spr.toFixed(1)}（临界过渡区，承诺权重${(commitWeight * 100).toFixed(0)}%）：${reasoning}`;
                     // 口径一致(2026-09-10)：理由里若写了"某某频率"（空气桶拟合式就会写），
                     // 混合之后那个数已经不是实际输出了 —— 实测 3-Bet 底池 SPR 1.9 上
@@ -18763,20 +18277,32 @@
                 }
 
                 // ── TexasSolver 河牌校准 v5（环节 8，双人 · 常规期 · 主动线）──
-                // DEF-PST-04: 移除损坏的经验拟合式，河牌弱牌/无对严格遵从阻断牌与下注线，杜绝放弃线虚假注入49%下注
+                // 预注册验收通过：56 独立新节点 MAE 13.35→7.67（改善 5.68 点），单桶零恶化。
+                // 保护线：强牌（两对+、顶对）保持现有逻辑 100% 不变；多人池、ICM、面对下注保持原样。
+                // 弱对（衰减 75%）与无对（完整校正）校正下注频率：
+                //   无对拟合：clamp(0.55 × 现频率 + 16.4 + 14.8 × 河牌超牌 + 17.4 × IP转牌继续开火, 0, 100)
+                //   弱对拟合：现频率 + 0.75 × (无对拟合结果 - 现频率)
                 if (street === 'river' && _mwN === 0 && stage === 'normal' && villainBet === 0 && board.length === 5) {
                     const _rBucket = heroMadeBucket(postState.heroCards, board);
                     if (_rBucket === '弱对' || _rBucket === '无对') {
                         const _oldFreq = (frequencies && typeof frequencies.bet === 'number')
                             ? frequencies.bet
                             : (/BET|RAISE/i.test(primaryAction) ? 100 : 0);
-                        let _newFreq = _oldFreq;
+                        const _RKI = '23456789TJQKA';
+                        const _b5 = board.map(normalizeCard);
+                        const _riverRank = _RKI.indexOf(_b5[4][0]);
+                        const _prevTop = Math.max(..._b5.slice(0, 4).map(c => _RKI.indexOf(c[0])));
+                        const _isOver = _riverRank > _prevTop ? 1 : 0;
+                        const _heroBetTurn = actions.some(a => a.street === 'turn' && a.player === 'hero' && ['bet', 'raise', 'allin'].includes(a.action));
+                        const _isIpTurnBettor = (heroPos === 'IP' && _heroBetTurn) ? 1 : 0;
+                        const _fitted = Math.max(0, Math.min(100, Math.round(0.55 * _oldFreq + 16.4 + 14.8 * _isOver + 17.4 * _isIpTurnBettor)));
+                        let _newFreq = _rBucket === '弱对'
+                            ? Math.max(0, Math.min(100, Math.round(_oldFreq + 0.75 * (_fitted - _oldFreq))))
+                            : _fitted;
                         if (blk && blk.isNutBlocker && hadPrevStreetBet) {
                             _newFreq = Math.min(65, Math.max(50, _newFreq + 20));
                         } else if (blk && blk.isAirBlocker) {
                             _newFreq = Math.max(0, Math.min(25, _newFreq - 20));
-                        } else if (_oldFreq === 0) {
-                            _newFreq = 0; // 放弃线坚决保持 0% 下注，杜绝虚假开火
                         }
                         frequencies = { bet: _newFreq, check: 100 - _newFreq };
                         if (_newFreq >= 50) {
@@ -18786,6 +18312,7 @@
                             primaryAction = 'CHECK';
                             sizing = '';
                         }
+                        reasoning += `（TexasSolver 河牌校准：成手=${_rBucket}，下注频率 ${_oldFreq}%→${_newFreq}%）`;
                     }
                 }
 
@@ -18847,16 +18374,10 @@
                 // 主动下注——该线在真实玩家池强烈偏成牌（过牌-过牌-河牌领打≈同花/
                 // 三条/强成牌，诈唬极少），加注门槛 +8、承诺区全押线 58→66 并提示；
                 // 跟注赔率线不动（抓诈唬的价格逻辑不变）。
-                // DEF-PST-09: 延时 C-Bet (双方翻牌过牌，转牌对手探针/延时下注) 属于常规博弈线，绝非“被动转主动”
-                const flopActsPst = actions.filter(a => a.street === 'flop');
-                const flopWasCheckCheck = flopActsPst.length > 0 && flopActsPst.every(a => a.action === 'check');
-                const isDelayedTurnBet = (street === 'turn' && flopWasCheckCheck);
-
                 const prevVillainActs = actions.filter(a => a.player === 'villain' && a.street !== street);
-                const passiveTurnedAggro = street !== 'flop' && villainBet > 0 && !isDelayedTurnBet &&
+                const passiveTurnedAggro = street !== 'flop' && villainBet > 0 &&
                     prevVillainActs.length > 0 &&
-                    prevVillainActs.every(a => a.action === 'check' || a.action === 'call') &&
-                    (prevVillainActs.some(a => a.action === 'call') || street === 'river');
+                    prevVillainActs.every(a => a.action === 'check' || a.action === 'call');
                 const raiseThreshEff = sc.raiseThresh + (passiveTurnedAggro ? 8 : 0);
                 if (passiveTurnedAggro) {
                     warnings.push('⚠️ 对手被动转主动（前街过牌/跟注，本街突然进攻），范围强烈偏成牌，加注需更强牌力');
@@ -18869,7 +18390,7 @@
                 //    只需 27% 赔率的中对+听牌直接弃掉，是明显的 EV 漏损）；
                 // ③ 赔率不足才弃牌。
                 const isCallMarginRelaxed = (street === 'river' && ((blk && blk.isNutBlocker) || (actLine && actLine.isFacingRiverProbe)));
-                const commitStratB = equity >= (passiveTurnedAggro ? 66 : 58) - (typeof mwTotalCount !== 'undefined' && mwTotalCount > 2 ? (mwTotalCount - 2) * 5 : 0)
+                const commitStratB = equity >= (passiveTurnedAggro ? 66 : 58)
                     ? { action: 'RAISE', sizing: '全押', freq: { raise: 100 } }
                     : (toCall > 0 && equity >= potOdds + (isCallMarginRelaxed ? 0 : 4))
                     ? { action: 'CALL',  sizing: '',     freq: { call: 100 } }
@@ -18926,41 +18447,27 @@
                 // 不分赛段，泡沫期筹码EV≠奖金EV，跟全下的风险溢价应显著高于常规期
                 // （溢价档位：常规+5 / 决赛桌+8 / 泡沫期+12，方向与 getICMPressure 一致）。
                 else if (isFacingAllin) {
-                    // DEF-PST-01: 公牌坚果平分底池 (Chop Pot) 绝对跟注，严禁误弃
-                    const isBoardNutChop = (equity >= 49.5 && equity <= 50.5 && relStr >= 95) ||
-                                           (board.length === 5 && (function() {
-                                               const s = board.map(c => typeof c === 'string' ? c[1] : c.suit);
-                                               const r = board.map(c => typeof c === 'string' ? c[0] : c.rank);
-                                               const isFlush = s.every(x => x === s[0]);
-                                               return isFlush && ['A','K','Q','J','T'].every(x => r.includes(x));
-                                           })());
-                    if (isBoardNutChop) {
+                    const basePremium = stage === 'bubble' ? 12 : stage === 'final' ? 8 : 5;
+                    const allinPremium = (icm313 && icm313.villainCoversHero && icm313.isICMStage)
+                        ? Math.max(basePremium, icm313.riskPremium)
+                        : basePremium;
+                    const reqOdds = potOdds + allinPremium;
+                    if (equity >= reqOdds) {
                         primaryAction = 'CALL'; sizing = '';
                         frequencies = { call: 100 };
-                        reasoning = '🤝 公牌坚果平分底池 (Chop Pot)，锁定跟注平分收益';
-                    } else {
-                        const basePremium = stage === 'bubble' ? 12 : stage === 'final' ? 8 : 5;
-                        const allinPremium = (icm313 && icm313.villainCoversHero && icm313.isICMStage)
-                            ? Math.max(basePremium, icm313.riskPremium)
-                            : basePremium;
-                        const reqOdds = potOdds + allinPremium;
-                        if (equity >= reqOdds) {
-                            primaryAction = 'CALL'; sizing = '';
-                            frequencies = { call: 100 };
-                            if (isFacingReRaise) {
-                                reasoning = `⚡ [反推全下 · 终极数学兜底]：我方本街曾主动开火，遭遇对手反加推全下（需跟注 ${toCall.toFixed(1)}BB）。当前底池赔率需胜率 ${potOdds.toFixed(0)}%${allinPremium > 0 ? ` + 风险溢价 ${allinPremium}% = ${reqOdds.toFixed(0)}%` : ''}，我方真实胜率 ${equity.toFixed(0)}%（净优势 +${(equity - reqOdds).toFixed(0)}%），呈正期望 (ChipEV > 0)，锁定跟注打光！`;
-                            } else {
-                                reasoning = `面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%+溢价${allinPremium}%${stage !== 'normal' ? '（ICM）' : ''}，跟注`;
-                            }
+                        if (isFacingReRaise) {
+                            reasoning = `⚡ [反推全下 · 终极数学兜底]：我方本街曾主动开火，遭遇对手反加推全下（需跟注 ${toCall.toFixed(1)}BB）。当前底池赔率需胜率 ${potOdds.toFixed(0)}%${allinPremium > 0 ? ` + 风险溢价 ${allinPremium}% = ${reqOdds.toFixed(0)}%` : ''}，我方真实胜率 ${equity.toFixed(0)}%（净优势 +${(equity - reqOdds).toFixed(0)}%），呈正期望 (ChipEV > 0)，锁定跟注打光！`;
                         } else {
-                            primaryAction = 'FOLD'; sizing = '';
-                            frequencies = { fold: 100 };
-                            if (isFacingReRaise) {
-                                reasoning = `🛑 [反推全下 · 终极数学兜底]：我方主动开火遭遇对手反加全推，需胜率 ${reqOdds.toFixed(0)}%（底池赔率 ${potOdds.toFixed(0)}%${allinPremium > 0 ? ` + 溢价 ${allinPremium}%` : ''}），当前手牌胜率 ${equity.toFixed(0)}%（缺口 -${Math.abs(equity - reqOdds).toFixed(0)}%）不足防守线，负期望果断弃牌止损！`;
-                            } else {
-                                const icmPrefix = (icm313 && icm313.posture === 'survival') ? '💡 Pokercode ICM 3-1-3 [规避淘汰] ' : '';
-                                reasoning = `${icmPrefix}面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%+溢价${allinPremium}%${stage !== 'normal' ? '（ICM）' : ''}，弃牌`;
-                            }
+                            reasoning = `面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%+溢价${allinPremium}%${stage !== 'normal' ? '（ICM）' : ''}，跟注`;
+                        }
+                    } else {
+                        primaryAction = 'FOLD'; sizing = '';
+                        frequencies = { fold: 100 };
+                        if (isFacingReRaise) {
+                            reasoning = `🛑 [反推全下 · 终极数学兜底]：我方主动开火遭遇对手反加全推，需胜率 ${reqOdds.toFixed(0)}%（底池赔率 ${potOdds.toFixed(0)}%${allinPremium > 0 ? ` + 溢价 ${allinPremium}%` : ''}），当前手牌胜率 ${equity.toFixed(0)}%（缺口 -${Math.abs(equity - reqOdds).toFixed(0)}%）不足防守线，负期望果断弃牌止损！`;
+                        } else {
+                            const icmPrefix = (icm313 && icm313.posture === 'survival') ? '💡 Pokercode ICM 3-1-3 [规避淘汰] ' : '';
+                            reasoning = `${icmPrefix}面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}%不足赔率${potOdds.toFixed(0)}%+溢价${allinPremium}%${stage !== 'normal' ? '（ICM）' : ''}，弃牌`;
                         }
                     }
                 }
@@ -19110,11 +18617,6 @@
                         } else {
                             // 边缘抓诈牌：根据 MDF 分配防守配额，单挑下限 50%，多人底池下限 40%
                             callFreq = Math.min(80, Math.max(isMultiway ? 40 : 50, Math.round((isMultiway ? sharedMdf : mdf) - (icmTighten - 1) * 20)));
-                            // ABSOLUTE_IP 听牌增防：绝对位置优势 + 合格进张(≥semiBluffOuts) → 权益实现率显著高于夹心位，
-                            // 低 sharedMdf 不应让合格听牌变成 FOLD（无后位挤压风险，可免费看牌）
-                            const isAbsIpDraw = isMultiway && mwCtx && mwCtx.relativeRole === 'ABSOLUTE_IP'
-                                && street !== 'river' && outs >= sc.semiBluffOuts;
-                            if (isAbsIpDraw) callFreq = Math.max(55, callFreq);
                             if (street === 'river' && blk && blk.isNutBlocker && !isMultiway) {
                                 callFreq = Math.min(85, Math.max(68, callFreq + 22));
                                 reasoning = `🎯 [坚果阻断抓诈] 胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%，持${blk.blockerTypeDesc}（有效阻断对手价值下注端，放大其诈唬占比），河牌放宽抓诈门槛积极跟注（${callFreq}%）`;
@@ -19139,7 +18641,7 @@
                         reasoning = `🥪 Pokercode 夹心位防守：处于夹心位且进张不足（${outs}张 < 9张坚果听牌），身后有加注挤压风险，放弃投机跟注`;
                     } else {
                         primaryAction = 'CALL'; sizing = '';
-                        const callFreq = Math.min(75, Math.max(50, Math.round((isMultiway ? sharedMdf : mdf) * 0.8)));
+                        const callFreq = Math.min(75, Math.max(isMultiway ? 40 : 50, Math.round((isMultiway ? sharedMdf : mdf) * 0.8)));
                         frequencies = { call: callFreq, fold: 100 - callFreq };
                         reasoning = `${outs}张进张，${streetCN}隐含赔率跟注（MDF=${mdf.toFixed(0)}%${isMultiway ? `，${mwTotalCount}人分摊=${sharedMdf.toFixed(0)}%` : ''}，需≥${sc.semiBluffOuts}张出路）`;
                     }
@@ -19299,13 +18801,15 @@
                         } else if (isStrongValue) {
                             // 价值牌偏向下注榨取，尺度放大至满额超池/强注（多人底池遵守 mwCap 控池）
                             const mwCap = (typeof mwTotalCount === 'number' && mwTotalCount >= 4) ? 25 : 35;
-                            const betFreq = (isMultiway && street === 'flop') ? (100 - mwCap) : 100;
-                            primaryAction = 'BET';
-                            sizing = (iHaveNutAdv || sprZone === 'deep') ? sc.sizes.nut : (sc.sizes.strong || '75% 底池');
+                            const betFreq = (isMultiway && street === 'flop') ? mwCap : 100;
+                            primaryAction = (betFreq >= 50) ? 'BET' : 'CHECK';
+                            sizing = (betFreq >= 50)
+                                ? ((iHaveNutAdv || sprZone === 'deep') ? sc.sizes.nut : (sc.sizes.strong || '75% 底池'))
+                                : '';
                             frequencies = (betFreq === 100) ? { bet: 100 } : { bet: betFreq, check: 100 - betFreq };
                             exploitApplied = true;
                             exploitNote = isMultiway
-                                ? `对手极度厌恶弃牌，价值牌偏向下注榨取（多人池兼顾控池频率 ${mwCap}%）`
+                                ? `对手极度厌恶弃牌，价值牌偏向下注榨取（多人池兼顾控池频率 ${betFreq}%）`
                                 : '对手极度厌恶弃牌，价值牌 100% 满额超池下注压榨，杜绝免费看牌';
                         }
                     }
@@ -19421,7 +18925,7 @@
             const _fnFedor = (typeof window !== 'undefined' && window.calculateFedorRc) || (typeof calculateFedorRc === 'function' ? calculateFedorRc : null);
             const fedorAnalysis = _fnFedor ? _fnFedor(equity, _potBefore, villainBet, isMultiway ? mwTotalCount : 2) : { R: 0, Rc: 0, canDefend: true, edge: 0 };
 
-            let decisionResult = {
+            const decisionResult = {
                 primaryAction, sizing, frequencies, reasoning,
                 warnings, street,
                 geometry,
@@ -19441,7 +18945,7 @@
                     isSurvivalSuppressed: isSurvival && (vProfile.id === 'maniac' || vProfile.id === 'fold_heavy')
                 },
                 math: {
-                    pot, effStack, spr, villainBet, toCall,
+                    pot, effStack, spr, villainBet,
                     requiredEq: potOdds,
                     mdf,
                     sharedMdf,
@@ -19594,75 +19098,13 @@
                                    (typeof resolveUnifiedDecision === 'function' ? resolveUnifiedDecision : null);
                 if (typeof _fnResolve === 'function') {
                     const _isHeroOOP = (heroPos === 'OOP' || heroPos === 'BB' || heroPos === 'SB' || (typeof heroIsOOP !== 'undefined' ? heroIsOOP : false));
-                    const _hasChipsBehind = (effStack > villainBet);
-                    let _isFacingAllin = !!(isFacingAllin || (effStack <= villainBet));
-                    let _callClosesAction = false;
-                    let _noPlayersBehind = false;
-                    let _activeNonAllin = null;
-                    let _highestBet = villainBet;
-                    let _lastRaiseInc = toCall > 0 ? toCall : 2.0;
-                    let _canRaise = true;
-                    if (!isMultiway) {
-                        _noPlayersBehind = true;
-                        _callClosesAction = (villainBet > 0 || _isFacingAllin);
-                    } else {
-                        const _getMwState = (typeof getMultiwayStreetState === 'function') ? getMultiwayStreetState :
-                                            (typeof getStreetState === 'function') ? getStreetState : null;
-                        if (typeof _getMwState === 'function') {
-                            try {
-                                const _curActs = (postState && postState.potTracker && Array.isArray(postState.potTracker.actions))
-                                    ? postState.potTracker.actions.filter(a => !a.street || a.street === (board.length === 5 ? 'river' : board.length === 4 ? 'turn' : 'flop'))
-                                    : (typeof streetActs !== 'undefined' ? streetActs : []);
-                                const _validTableSeats = ['BTN', 'CO', 'HJ', 'LJ', 'MP', 'MP1', 'UTG2', 'UTG1', 'UTG', 'BB', 'SB'];
-                                const _realHeroSeat = (typeof globalPosHero === 'string' && _validTableSeats.includes(globalPosHero))
-                                    ? globalPosHero
-                                    : (_validTableSeats.includes(postState.heroPosition) ? postState.heroPosition : 'BTN');
-                                const _curStreet = board.length === 5 ? 'river' : board.length === 4 ? 'turn' : 'flop';
-                                const _simAmt = villainBet > 0 ? villainBet : 0;
-                                const _curSs = _getMwState(_curActs);
-                                if (_curSs) {
-                                    if (typeof _curSs.highestBet === 'number') _highestBet = _curSs.highestBet;
-                                    if (typeof _curSs.lastValidBetInc === 'number' && _curSs.lastValidBetInc > 0) _lastRaiseInc = _curSs.lastValidBetInc;
-                                    if (_curSs.canRaise !== undefined) _canRaise = !!_curSs.canRaise;
-                                    if (typeof _curSs.activeNonAllinCount === 'number') _activeNonAllin = _curSs.activeNonAllinCount;
-                                }
-                                const _afterCallSs = _getMwState([..._curActs, { street: _curStreet, pos: _realHeroSeat, player: 'hero', action: 'call', amount: _simAmt }]);
-                                if (_afterCallSs) {
-                                    _callClosesAction = !!_afterCallSs.isStreetClosed;
-                                    _noPlayersBehind = _callClosesAction;
-                                    if (typeof _afterCallSs.activeNonAllinCount === 'number') {
-                                        _activeNonAllin = _afterCallSs.activeNonAllinCount;
-                                    }
-                                }
-                                if (_activeNonAllin !== null && _activeNonAllin >= 2 && effStack > villainBet) {
-                                    _isFacingAllin = false;
-                                }
-                            } catch (e) {
-                                _callClosesAction = false;
-                                _noPlayersBehind = false;
-                            }
-                        } else {
-                            _callClosesAction = false;
-                            _noPlayersBehind = false;
-                        }
-                    }
                     decisionResult = _fnResolve(decisionResult, postState, {
                         board,
                         pot,
                         villainBet,
-                        toCall,
                         effStack,
                         heroPos,
-                        heroIsOOP: _isHeroOOP,
-                        isMultiway,
-                        isFacingAllin: _isFacingAllin,
-                        hasChipsBehind: _hasChipsBehind,
-                        noPlayersBehind: _noPlayersBehind,
-                        callClosesAction: _callClosesAction,
-                        highestBet: _highestBet,
-                        lastRaiseInc: _lastRaiseInc,
-                        canRaise: _canRaise,
-                        activeNonAllinCount: _activeNonAllin
+                        heroIsOOP: _isHeroOOP
                     });
                 }
             } catch (arbErr) {
@@ -19951,11 +19393,11 @@
                     const titleEl = document.getElementById('decisionGtoTitle');
                     if (titleEl) {
                         if (hasCheckRaise && crDyn.action === 'CHECK_RAISE') titleEl.innerText = '⚔️ 翻后过牌加注决策';
-                        else if (hasMultiway && street === 'turn') titleEl.innerText = '👥 转牌多人动力学跃迁';
-                        else if (hasMultiway) titleEl.innerText = '👥 多人底池博弈动力学';
-                        else if (street === 'turn') titleEl.innerText = '⚡ 转牌策略先验 (Prior)';
-                        else if (street === 'river') titleEl.innerText = '⚡ 河牌策略先验 (Prior)';
-                        else titleEl.innerText = '⚡ 策略先验 (Prior)';
+                        else if (hasMultiway && street === 'turn') titleEl.innerText = '👥 转牌多人 GTO 跃迁';
+                        else if (hasMultiway) titleEl.innerText = '👥 多人底池 GTO 动力学';
+                        else if (street === 'turn') titleEl.innerText = '⚡ 转牌 GTO 跃迁';
+                        else if (street === 'river') titleEl.innerText = '⚡ 河牌 GTO 终局';
+                        else titleEl.innerText = '⚡ 翻后 GTO 预解';
                     }
 
                     const metaEl = document.getElementById('decisionGtoMeta');
