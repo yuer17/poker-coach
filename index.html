@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.05 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v3.06 正式版 - GTO 训练与实战决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.05 正式版 高定黑曜石与 Liquid Glass 设计令牌 (39项系统缺陷全面清零根治版) ══
+            /* ══ PokerCode v3.06 正式版 高定黑曜石与 Liquid Glass 设计令牌 (39项系统缺陷全面清零根治版) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1359,9 +1359,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.05 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.06 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.05</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.06</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1382,7 +1382,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.05 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.06 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -5809,7 +5809,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.05',
+                    v: 'v3.06',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5828,7 +5828,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5902,7 +5902,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.05 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.06 正式版';
             renderWindowColorChips(key);
         };
 
@@ -6910,6 +6910,26 @@
             return node || null;
         }
         function getFacing3BetAction(handStr, heroPos, tableSize, effStack, tbPos) {
+            const sH = effStack > 0 ? effStack : 40;
+
+            // ── 短码面对 3-Bet 强价值全推铁律 (effStack <= 20BB) ──
+            // 当我方开池后面对 3-Bet，且有效筹码 ≤20BB 时，SPR 坍缩至 0.8~1.3。
+            // 起手口袋对与顶尖高张此时严禁平跟（无法按赔率投中暗条，翻后极易被反超）更绝不可弃牌（严重负 EV 弃牌泄漏），
+            // 必须直接执行 4-Bet All-in (fivebet_jam)！
+            if (sH <= 20) {
+                const pairs16 = ['AA','KK','QQ','JJ','TT','99','88','77'];
+                const pairs20 = ['AA','KK','QQ','JJ','TT','99','88'];
+                const broadways16 = ['AKs','AKo','AQs','AQo','AJs','ATs','KQs'];
+                const broadways20 = ['AKs','AKo','AQs','AQo','AJs'];
+
+                const isShortPair = (sH <= 12 && handStr === '66') || (sH <= 16 ? pairs16.includes(handStr) : pairs20.includes(handStr));
+                const isShortBroadway = sH <= 16 ? broadways16.includes(handStr) : broadways20.includes(handStr);
+
+                if (isShortPair || isShortBroadway) {
+                    return 'fivebet_jam';
+                }
+            }
+
             // 盲位 3-Bet 走实测表（2026-09-09）。旧表既无深度维度、也不分 3-Bet 者位置，
             // 而实测显示两者都是一级变量：同是 BTN 面对 3-Bet，25bb 全下 12.4%、
             // 40bb 8.8%；3-Bet 者是 SB 时全下 21.1%（对 BB 时 12.4%）。
@@ -8165,9 +8185,21 @@
                 const hadActions = tlActs.length > 0;
                 pushUndo(`我的位置 → ${tlLbl(b.dataset.tlhero)}`);
                 globalPosHero = b.dataset.tlhero;
-                tlActs = [];                      // 换位置＝重新开始这手牌的行动线
+                const elPosH = document.getElementById('posHero');
+                if (elPosH) elPosH.value = b.dataset.tlhero;
+                const grpH = document.getElementById('posHero_grp');
+                if (grpH) {
+                    Array.from(grpH.children).forEach(btn => {
+                        btn.className = btn.dataset.val === b.dataset.tlhero ? 'pos-btn-hero active' : 'pos-btn-hero';
+                    });
+                }
+                if (typeof tlSyncFromMode === 'function') {
+                    tlSyncFromMode();
+                } else {
+                    tlActs = [];
+                    tlRebuildLegacy();
+                }
                 if (hadActions) showToast('位置已改变，行动线已清空；按 Z 或点撤回可恢复', 'info');
-                tlRebuildLegacy();
                 tlScheduleApply();
             });
 
@@ -8794,13 +8826,15 @@
             //       Fold 等分支不会重设它们，旧值（如 "2.2x"、旧频率标签）会留在 DOM。
             //       每次出新决策前统一置空，由后续价值分支按需重填。
             document.getElementById('freqBar').innerHTML = '';
+            window._currentDecisionContract = { status: 'READY' };
 
             // ── Turn Ownership & Terminal State 强门禁 (TASK-ASTRA-039/040 / INV-01 / INV-02) ──
             // 未轮到 Hero、已弃牌、已全下或终局时，严禁将假定场景作为当前确定性行动指令冒顶展示！
+            let _st = null;
+            const _curHero = globalPosHero || 'SB';
             const _boardCount = (postState.board || []).filter(c => c !== null).length;
             if (_boardCount < 3 && typeof tlState === 'function') {
-                const _st = tlState();
-                const _curHero = globalPosHero || 'SB';
+                _st = tlState();
 
                 // 1. Hero 已弃牌 (INV-02)
                 if (_st.folded && _st.folded.has(_curHero)) {
@@ -8845,7 +8879,6 @@
                 }
 
                 // 4. 行动权尚未轮到 Hero (INV-01)
-                // 无论是已有历史，还是空历史（未表态），只要 nextToAct 明确存在且不等于 Hero
                 // 实战先行推演契约：若 Hero 此前已入池/开池，且身后出现加注/3-Bet（Hero 需面对加注抉择）：
                 // 德扑实战体验默认后续玩家（如 BTN/SB/BB）弃牌，先行输出我方应对加注的精准策略！
                 const _isHeroFacingRaiseAfterAction = _st.heroActs && _st.heroActs.length > 0 && (_st.curBet > (_st.committed[_curHero] || 0));
@@ -9018,6 +9051,15 @@
                         document.getElementById('resultPanel').dataset.bbMix = posH;
                         document.getElementById('resultPanel').classList.remove('invisible');
                         updateCfgSummary();
+                        if (_st && _st.nextToAct && _st.nextToAct !== _curHero &&
+                            (!_st.heroActs || _st.heroActs.length === 0 || (_st.curBet > (_st.committed[_curHero] || 0)))) {
+                            const _opp = tlLbl(_st.nextToAct);
+                            const lgEl = document.getElementById('actionLogic');
+                            if (lgEl && !lgEl.innerHTML.includes('先行决策推演')) {
+                                lgEl.innerHTML = `<div style="display:inline-block;padding:2px 8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:4px;color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:6px;">⚡ 先行决策推演（当前等待 ${_opp} 表态，默认前位/其间玩家弃牌；若有人入池将自动调整）</div><br>` + lgEl.innerHTML;
+                            }
+                            window._currentDecisionContract = { status: 'READY', isAnticipated: true, pendingActor: _st.nextToAct };
+                        }
                         return;
                     }
                 }
@@ -10061,9 +10103,10 @@
                                             `按占多数的 4-Bet 出）。`;
                                     postSizing = fourBetSize();
                                 } else {
-                                    logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的全下段` +
-                                            `（${effStack}BB 深度，该节点全下约 ${effStack <= 32 ? '12-21' : '9-13'}%）。` +
-                                            `注意全下段是范围的**中段**——阻断牌与翻后难打的牌；AA/KK/QQ 在跟注段留住对手诈唬。`;
+                                    logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在全推段（${effStack.toFixed(1)}BB 深度）。` +
+                                            (effStack <= 20
+                                                ? `已投入开池筹码且有效筹码浅（SPR ≤ 1.5），起手对子与顶尖牌力具有高绝对胜率，4-Bet All-in 直接全下兼具压制率与摊牌权益。`
+                                                : `该节点全下约 ${effStack <= 32 ? '12-21' : '9-13'}%。注意全下段是范围的中段——阻断牌与翻后难打的牌；AA/KK/QQ 在跟注段留住对手诈唬。`);
                                     postSizing = `${effStack.toFixed(1)}BB All-in`;
                                 }
                                 break;
@@ -10992,8 +11035,9 @@
                     const vText = vEl ? vEl.innerText.trim() : '';
                     const isContractBlocked = window._currentDecisionContract && window._currentDecisionContract.status !== 'READY';
                     const isBlockedOrTerminal = !vText || isContractBlocked || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vText);
-                    const isFacingRaiseAnticipated = st && st.heroActs && st.heroActs.length > 0 && (st.curBet > (st.committed[posH] || 0));
-                    const isWaitingOpponent = st && !st.closed && st.nextToAct && st.nextToAct !== posH && !isFacingRaiseAnticipated;
+                    const hasHeroActed = st && st.heroActs && st.heroActs.length > 0;
+                    const isHeroFacingRaise = st && (st.curBet > (st.committed[posH] || 0));
+                    const isWaitingOpponent = st && !st.closed && st.nextToAct && st.nextToAct !== posH && hasHeroActed && !isHeroFacingRaise;
                     const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal;
 
                     const matrixVec = shouldSuppress ? null : queryGtoPreflop(posH, posV, eff, handStr, seq);
@@ -11035,15 +11079,17 @@
                 window._lastShadowComparison = null;
             }
 
-            // 实战先行推演提示（若 Hero 处于面对加注的先行决策模式）
-            if (typeof _st !== 'undefined' && _st && _st.nextToAct && _st.nextToAct !== _curHero &&
-                _st.heroActs && _st.heroActs.length > 0 && (_st.curBet > (_st.committed[_curHero] || 0))) {
-                const _opp = tlLbl(_st.nextToAct);
+            // 实战先行推演提示（若行动权未到 Hero，但 Hero 需做决策：先行推演模式）
+            const _stEval = (typeof tlState === 'function') ? tlState() : null;
+            const _heroPos = globalPosHero || 'CO';
+            const _isHeroFacingRaiseAfter = _stEval && _stEval.heroActs && _stEval.heroActs.length > 0 && (_stEval.curBet > (_stEval.committed[_heroPos] || 0));
+            if (_stEval && _stEval.nextToAct && _stEval.nextToAct !== _heroPos && _isHeroFacingRaiseAfter) {
+                const _opp = tlLbl(_stEval.nextToAct);
                 const lgEl = document.getElementById('actionLogic');
                 if (lgEl && !lgEl.innerHTML.includes('先行决策推演')) {
-                    lgEl.innerHTML = `<div style="display:inline-block;padding:2px 8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:4px;color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:6px;">⚡ 先行决策推演（当前等待 ${_opp} 表态，默认后续弃牌；若后位跟注/加注将自动调整）</div><br>` + lgEl.innerHTML;
+                    lgEl.innerHTML = `<div style="display:inline-block;padding:2px 8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:4px;color:#fbbf24;font-size:11px;font-weight:600;margin-bottom:6px;">⚡ 先行决策推演（当前等待 ${_opp} 表态，默认其间玩家弃牌；若有人入池将自动调整）</div><br>` + lgEl.innerHTML;
                 }
-                window._currentDecisionContract = { status: 'READY', isAnticipated: true, pendingActor: _st.nextToAct };
+                window._currentDecisionContract = { status: 'READY', isAnticipated: true, pendingActor: _stEval.nextToAct };
             }
 
             // GTO 向量计算完成后，再统一原子刷新 HUD
