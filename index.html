@@ -9898,7 +9898,7 @@
                 // 面对 3-Bet 的实测全下段（2026-09-09）：措辞要说"全下"而不是"4-Bet"，
                 // 25-40BB 的 4-Bet 本来就 ≥85% 筹码，写 4-Bet 会让人以为还能弃
                 if (currentMode === 'face3b' && /All-in/.test(postSizing || '')) {
-                    if (b >= 50)      { verdict = '🔥 全下 (5-Bet All-in)'; color = 'green'; }
+                    if (b >= 50)      { verdict = '🔥 全下 (4-Bet All-in)'; color = 'green'; }
                     else if (b > 0)   { // 另一头是跟注还是弃牌，看哪个频率非零（ICM 抑制后是弃牌）
                                         verdict = `🟡 混合：${b}% 全下 / ${c > 0 ? `${c}% 跟注` : `${f}% 弃牌`}`;
                                         color = 'yellow'; }
