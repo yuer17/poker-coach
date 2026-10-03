@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.18 正式版 - 169 范围看板四色微条与 GTO Wizard 真实解算决策器</title>
+    <title>PokerCode v3.19 正式版 - 动态 ICM 风险溢价模型与 GTO Wizard 真实解算决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.18 正式版 高定黑曜石与 Liquid Glass 设计令牌 (169 范围看板四色微条与 GTO Wizard 真实解算决策器) ══
+            /* ══ PokerCode v3.19 正式版 高定黑曜石与 Liquid Glass 设计令牌 (动态 ICM 风险溢价模型与 GTO Wizard 真实解算决策器) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1461,9 +1461,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.18 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.19 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.18</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.19</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1485,7 +1485,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.18 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.19 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -2064,7 +2064,10 @@
                     <span id="rmInspHand" class="text-sm sm:text-base font-black text-white px-2 py-0.5 rounded" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);">AKs</span>
                     <div class="flex flex-col text-[10px] sm:text-[11px]">
                         <span id="rmInspType" class="text-gray-300 font-bold">同花高牌 (Suited)</span>
-                        <span id="rmInspCombos" class="text-gray-500">4 组合 (0.30% 整体权重)</span>
+                        <div class="flex items-center gap-1.5">
+                            <span id="rmInspCombos" class="text-gray-500">4 组合 (0.30% 整体权重)</span>
+                            <span id="rmInspIcmBadge" class="hidden text-[9px] px-1.5 py-0.2 rounded font-bold text-amber-300 border border-amber-500/40" style="background:rgba(245,158,11,0.15);">🛡️ ICM +0%</span>
+                        </div>
                     </div>
                 </div>
 
@@ -5291,7 +5294,10 @@
                     const comp = window._lastShadowComparison;
                     if (comp && comp.matrixVector) {
                         const [fP, cP, rP, jP] = comp.matrixVector;
-                        metricsEl.innerHTML = `<span class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">⚡ GTO 求解器</span><span class="text-gray-300 font-mono">[弃${fP}% 跟${cP}% 加${rP}% 推${jP}%]</span><span class="text-[10px] text-gray-500">· 0.6µs</span></span>`;
+                        const icmPart = (comp.evData && comp.evData.isICM && comp.evData.rpPercent > 0)
+                            ? `<span class="text-amber-400 font-bold" title="动态 ICM 风险溢价 +${comp.evData.rpPercent}% (${comp.evData.icmPosture})">🛡️ +${comp.evData.rpPercent}%</span>`
+                            : '';
+                        metricsEl.innerHTML = `<span class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">⚡ GTO 求解器</span><span class="text-gray-300 font-mono">[弃${fP}% 跟${cP}% 加${rP}% 推${jP}%]</span>${icmPart}<span class="text-[10px] text-gray-500">· 0.6µs</span></span>`;
                         metricsEl.style.display = '';
                     } else {
                         metricsEl.innerHTML = '';
@@ -6109,7 +6115,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.18',
+                    v: 'v3.19',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -6128,7 +6134,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -6202,7 +6208,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.18 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.19 正式版';
             renderWindowColorChips(key);
         };
 
@@ -8941,18 +8947,41 @@
                 resultVec = interpolateGtoFrequencies(cLo, cHi, weight);
             }
 
-            // 动态 ICM 风险溢价调整 (DEF-ICM-GTO)
+            // 动态 ICM 风险溢价调整 (DEF-ICM-GTO / Stage 2 v3.19)
             if (resultVec && typeof getICM313Context === 'function' && typeof gameConfig !== 'undefined') {
-                const icm = getICM313Context(effStack, typeof globalVillainStack !== 'undefined' ? globalVillainStack : effStack, typeof globalAvgStack !== 'undefined' ? globalAvgStack : effStack, gameConfig.stage);
+                const hs = typeof globalHeroStack !== 'undefined' ? globalHeroStack : effStack;
+                const vs = typeof globalVillainStack !== 'undefined' ? globalVillainStack : effStack;
+                const avg = (typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : effStack;
+                const icm = getICM313Context(hs, vs, avg, gameConfig.stage);
                 if (icm && icm.isICMStage && icm.riskPremium > 0) {
-                    const rp = Math.min(0.35, icm.riskPremium / 100);
-                    // 仅对非极端牌（存在跟注的临界手牌）做 ICM 避险修正
+                    const rp = Math.min(0.40, icm.riskPremium / 100);
+                    // 1. 边缘跟注避险收紧 -> 转向弃牌
                     if (resultVec[1] > 0 && resultVec[0] < 100) {
-                        const shift = Math.round(resultVec[1] * rp);
-                        if (shift > 0) {
-                            resultVec[0] = Math.min(100, resultVec[0] + shift);
-                            resultVec[1] = Math.max(0, resultVec[1] - shift);
+                        const shiftCall = Math.round(resultVec[1] * Math.min(1.0, rp * 1.5));
+                        if (shiftCall > 0) {
+                            resultVec[1] = Math.max(0, resultVec[1] - shiftCall);
+                            resultVec[0] = Math.min(100, resultVec[0] + shiftCall);
                         }
+                    }
+                    // 2. 边缘全推避险收紧 -> 转向弃牌
+                    if (resultVec[3] > 0 && resultVec[0] < 100) {
+                        const shiftJam = Math.round(resultVec[3] * Math.min(0.8, rp * 2.0));
+                        if (shiftJam > 0) {
+                            resultVec[3] = Math.max(0, resultVec[3] - shiftJam);
+                            resultVec[0] = Math.min(100, resultVec[0] + shiftJam);
+                        }
+                    }
+                    // 3. 边缘开池/加注收紧 -> 转向弃牌
+                    if (resultVec[2] > 0 && resultVec[0] < 100) {
+                        const shiftRaise = Math.round(resultVec[2] * Math.min(0.4, rp * 1.0));
+                        if (shiftRaise > 0) {
+                            resultVec[2] = Math.max(0, resultVec[2] - shiftRaise);
+                            resultVec[0] = Math.min(100, resultVec[0] + shiftRaise);
+                        }
+                    }
+                    const cleanVec = sanitizeGtoVector(resultVec);
+                    if (cleanVec) {
+                        for (let i = 0; i < 4; i++) resultVec[i] = cleanVec[i];
                     }
                 }
             }
@@ -8970,8 +8999,9 @@
             return resultVec;
         };
 
-        // Dimension 3: 翻前 GTO 期望值 (EV) 与反事实损失推理引擎 (v5.0)
-        window.queryGtoEv = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI') {
+        // Dimension 3: 翻前 GTO 期望值 (EV) 与动态 ICM 风险溢价模型 (v5.0 / Stage 2 v3.19)
+        // 核心数学公式: EV_ICM = EV_cEV - (RP × RiskPot)
+        window.queryGtoEv = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI', heroStack = null, villainStack = null, avgStack = null, stage = null) {
             if (typeof effStack !== 'number' || isNaN(effStack) || !Number.isFinite(effStack)) return null;
             if (typeof hand !== 'string' || !VALID_GTO_HAND_REGEX.test(hand.trim())) return null;
             const cleanHand = hand.trim();
@@ -9041,18 +9071,87 @@
             const evLo = nodeLo && nodeLo[cleanHand] ? nodeLo[cleanHand] : [0, 0, 0, 0];
             const evHi = nodeHi && nodeHi[cleanHand] ? nodeHi[cleanHand] : [0, 0, 0, 0];
 
-            let resultEv = null;
+            let rawEvVec = null;
             if (loDepth === hiDepth || !nodeLo || !nodeHi) {
-                resultEv = (nodeLo ? evLo : evHi).slice();
+                rawEvVec = (nodeLo ? evLo : evHi).slice();
             } else {
                 const weight = (effStack - loDepth) / (hiDepth - loDepth);
-                resultEv = [
+                rawEvVec = [
                     Number((evLo[0] * (1 - weight) + evHi[0] * weight).toFixed(2)),
                     Number((evLo[1] * (1 - weight) + evHi[1] * weight).toFixed(2)),
                     Number((evLo[2] * (1 - weight) + evHi[2] * weight).toFixed(2)),
                     Number((evLo[3] * (1 - weight) + evHi[3] * weight).toFixed(2))
                 ];
             }
+
+            // 1. 纯筹码期望值 (ChipEV): Fold 恒为 0.00BB
+            const cEV = [
+                0.00,
+                Number(rawEvVec[1].toFixed(2)),
+                Number(rawEvVec[2].toFixed(2)),
+                Number(rawEvVec[3].toFixed(2))
+            ];
+
+            // 2. 动态 ICM 风险溢价评估 (Pokercode ICM 3-1-3)
+            const hs = (heroStack != null) ? heroStack : (typeof globalHeroStack !== 'undefined' ? globalHeroStack : effStack);
+            const vs = (villainStack != null) ? villainStack : (typeof globalVillainStack !== 'undefined' ? globalVillainStack : effStack);
+            const avg = (avgStack != null && avgStack > 0) ? avgStack : ((typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : (hs || effStack || 40));
+            const stg = stage || ((typeof gameConfig !== 'undefined' && gameConfig.stage) ? gameConfig.stage : 'normal');
+
+            const icm = (typeof getICM313Context === 'function') ? getICM313Context(hs, vs, avg, stg) : null;
+            const isICM = !!(icm && icm.isICMStage && icm.riskPremium > 0);
+            const rp = isICM ? Math.min(0.50, icm.riskPremium / 100) : 0.0;
+
+            // 3. 风险筹码测算 (RiskPot): 各动作置于险境的筹码量
+            // Fold: 0BB (零额外风险)
+            const riskPotFold = 0.0;
+            // Call: 跟注所需筹码 (RFI limp 1BB, vs RFI 2.2BB, vs 3bet 6.5BB, vs 4bet 18BB, squeeze 8BB)
+            let baseCall = 2.2;
+            if (actionSeq === 'RFI') baseCall = 1.0;
+            else if (seqKey.includes('3BET')) baseCall = 6.5;
+            else if (seqKey.includes('4BET')) baseCall = 18.0;
+            else if (seqKey.includes('SQUEEZE')) baseCall = 8.0;
+            const riskPotCall = Number(Math.min(effStack, baseCall).toFixed(2));
+
+            // Raise: 加注承诺尺寸
+            let baseRaise = 2.2;
+            const matrix = window.PREFLOP_GTO_MATRIX;
+            if (matrix && matrix.sizings) {
+                const sizingKey = `${loDepth}_${effHeroPos}_${seqKey}`;
+                const matchedSizing = matrix.sizings[sizingKey] ||
+                    matrix.sizings[`${loDepth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`] ||
+                    matrix.sizings[`${loDepth}_${effHeroPos}_RFI`];
+                if (typeof matchedSizing === 'number') baseRaise = matchedSizing;
+            } else if (seqKey.includes('3BET')) {
+                baseRaise = 18.0;
+            } else if (actionSeq === 'vs_RFI') {
+                baseRaise = 6.5;
+            }
+            const riskPotRaise = Number(Math.min(effStack, baseRaise).toFixed(2));
+
+            // Jam: 全部有效筹码置于淘汰险境
+            const riskPotJam = Number(effStack.toFixed(2));
+
+            const riskPots = [riskPotFold, riskPotCall, riskPotRaise, riskPotJam];
+
+            // 4. ICM 惩罚项计算: Penalty = RP × RiskPot
+            const penalties = [
+                0.00,
+                Number((rp * riskPotCall).toFixed(2)),
+                Number((rp * riskPotRaise).toFixed(2)),
+                Number((rp * riskPotJam).toFixed(2))
+            ];
+
+            // 5. ICM 净期望值: EV_ICM = EV_cEV - Penalty
+            const icmEV = [
+                0.00,
+                Number((cEV[1] - penalties[1]).toFixed(2)),
+                Number((cEV[2] - penalties[2]).toFixed(2)),
+                Number((cEV[3] - penalties[3]).toFixed(2))
+            ];
+
+            // 有效决议向量: ICM 激活时采纳 icmEV, 常规期完全等价于 cEV (0 衰减 0 回归)
+            const resultEv = isICM ? icmEV.slice() : cEV.slice();
 
             const actionNames = ['弃', '跟', '加', '推'];
             let bestIdx = 0;
@@ -9065,12 +9164,40 @@
             }
             resultEv.bestAction = actionNames[bestIdx];
             resultEv.bestEv = maxVal;
+
+            // 6. 反事实损失 (Counterfactual Loss)
             resultEv.loss = {
                 F: Number((resultEv[0] - maxVal).toFixed(2)),
                 C: Number((resultEv[1] - maxVal).toFixed(2)),
                 R: Number((resultEv[2] - maxVal).toFixed(2)),
                 RAI: Number((resultEv[3] - maxVal).toFixed(2))
             };
+            const otherEvs = resultEv.filter((_, idx) => idx !== bestIdx);
+            resultEv.suboptimalLoss = otherEvs.length > 0 ? Math.abs(Number((Math.max(...otherEvs) - maxVal).toFixed(2))) : 0;
+
+            // 纯筹码反事实损失
+            const maxCEv = Math.max(...cEV);
+            resultEv.cLoss = {
+                F: Number((cEV[0] - maxCEv).toFixed(2)),
+                C: Number((cEV[1] - maxCEv).toFixed(2)),
+                R: Number((cEV[2] - maxCEv).toFixed(2)),
+                RAI: Number((cEV[3] - maxCEv).toFixed(2))
+            };
+
+            // 7. 挂载完整 ICM 证据链元数据
+            resultEv.cEV = cEV;
+            resultEv.icmEV = icmEV;
+            resultEv.penalties = penalties;
+            resultEv.riskPots = riskPots;
+            resultEv.rp = rp;
+            resultEv.rpPercent = icm ? icm.riskPremium : 0;
+            resultEv.isICM = isICM;
+            resultEv.icmPosture = icm ? icm.posture : 'normal';
+            resultEv.ev_f = resultEv[0];
+            resultEv.ev_c = resultEv[1];
+            resultEv.ev_r = resultEv[2];
+            resultEv.ev_j = resultEv[3];
+
             return resultEv;
         };
 
@@ -9353,12 +9480,41 @@
                 evVec = queryGtoEv(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq);
             }
 
+            const icmBadgeEl = document.getElementById('rmInspIcmBadge');
+            if (icmBadgeEl) {
+                if (evVec && evVec.isICM && evVec.rpPercent > 0) {
+                    icmBadgeEl.classList.remove('hidden');
+                    const postStr = evVec.icmPosture === 'survival' ? '·规避淘汰' : evVec.icmPosture === 'bully' ? '·大码施压' : '';
+                    icmBadgeEl.innerText = `🛡️ ICM +${evVec.rpPercent}%${postStr}`;
+                } else {
+                    icmBadgeEl.classList.add('hidden');
+                }
+            }
+
             if (evVec) {
                 const fmtEv = v => (v > 0 ? `+${v.toFixed(2)}` : `${v.toFixed(2)}`);
-                if (evFoldEl) evFoldEl.innerText = `F: ${fmtEv(evVec[0])}`;
-                if (evCallEl) evCallEl.innerText = `C: ${fmtEv(evVec[1])}`;
-                if (evRaiseEl) evRaiseEl.innerText = `R: ${fmtEv(evVec[2])}`;
-                if (evJamEl) evJamEl.innerText = `J: ${fmtEv(evVec[3])}`;
+                if (evFoldEl) {
+                    evFoldEl.innerText = `F: ${fmtEv(evVec[0])}`;
+                    evFoldEl.title = '弃牌期望值: 0.00 BB';
+                }
+                if (evCallEl) {
+                    evCallEl.innerText = `C: ${fmtEv(evVec[1])}`;
+                    evCallEl.title = evVec.isICM
+                        ? `跟注 ICM EV: ${fmtEv(evVec[1])}BB (cEV: ${fmtEv(evVec.cEV[1])}BB, 溢价惩罚: -${evVec.penalties[1]}BB)`
+                        : `跟注期望值: ${fmtEv(evVec[1])} BB`;
+                }
+                if (evRaiseEl) {
+                    evRaiseEl.innerText = `R: ${fmtEv(evVec[2])}`;
+                    evRaiseEl.title = evVec.isICM
+                        ? `加注 ICM EV: ${fmtEv(evVec[2])}BB (cEV: ${fmtEv(evVec.cEV[2])}BB, 溢价惩罚: -${evVec.penalties[2]}BB)`
+                        : `加注期望值: ${fmtEv(evVec[2])} BB`;
+                }
+                if (evJamEl) {
+                    evJamEl.innerText = `J: ${fmtEv(evVec[3])}`;
+                    evJamEl.title = evVec.isICM
+                        ? `全下 ICM EV: ${fmtEv(evVec[3])}BB (cEV: ${fmtEv(evVec.cEV[3])}BB, 溢价惩罚: -${evVec.penalties[3]}BB)`
+                        : `全下期望值: ${fmtEv(evVec[3])} BB`;
+                }
 
                 const bestIdx = evVec.bestAction === '弃' ? 0 : evVec.bestAction === '跟' ? 1 : evVec.bestAction === '加' ? 2 : 3;
                 [evFoldEl, evCallEl, evRaiseEl, evJamEl].forEach((el, idx) => {
@@ -11798,28 +11954,58 @@
                             szEl.innerHTML = `<span style="color:#60a5fa;font-weight:700;">GTO解算推荐尺寸: ${matrixVec.sizing} BB</span>`;
                         }
 
-                        // ── 维度三：AI 教练 EV 损失量化自然语言说理 ──
+                        // ── 维度三：AI 教练 EV 损失量化与动态 ICM 风险溢价自然语言说理 ──
                         let evData = null;
                         if (typeof window.queryGtoEv === 'function') {
                             evData = window.queryGtoEv(posH, posV, eff, handStr, seq);
                         }
 
+                        if (window._lastShadowComparison) {
+                            window._lastShadowComparison.evData = evData;
+                        }
+
                         if (lgEl && evData && typeof evData.bestEv === 'number') {
                             const sign = evData.bestEv >= 0 ? '+' : '';
-                            const lossHtml = (evData.loss && evData.loss > 0.001)
-                                ? `<div style="color:#fca5a5;margin-top:4px;"><b>⚠️ 失误惩罚 (EV Loss)</b>: 若偏离最优动作，单手预期亏损 <span style="color:#ef4444;font-weight:800;">-${evData.loss.toFixed(3)} BB</span></div>`
+                            const lossVal = (typeof evData.suboptimalLoss === 'number') ? evData.suboptimalLoss : 0;
+                            const lossHtml = (lossVal > 0.001)
+                                ? `<div style="color:#fca5a5;margin-top:4px;"><b>⚠️ 失误惩罚 (EV Loss)</b>: 若偏离最优动作，次优选择单手预期亏损 <span style="color:#ef4444;font-weight:800;">-${lossVal.toFixed(3)} BB</span></div>`
                                 : `<div style="color:#86efac;margin-top:4px;"><b>✅ 最优博弈平衡</b>: 当前处于解算器最高收益分支，无预期失误损失。</div>`;
-                            
-                            const coachBanner = `
-                            <div style="background:rgba(30,58,138,0.25);border:1px solid rgba(96,165,250,0.35);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:12px;line-height:1.5;">
-                              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                                <span style="color:#93c5fd;font-weight:700;">🤖 AI 教练 EV 损失量化说理 · GTO Wizard 官方真解 (${eff}BB ${posH})</span>
-                                <span style="font-size:10px;color:#bfdbfe;background:rgba(59,130,246,0.25);border:1px solid rgba(59,130,246,0.4);border-radius:3px;padding:1px 4px;">真解直驱</span>
-                              </div>
-                              <div style="color:#fde047;"><b>最优动作推荐</b>: <span style="font-weight:800;">${evData.bestAction}</span> (预期 EV: ${sign}${evData.bestEv} BB)</div>
-                              <div style="color:#94a3b8;font-size:11px;">四动作期望收益: 弃 0.00BB · 跟 ${evData.ev_c}BB · 加 ${evData.ev_r}BB · 推 ${evData.ev_j}BB</div>
-                              ${lossHtml}
-                            </div>`;
+
+                            let coachBanner = '';
+                            if (evData.isICM && evData.rpPercent > 0) {
+                                const postureName = evData.icmPosture === 'survival' ? '规避淘汰' : evData.icmPosture === 'bully' ? '筹码施压' : evData.icmPosture === 'commit' ? '深套承诺' : '标准博弈';
+                                const cSign = evData.cEV[evData.bestAction === '弃' ? 0 : evData.bestAction === '跟' ? 1 : evData.bestAction === '加' ? 2 : 3] >= 0 ? '+' : '';
+                                const hasFlip = (evData.cEV[3] > 0 && evData.icmEV[3] < 0) || (evData.cEV[1] > 0 && evData.icmEV[1] < 0) || (evData.cEV[2] > 0 && evData.icmEV[2] < 0);
+                                const actClr = evData.bestAction==='弃'?'#94a3b8':evData.bestAction==='跟'?'#4ade80':evData.bestAction==='加'?'#facc15':'#f87171';
+
+                                coachBanner = `
+                                <div style="background:rgba(15,23,42,0.75);border:1px solid rgba(245,158,11,0.35);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:12px;line-height:1.5;">
+                                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                                    <span style="color:#fde047;font-weight:700;">🤖 AI 教练动态 ICM 风险溢价模型 · EV<sub>ICM</sub> = EV<sub>cEV</sub> - (RP × RiskPot)</span>
+                                    <span style="font-size:10px;color:#fef08a;background:rgba(217,119,6,0.25);border:1px solid rgba(217,119,6,0.45);border-radius:3px;padding:1px 5px;">🛡️ 溢价 +${evData.rpPercent}% · ${postureName}</span>
+                                  </div>
+                                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <div style="color:#f8fafc;"><b>最优动作推荐</b>: <span style="font-weight:800;color:${actClr};">${evData.bestAction}</span> (ICM 净 EV: <span style="font-weight:800;">${sign}${evData.bestEv} BB</span>)</div>
+                                    <div style="font-size:11px;color:#94a3b8;">纯筹码 cEV: ${cSign}${evData.cEV[evData.bestAction === '弃' ? 0 : evData.bestAction === '跟' ? 1 : evData.bestAction === '加' ? 2 : 3]} BB</div>
+                                  </div>
+                                  <div style="color:#94a3b8;font-size:11px;margin-top:3px;font-family:monospace;">
+                                    弃: 0.00BB · 跟: ${evData.cEV[1]} - 罚${evData.penalties[1]} = ${evData.icmEV[1]}BB · 加: ${evData.cEV[2]} - 罚${evData.penalties[2]} = ${evData.icmEV[2]}BB · 推: ${evData.cEV[3]} - 罚${evData.penalties[3]} = ${evData.icmEV[3]}BB
+                                  </div>
+                                  ${hasFlip ? `<div style="color:#fbbf24;font-size:11px;margin-top:3px;">⚠️ <b>ICM 避险翻转</b>: 原筹码收益 (cEV) 为正的操作因高风险溢价转为负 ICM EV，模型已自动修正推荐避免高危淘汰！</div>` : ''}
+                                  ${lossHtml}
+                                </div>`;
+                            } else {
+                                coachBanner = `
+                                <div style="background:rgba(30,58,138,0.25);border:1px solid rgba(96,165,250,0.35);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:12px;line-height:1.5;">
+                                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                                    <span style="color:#93c5fd;font-weight:700;">🤖 AI 教练 EV 损失量化说理 · GTO Wizard 官方真解 (${eff}BB ${posH})</span>
+                                    <span style="font-size:10px;color:#bfdbfe;background:rgba(59,130,246,0.25);border:1px solid rgba(59,130,246,0.4);border-radius:3px;padding:1px 4px;">真解直驱</span>
+                                  </div>
+                                  <div style="color:#fde047;"><b>最优动作推荐</b>: <span style="font-weight:800;">${evData.bestAction}</span> (预期 EV: ${sign}${evData.bestEv} BB)</div>
+                                  <div style="color:#94a3b8;font-size:11px;">四动作期望收益: 弃 0.00BB · 跟 ${evData.ev_c}BB · 加 ${evData.ev_r}BB · 推 ${evData.ev_j}BB</div>
+                                  ${lossHtml}
+                                </div>`;
+                            }
                             
                             lgEl.innerHTML = coachBanner + (lgText ? `<div style="color:var(--text-muted);font-size:11px;margin-top:4px;">${lgText}</div>` : '');
                         }
@@ -11831,6 +12017,7 @@
                             if (evData && typeof evData.bestEv === 'number') {
                                 const sign = evData.bestEv >= 0 ? '+' : '';
                                 txt += ` · 最优:${evData.bestAction}(${sign}${evData.bestEv}BB)`;
+                                if (evData.isICM && evData.rpPercent > 0) txt += ` · 🛡️+${evData.rpPercent}%`;
                             }
                             vVecEl.innerText = txt;
                         }
