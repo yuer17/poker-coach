@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.17 正式版 - GTO Wizard 真解驱动翻前与动态 ICM 决策器</title>
+    <title>PokerCode v3.18 正式版 - 169 范围看板四色微条与 GTO Wizard 真实解算决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.17 正式版 高定黑曜石与 Liquid Glass 设计令牌 (GTO Wizard 真实解算翻前与动态 ICM 决策引擎) ══
+            /* ══ PokerCode v3.18 正式版 高定黑曜石与 Liquid Glass 设计令牌 (169 范围看板四色微条与 GTO Wizard 真实解算决策器) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1327,6 +1327,108 @@
                 box-shadow: 0 0 0 2.5px rgba(245, 158, 11, 0.8), 0 0 28px rgba(245, 158, 11, 0.45);
             }
         }
+
+        /* ══ 169 GTO 全景范围看板与四动作微条 (v3.18) ══ */
+        .range-matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(13, minmax(0, 1fr));
+            gap: 2.5px;
+            width: 100%;
+            max-width: 680px;
+            margin: 0 auto;
+            user-select: none;
+            aspect-ratio: 1 / 1;
+        }
+
+        .range-cell {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(18, 22, 31, 0.85);
+            border: 0.5px solid rgba(255, 255, 255, 0.09);
+            border-radius: 3px;
+            padding: 2px 1px 1.5px 1px;
+            cursor: pointer;
+            transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s, box-shadow 0.15s;
+            min-height: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .range-cell:hover {
+            transform: scale(1.08);
+            z-index: 10;
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+        }
+
+        .range-cell.is-selected {
+            border-color: #57a9ff !important;
+            box-shadow: 0 0 10px rgba(87, 169, 255, 0.75) !important;
+            z-index: 8;
+        }
+
+        .range-cell.is-hero-card {
+            border-color: #facc15 !important;
+            box-shadow: 0 0 10px rgba(250, 204, 21, 0.8) !important;
+            z-index: 9;
+        }
+
+        .range-cell-label {
+            font-family: var(--font-mono);
+            font-size: 10.5px;
+            font-weight: 700;
+            line-height: 1.1;
+            color: var(--text-primary);
+            text-align: center;
+            pointer-events: none;
+            letter-spacing: -0.02em;
+        }
+
+        @media (max-width: 500px) {
+            .range-cell-label {
+                font-size: 8.5px;
+            }
+            .range-matrix-grid {
+                gap: 1.5px;
+            }
+        }
+
+        .range-cell-label.label-pair {
+            color: #f0f3f8;
+        }
+
+        .range-cell-label.label-suited {
+            color: #93c5fd;
+        }
+
+        .range-cell-label.label-offsuit {
+            color: #94a3b8;
+        }
+
+        .range-cell-label.label-fold {
+            color: #475569;
+        }
+
+        /* 4-Color Micro-Bar */
+        .range-cell-microbar {
+            width: 100%;
+            height: 3.5px;
+            min-height: 3.5px;
+            border-radius: 1.5px;
+            overflow: hidden;
+            display: flex;
+            background: rgba(0, 0, 0, 0.4);
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+
+        .range-cell-microbar > div {
+            height: 100%;
+            min-width: 0;
+        }
     </style>
     <!-- pokersolver 本地化：原 CDN(cdn.jsdelivr.net) 偶发加载失败 → 报"PokerSolver 未加载"，
          改为本地 lib/pokersolver.js（内容与 CDN 一致，仅去网络依赖，不动任何引擎逻辑） -->
@@ -1359,9 +1461,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.17 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.18 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.17</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.18</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1374,6 +1476,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-1.5">
+                <button onclick="toggleRangeMatrixModal()" id="topRangeMatrixBtn" class="nav-phase-btn text-[11px] px-2 inline-flex items-center justify-center font-bold" style="height:24px;line-height:22px;background:rgba(87,169,255,0.12);color:#93c5fd;border:1px solid rgba(87,169,255,0.3);border-radius:var(--radius-sm);cursor:pointer;" title="打开 169 GTO 全景范围看板与四动作微条 (快捷键: M)">📊 169 范围看板</button>
                 <div id="topWindowColorChips" class="flex items-center gap-0.5" title="牌桌身份色点（点击选择桌号色标）"></div>
                 <button onclick="toggleHeaderDrawer()" id="headerDrawerBtn" class="nav-phase-btn text-[11px] px-2.5 inline-flex items-center justify-center" style="height:24px;line-height:22px;background:rgba(255,255,255,0.06);border-radius:var(--radius-sm);">⚙ 功能与配置 ▾</button>
             </div>
@@ -1382,7 +1485,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.17 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.18 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -1397,6 +1500,7 @@
 
             <!-- 右组：操作按钮，统一 26px 居中对齐 -->
             <div class="flex items-center gap-1.5" style="margin-left:auto;flex-wrap:wrap;">
+                <button onclick="toggleRangeMatrixModal()" id="headerRangeMatrixBtn" title="打开 169 GTO 全景范围看板与四动作微条 (快捷键: M)" class="nav-phase-btn text-xs px-2 inline-flex items-center justify-center font-bold" style="height:26px;line-height:24px;background:rgba(87,169,255,0.12);color:#93c5fd;border:1px solid rgba(87,169,255,0.3);border-radius:var(--radius-sm);">📊 169 范围看板</button>
                 <button id="moneyWidget" style="display:none;" tabindex="-1" aria-hidden="true"></button>
                 <select id="stageQuickSelect" onchange="onStageQuickChange(this.value)"
                     title="比赛阶段（高频调整项；其余赛制配置在 ⚙ 配置 里）"
@@ -1618,7 +1722,10 @@
                         <p id="actionLogic" class="text-xs font-medium px-1 text-gray-300 line-clamp-2 overflow-hidden" style="margin:0;line-height:1.35;"></p>
                         <div id="gtoSolverBadge" class="hidden flex items-center justify-between px-2 py-0.5 mt-1 rounded text-[10px] font-mono bg-white/[0.04] border border-white/10 text-gray-400">
                             <span class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">⚡ GTO 矩阵</span><span id="gtoSolverVector" class="text-gray-300"></span></span>
-                            <span class="text-[9px] text-gray-500">O(1) · <span class="text-emerald-400">0.6µs</span> · 铁闸护航</span>
+                            <span class="text-[9px] text-gray-500 flex items-center gap-1.5">
+                                <span>O(1) · <span class="text-emerald-400">0.6µs</span> · 铁闸护航</span>
+                                <button onclick="toggleRangeMatrixModal()" class="text-blue-400 hover:text-blue-300 underline cursor-pointer ml-1" style="background:none;border:none;padding:0;font-size:9px;">[📊 169 全景范围]</button>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -1838,6 +1945,163 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ══════════ 169 GTO 全景范围看板与四动作微条 (v3.18) ══════════ -->
+    <div id="rangeMatrixModal" onclick="if(event.target===this)toggleRangeMatrixModal(false)" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(5,7,10,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:12px;">
+        <div class="range-matrix-dialog" style="width:min(900px, 98vw);max-height:94vh;background:var(--bg-surface-0);border:1px solid rgba(255,255,255,0.14);border-radius:var(--radius-md);box-shadow:var(--shadow-pop);display:flex;flex-direction:column;overflow:hidden;">
+            
+            <!-- Header -->
+            <div class="flex justify-between items-center px-3.5 py-2.5 border-b border-white/10 shrink-0" style="background:var(--bg-surface-1);">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-black tracking-wide flex items-center" style="color:var(--text-primary);margin:0;">
+                        📊 169 GTO 全景范围看板
+                        <span class="text-[10px] px-1.5 py-0.5 ml-2 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">13×13 全牌矩阵</span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded font-normal" style="color:#45d68a;background:rgba(46,168,106,0.15);border:1px solid rgba(46,168,106,0.3);">四动作微条</span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded font-normal text-amber-300" style="background:rgba(224,168,58,0.15);border:1px solid rgba(224,168,58,0.3);">GTO Wizard 真解</span>
+                    </span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[11px] text-gray-400 font-mono hidden sm:inline-block">快捷键: <kbd style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px;">M</kbd> 开关 · <kbd style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px;">Esc</kbd> 退出</span>
+                    <button onclick="toggleRangeMatrixModal(false)" class="text-gray-400 hover:text-white text-base leading-none p-1 rounded hover:bg-white/10" style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:none;background:none;cursor:pointer;">✕</button>
+                </div>
+            </div>
+
+            <!-- 场景控制栏与同步按钮 -->
+            <div class="p-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0" style="background:var(--bg-surface-0);">
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- 我方位置 -->
+                    <div class="flex items-center gap-1">
+                        <span class="text-gray-400 font-bold text-[11px]">我方:</span>
+                        <select id="rmHeroPos" onchange="renderRangeMatrix()" class="text-xs font-bold rounded border border-white/10 bg-black/40 text-amber-300 px-1.5 py-0.5 font-mono" style="width:auto;height:26px;">
+                            <option value="UTG">UTG</option>
+                            <option value="MP">MP / HJ</option>
+                            <option value="CO">CO</option>
+                            <option value="BTN" selected>BTN</option>
+                            <option value="SB">SB</option>
+                            <option value="BB">BB</option>
+                        </select>
+                    </div>
+
+                    <!-- 行动轮次 -->
+                    <div class="flex items-center gap-1">
+                        <span class="text-gray-400 font-bold text-[11px]">场景:</span>
+                        <select id="rmSeq" onchange="onRmSeqChange()" class="text-xs font-bold rounded border border-white/10 bg-black/40 text-blue-300 px-1.5 py-0.5" style="width:auto;height:26px;">
+                            <option value="RFI">RFI (自主开池)</option>
+                            <option value="vs_RFI" selected>vs_RFI (面对开池)</option>
+                            <option value="vs_3BET">vs_3BET (面对3-Bet)</option>
+                            <option value="SQUEEZE">SQUEEZE (挤压加注)</option>
+                            <option value="COLD_4BET">COLD_4BET (冷4-Bet)</option>
+                        </select>
+                    </div>
+
+                    <!-- 对手位置 (vsPos) -->
+                    <div id="rmVsPosWrap" class="flex items-center gap-1">
+                        <span class="text-gray-400 font-bold text-[11px]">对手:</span>
+                        <select id="rmVsPos" onchange="renderRangeMatrix()" class="text-xs font-bold rounded border border-white/10 bg-black/40 text-emerald-400 px-1.5 py-0.5 font-mono" style="width:auto;height:26px;">
+                            <option value="UTG" selected>UTG</option>
+                            <option value="MP">MP / HJ</option>
+                            <option value="CO">CO</option>
+                            <option value="BTN">BTN</option>
+                            <option value="SB">SB</option>
+                        </select>
+                    </div>
+
+                    <!-- 筹码深度 -->
+                    <div class="flex items-center gap-1">
+                        <span class="text-gray-400 font-bold text-[11px]">深度:</span>
+                        <select id="rmDepth" onchange="renderRangeMatrix()" class="text-xs font-bold rounded border border-white/10 bg-black/40 text-white px-1.5 py-0.5 font-mono" style="width:auto;height:26px;">
+                            <option value="10">10 BB</option>
+                            <option value="15">15 BB</option>
+                            <option value="20">20 BB</option>
+                            <option value="25">25 BB</option>
+                            <option value="30">30 BB</option>
+                            <option value="40" selected>40 BB</option>
+                            <option value="60">60 BB</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="syncRangeMatrixWithGame()" class="nav-phase-btn text-[11px] px-2.5 py-1 font-bold inline-flex items-center gap-1" style="background:rgba(87,169,255,0.15);border:1px solid rgba(87,169,255,0.35);color:#93c5fd;border-radius:var(--radius-sm);cursor:pointer;height:26px;" title="将看板场景自动对齐当前牌桌实战状态">
+                    <span>🔄 同步牌局场景</span>
+                </button>
+            </div>
+
+            <!-- 范围宏观指标与四色图例条 -->
+            <div class="px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs border-b border-white/10 shrink-0 font-mono" style="background:rgba(0,0,0,0.25);">
+                <div class="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs">
+                    <span class="text-gray-400">总体捍卫: <strong id="rmAggVpip" class="text-white font-bold">0.0%</strong></span>
+                    <span class="text-gray-600">|</span>
+                    <span class="text-gray-400">加注/推: <strong id="rmAggRaise" class="text-amber-400 font-bold">0.0%</strong></span>
+                    <span class="text-gray-600">|</span>
+                    <span class="text-gray-400">跟注: <strong id="rmAggCall" class="text-emerald-400 font-bold">0.0%</strong></span>
+                    <span class="text-gray-600">|</span>
+                    <span class="text-gray-400">弃牌: <strong id="rmAggFold" class="text-gray-400 font-bold">0.0%</strong></span>
+                    <span id="rmSizingBadge" class="text-blue-300 font-bold ml-1" style="display:none;"></span>
+                </div>
+                <!-- 四色微条图例 -->
+                <div class="flex items-center gap-2 text-[10px] sm:text-[11px]">
+                    <span class="flex items-center gap-1"><span style="width:8px;height:8px;background:#e5484d;border-radius:1.5px;display:inline-block;"></span><span class="text-gray-300">全下 Jam</span></span>
+                    <span class="flex items-center gap-1"><span style="width:8px;height:8px;background:#e0a83a;border-radius:1.5px;display:inline-block;"></span><span class="text-gray-300">加注 Raise</span></span>
+                    <span class="flex items-center gap-1"><span style="width:8px;height:8px;background:#3dd68c;border-radius:1.5px;display:inline-block;"></span><span class="text-gray-300">跟注 Call</span></span>
+                    <span class="flex items-center gap-1"><span style="width:8px;height:8px;background:#3a4454;border-radius:1.5px;display:inline-block;"></span><span class="text-gray-400">弃牌 Fold</span></span>
+                </div>
+            </div>
+
+            <!-- 13×13 矩阵网格容器 (支持滚动保护) -->
+            <div class="p-2 sm:p-3 overflow-y-auto flex-1 flex flex-col items-center justify-start min-h-0" style="background:var(--bg-deep);">
+                <div id="rangeMatrixGrid" class="range-matrix-grid"></div>
+            </div>
+
+            <!-- 底部单手牌高精度解析卡 (Inspector Card) -->
+            <div id="rangeMatrixInspector" class="p-2 sm:p-2.5 border-t border-white/10 flex flex-wrap items-center justify-between gap-2.5 text-xs shrink-0 font-mono" style="background:var(--bg-surface-1);">
+                <!-- 手牌名与组合 -->
+                <div class="flex items-center gap-2">
+                    <span id="rmInspHand" class="text-sm sm:text-base font-black text-white px-2 py-0.5 rounded" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);">AKs</span>
+                    <div class="flex flex-col text-[10px] sm:text-[11px]">
+                        <span id="rmInspType" class="text-gray-300 font-bold">同花高牌 (Suited)</span>
+                        <span id="rmInspCombos" class="text-gray-500">4 组合 (0.30% 整体权重)</span>
+                    </div>
+                </div>
+
+                <!-- 四动作频率明细 -->
+                <div class="flex items-center gap-2 text-xs">
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] sm:text-[10px] text-gray-500">全下 Jam</span>
+                        <span id="rmInspJam" class="font-bold text-red-400">0.0%</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] sm:text-[10px] text-gray-500">加注 Raise</span>
+                        <span id="rmInspRaise" class="font-bold text-amber-400">100.0%</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] sm:text-[10px] text-gray-500">跟注 Call</span>
+                        <span id="rmInspCall" class="font-bold text-emerald-400">0.0%</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] sm:text-[10px] text-gray-500">弃牌 Fold</span>
+                        <span id="rmInspFold" class="font-bold text-gray-400">0.0%</span>
+                    </div>
+                </div>
+
+                <!-- GTO EV 明细 (BB) -->
+                <div class="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px]">
+                    <span class="text-gray-400">EV(BB):</span>
+                    <span id="rmInspEvCall" class="text-gray-300" title="跟注 EV">C: +0.00</span>
+                    <span id="rmInspEvRaise" class="text-amber-300 font-bold" title="加注 EV">R: +0.00</span>
+                    <span id="rmInspEvJam" class="text-gray-300" title="全下 EV">J: +0.00</span>
+                    <span id="rmInspEvFold" class="text-gray-500" title="弃牌 EV">F: 0.00</span>
+                </div>
+
+                <!-- 设为当前手牌 CTA -->
+                <div class="flex items-center gap-2">
+                    <button id="rmSetHeroBtn" onclick="setHeroFromRangeBoard()" class="nav-phase-btn text-xs px-2.5 py-1 font-bold inline-flex items-center gap-1" style="background:rgba(224,168,58,0.18);border:1px solid rgba(224,168,58,0.4);color:#facc15;border-radius:var(--radius-sm);cursor:pointer;" title="将此手牌设定为 Hero 底牌并立即在主界面执行决策解算">
+                        <span>🎯 设为当前底牌</span>
+                    </button>
                 </div>
             </div>
 
@@ -5845,7 +6109,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.17',
+                    v: 'v3.18',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5864,7 +6128,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5938,7 +6202,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.17 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.18 正式版';
             renderWindowColorChips(key);
         };
 
@@ -8746,6 +9010,7 @@
 
             function getEvNode(depth) {
                 let k = `${depth}_${effHeroPos}_${seqKey}`;
+                if (evMatrix.nodes[k]) return evMatrix.nodes[k];
                 if (seqKey === 'SQUEEZE' || seqKey.includes('SQUEEZE')) {
                     if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`];
                     if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`];
@@ -8807,6 +9072,341 @@
                 RAI: Number((resultEv[3] - maxVal).toFixed(2))
             };
             return resultEv;
+        };
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // 📊 169 GTO 全景范围看板与四动作微条引擎 (Stage 1 / v3.18)
+        // 涵盖 13×13 全牌矩阵、微条四动作、全场景实时换算、EV量化反查与手牌一键回填
+        // ══════════════════════════════════════════════════════════════════════════
+        window._activeRangeHand = 'AKs';
+
+        window.toggleRangeMatrixModal = function(forceOpen) {
+            const modal = document.getElementById('rangeMatrixModal');
+            if (!modal) return;
+            const isCurrentlyOpen = modal.style.display !== 'none';
+            const willOpen = typeof forceOpen === 'boolean' ? forceOpen : !isCurrentlyOpen;
+            
+            if (willOpen) {
+                modal.style.display = 'flex';
+                syncRangeMatrixWithGame();
+            } else {
+                modal.style.display = 'none';
+            }
+        };
+
+        window.onRmSeqChange = function() {
+            const seqEl = document.getElementById('rmSeq');
+            const vsPosWrap = document.getElementById('rmVsPosWrap');
+            if (seqEl && vsPosWrap) {
+                const seq = seqEl.value;
+                vsPosWrap.style.display = (seq === 'RFI') ? 'none' : 'flex';
+            }
+            renderRangeMatrix();
+        };
+
+        window.syncRangeMatrixWithGame = function() {
+            try {
+                const d = typeof deriveScenario === 'function' ? deriveScenario() : {};
+                const posH = globalPosHero || d.posH || 'BTN';
+                const posV = d.posV || globalPosVillain || 'UTG';
+                const eff = (typeof globalHeroStack !== 'undefined' && typeof globalVillainStack !== 'undefined')
+                    ? Math.min(globalHeroStack, globalVillainStack) : (typeof globalHeroStack !== 'undefined' ? globalHeroStack : 40);
+
+                let seq = 'vs_RFI';
+                if (typeof currentMode !== 'undefined') {
+                    if (currentMode === 'open') seq = 'RFI';
+                    else if (currentMode === 'squeeze') seq = 'SQUEEZE';
+                    else if (currentMode === 'face3b') seq = 'vs_3BET';
+                    else if (currentMode === 'coldCall') seq = 'COLD_4BET';
+                }
+
+                const heroSelect = document.getElementById('rmHeroPos');
+                const seqSelect = document.getElementById('rmSeq');
+                const vsSelect = document.getElementById('rmVsPos');
+                const depthSelect = document.getElementById('rmDepth');
+                const vsPosWrap = document.getElementById('rmVsPosWrap');
+
+                if (heroSelect) {
+                    const normH = (posH === 'HJ' ? 'MP' : (posH === 'LJ' ? 'UTG' : posH));
+                    for (let opt of heroSelect.options) {
+                        if (opt.value === normH || opt.value === posH) { heroSelect.value = opt.value; break; }
+                    }
+                }
+
+                if (seqSelect) {
+                    seqSelect.value = seq;
+                }
+
+                if (vsSelect) {
+                    const normV = (posV === 'HJ' ? 'MP' : (posV === 'LJ' ? 'UTG' : posV));
+                    for (let opt of vsSelect.options) {
+                        if (opt.value === normV || opt.value === posV) { vsSelect.value = opt.value; break; }
+                    }
+                }
+
+                if (vsPosWrap) {
+                    vsPosWrap.style.display = (seq === 'RFI') ? 'none' : 'flex';
+                }
+
+                if (depthSelect) {
+                    const avail = [10, 15, 20, 25, 30, 40, 60];
+                    let closest = 40;
+                    let minDiff = Infinity;
+                    for (let x of avail) {
+                        let diff = Math.abs(x - eff);
+                        if (diff < minDiff) { minDiff = diff; closest = x; }
+                    }
+                    depthSelect.value = String(closest);
+                }
+
+                const currentHand = (typeof getHandStr === 'function') ? getHandStr() : '';
+                if (currentHand && /^[2-9TJQKA]{2}[so]?$/.test(currentHand)) {
+                    window._activeRangeHand = currentHand;
+                }
+            } catch (e) {
+                console.error('[RangeMatrix] Sync error:', e);
+            }
+            renderRangeMatrix();
+        };
+
+        window.renderRangeMatrix = function() {
+            const grid = document.getElementById('rangeMatrixGrid');
+            if (!grid) return;
+
+            const heroPos = document.getElementById('rmHeroPos') ? document.getElementById('rmHeroPos').value : 'BTN';
+            const seq = document.getElementById('rmSeq') ? document.getElementById('rmSeq').value : 'vs_RFI';
+            const vsPos = document.getElementById('rmVsPos') ? document.getElementById('rmVsPos').value : 'UTG';
+            const depth = document.getElementById('rmDepth') ? parseFloat(document.getElementById('rmDepth').value) : 40;
+
+            const currentHeroHand = (typeof getHandStr === 'function') ? getHandStr() : '';
+            const activeHand = window._activeRangeHand || currentHeroHand || 'AKs';
+
+            const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+            let html = '';
+
+            let totalCombos = 0;
+            let foldCombos = 0;
+            let callCombos = 0;
+            let raiseCombos = 0;
+            let jamCombos = 0;
+            let currentSizing = null;
+
+            for (let r = 0; r < 13; r++) {
+                for (let c = 0; c < 13; c++) {
+                    let hand = '';
+                    let combos = 0;
+                    let typeClass = '';
+                    if (r === c) {
+                        hand = ranks[r] + ranks[c];
+                        combos = 6;
+                        typeClass = 'label-pair';
+                    } else if (r < c) {
+                        hand = ranks[r] + ranks[c] + 's';
+                        combos = 4;
+                        typeClass = 'label-suited';
+                    } else {
+                        hand = ranks[c] + ranks[r] + 'o';
+                        combos = 12;
+                        typeClass = 'label-offsuit';
+                    }
+                    totalCombos += combos;
+
+                    let vec = null;
+                    if (typeof queryGtoPreflop === 'function') {
+                        vec = queryGtoPreflop(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq);
+                    }
+
+                    let fP = 100, cP = 0, rP = 0, jP = 0;
+                    if (vec) {
+                        [fP, cP, rP, jP] = vec;
+                        if (vec.sizing && !currentSizing) currentSizing = vec.sizing;
+                    } else {
+                        if (seq === 'RFI' && typeof isHandInOpenRange === 'function') {
+                            const inOpen = isHandInOpenRange(hand, heroPos, (typeof gameConfig !== 'undefined' ? gameConfig.tableSize : '9max'), 'normal', 'mtt', depth);
+                            if (inOpen) { fP = 0; rP = 100; }
+                        }
+                    }
+
+                    foldCombos += combos * (fP / 100);
+                    callCombos += combos * (cP / 100);
+                    raiseCombos += combos * (rP / 100);
+                    jamCombos += combos * (jP / 100);
+
+                    const isSelected = hand === activeHand;
+                    const isHero = hand === currentHeroHand;
+
+                    let bgStyle = '';
+                    if (fP === 100) {
+                        bgStyle = 'background:rgba(18, 22, 31, 0.85);';
+                    } else {
+                        bgStyle = `background:linear-gradient(to right, rgba(229,72,77,0.35) 0%, rgba(229,72,77,0.35) ${jP}%, rgba(224,168,58,0.35) ${jP}%, rgba(224,168,58,0.35) ${jP+rP}%, rgba(61,214,140,0.35) ${jP+rP}%, rgba(61,214,140,0.35) ${jP+rP+cP}%, rgba(20,26,38,0.7) ${jP+rP+cP}%, rgba(20,26,38,0.7) 100%);`;
+                    }
+
+                    let cellClasses = ['range-cell'];
+                    if (isSelected) cellClasses.push('is-selected');
+                    if (isHero) cellClasses.push('is-hero-card');
+
+                    let labelClass = typeClass;
+                    if (fP === 100) labelClass += ' label-fold';
+
+                    html += `<div class="${cellClasses.join(' ')}" style="${bgStyle}" data-hand="${hand}" onclick="inspectRangeHand('${hand}')" title="${hand} · 弃:${fP}% 跟:${cP}% 加:${rP}% 推:${jP}%">
+                        <div class="range-cell-label ${labelClass}">${hand}${isHero ? '<span style="color:#facc15;font-size:7px;margin-left:1px;">★</span>' : ''}</div>
+                        <div class="range-cell-microbar">
+                            <div style="background:#e5484d;width:${jP}%;"></div>
+                            <div style="background:#e0a83a;width:${rP}%;"></div>
+                            <div style="background:#3dd68c;width:${cP}%;"></div>
+                            <div style="background:#3a4454;width:${fP}%;"></div>
+                        </div>
+                    </div>`;
+                }
+            }
+
+            grid.innerHTML = html;
+
+            const vpipPct = (((callCombos + raiseCombos + jamCombos) / totalCombos) * 100).toFixed(1);
+            const raisePct = (((raiseCombos + jamCombos) / totalCombos) * 100).toFixed(1);
+            const callPct = ((callCombos / totalCombos) * 100).toFixed(1);
+            const foldPct = ((foldCombos / totalCombos) * 100).toFixed(1);
+
+            const vpipEl = document.getElementById('rmAggVpip');
+            const raiseEl = document.getElementById('rmAggRaise');
+            const callEl = document.getElementById('rmAggCall');
+            const foldEl = document.getElementById('rmAggFold');
+            const sizingEl = document.getElementById('rmSizingBadge');
+
+            if (vpipEl) vpipEl.innerText = `${vpipPct}%`;
+            if (raiseEl) raiseEl.innerText = `${raisePct}%`;
+            if (callEl) callEl.innerText = `${callPct}%`;
+            if (foldEl) foldEl.innerText = `${foldPct}%`;
+
+            if (sizingEl) {
+                if (currentSizing) {
+                    sizingEl.style.display = 'inline-block';
+                    sizingEl.innerText = `推荐尺度: ${currentSizing}BB`;
+                } else {
+                    sizingEl.style.display = 'none';
+                }
+            }
+
+            inspectRangeHand(activeHand, false);
+        };
+
+        window.inspectRangeHand = function(hand, updateActiveState = true) {
+            if (!hand) return;
+            if (updateActiveState) {
+                window._activeRangeHand = hand;
+                const grid = document.getElementById('rangeMatrixGrid');
+                if (grid) {
+                    const prev = grid.querySelector('.range-cell.is-selected');
+                    if (prev) prev.classList.remove('is-selected');
+                    const target = grid.querySelector(`.range-cell[data-hand="${hand}"]`);
+                    if (target) target.classList.add('is-selected');
+                }
+            }
+
+            const heroPos = document.getElementById('rmHeroPos') ? document.getElementById('rmHeroPos').value : 'BTN';
+            const seq = document.getElementById('rmSeq') ? document.getElementById('rmSeq').value : 'vs_RFI';
+            const vsPos = document.getElementById('rmVsPos') ? document.getElementById('rmVsPos').value : 'UTG';
+            const depth = document.getElementById('rmDepth') ? parseFloat(document.getElementById('rmDepth').value) : 40;
+
+            const r1 = hand[0], r2 = hand[1];
+            const isPair = (r1 === r2);
+            const isSuited = (hand.length === 3 && hand[2] === 's');
+            const combos = isPair ? 6 : (isSuited ? 4 : 12);
+            const typeStr = isPair ? '口袋对子 (Pair)' : (isSuited ? '同花高牌/连张 (Suited)' : '杂色非同花 (Offsuit)');
+
+            const handEl = document.getElementById('rmInspHand');
+            const typeEl = document.getElementById('rmInspType');
+            const combosEl = document.getElementById('rmInspCombos');
+            const jamEl = document.getElementById('rmInspJam');
+            const raiseEl = document.getElementById('rmInspRaise');
+            const callEl = document.getElementById('rmInspCall');
+            const foldEl = document.getElementById('rmInspFold');
+            const evCallEl = document.getElementById('rmInspEvCall');
+            const evRaiseEl = document.getElementById('rmInspEvRaise');
+            const evJamEl = document.getElementById('rmInspEvJam');
+            const evFoldEl = document.getElementById('rmInspEvFold');
+
+            if (handEl) handEl.innerText = hand;
+            if (typeEl) typeEl.innerText = typeStr;
+            if (combosEl) combosEl.innerText = `${combos} 组合 (${((combos/1326)*100).toFixed(2)}% 全局权重)`;
+
+            let vec = null;
+            if (typeof queryGtoPreflop === 'function') {
+                vec = queryGtoPreflop(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq);
+            }
+            let fP = 100, cP = 0, rP = 0, jP = 0;
+            if (vec) {
+                [fP, cP, rP, jP] = vec;
+            } else if (seq === 'RFI' && typeof isHandInOpenRange === 'function') {
+                const inOpen = isHandInOpenRange(hand, heroPos, (typeof gameConfig !== 'undefined' ? gameConfig.tableSize : '9max'), 'normal', 'mtt', depth);
+                if (inOpen) { fP = 0; rP = 100; }
+            }
+
+            if (jamEl) jamEl.innerText = `${jP}%`;
+            if (raiseEl) raiseEl.innerText = `${rP}%`;
+            if (callEl) callEl.innerText = `${cP}%`;
+            if (foldEl) foldEl.innerText = `${fP}%`;
+
+            let evVec = null;
+            if (typeof queryGtoEv === 'function') {
+                evVec = queryGtoEv(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq);
+            }
+
+            if (evVec) {
+                const fmtEv = v => (v > 0 ? `+${v.toFixed(2)}` : `${v.toFixed(2)}`);
+                if (evFoldEl) evFoldEl.innerText = `F: ${fmtEv(evVec[0])}`;
+                if (evCallEl) evCallEl.innerText = `C: ${fmtEv(evVec[1])}`;
+                if (evRaiseEl) evRaiseEl.innerText = `R: ${fmtEv(evVec[2])}`;
+                if (evJamEl) evJamEl.innerText = `J: ${fmtEv(evVec[3])}`;
+
+                const bestIdx = evVec.bestAction === '弃' ? 0 : evVec.bestAction === '跟' ? 1 : evVec.bestAction === '加' ? 2 : 3;
+                [evFoldEl, evCallEl, evRaiseEl, evJamEl].forEach((el, idx) => {
+                    if (!el) return;
+                    if (idx === bestIdx && evVec.bestEv > 0) {
+                        el.style.color = '#45d68a';
+                        el.style.fontWeight = '800';
+                    } else {
+                        el.style.color = '';
+                        el.style.fontWeight = '';
+                    }
+                });
+            } else {
+                if (evFoldEl) evFoldEl.innerText = 'F: 0.00';
+                if (evCallEl) evCallEl.innerText = 'C: --';
+                if (evRaiseEl) evRaiseEl.innerText = 'R: --';
+                if (evJamEl) evJamEl.innerText = 'J: --';
+            }
+        };
+
+        window.setHeroFromRangeBoard = function(hand) {
+            const h = hand || window._activeRangeHand;
+            if (!h || h.length < 2) return;
+            const r1 = h[0], r2 = h[1];
+            const isSuited = (h.length === 3 && h[2] === 's');
+            const isPair = (r1 === r2);
+
+            if (isPair) {
+                heroCard1 = r1 + 's';
+                heroCard2 = r2 + 'h';
+            } else if (isSuited) {
+                heroCard1 = r1 + 's';
+                heroCard2 = r2 + 's';
+            } else {
+                heroCard1 = r1 + 's';
+                heroCard2 = r2 + 'h';
+            }
+
+            syncHeroCardCompat();
+            renderHeroPicker();
+            renderHeroSlots();
+            updateHeroPickerHint();
+            if (typeof executeEngine === 'function') executeEngine();
+            if (typeof renderRangeMatrix === 'function') renderRangeMatrix();
+
+            if (typeof showToast === 'function') {
+                showToast(`已将底牌设为 ${h} 并更新主决策引擎`, 'info');
+            }
         };
 
         function executeEngineCore() {
@@ -11380,13 +11980,15 @@
                 !['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) { e.preventDefault(); undoLastStep(); return; }
             if (e.ctrlKey || e.metaKey || e.altKey) return;
             const tag = e.target.tagName;
-            if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
             if (e.key === 'Escape') {
                 const hp = document.getElementById('helpPanel');
-                if (hp && hp.style.display === 'flex') { hp.style.display = 'none'; e.preventDefault(); }
+                if (hp && hp.style.display === 'flex') { hp.style.display = 'none'; e.preventDefault(); return; }
+                const rm = document.getElementById('rangeMatrixModal');
+                if (rm && rm.style.display !== 'none') { toggleRangeMatrixModal(false); e.preventDefault(); return; }
                 return;
             }
             const k = e.key.toLowerCase();
+            if (k === 'm') { e.preventDefault(); toggleRangeMatrixModal(); return; }
             if (k === 'n') { e.preventDefault(); nextHand(); return; }
             // 环节快捷键(2026-07-21)：Z/Backspace 撤回上一步 · H 清底牌 · G 清公共牌 · R 重置牌桌（均可撤回）
             if (k === 'z' || e.key === 'Backspace') { e.preventDefault(); undoLastStep(); return; }
