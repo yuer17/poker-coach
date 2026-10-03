@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.12 正式版 - GTO 训练与实战决策器</title>
+    <title>PokerCode v3.17 正式版 - GTO Wizard 真解驱动翻前与动态 ICM 决策器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.12 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Squeeze 关煞位防守与位置修正版) ══
+            /* ══ PokerCode v3.17 正式版 高定黑曜石与 Liquid Glass 设计令牌 (GTO Wizard 真实解算翻前与动态 ICM 决策引擎) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1333,6 +1333,7 @@
     <script src="lib/pokersolver.js"></script>
     <!-- 新一代翻前极化静态 GTO 矩阵库（Phase 2: 本地离线兵工厂编译产物，142KB 零网络依赖） -->
     <script src="lib/preflop_gto_matrix.js"></script>
+    <script src="lib/preflop_gto_ev_matrix.js"></script>
     <script src="lib/gto_matrix_engine.js"></script>
     <!-- Phase 3 翻后极化几何规范化组件库 -->
     <script src="lib/postflop_board_classifier.js"></script>
@@ -1358,9 +1359,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.12 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.17 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.12</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.17</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1381,7 +1382,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.12 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.17 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -2983,12 +2984,13 @@
             fourbet_value: ['AA','KK','QQ','AKs','AKo'],
             fourbet_bluff: ['A5s','A4s','A3s','A2s'],
             call: {
-                'BTN': ['JJ','TT','99','88','AQs','AJs','ATs','KQs','KJs','QJs','JTs','AQo'],
-                'CO':  ['JJ','TT','99','AQs','AJs','KQs','QJs'],
-                'HJ':  ['JJ','TT','AQs','AJs','KQs'],
-                'MP':  ['JJ','AQs'],
-                'UTG': ['JJ','AQs'],
-                'SB':  ['JJ','TT','99','88','AQs','AJs','ATs','KQs','KJs','QJs','JTs']
+                'BTN': ['JJ','TT','99','88','77','66','55','44','33','22','AQs','AJs','ATs','A9s','A8s','KQs','KJs','KTs','K9s','QJs','QTs','Q9s','JTs','J9s','T9s','T8s','98s','87s','76s','65s','54s','AQo'],
+                'CO':  ['JJ','TT','99','88','77','66','55','44','AQs','AJs','ATs','A9s','A8s','KQs','KJs','KTs','QJs','QTs','JTs','T9s','98s','87s','76s','65s','54s','AQo'],
+                'HJ':  ['JJ','TT','99','88','77','66','55','44','AQs','AJs','ATs','A9s','KQs','KJs','KTs','QJs','QTs','JTs','T9s','98s','87s','76s','65s','54s'],
+                'LJ':  ['JJ','TT','99','88','77','66','55','44','AQs','AJs','ATs','A9s','KQs','KJs','KTs','QJs','QTs','JTs','T9s','98s','87s','76s','65s','54s'],
+                'MP':  ['JJ','TT','99','88','77','66','AQs','AJs','ATs','KQs','KJs','QJs','JTs','T9s','98s','87s','76s'],
+                'UTG': ['JJ','TT','99','88','77','AQs','AJs','ATs','KQs','KJs','QJs','JTs','T9s','98s'],
+                'SB':  ['JJ','TT','99','88','77','66','55','44','AQs','AJs','ATs','KQs','KJs','QJs','JTs','T9s','98s','87s','76s']
             }
         }
         };
@@ -4847,6 +4849,7 @@
         //   🧭 启发式 = 决策来自经验规则或频率档位，没有数据基准（M4 已列为已知简化）
         // 一个节点常常同时含两种成分，标注取**决定动作的那一层**，tooltip 写清全部构成。
         function adviceSourceOf(boardN) {
+            const m = (typeof currentMode !== 'undefined') ? currentMode : 'open';
             if (boardN >= 3) {
                 return { k: '🧮 实算 + 🧭 启发式', c: 'mix',
                          t: '胜率：翻牌/转牌用组合加权蒙特卡洛、河牌精确穷举 —— 实算。\n' +
@@ -4858,15 +4861,13 @@
                 k: `📖 ${_blindMix === 'SB' ? 'SB' : 'BB'} ChipEV 原图`, c: 'ref',
                 t: 'MPT逐格四动作频率；像素提取、整数取整有误差。中间位置/深度及邻近开池尺度为近似；不是ICM解。'
             };
-            const m = currentMode;
-            if (m === 'defend') return { k: '🧮 实算', c: 'calc',
-                t: '接全下是全下子博弈，没有翻后，收益函数是确定的。\n' +
-                   '所以这里用你的具体两张底牌对「对手的 Nash 推注范围」实时跑 6000-50000 次蒙特卡洛，\n' +
-                   '再和按位置算出的底池赔率红线比 —— 不查表。差距落在统计误差内时会直接判为硬币局。' };
-            if (m === 'face4b') return { k: '🧮 实算', c: 'calc',
-                t: '5-Bet 全下的 EV 是实算的：弃牌率 × (4-Bet 额 + 死钱) + 跟注段胜率项 − 风险。\n' +
-                   '跟注分支是启发式（翻后价值算不出来），已在理由里注明。\n' +
-                   '注意：弃牌率来自「对手 4-Bet 里有多少诈唬」这个假设，对手很紧时应偏弃牌。' };
+            if (window._lastShadowComparison && window._lastShadowComparison.matrixVector) {
+                return {
+                    k: '🎯 GTO Wizard 官方解算',
+                    c: 'calc',
+                    t: 'GTO Wizard 真实求解器解算结果（千分之一 EV 精度与官方尺寸直驱）'
+                };
+            }
             if (m === 'coldCall' || m === 'face3b') return { k: '📖 基准表 + 🧮 价格闸门', c: 'mix',
                 t: '范围：3-Bet 范围表（THREBET_RANGES，受位置单调/嵌套等结构不变量约束）。\n' +
                    '跟注与否还要过一道价格闸门：用你的具体底牌对该范围实时算胜率，与真实赔率比较。' };
@@ -5844,7 +5845,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.12',
+                    v: 'v3.17',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -5863,7 +5864,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -5937,7 +5938,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.12 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.17 正式版';
             renderWindowColorChips(key);
         };
 
@@ -6932,10 +6933,9 @@
             return { req, eq, toCall, pot, eqr, needEqR };
         }
 
-        /** 面对盲位 3-Bet 时查 MPT 实测表；返回 {jam:bool, call:bool} 或 null（无覆盖） */
+        /** 面对 3-Bet 时查 MPT 实测表（仅限 BB 与 SB 盲位 3-Bet；非盲位返回 null 走通用矩阵与标准防守表，P1-2 闭环） */
         function mptF3bSet(heroPos, tbPos, effStack) {
             if (tbPos !== 'BB' && tbPos !== 'SB') return null;
-            // MPT 只解了 BN/CO/LJ/UTG 四个开池位，其余按"身后人数"就近映射
             const BEH = { BTN: 0, CO: 1, HJ: 2, LJ: 3, MP: 4, UTG1: 5, UTG: 6 };
             const NEAR = { BTN: 'BTN', CO: 'CO', HJ: 'LJ', LJ: 'LJ', MP: 'LJ', UTG1: 'UTG', UTG: 'UTG' };
             if (BEH[heroPos] == null) return null;
@@ -6945,6 +6945,22 @@
             return node || null;
         }
         function getFacing3BetAction(handStr, heroPos, tableSize, effStack, tbPos, tbSizeBB) {
+            // ── 第一优先级：直通 GTO Wizard 真实求解矩阵 (Preflop GTO Matrix v4.0+) ──
+            if (typeof queryGtoPreflop === 'function') {
+                const gtoVec = queryGtoPreflop(heroPos, tbPos, effStack, handStr, 'vs_3BET');
+                if (gtoVec) {
+                    const [fP, cP, rP, jP] = gtoVec;
+                    if (jP >= 50) return 'fivebet_jam';
+                    if (rP >= 50) return 'fourbet';
+                    if (jP > 0 && rP > 0 && (jP + rP) >= 50) return 'fivebet_jam';
+                    if (cP >= 50) return (effStack <= 25) ? 'call_shallow' : 'call';
+                    if (cP > 0 && (rP > 0 || jP > 0)) return 'fivebet_mix';
+                    if (fP >= 80) return 'fold';
+                    if (cP > fP) return (effStack <= 25) ? 'call_shallow' : 'call';
+                    return 'fold';
+                }
+            }
+
             // 盲位 3-Bet 走实测表（2026-09-09）。旧表既无深度维度、也不分 3-Bet 者位置，
             // 而实测显示两者都是一级变量：同是 BTN 面对 3-Bet，25bb 全下 12.4%、
             // 40bb 8.8%；3-Bet 者是 SB 时全下 21.1%（对 BB 时 12.4%）。
@@ -6974,6 +6990,19 @@
                         return 'fold';
                     }
 
+                    // 3. TASK-POT-045 超大尺度 3-Bet (>= 9.5BB 或 >= 3.8x，如 11BB / 12BB / 14BB) MDF 几何防御收缩：
+                    // MPT 原书基于 2.3x vs 3.5x (~8.0BB) 常规尺度，超大加注下底池赔率与后手 SPR 严重恶化，
+                    // 边缘投机手牌（弱同花隔张、弱同花带小踢脚、弱杂色两高张）必须坚决弃牌：
+                    const isVeryBigTb = curTbSize > 0 ? (curTbSize >= 9.5 || (openSize > 0 && curTbSize / openSize >= 3.8)) : false;
+                    if (isVeryBigTb) {
+                        const isWeakGappedSuited = ['43s', '53s', '64s', '75s', '85s', '86s', '96s', 'T7s'].includes(handStr);
+                        const isWeakSuitedQorJ = ['Q2s', 'Q3s', 'Q4s', 'Q5s', 'Q6s', 'Q7s', 'J2s', 'J3s', 'J4s', 'J5s', 'J6s', 'J7s'].includes(handStr);
+                        const isWeakOffsuitBroadways = ['QTo', 'JTo', 'QJo'].includes(handStr);
+                        if (isWeakGappedSuited || isWeakSuitedQorJ || isWeakOffsuitBroadways) {
+                            return 'fold';
+                        }
+                    }
+
                     if (n.call.includes(handStr)) return 'call';
                     return 'fold';
                 }
@@ -6992,10 +7021,10 @@
                 else if (effStack >= 16)  return 'fourbet_bluff_mid';
                 else                      return 'fourbet_bluff_short';
             }
-            // Codex交叉测试修复③(2026-07-13)：UTG1/LJ 显式映射邻位（原静默回落 MP，LJ 偏紧一档）
-            const callPosAlias = { UTG1: 'UTG', LJ: 'HJ' };
+            // Codex交叉测试修复③(2026-07-13)：UTG1/LJ 显式映射
+            const callPosAlias = { UTG1: 'UTG', LJ: 'LJ' };
             const callRange = ranges.call[heroPos] || ranges.call[callPosAlias[heroPos]] || ranges.call['MP'];
-            if (callRange.includes(handStr)) {
+            if (callRange && callRange.includes(handStr)) {
                 return effStack <= 25 ? 'call_shallow' : 'call';
             }
             return 'fold';
@@ -7283,7 +7312,9 @@
             const inPot = seats.filter(p => !folded.has(p));
             // 已经把钱投到位的人 —— 翻前一结束，这批人就是进翻后的人（盲注位只投了盲注不算）
             const contenders = seats.filter(p => !folded.has(p) && committed[p] > 0 && committed[p] >= curBet);
-            const pot = seats.reduce((s, p) => s + committed[p], 0);
+            // TASK-POT-045 唯一底池事实源：桌面真实总底池 = 所有人已投入筹码 + 桌上前注(Ante)
+            const anteBB = typeof getAnteBB === 'function' ? getAnteBB() : 0;
+            const pot = seats.reduce((s, p) => s + committed[p], 0) + anteBB;
 
             // ── 轮到谁 ──
             // 规则：最后一次加注之后，按座位顺序从加注者的下一位起，
@@ -7756,8 +7787,11 @@
                     const NTH3 = ['开池', '3-Bet', '4-Bet', '5-Bet'];
                     out.label = `我开池 ${(+out.raiseSize.toFixed(1))} → ${rr ? tlLbl(rr.pos) : '对手'} ` +
                                 `${NTH3[nth] || '再加注'} 到 ${(+out.threeBetSize.toFixed(1))} → 我跟注`;
+                    const inTxt = st.closed
+                        ? `${st.contenders.length} 人进池`
+                        : `当前 ${st.contenders.length} 人跟平，共 ${st.inPot.length} 人在池`;
                     out.note = `我已跟注到 ${(+(st.committed[hero] || 0).toFixed(1))}BB：下方为该决策的复核，` +
-                               `翻后底池按实际投入记账（${st.contenders.length} 人进池）`;
+                               `翻后底池按实际投入记账（${inTxt}）`;
                     return out;
                 }
                 if (R.length >= 2) {
@@ -7765,8 +7799,11 @@
                     out.isColdCallCheck = true;
                     out.label = `${tlLbl(R[0].pos)} 开池 ${(+sz(0).toFixed(1))} → ${tlLbl(R[R.length - 1].pos)} ` +
                                 `${R.length >= 3 ? '4-Bet' : '3-Bet'} 到 ${(+sz(R.length - 1).toFixed(1))} → 我跟注`;
+                    const inTxt = st.closed
+                        ? `${st.contenders.length} 人进池`
+                        : `当前 ${st.contenders.length} 人跟平，共 ${st.inPot.length} 人在池`;
                     out.note = `我已跟注到 ${(+(st.committed[hero] || 0).toFixed(1))}BB：下方为该决策的复核，` +
-                               `翻后底池按实际投入记账（${st.contenders.length} 人进池）`;
+                               `翻后底池按实际投入记账（${inTxt}）`;
                     return out;
                 }
                 if (R.length === 1) {
@@ -7857,6 +7894,8 @@
             } else {
                 renderTimeline();
             }
+            // 翻前时间线底池与 SPR 实时同步(v3.13)
+            try { initPotTracker(); } catch (e) {}
             if (runEngine) {
                 if (d.blocked) {
                     const rp = document.getElementById('resultPanel'); if (rp) rp.classList.add('invisible');
@@ -7948,6 +7987,7 @@
             const amtInput = (p, amt) => `<input class="tl-amt-inline" type="text" inputmode="decimal" pattern="[0-9]*\\.?[0-9]*" value="${amt}" data-tlamtpos="${p}" autocomplete="off" spellcheck="false" title="就地改额，回车确认">`;
             const _raiseSeqAll = tlActs.filter(a => a.a === 'raise' || a.a === 'allin');
             const NTHW_EN = ['Open', '3-Bet', '4-Bet', '5-Bet', '6-Bet'];
+            const firstRaiserPos = _raiseSeqAll.length > 0 ? _raiseSeqAll[0].pos : null;
             ribbon.innerHTML = seats.map(p => {
                 const acts = tlActsOf(p);
                 const last = acts.length ? acts[acts.length - 1] : null;
@@ -7971,12 +8011,34 @@
                 else if (last.a === 'call')  actTxt = `Call ${(+com.toFixed(2))}`;
                 else if (last.a === 'allin') actTxt = `AI ${amtInput(p, last.amt)}`;
                 else actTxt = `${NTHW_EN[_raiseSeqAll.indexOf(last)] || 'Raise'} ${amtInput(p, last.amt)}`;
+
                 const multi = acts.filter(a => a.a !== 'fold').length > 1 && !folded;
-                const sub = multi ? `<div class="tl-sub">Tot ${(+com.toFixed(2))}</div>` : '';
+                let sub = '';
+                if (multi) {
+                    const nonFolds = acts.filter(a => a.a !== 'fold');
+                    const firstAct = nonFolds[0];
+                    if (firstAct && last && firstAct !== last) {
+                        const firstWord = firstAct.a === 'raise'
+                            ? (NTHW_EN[_raiseSeqAll.indexOf(firstAct)] || 'Raise')
+                            : (firstAct.a === 'limp' ? 'Limp' : 'Call');
+                        const lastWord = last.a === 'raise'
+                            ? (NTHW_EN[_raiseSeqAll.indexOf(last)] || 'Raise')
+                            : (last.a === 'call' ? 'Call' : last.a);
+                        sub = `<div class="tl-sub" title="先 ${firstWord} ${firstAct.amt || ''}，后 ${lastWord} 到 ${(+com.toFixed(2))}BB">${firstWord} ➔ ${lastWord}</div>`;
+                    } else {
+                        sub = `<div class="tl-sub">Tot ${(+com.toFixed(2))}</div>`;
+                    }
+                } else if (isTurn && com < st.curBet && com > 0) {
+                    const toCallMore = st.curBet - com;
+                    sub = `<div class="tl-sub" style="color:#9fd0ff;">需补 ${(+toCallMore.toFixed(1))}</div>`;
+                }
+
+                const isFirstRaiser = p === firstRaiserPos;
+                const raiserBadge = isFirstRaiser ? ' [率先开池]' : '';
                 const title = editable
-                    ? (isTurn ? '该他行动：单击循环 · 双击/右键/长按选具体动作'
-                              : last ? '已行动：单击改动作 · 双击/右键/长按弹出修改菜单'
-                                     : '点他即记录他的行动，他前面没动过的人自动记为弃牌')
+                    ? (isTurn ? '该他行动：单击循环 · 双击/右键/长按选具体动作' + raiserBadge
+                              : last ? '已行动：单击改动作 · 双击/右键/长按弹出修改菜单' + raiserBadge
+                                     : '点他即记录他的行动，他前面没动过的人自动记为弃牌' + raiserBadge)
                     : '先记录我的行动，后面的人才能行动';
                 return `<div class="tl-seat-col" data-seatcol="${p}">
                     <button class="pos-btn-hero${isHero ? ' active' : ''}" data-tlhero="${p}" title="设为我的位置（${tlLbl(p)}）">${tlLbl(p)}</button>
@@ -8491,8 +8553,11 @@
             const keys = Object.keys(matrix.nodes || {});
             const suffix1 = `_${effPos}_${seqKey}`;
             let matched = keys.filter(k => k.endsWith(suffix1));
-            if (matched.length === 0 && seqKey === 'SQUEEZE') {
+            if (matched.length === 0 && (seqKey === 'SQUEEZE' || seqKey.includes('SQUEEZE'))) {
                 matched = keys.filter(k => k.includes(`_${effPos}_SQUEEZE`));
+            }
+            if (matched.length === 0 && (seqKey === 'COLD_4BET' || seqKey.includes('COLD_4BET'))) {
+                matched = keys.filter(k => k.includes(`_${effPos}_COLD_4BET`));
             }
             if (matched.length === 0) return null;
             const depths = matched.map(k => parseFloat(k.split('_')[0])).filter(d => !isNaN(d));
@@ -8526,12 +8591,27 @@
 
             let effHeroPos = heroPos;
             let effVsPos = vsPos;
-            if (actionSeq === 'RFI' && heroPos === 'HJ') effHeroPos = 'MP';
-            if (actionSeq === 'RFI' && heroPos === 'LJ') effHeroPos = 'UTG';
+
+            // 桌型相对位置映射（6-max / 8-max / 9-max 自适应）：
+            // 若当前为 6-max，UTG 身后剩 5 人对应 8-max 的 LJ，MP 身后剩 4 人对应 8-max 的 HJ
+            const is6Max = typeof gameConfig !== 'undefined' && gameConfig.tableSize === '6max';
+            if (is6Max) {
+                if (actionSeq === 'RFI') {
+                    if (heroPos === 'UTG') effHeroPos = 'LJ';
+                    else if (heroPos === 'MP') effHeroPos = 'HJ';
+                }
+                if (actionSeq === 'vs_RFI') {
+                    if (vsPos === 'UTG') effVsPos = 'LJ';
+                    else if (vsPos === 'MP') effVsPos = 'HJ';
+                    if (heroPos === 'UTG') effHeroPos = 'LJ';
+                    else if (heroPos === 'MP') effHeroPos = 'HJ';
+                }
+            }
 
             let seqKey = actionSeq;
             if (actionSeq === 'vs_RFI') seqKey = `vs_${effVsPos}_RFI`;
-            const depths = findAvailableGtoDepths(matrix, effHeroPos, seqKey) || (matrix.depths || [8, 10, 12, 15, 20, 25, 30, 40, 60]);
+            else if (actionSeq === 'vs_3BET' || actionSeq === 'vs_3Bet') seqKey = `vs_${effVsPos}_3BET`;
+            const depths = findAvailableGtoDepths(matrix, effHeroPos, seqKey) || (matrix.depths || [8, 10, 12, 15, 20, 25, 30, 35, 40, 60]);
             if (!depths || !depths.length) return null;
             const minD = depths[0], maxD = depths[depths.length - 1];
             if (effStack < minD || effStack > maxD) return null;
@@ -8547,12 +8627,26 @@
                 let k = `${depth}_${effHeroPos}_${seqKey}`;
                 if (matrix.nodes[k]) return matrix.nodes[k];
                 if (seqKey === 'RFI') {
+                    if (matrix.nodes[`${depth}_${effHeroPos}_RFI`]) return matrix.nodes[`${depth}_${effHeroPos}_RFI`];
                     if (effHeroPos === 'HJ' && matrix.nodes[`${depth}_MP_RFI`]) return matrix.nodes[`${depth}_MP_RFI`];
+                    if (effHeroPos === 'MP' && matrix.nodes[`${depth}_HJ_RFI`]) return matrix.nodes[`${depth}_HJ_RFI`];
                     if (effHeroPos === 'LJ' && matrix.nodes[`${depth}_UTG_RFI`]) return matrix.nodes[`${depth}_UTG_RFI`];
+                    if (effHeroPos === 'UTG' && matrix.nodes[`${depth}_UTG_6M_RFI`]) return matrix.nodes[`${depth}_UTG_6M_RFI`];
                 }
-                if (seqKey === 'SQUEEZE') {
+                if (seqKey === 'SQUEEZE' || seqKey.includes('SQUEEZE')) {
+                    if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`];
+                    if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`];
                     if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`];
                     if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`];
+                }
+                if (seqKey.includes('COLD_4BET')) {
+                    if (matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}1`]) return matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}1`];
+                    if (matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}`]) return matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}`];
+                    if (matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET`]) return matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET`];
+                }
+                if (seqKey.includes('3BET')) {
+                    if (matrix.nodes[`${depth}_${effHeroPos}_${seqKey}`]) return matrix.nodes[`${depth}_${effHeroPos}_${seqKey}`];
+                    if (matrix.nodes[`${depth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`]) return matrix.nodes[`${depth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`];
                 }
                 return {};
             }
@@ -8573,11 +8667,146 @@
             const cLo = rawLo ? sanitizeGtoVector(rawLo) : null;
             const cHi = rawHi ? sanitizeGtoVector(rawHi) : null;
 
-            if (loDepth === hiDepth) return cLo || cHi;
-            if (!cLo || !cHi) return null;
+            let resultVec = null;
+            if (loDepth === hiDepth) {
+                resultVec = cLo || cHi;
+            } else if (!cLo || !cHi) {
+                return null;
+            } else {
+                const weight = (effStack - loDepth) / (hiDepth - loDepth);
+                resultVec = interpolateGtoFrequencies(cLo, cHi, weight);
+            }
 
-            const weight = (effStack - loDepth) / (hiDepth - loDepth);
-            return interpolateGtoFrequencies(cLo, cHi, weight);
+            // 动态 ICM 风险溢价调整 (DEF-ICM-GTO)
+            if (resultVec && typeof getICM313Context === 'function' && typeof gameConfig !== 'undefined') {
+                const icm = getICM313Context(effStack, typeof globalVillainStack !== 'undefined' ? globalVillainStack : effStack, typeof globalAvgStack !== 'undefined' ? globalAvgStack : effStack, gameConfig.stage);
+                if (icm && icm.isICMStage && icm.riskPremium > 0) {
+                    const rp = Math.min(0.35, icm.riskPremium / 100);
+                    // 仅对非极端牌（存在跟注的临界手牌）做 ICM 避险修正
+                    if (resultVec[1] > 0 && resultVec[0] < 100) {
+                        const shift = Math.round(resultVec[1] * rp);
+                        if (shift > 0) {
+                            resultVec[0] = Math.min(100, resultVec[0] + shift);
+                            resultVec[1] = Math.max(0, resultVec[1] - shift);
+                        }
+                    }
+                }
+            }
+
+            // Dimension 2: 绑定求解器精准尺寸 (Micro-Sizing)
+            if (resultVec && matrix.sizings) {
+                const sizingKey = `${loDepth}_${effHeroPos}_${seqKey}`;
+                const matchedSizing = matrix.sizings[sizingKey] ||
+                    matrix.sizings[`${loDepth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`] ||
+                    matrix.sizings[`${loDepth}_${effHeroPos}_RFI`];
+                if (typeof matchedSizing === 'number') {
+                    resultVec.sizing = matchedSizing;
+                }
+            }
+            return resultVec;
+        };
+
+        // Dimension 3: 翻前 GTO 期望值 (EV) 与反事实损失推理引擎 (v5.0)
+        window.queryGtoEv = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI') {
+            if (typeof effStack !== 'number' || isNaN(effStack) || !Number.isFinite(effStack)) return null;
+            if (typeof hand !== 'string' || !VALID_GTO_HAND_REGEX.test(hand.trim())) return null;
+            const cleanHand = hand.trim();
+            const evMatrix = window.PREFLOP_GTO_EV_MATRIX;
+            if (!evMatrix || !evMatrix.nodes) return null;
+
+            let effHeroPos = heroPos;
+            let effVsPos = vsPos;
+            const is6Max = typeof gameConfig !== 'undefined' && gameConfig.tableSize === '6max';
+            if (is6Max) {
+                if (actionSeq === 'RFI') {
+                    if (heroPos === 'UTG') effHeroPos = 'LJ';
+                    else if (heroPos === 'MP') effHeroPos = 'HJ';
+                }
+                if (actionSeq === 'vs_RFI') {
+                    if (vsPos === 'UTG') effVsPos = 'LJ';
+                    else if (vsPos === 'MP') effVsPos = 'HJ';
+                    if (heroPos === 'UTG') effHeroPos = 'LJ';
+                    else if (heroPos === 'MP') effHeroPos = 'HJ';
+                }
+            }
+
+            let seqKey = actionSeq;
+            if (actionSeq === 'vs_RFI') seqKey = `vs_${effVsPos}_RFI`;
+            else if (actionSeq === 'vs_3BET' || actionSeq === 'vs_3Bet') seqKey = `vs_${effVsPos}_3BET`;
+
+            const depths = evMatrix.depths || [8, 10, 12, 15, 20, 25, 30, 35, 40, 60];
+            const minD = depths[0], maxD = depths[depths.length - 1];
+            if (effStack < minD || effStack > maxD) return null;
+
+            let loDepth = depths[0], hiDepth = depths[depths.length - 1];
+            for (let i = 0; i < depths.length; i++) {
+                if (depths[i] <= effStack) loDepth = depths[i];
+                if (depths[i] >= effStack) { hiDepth = depths[i]; break; }
+            }
+
+            function getEvNode(depth) {
+                let k = `${depth}_${effHeroPos}_${seqKey}`;
+                if (seqKey === 'SQUEEZE' || seqKey.includes('SQUEEZE')) {
+                    if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`];
+                    if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`];
+                    if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`];
+                    if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`];
+                }
+                if (seqKey.includes('COLD_4BET')) {
+                    if (evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}1`]) return evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}1`];
+                    if (evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}`]) return evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}`];
+                    if (evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET`]) return evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET`];
+                }
+                if (seqKey.includes('3BET')) {
+                    if (evMatrix.nodes[`${depth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`]) return evMatrix.nodes[`${depth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`];
+                }
+                if (seqKey === 'RFI') {
+                    if (evMatrix.nodes[`${depth}_${effHeroPos}_RFI`]) return evMatrix.nodes[`${depth}_${effHeroPos}_RFI`];
+                    if (effHeroPos === 'HJ' && evMatrix.nodes[`${depth}_MP_RFI`]) return evMatrix.nodes[`${depth}_MP_RFI`];
+                    if (effHeroPos === 'MP' && evMatrix.nodes[`${depth}_HJ_RFI`]) return evMatrix.nodes[`${depth}_HJ_RFI`];
+                    if (effHeroPos === 'LJ' && evMatrix.nodes[`${depth}_UTG_RFI`]) return evMatrix.nodes[`${depth}_UTG_RFI`];
+                }
+                return null;
+            }
+
+            const nodeLo = getEvNode(loDepth);
+            const nodeHi = getEvNode(hiDepth);
+            if (!nodeLo && !nodeHi) return null;
+
+            const evLo = nodeLo && nodeLo[cleanHand] ? nodeLo[cleanHand] : [0, 0, 0, 0];
+            const evHi = nodeHi && nodeHi[cleanHand] ? nodeHi[cleanHand] : [0, 0, 0, 0];
+
+            let resultEv = null;
+            if (loDepth === hiDepth || !nodeLo || !nodeHi) {
+                resultEv = (nodeLo ? evLo : evHi).slice();
+            } else {
+                const weight = (effStack - loDepth) / (hiDepth - loDepth);
+                resultEv = [
+                    Number((evLo[0] * (1 - weight) + evHi[0] * weight).toFixed(2)),
+                    Number((evLo[1] * (1 - weight) + evHi[1] * weight).toFixed(2)),
+                    Number((evLo[2] * (1 - weight) + evHi[2] * weight).toFixed(2)),
+                    Number((evLo[3] * (1 - weight) + evHi[3] * weight).toFixed(2))
+                ];
+            }
+
+            const actionNames = ['弃', '跟', '加', '推'];
+            let bestIdx = 0;
+            let maxVal = -Infinity;
+            for (let i = 0; i < 4; i++) {
+                if (resultEv[i] > maxVal) {
+                    maxVal = resultEv[i];
+                    bestIdx = i;
+                }
+            }
+            resultEv.bestAction = actionNames[bestIdx];
+            resultEv.bestEv = maxVal;
+            resultEv.loss = {
+                F: Number((resultEv[0] - maxVal).toFixed(2)),
+                C: Number((resultEv[1] - maxVal).toFixed(2)),
+                R: Number((resultEv[2] - maxVal).toFixed(2)),
+                RAI: Number((resultEv[3] - maxVal).toFixed(2))
+            };
+            return resultEv;
         };
 
         function executeEngineCore() {
@@ -9771,6 +10000,11 @@
                                     `${handStr} 处于严重被压制绝境，无对抗胜率且隐含赔率不足，果断弃牌止损！`;
                         }
                     } else {
+                        // 优先检查 GTO Wizard 真实求解矩阵 vs_3BET
+                        const gto3bVec = (typeof queryGtoPreflop === 'function')
+                            ? queryGtoPreflop(posH, posV, effStack, handStr, 'vs_3BET')
+                            : null;
+
                         const action = getFacing3BetAction(handStr, posH, gameConfig.tableSize, effStack, posV, threeBetSize);
                         // 全盘审计修复(2026-07-21)：4-Bet 尺度改按 3-Bet 额定档（IP 2.2x / OOP 2.5x），
                         // 下限为最小合法加注（3-Bet 额 + 上次加注增量），≥85% 有效筹码改全押。
@@ -9780,116 +10014,194 @@
                         const _isIP4 = POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV];
                         const _minLegal4 = threeBetSize + Math.max(0, threeBetSize - _openAmt4);
                         const fourBetSize = () => {
-                            const amt = Math.max(threeBetSize * (_isIP4 ? 2.2 : 2.5), _minLegal4);
+                            const mult = (effStack <= 50) ? 2.0 : (_isIP4 ? 2.2 : 2.4);
+                            const amt = Math.max(threeBetSize * mult, _minLegal4);
                             const _dead = 1.5 + getAnteBB();
                             const _spr = (effStack > amt) ? (effStack - amt) / (2 * amt + _dead) : 0;
-                            const isCommit = effStack > 0 && (amt >= effStack * 0.40 || _spr < 0.75);
+                            const isCommit = effStack > 0 && (amt >= effStack * 0.45 || _spr < 0.65);
                             return isCommit
                                 ? `${effStack.toFixed(1)}BB All-in`
                                 : amt.toFixed(1) + 'BB 4-Bet';
                         };
-                        switch (action) {
-                            case 'fivebet_jam':
-                                b = 100; c = 0; f = 0;
-                                // >50BB：MPT 60bb 那批把 4-Bet(4-9%) 与 All-in(1.5-3.5%) 画成同一个
-                                // 鲑红、无法分色，而该深度里**占多数的是 4-Bet 而非全下**。
-                                // 分不出来就不假装分得出：深码这一段按 4-Bet 出，尺度走既有分档。
-                                if (effStack > 50) {
-                                    logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的进攻段` +
-                                            `（60BB 深度该节点 4-Bet 约 4-9% + 全下 1.5-3.5%；原图两者同色无法分开，` +
-                                            `按占多数的 4-Bet 出）。`;
-                                    postSizing = fourBetSize();
-                                } else {
-                                    logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的全下段` +
-                                            `（${effStack}BB 深度，该节点全下约 ${effStack <= 32 ? '12-21' : '9-13'}%）。` +
-                                            `注意全下段是范围的**中段**——阻断牌与翻后难打的牌；AA/KK/QQ 在跟注段留住对手诈唬。`;
-                                    postSizing = `${effStack.toFixed(1)}BB All-in`;
-                                }
-                                break;
-                            case 'fivebet_mix':
-                                const isWeakOffsuitOrKInMix = ['A2o', 'A3o', 'A4o', 'A5o', 'A6o', 'A7o', 'A8o', 'A9o', 'ATo', 'K2o', 'K3o', 'K4o', 'K5o', 'K6o', 'K7o', 'K8o', 'K9o', 'KTo'].includes(handStr);
-                                if (isWeakOffsuitOrKInMix) {
-                                    b = 50; f = 50; c = 0;
-                                    logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 具备关键阻断全推价值，但作为弱杂色牌严禁跟注平看翻牌（反向隐含赔率灾难）。` +
-                                            `在 MPT 实测中按 50% 纳什阻断全推 (All-in) + 50% 决绝弃牌 (Fold) 混合执行，0% 平跟。`;
-                                } else {
-                                    b = 50; c = 50; f = 0;
-                                    logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测里是**真混合牌**` +
-                                            `（全下与跟注频率都不低），两条线 EV 接近，按混合执行即可。`;
-                                }
+
+                        if (gto3bVec) {
+                            f = gto3bVec[0];
+                            c = gto3bVec[1];
+                            const r4 = gto3bVec[2];
+                            const jAll = gto3bVec[3];
+                            b = r4 + jAll;
+                            if (jAll > r4) {
                                 postSizing = `${effStack.toFixed(1)}BB All-in`;
-                                break;
-                            case 'fourbet':
-                                b=100; c=0; f=0;
-                                logic='顶级牌力，4-Bet 价值。';
-                                postSizing=fourBetSize();
-                                break;
-                            case 'fourbet_bluff_deep':
-                                b=35; f=65; c=0;
-                                logic='Blocker 牌（'+handStr+'），深码极化 4-Bet 诈唬。对手弃牌率高，有正 EV。';
-                                postSizing=fourBetSize();
-                                break;
-                            case 'fourbet_bluff_mid':
-                                b=20; f=80; c=0;
-                                logic='Blocker 牌（'+handStr+'），中浅码（'+effStack+'BB）纳什极化全推 20%，主弃牌 80%（防人类池缺少 3-Bet 诈唬）。';
-                                postSizing='All-in '+effStack+'BB';
-                                break;
-                            case 'fourbet_bluff_short':
-                                f=100; b=0; c=0;
-                                logic='筹码过浅（'+effStack+'BB），Blocker 牌 4-Bet = 全下，对抗 3-Bet 范围胜率不足，弃牌。';
-                                break;
-                            case 'call':
-                                c=100; b=0; f=0;
-                                logic = ['AA','KK','QQ','AKs','AKo'].includes(handStr) && mptF3bSet(posH, posV, effStack)
-                                    ? `${handStr} 面对 3-Bet **跟注而非全下**（MPT 实测）：全下只会赶走对手的诈唬段、` +
-                                      `留下打得过我们的那部分；跟注把他整个 3-Bet 范围留在池里，翻后再拿钱。`
-                                    : '中等牌力，深码平跟控池，翻牌后根据牌面决策。';
-                                break;
-                            case 'call_shallow':
-                                b=30; f=70; c=0;
-                                logic='筹码较浅（'+effStack+'BB），不建议平跟（SPR过低套牢风险），30% 推全下，70% 弃牌。';
-                                postSizing='All-in '+effStack+'BB';
-                                break;
-                            case 'fold':
-                            default:
-                                f=100; b=0; c=0;
-                                logic='不在防守范围，弃牌。';
-                                break;
+                            } else if (r4 > 0) {
+                                postSizing = fourBetSize();
+                            }
+                            if (c >= 70) {
+                                logic = `面对 ${POS_LABEL[posV] || posV} 的 ${threeBetSize}BB 3-Bet，GTO Wizard 真实求解：<b>${c}% 高频跟注 (Call)</b>${b > 0 ? ` / ${b}% ${jAll > r4 ? 'All-in 全推' : '4-Bet 推进'}` : ''}${f > 0 ? ` / ${f}% 弃牌` : ''}。翻前潜在暗三与控池赔率充裕，翻后根据牌面与 SPR 决策。`;
+                            } else if (b >= 50) {
+                                logic = `面对 ${POS_LABEL[posV] || posV} 的 ${threeBetSize}BB 3-Bet，GTO Wizard 真实求解：<b>${b}% 价值进攻 (${jAll > r4 ? 'All-in 全推' : '4-Bet'})</b>${c > 0 ? ` / ${c}% 跟注` : ''}。顶级牌力/强阻断牌直接施压。`;
+                            } else if (f >= 80) {
+                                logic = `面对 ${POS_LABEL[posV] || posV} 的 ${threeBetSize}BB 3-Bet，GTO Wizard 真实求解：<b>${f}% 决绝弃牌 (Fold)</b>。处于被压制劣势或无翻后操作空间，果断弃牌止损。`;
+                            } else {
+                                logic = `面对 ${POS_LABEL[posV] || posV} 的 ${threeBetSize}BB 3-Bet，GTO Wizard 真实求解混合决策：${b > 0 ? `${b}% 进攻 (${jAll > r4 ? 'All-in' : '4-Bet'}) ` : ''}${c > 0 ? `${c}% 跟注 ` : ''}${f > 0 ? `${f}% 弃牌` : ''}。`;
+                            }
+                        } else {
+                            switch (action) {
+                                case 'fivebet_jam':
+                                    b = 100; c = 0; f = 0;
+                                    // >50BB：MPT 60bb 那批把 4-Bet(4-9%) 与 All-in(1.5-3.5%) 画成同一个
+                                    // 鲑红、无法分色，而该深度里**占多数的是 4-Bet 而非全下**。
+                                    // 分不出来就不假装分得出：深码这一段按 4-Bet 出，尺度走既有分档。
+                                    if (effStack > 50) {
+                                        logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的进攻段` +
+                                                `（60BB 深度该节点 4-Bet 约 4-9% + 全下 1.5-3.5%；原图两者同色无法分开，` +
+                                                `按占多数的 4-Bet 出）。`;
+                                        postSizing = fourBetSize();
+                                    } else {
+                                        logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测的全下段` +
+                                                `（${effStack}BB 深度，该节点全下约 ${effStack <= 32 ? '12-21' : '9-13'}%）。` +
+                                                `注意全下段是范围的**中段**——阻断牌与翻后难打的牌；AA/KK/QQ 在跟注段留住对手诈唬。`;
+                                        postSizing = `${effStack.toFixed(1)}BB All-in`;
+                                    }
+                                    break;
+                                case 'fivebet_mix':
+                                    const isWeakOffsuitOrKInMix = ['A2o', 'A3o', 'A4o', 'A5o', 'A6o', 'A7o', 'A8o', 'A9o', 'ATo', 'K2o', 'K3o', 'K4o', 'K5o', 'K6o', 'K7o', 'K8o', 'K9o', 'KTo'].includes(handStr);
+                                    if (isWeakOffsuitOrKInMix) {
+                                        b = 50; f = 50; c = 0;
+                                        logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 具备关键阻断全推价值，但作为弱杂色牌严禁跟注平看翻牌（反向隐含赔率灾难）。` +
+                                                `在 MPT 实测中按 50% 纳什阻断全推 (All-in) + 50% 决绝弃牌 (Fold) 混合执行，0% 平跟。`;
+                                    } else {
+                                        b = 50; c = 50; f = 0;
+                                        logic = `面对 ${POS_LABEL[posV] || posV} 的 3-Bet，${handStr} 在 MPT 实测里是**真混合牌**` +
+                                                `（全下与跟注频率都不低），两条线 EV 接近，按混合执行即可。`;
+                                    }
+                                    postSizing = `${effStack.toFixed(1)}BB All-in`;
+                                    break;
+                                case 'fourbet':
+                                    b=100; c=0; f=0;
+                                    logic='顶级牌力，4-Bet 价值。';
+                                    postSizing=fourBetSize();
+                                    break;
+                                case 'fourbet_bluff_deep':
+                                    b=35; f=65; c=0;
+                                    logic='Blocker 牌（'+handStr+'），深码极化 4-Bet 诈唬。对手弃牌率高，有正 EV。';
+                                    postSizing=fourBetSize();
+                                    break;
+                                case 'fourbet_bluff_mid':
+                                    b=20; f=80; c=0;
+                                    logic='Blocker 牌（'+handStr+'），中浅码（'+effStack+'BB）纳什极化全推 20%，主弃牌 80%（防人类池缺少 3-Bet 诈唬）。';
+                                    postSizing='All-in '+effStack+'BB';
+                                    break;
+                                case 'fourbet_bluff_short':
+                                    f=100; b=0; c=0;
+                                    logic='筹码过浅（'+effStack+'BB），Blocker 牌 4-Bet = 全下，对抗 3-Bet 范围胜率不足，弃牌。';
+                                    break;
+                                case 'call':
+                                    c=100; b=0; f=0;
+                                    logic = ['AA','KK','QQ','AKs','AKo'].includes(handStr) && mptF3bSet(posH, posV, effStack)
+                                        ? `${handStr} 面对 3-Bet **跟注而非全下**（MPT 实测）：全下只会赶走对手的诈唬段、` +
+                                          `留下打得过我们的那部分；跟注把他整个 3-Bet 范围留在池里，翻后再拿钱。`
+                                        : (effStack >= 80 ? '中等牌力，深码平跟控池，翻牌后根据牌面决策。' : '中等牌力平跟，翻牌后根据牌面与 SPR 决策。');
+                                    break;
+                                case 'call_shallow':
+                                    b=30; f=70; c=0;
+                                    logic='筹码较浅（'+effStack+'BB），不建议平跟（SPR过低套牢风险），30% 推全下，70% 弃牌。';
+                                    postSizing='All-in '+effStack+'BB';
+                                    break;
+                                case 'fold':
+                                default:
+                                    f=100; b=0; c=0;
+                                    logic='不在防守范围，弃牌。';
+                                    break;
+                            }
                         }
-                        // 审计修复#5(2026-09-08)：跟注前过价格闸门 —— 3-Bet 越大，跟注所需胜率越高。
-                        // 留 3 点容差给隐含赔率/翻后位置优势；差距超过它就把跟注改为弃牌。
+                        // 审计修复#5(2026-09-08 & v3.13): 面对 3-Bet 的双重安全闸门
+                        // 闸门 1: 暗三投机（Set-Mining）隐含赔率硬拦截 (Rule of 10-15)
+                        // 闸门 2: 价格与权益实现率核算 (Eq × EqR ≥ 所需胜率)
                         if (c > 0) {
-                            const pr = threeBetCallPrice([heroCard1, heroCard2], posV, posH, raiseSize, threeBetSize, 0, effStack);
-                            // 判据换成 **Eq × EqR ≥ 所需胜率**（2026-09-09）：
-                            // 原来是"裸胜率 ≥ 所需 − 3"，那 3 点没有出处，且方向是放宽
-                            //（等于假设权益实现率 >100%，不可能成立）。
-                            // 查不到 EqR 时才回落到旧判据。
-                            // 噪声带内不让随机数替用户做决定（沿用接全下那条既有规矩）：
-                            // 实现后胜率与所需胜率的差落在 MC 的 95% 置信区间内时，
-                            // 判据不翻转——实测 KJs 同一局面两次运行 39.2 / 39.3，
-                            // 正好骑在门槛上，不设这道闸就会一次跟一次弃。
-                            const _moe = pr ? 1.96 * Math.sqrt(Math.max(0.01, pr.eq / 100 * (1 - pr.eq / 100)) / 6000) * 100 : 0;
-                            const _real = pr && pr.eqr != null ? pr.eq * pr.eqr / 100 : (pr ? pr.eq : 0);
-                            const _bad = pr && (pr.eqr != null
-                                ? _real < pr.req - _moe
-                                : pr.eq < pr.req - 3);
-                            const _edge = pr && !_bad && Math.abs(_real - pr.req) <= _moe;
-                            if (_bad) {
-                                logic = `面对 ${threeBetSize}BB 3-Bet 需补 ${pr.toCall.toFixed(1)}BB，所需胜率 ${pr.req.toFixed(1)}%，` +
-                                        `${handStr} 对 ${POS_LABEL[posV]} 的 3-Bet 范围有 ${pr.eq.toFixed(1)}%` +
-                                        (pr.eqr != null
-                                          ? `，但<b>只能兑现其中的 ${pr.eqr.toFixed(0)}%</b>（实际到手 ` +
-                                            `${(pr.eq * pr.eqr / 100).toFixed(1)}% < 所需 ${pr.req.toFixed(1)}%）—— 弃牌。` +
-                                            `<br><span class="text-xs text-gray-400">权益实现率取自 MPT 热图（PioSolver），` +
-                                            `并按跟注后 SPR 向 100% 修正（池子越浅越接近全部兑现）。</span>`
-                                          : ` —— 价格不划算，弃牌。`);
-                                f = 100; c = 0; b = 0; postSizing = '';
-                            } else if (pr) {
-                                logic += pr.eqr != null
-                                    ? `（价格核对：需 ${pr.req.toFixed(1)}%，裸胜率 ${pr.eq.toFixed(1)}% × 实现率 ` +
-                                      `${pr.eqr.toFixed(0)}% = ${_real.toFixed(1)}%` +
-                                      (_edge ? `　<b>边缘</b>：差距已在计算精度（±${_moe.toFixed(1)}点）之内，跟/弃都可辩护` : '') + `）`
-                                    : `（价格核对：需 ${pr.req.toFixed(1)}%，实有 ${pr.eq.toFixed(1)}%）`;
+                            const isPocketPair = handStr.length === 2 && handStr[0] === handStr[1];
+                            const isSpeculativeBabyPair = isPocketPair && ['22', '33', '44', '55', '66'].includes(handStr);
+                            const isMediumPair = isPocketPair && ['77', '88', '99', 'TT'].includes(handStr);
+
+                            const inPotCount = (typeof tlState === 'function') ? (tlState().inPot || []).length : 2;
+                            const isMultiway3B = inPotCount >= 3;
+
+                            // 单一事实源 (P1-1 闭环)：从时间线真实投入额或当前开池尺度获取 Hero 已付注额
+                            let actualHeroPaid = (typeof getOpenSizeBB === 'function') ? getOpenSizeBB() : 2.2;
+                            if (typeof tlState === 'function') {
+                                const _ts = tlState();
+                                if (_ts && _ts.committed && typeof _ts.committed[posH] === 'number' && _ts.committed[posH] > 0) {
+                                    actualHeroPaid = _ts.committed[posH];
+                                } else if (elRaise && elRaise.value) {
+                                    actualHeroPaid = parseFloat(elRaise.value);
+                                }
+                            } else if (elRaise && elRaise.value) {
+                                actualHeroPaid = parseFloat(elRaise.value);
+                            }
+
+                            const toCallAmt = Math.max(0.1, threeBetSize - actualHeroPaid);
+                            const leftStack = Math.max(0, effStack - threeBetSize);
+                            const impliedRatio = toCallAmt > 0 ? (leftStack / toCallAmt) : 0;
+                            // 阈值缓冲带 (P1-1 & P1-B 闭环)：
+                            // 单挑时：77-TT (中成手对，兼具摊牌价值与在位可打性) 需 5.5 倍；
+                            // 44-66 (具备暗三潜力，面对 6.6BB 实测 7.59 倍处于合理跟注区) 需 7.0 倍；
+                            // 22-33 (极小纯投机对，不中暗三胜率不足 15%) 需 8.0 倍；多人池需 8.5~12.0 倍
+                            const minRequiredRatio = isMultiway3B 
+                                ? (isMediumPair ? 8.5 : 12.0) 
+                                : (isMediumPair ? 5.5 : (['44', '55', '66'].includes(handStr) ? 7.0 : 8.0));
+
+                            // 收集桌面除 Hero 与 3-Bet 者以外的第三方死钱
+                            let extraDeadPot = 0;
+                            if (typeof tlState === 'function') {
+                                const _st = tlState();
+                                Object.keys(_st.committed || {}).forEach(p => {
+                                    if (p !== posH && p !== posV) extraDeadPot += (_st.committed[p] || 0);
+                                });
+                            }
+
+                            // 拦截契约 (P1-B & P1-NEW 闭环)：
+                            // 闸门 1 专属于对子暗三投机拦截 (Set-Mining Rule of 10-15)，绝对限定于投机对 (22-66) 或超大尺度/多人池下的中对 (77-TT)；
+                            // 绝不误伤 KK/QQ/AK 等顶级价值推进段；且拦截仅清零跟注段 c，保留主动价值推进段 b
+                            const isOverlargeOrMultiway = (threeBetSize >= 8.5 || isMultiway3B);
+                            const isPairEligible = isSpeculativeBabyPair || (isMediumPair && isOverlargeOrMultiway);
+                            const shouldIntercept = isPairEligible && impliedRatio < minRequiredRatio;
+                            if (shouldIntercept) {
+                                f = Math.max(0, 100 - b); c = 0;
+                                if (b === 0) postSizing = '';
+                                const projectedPot = (threeBetSize * (isMultiway3B ? Math.max(inPotCount, 3) : 2)) + extraDeadPot;
+                                const sprAfter = projectedPot > 0 ? (leftStack / projectedPot).toFixed(1) : '0.7';
+                                logic = `面对 ${threeBetSize}BB 3-Bet 需补 ${toCallAmt.toFixed(1)}BB，剩余有效筹码仅 ${leftStack.toFixed(1)}BB ` +
+                                        `（仅 <b>${impliedRatio.toFixed(1)}倍</b>跟注额，远低于挖暗三所需的 ${minRequiredRatio.toFixed(1)} 倍隐含赔率安全线）；` +
+                                        `${isMultiway3B ? `在池 ${inPotCount} 人且` : ''}翻后预计 SPR 仅 ~${sprAfter} 面临直接套牢，不中暗三将被迫弃牌，期望严重为负 —— <b>坚决弃牌</b>。`;
+                            } else if (!gto3bVec) {
+                                const pr = threeBetCallPrice([heroCard1, heroCard2], posV, posH, raiseSize, threeBetSize, extraDeadPot, effStack);
+                                if (pr && isMultiway3B && pr.eqr != null) {
+                                    // 多人 3-Bet 底池权益实现率折损
+                                    const mwDiscount = inPotCount >= 4 ? 0.60 : 0.75;
+                                    pr.eqr = Math.round(pr.eqr * mwDiscount);
+                                }
+                                const _moe = pr ? 1.96 * Math.sqrt(Math.max(0.01, pr.eq / 100 * (1 - pr.eq / 100)) / 6000) * 100 : 0;
+                                const _real = pr && pr.eqr != null ? pr.eq * pr.eqr / 100 : (pr ? pr.eq : 0);
+                                const _bad = pr && (pr.eqr != null
+                                    ? _real < pr.req - _moe
+                                    : pr.eq < pr.req - 3);
+                                const _edge = pr && !_bad && Math.abs(_real - pr.req) <= _moe;
+                                if (_bad) {
+                                    logic = `面对 ${threeBetSize}BB 3-Bet 需补 ${pr.toCall.toFixed(1)}BB，所需胜率 ${pr.req.toFixed(1)}%，` +
+                                            `${handStr} 对 ${POS_LABEL[posV]} 的 3-Bet 范围有 ${pr.eq.toFixed(1)}%` +
+                                            (pr.eqr != null
+                                              ? `，但<b>只能兑现其中的 ${pr.eqr.toFixed(0)}%</b>（实际到手 ` +
+                                                `${(pr.eq * pr.eqr / 100).toFixed(1)}% < 所需 ${pr.req.toFixed(1)}%）—— 弃牌。` +
+                                                `<br><span class="text-xs text-gray-400">权益实现率取自 MPT 热图（PioSolver），` +
+                                                `并按跟注后 SPR 向 100% 修正${isMultiway3B ? '（已计入多人底池折损）' : ''}。</span>`
+                                              : ` —— 价格不划算，弃牌。`);
+                                    f = 100; c = 0; b = 0; postSizing = '';
+                                } else if (pr) {
+                                    logic += pr.eqr != null
+                                        ? `（价格核对：需 ${pr.req.toFixed(1)}%，裸胜率 ${pr.eq.toFixed(1)}% × 实现率 ` +
+                                          `${pr.eqr.toFixed(0)}% = ${_real.toFixed(1)}%` +
+                                          (_edge ? `　<b>边缘</b>：差距已在计算精度（±${_moe.toFixed(1)}点）之内，跟/弃都可辩护` : '') + `）`
+                                        : `（价格核对：需 ${pr.req.toFixed(1)}%，实有 ${pr.eq.toFixed(1)}%）`;
+                                }
                             }
                         }
                         // ICM 修正：泡沫期/决赛桌收紧 bluff 频率
@@ -9973,13 +10285,20 @@
                 } else if (rejamChosen && b >= 35) {
                     verdict = '🟡 Re-Jam 混合（35% 全推）';
                 }
-                // 面对 3-Bet 的实测全下段（2026-09-09）：措辞要说"全下"而不是"4-Bet"，
-                // 25-40BB 的 4-Bet 本来就 ≥85% 筹码，写 4-Bet 会让人以为还能弃
-                if (currentMode === 'face3b' && /All-in/.test(postSizing || '')) {
-                    if (b >= 50)      { verdict = '🔥 全下 (4-Bet All-in)'; color = 'green'; }
-                    else if (b > 0)   { // 另一头是跟注还是弃牌，看哪个频率非零（ICM 抑制后是弃牌）
-                                        verdict = `🟡 混合：${b}% 全下 / ${c > 0 ? `${c}% 跟注` : `${f}% 弃牌`}`;
-                                        color = 'yellow'; }
+                // 面对 3-Bet 动作标签自洽 (P2-4 闭环)：精准区分非全下 4-Bet 与 All-in
+                if (currentMode === 'face3b') {
+                    const isAllin = /All-in/.test(postSizing || '');
+                    const actName = isAllin ? "全下" : "4-Bet";
+                    if (b >= 50) {
+                        verdict = isAllin ? '🔥 全下 (4-Bet All-in)' : '🔴 4-Bet 推进';
+                        color = 'green';
+                    } else if (b > 0 && c > 0) {
+                        verdict = `🟡 混合：${b}% ${actName} / ${c}% 跟注`;
+                        color = 'yellow';
+                    } else if (b > 0) {
+                        verdict = `🟡 混合：${b}% ${actName} / ${f}% 弃牌`;
+                        color = 'yellow';
+                    }
                 }
 
                 // 解算器语义色：green(3/4-Bet)=进攻红 / yellow(混合)=琥珀 / red(Fold)=灰蓝
@@ -10125,10 +10444,9 @@
                             (effStack < 35 && effStack >= 25 && ['TT', '99', 'AJs', 'KQs', 'QJs'].includes(handStr))
                         );
 
-                        // 3. CO 关煞位平跟：严禁浅筹码（<=35BB）投机平跟！
-                        // CO 身后有 BTN、SB、BB 3位玩家，浅码平跟属于送死行为；仅深筹码（>=45BB）且具备充足暗三条/坚果同花潜在赔率（>=20x）时才允许极紧平跟
-                        const coCanFlat = isCO && effStack >= 45 && isCheapPrice && isStandardOpen && !isExtremeIcm && (
-                            ['MidPair'].includes(cat) || ['88', '77', '66', 'AQs', 'KQs'].includes(handStr)
+                        // 3. CO/HJ/LJ/MP 关煞与中位平跟：
+                        const midCanFlat = (isCO || ['HJ', 'LJ', 'MP'].includes(posH)) && effStack >= 35 && isCheapPrice && isStandardOpen && !isExtremeIcm && (
+                            ['MidPair'].includes(cat) || ['TT', '99', '88', '77', '66', 'AQs', 'KQs'].includes(handStr)
                         );
 
                         // 4. SB 深度平跟：深筹码 (>=40BB) 且为中等口袋对/强同花连张
@@ -10150,9 +10468,9 @@
                             c = 100; f = 0; sq = 0;
                             logic = `<b>按钮位绝对位置平跟控池 (Call BTN)</b>：BTN 位拥有翻后绝对位置优势，底池已有跟注者封顶（Capped）。` +
                                     `${handStr} 翻后可玩性与位置实现率良好，跟注 ${callCost.toFixed(1)}BB 平跟控池。`;
-                        } else if (coCanFlat) {
+                        } else if (midCanFlat) {
                             c = 100; f = 0; sq = 0;
-                            logic = `<b>深筹码关煞位平跟 (Call CO)</b>：有效筹码充裕（${effStack}BB），${handStr} 具备充足潜在赔率（买暗三条/强成牌）。` +
+                            logic = `<b>中后位投机平跟 (Call ${posH})</b>：有效筹码充裕（${effStack}BB），${handStr} 具备充足潜在赔率（买暗三条/强成牌）。` +
                                     `跟注 ${callCost.toFixed(1)}BB 平跟控池，未击中强牌果断控池止损。`;
                         } else if (sbCanFlat) {
                             c = 100; f = 0; sq = 0;
@@ -10279,8 +10597,15 @@
                     logic = `AK 面对 3-Bet 价值 4-Bet，值博率最大。`;
                 }
                 else if (isPair && v1 >= 10) {
-                    c = 60; b = 0; f = 40;
-                    logic = `${handStr} 是标准 Cold Call 牌（买 Set，翻后中对以上可玩），60% 跟注 / 40% 弃牌。`;
+                    // TT/JJ 在中前位面对早位 Open + 3-Bet，夹在双方极强范围之间，GTO 严格解为弃牌
+                    const isLatePos = ['BTN', 'CO'].includes(posH);
+                    if (isLatePos && effStack >= 50) {
+                        c = 40; b = 0; f = 60;
+                        logic = `${handStr} 在后位 (${posH}) 面对 3-Bet，深筹码具备一定位置与翻后买 Set 潜力，40% 平跟 / 60% 弃牌。`;
+                    } else {
+                        c = 0; b = 0; f = 100;
+                        logic = `${handStr} 处于前中位 (${posH})，夹在开池者与 3-Bet 者之间遭受极强夹心挤压，反向潜在赔率恶劣，果断弃牌。`;
+                    }
                 }
                 // 冷 4-Bet 改为按实算胜率判定(2026-09-08，用户实测质疑)：
                 // 原来按牌型硬给"4-Bet 50% / 弃牌 50%"。实算：AQo 对 LJ_vs_UTG1 的 3-Bet 范围
@@ -10427,7 +10752,6 @@
                     (f>0?`<span class="text-gray-400">Fold ${f}%</span>`:'');
                 document.getElementById('resultPanel').classList.remove('invisible');
                 updateCfgSummary();
-                return;
             }
 
             // ============================================================
@@ -10780,6 +11104,8 @@
                     let seq = 'vs_RFI';
                     if (currentMode === 'open') seq = 'RFI';
                     else if (currentMode === 'squeeze') seq = 'SQUEEZE';
+                    else if (currentMode === 'face3b') seq = 'vs_3BET';
+                    else if (currentMode === 'coldCall') seq = 'COLD_4BET';
 
                     const matrixVec = queryGtoPreflop(posH, posV, eff, handStr, seq);
                     const vEl = document.getElementById('actionVerdict');
@@ -10793,7 +11119,8 @@
                     const isBlockedOrTerminal = !vText || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vText) || /超出原图覆盖|未按原图校准/.test(lgText);
                     const st = (typeof tlState === 'function') ? tlState() : null;
                     const isWaitingOpponent = st && !st.closed && st.nextToAct && st.nextToAct !== posH;
-                    const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal;
+                    const hasBlindMix = rp && !!rp.dataset.bbMix;
+                    const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal || hasBlindMix;
 
                     if (shouldSuppress) {
                         window._lastShadowComparison = null;
@@ -10815,10 +11142,99 @@
                         timestamp: Date.now()
                     };
 
-                    if (bEl && vVecEl && matrixVec) {
+                    if (matrixVec) {
                         const [fP, cP, rP, jP] = matrixVec;
-                        bEl.classList.remove('hidden');
-                        vVecEl.innerText = `[弃:${fP}% 跟:${cP}% 加:${rP}% 推:${jP}%]`;
+                        
+                        // ── v3.17 主裁决交割 (GTO Wizard 真解全面接管翻前主裁决) ──
+                        let dominantVerdict = '';
+                        let dominantColor = 'yellow';
+                        if (jP >= 50) {
+                            dominantVerdict = '🔴 全推 (All-in)';
+                            dominantColor = 'raise';
+                        } else if (rP >= 50) {
+                            const szStr = matrixVec.sizing ? ` ${matrixVec.sizing}BB` : '';
+                            dominantVerdict = `🔴 加注 (${szStr.trim() || 'Raise'})`;
+                            dominantColor = 'raise';
+                        } else if (cP >= 50) {
+                            dominantVerdict = (currentMode === 'squeeze' && posH === 'BB') ? '🟢 平跟 (Overcall)' : '🟢 平跟 (Call)';
+                            dominantColor = 'call';
+                        } else if (fP >= 70) {
+                            dominantVerdict = '⚪ 弃牌 (Fold)';
+                            dominantColor = 'fold';
+                        } else {
+                            dominantVerdict = `🟡 混合 [弃${fP}% 跟${cP}% 加${rP}% 推${jP}%]`;
+                            dominantColor = 'yellow';
+                        }
+
+                        if (vEl) {
+                            vEl.innerText = dominantVerdict;
+                            const box = document.getElementById('actionCard');
+                            if (box) {
+                                box.style.borderColor = dominantColor==='raise'?'#e5484d':dominantColor==='call'?'#2ea86a':dominantColor==='fold'?'#5c667f':'#e0a83a';
+                                box.style.backgroundColor = dominantColor==='raise'?'rgba(214,57,64,0.1)':dominantColor==='call'?'rgba(46,168,106,0.1)':dominantColor==='fold'?'rgba(92,102,127,0.12)':'rgba(224,168,58,0.1)';
+                            }
+                        }
+
+                        // ── 频率条与标签全面交割 GTO 真实解 ──
+                        const fBar = document.getElementById('freqBar');
+                        const fLab = document.getElementById('freqLabels');
+                        if (fBar) {
+                            fBar.innerHTML =
+                                (cP > 0 ? `<div class="freq-fill bg-call" style="width:${cP}%">${cP}%</div>` : '') +
+                                (rP > 0 ? `<div class="freq-fill bg-raise" style="width:${rP}%">${rP}%</div>` : '') +
+                                (jP > 0 ? `<div class="freq-fill bg-raise" style="background:#e5484d;width:${jP}%">${jP}%</div>` : '') +
+                                (fP > 0 ? `<div class="freq-fill bg-fold" style="width:${fP}%">${fP}%</div>` : '');
+                        }
+                        if (fLab) {
+                            fLab.innerHTML =
+                                (cP > 0 ? `<span class="text-green-400">Call ${cP}%</span> ` : '') +
+                                (rP > 0 ? `<span class="text-yellow-400">Raise ${rP}%</span> ` : '') +
+                                (jP > 0 ? `<span class="text-red-400">Jam ${jP}%</span> ` : '') +
+                                (fP > 0 ? `<span class="text-gray-400">Fold ${fP}%</span>` : '');
+                        }
+
+                        // ── 维度二：推荐引擎与官方微尺寸对接 ──
+                        if (szEl && matrixVec.sizing) {
+                            szEl.innerHTML = `<span style="color:#60a5fa;font-weight:700;">GTO解算推荐尺寸: ${matrixVec.sizing} BB</span>`;
+                        }
+
+                        // ── 维度三：AI 教练 EV 损失量化自然语言说理 ──
+                        let evData = null;
+                        if (typeof window.queryGtoEv === 'function') {
+                            evData = window.queryGtoEv(posH, posV, eff, handStr, seq);
+                        }
+
+                        if (lgEl && evData && typeof evData.bestEv === 'number') {
+                            const sign = evData.bestEv >= 0 ? '+' : '';
+                            const lossHtml = (evData.loss && evData.loss > 0.001)
+                                ? `<div style="color:#fca5a5;margin-top:4px;"><b>⚠️ 失误惩罚 (EV Loss)</b>: 若偏离最优动作，单手预期亏损 <span style="color:#ef4444;font-weight:800;">-${evData.loss.toFixed(3)} BB</span></div>`
+                                : `<div style="color:#86efac;margin-top:4px;"><b>✅ 最优博弈平衡</b>: 当前处于解算器最高收益分支，无预期失误损失。</div>`;
+                            
+                            const coachBanner = `
+                            <div style="background:rgba(30,58,138,0.25);border:1px solid rgba(96,165,250,0.35);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:12px;line-height:1.5;">
+                              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                                <span style="color:#93c5fd;font-weight:700;">🤖 AI 教练 EV 损失量化说理 · GTO Wizard 官方真解 (${eff}BB ${posH})</span>
+                                <span style="font-size:10px;color:#bfdbfe;background:rgba(59,130,246,0.25);border:1px solid rgba(59,130,246,0.4);border-radius:3px;padding:1px 4px;">真解直驱</span>
+                              </div>
+                              <div style="color:#fde047;"><b>最优动作推荐</b>: <span style="font-weight:800;">${evData.bestAction}</span> (预期 EV: ${sign}${evData.bestEv} BB)</div>
+                              <div style="color:#94a3b8;font-size:11px;">四动作期望收益: 弃 0.00BB · 跟 ${evData.ev_c}BB · 加 ${evData.ev_r}BB · 推 ${evData.ev_j}BB</div>
+                              ${lossHtml}
+                            </div>`;
+                            
+                            lgEl.innerHTML = coachBanner + (lgText ? `<div style="color:var(--text-muted);font-size:11px;margin-top:4px;">${lgText}</div>` : '');
+                        }
+
+                        if (bEl && vVecEl) {
+                            bEl.classList.remove('hidden');
+                            let txt = `[弃:${fP}% 跟:${cP}% 加:${rP}% 推:${jP}%]`;
+                            if (matrixVec.sizing) txt += ` · 尺寸:${matrixVec.sizing}BB`;
+                            if (evData && typeof evData.bestEv === 'number') {
+                                const sign = evData.bestEv >= 0 ? '+' : '';
+                                txt += ` · 最优:${evData.bestAction}(${sign}${evData.bestEv}BB)`;
+                            }
+                            vVecEl.innerText = txt;
+                        }
+                        try { updateDecisionHUD(); } catch (e) {}
                     } else if (bEl) {
                         bEl.classList.add('hidden');
                     }
@@ -10827,6 +11243,8 @@
                 console.warn('[SHADOW_MODE_PROBE_ERROR]', err);
             }
         }
+        window.executeEngine = executeEngine;
+        window.calculateAction = executeEngine;
 
         // ============================================================
         // 全局输入框交互：单击即选中全部内容，方便直接覆盖输入
@@ -11062,11 +11480,32 @@
                         const vPos = _tl.contenders.includes(villPos) ? villPos
                                    : (_tl.contenders.find(x => x !== heroPos) || villPos);
                         const vCommit = _tl.committed[vPos] || myCommit;
-                        const pPotX = _tl.pot + getAnteBB();      // 盲注已在流水里，ante 另计
+                        const pPotX = _tl.pot;      // TASK-POT-045: 盲注与前注已由 tlState() 权威统一计入
                         postState.potTracker.preflopPot = pPotX;
                         postState.potTracker.currentPot = pPotX;
                         postState.potTracker.effStackBase = Math.max(0,
                             Math.min(globalHeroStack - myCommit, globalVillainStack - vCommit));
+                        postState.potTracker.effBaseStreet = 0;
+                        postState.potTracker.effStack = postState.potTracker.effStackBase;
+                        postState.potTracker.spr = pPotX > 0 ? postState.potTracker.effStack / pPotX : 0;
+                        postState.potTracker.actions = [];
+                        updatePotUI();
+                        return;
+                    }
+                    // v3.13 预期投影模式 (Projected Pot): 当轮到 Hero 面临跟注决策时 (如面对 3-Bet / 4-Bet / 冷跟)
+                    // 翻后底池与有效筹码按假定 Hero 跟注继续进行预期记账，避免退化为单开池 6.3BB / SPR 6.0 假象
+                    const curBet = _tl.curBet || 0;
+                    const heroCom = _tl.committed[heroPos] || 0;
+                    if (curBet > heroCom && _tl.contenders.length >= 1) {
+                        const needCall = curBet - heroCom;
+                        const pPotX = _tl.pot + needCall; // TASK-POT-045: 包含原底池(含Ante) + 预期跟注补额
+                        const vPos = _tl.contenders.includes(villPos) ? villPos
+                                   : (_tl.contenders.find(x => x !== heroPos) || villPos);
+                        const vCommit = _tl.committed[vPos] || curBet;
+                        postState.potTracker.preflopPot = pPotX;
+                        postState.potTracker.currentPot = pPotX;
+                        postState.potTracker.effStackBase = Math.max(0,
+                            Math.min(globalHeroStack - curBet, globalVillainStack - vCommit));
                         postState.potTracker.effBaseStreet = 0;
                         postState.potTracker.effStack = postState.potTracker.effStackBase;
                         postState.potTracker.spr = pPotX > 0 ? postState.potTracker.effStack / pPotX : 0;
@@ -11080,7 +11519,20 @@
             let dead = getAnteBB();   // 2026-09-08：按实际 ante/BB，不再写死 1.0
             if (heroPos !== 'SB' && villPos !== 'SB') dead += 0.5;
             if (heroPos !== 'BB' && villPos !== 'BB') dead += 1.0;
-            const openAmt = getOpenSizeBB();   // 尺度可选(2026-09-08)
+
+            // Dimension 4: 翻前 GTO 官方微尺寸前置贯通至底池追踪器
+            let effSt = Math.min(globalHeroStack || 40, globalVillainStack || 40);
+            let gtoSizing = null;
+            if (typeof queryGtoPreflop === 'function') {
+                const probeH = typeof getHandStr === 'function' ? getHandStr() : 'AA';
+                const probeSeq = currentMode === 'open' ? 'RFI' : (currentMode === 'face3b' ? 'vs_3BET' : 'vs_RFI');
+                const v = queryGtoPreflop(heroPos, villPos, effSt, probeH, probeSeq);
+                if (v && typeof v.sizing === 'number' && v.sizing > 0) {
+                    gtoSizing = v.sizing;
+                }
+            }
+
+            const openAmt = (gtoSizing && currentMode === 'open') ? gtoSizing : getOpenSizeBB();   // 尺度可选(2026-09-08)，优先 GTO 官方尺寸
             const nCallers = (() => { const el = document.getElementById('limpCount'); const n = el ? parseInt(el.value) : 1; return n > 0 ? n : 1; })();
             let each = 0, extraDead = 0;
             if (currentMode === 'open') {
@@ -11117,9 +11569,10 @@
                 extraDead = globalRaiseSize * nCallers;  // 被挤走的跟注者投入
             } else if (currentMode === 'face3b') {
                 // 我的第二轮应对(2026-09-10)：我对这个 3-Bet 4-Bet 了 → 双方投入是我的 4-Bet 额
+                const eff3b = (gtoSizing && currentMode === 'face3b') ? gtoSizing : globalThreeBetSize;
                 each = (typeof tlHero !== 'undefined' && tlHero && tlHero.resp
                         && tlHero.resp.action === 'raise' && tlHero.resp.amount > 0)
-                    ? tlHero.resp.amount : globalThreeBetSize;
+                    ? tlHero.resp.amount : eff3b;
             } else if (currentMode === 'coldCall') {
                 each = globalThreeBetSize;
                 extraDead = openAmt;                     // 开池者弃牌留下的开池额
@@ -17077,20 +17530,20 @@
             const riverVillainCheck = riverActs.some(a => isTargetVAct(a) && a.action === 'check');
 
             // 1. 三桶进攻线 (Triple Barrel Node):
-            // 河牌街，Hero 翻牌下注、转牌下注，河牌对手未下注
-            const isTripleBarrelNode = (street === 'river' && flopHeroBets && turnHeroBets && !riverVillainBet);
+            // 河牌街，Hero 翻牌下注、转牌下注，对手全程被动（无加注），河牌对手未下注
+            const isTripleBarrelNode = (street === 'river' && flopHeroBets && turnHeroBets && !flopVillainBets && !turnVillainBets && !riverVillainBet);
 
             // 2. 翻牌 Check-Raise 后的转牌连贯线 (Post-XR Node):
             // 转牌街，Hero 翻牌执行过牌-加注(XR)，对手跟注后转牌未下注
             const isPostXRNode = (street === 'turn' && flopHeroXR && !turnVillainBets);
 
             // 3. 延时 C-Bet 后的河牌连贯线 (Delayed Barrel Node):
-            // 河牌街，翻牌双方过牌，Hero 转牌延时 C-Bet 被跟注，河牌对手未下注
-            const isDelayedBarrelNode = (street === 'river' && flopBothChecked && turnHeroBets && !riverVillainBet);
+            // 河牌街，翻牌双方过牌，Hero 转牌延时 C-Bet 被跟注（对手转牌未加注），河牌对手未下注
+            const isDelayedBarrelNode = (street === 'river' && flopBothChecked && turnHeroBets && !turnVillainBets && !riverVillainBet);
 
             // 4. 防守河牌探针下注线 (Facing River Probe Bet):
-            // 河牌街，Hero 翻牌下注、转牌过牌控池，河牌对手突然主动下注
-            const isFacingRiverProbe = (street === 'river' && flopHeroBets && turnHeroChecks && riverVillainBet);
+            // 河牌街，Hero 翻牌下注（对手翻牌未加注）、转牌过牌控池，河牌对手突然主动下注
+            const isFacingRiverProbe = (street === 'river' && flopHeroBets && !flopVillainBets && turnHeroChecks && riverVillainBet);
 
             // 5. 面对对手三桶极化防守 (Facing Triple Barrel):
             // 河牌街，对手翻牌下注、转牌下注、河牌再次下注
@@ -17182,6 +17635,32 @@
             try {
                 const ts = gameConfig.tableSize, st = gameConfig.stage, gt = gameConfig.gameType;
                 const mode = currentMode;
+
+                // Dimension 4: GTO Wizard 求解器真值前置贯通
+                if (typeof queryGtoPreflop === 'function') {
+                    if (mode === 'open' && heroPos !== 'BB') {
+                        const gtoOpen = ALL_169_HANDS.filter(h => {
+                            const v = queryGtoPreflop(heroPos, null, effStack, h, 'RFI');
+                            return v && (v[2] > 0 || v[3] > 0);
+                        });
+                        if (gtoOpen.length >= 10) return gtoOpen;
+                    }
+                    if (typeof tlHero !== 'undefined' && tlHero && tlHero.action === '3bet') {
+                        const gto3b = ALL_169_HANDS.filter(h => {
+                            const v = queryGtoPreflop(heroPos, villPos, effStack, h, 'vs_RFI');
+                            return v && (v[2] > 0 || v[3] > 0);
+                        });
+                        if (gto3b.length >= 8) return gto3b;
+                    }
+                    if (mode === 'faceBet' && (heroPos === 'BB' || heroPos === 'SB')) {
+                        const gtoCall = ALL_169_HANDS.filter(h => {
+                            const v = queryGtoPreflop(heroPos, villPos, effStack, h, 'vs_RFI');
+                            return v && v[1] > 0;
+                        });
+                        if (gtoCall.length >= 8) return gtoCall;
+                    }
+                }
+
                 if (mode === 'open' && heroPos !== 'BB') {
                     if (heroPos === 'SB' && typeof MPT_SB_BVB !== 'undefined') {
                         const N = MPT_SB_BVB[bvbTier(effStack)] || {};
@@ -18409,11 +18888,13 @@
                             primaryAction = 'BET'; sizing = sc.sizes.nut;
                             const freq = iHaveNutAdv ? 92 : 82;
                             frequencies = { bet: freq, check: 100 - freq };
-                            reasoning = `翻牌胜率${equity.toFixed(0)}%，${iHaveNutAdv ? '坚果优势，' : ''}${sc.sizes.nut} C-Bet 榨取`;
+                            reasoning = `翻牌胜率${equity.toFixed(0)}%，${iHaveNutAdv ? '💡 QuintAce 坚果优势极化：顶端绝对牌力密度占优，' : ''}${sc.sizes.nut} C-Bet 榨取`;
                         } else {
-                            primaryAction = 'BET'; sizing = sc.sizes.medium;
-                            frequencies = { bet: 65, check: 35 };
-                            reasoning = `翻牌胜率${equity.toFixed(0)}%，${iHaveRangeAdv ? '范围优势，' : ''}${sc.sizes.medium} C-Bet`;
+                            const isProbeRange = iHaveRangeAdv && !iHaveNutAdv;
+                            primaryAction = 'BET'; sizing = isProbeRange ? (sc.sizes.probe || '25% 底池') : sc.sizes.medium;
+                            const betFreq = isProbeRange ? 70 : 65;
+                            frequencies = { bet: betFreq, check: 100 - betFreq };
+                            reasoning = `翻牌胜率${equity.toFixed(0)}%，${isProbeRange ? '💡 QuintAce 范围优势解耦：全范围胜率占优但无绝对坚果垄断，采用 25%~33% 小注高频收割弃牌死钱并控池' : `${iHaveRangeAdv ? '范围优势，' : ''}${sc.sizes.medium} C-Bet`}`;
                         }
                         // 多人底池翻牌 C-Bet 频率封顶统一收口移至主动线末尾 (Qwen F-3)
                     } else if (outs >= sc.semiBluffOuts) {
@@ -19062,6 +19543,13 @@
                             exploitNote = isMultiway
                                 ? `对手极度厌恶弃牌，${isMonsterNut ? '绝强坚果牌坚决下注榨取' : '价值牌偏向下注榨取'}（多人池兼顾控池频率 ${betFreq}%）`
                                 : '对手极度厌恶弃牌，价值牌 100% 满额超池下注压榨，杜绝免费看牌';
+                        } else if (!isAir && equity >= 55 && equity < (sc.strongThresh || 68) && !isMultiway) {
+                            // QuintAce 启发：面对跟注站向下拓宽线性薄价值，采用 50%~60% 适中尺度连续榨取，绝不过大以免吓跑宽抓诈端
+                            primaryAction = 'BET';
+                            sizing = '55% 底池';
+                            frequencies = { bet: 85, check: 15 };
+                            exploitApplied = true;
+                            exploitNote = '💡 QuintAce 剥削：对手过跟率极高，向下拓宽中等薄价值下注(55%底池)，不打超池，高频(85%)榨取弱跟注死钱';
                         }
                     }
                 }
@@ -19154,6 +19642,24 @@
 
             if (isSurvival && vProfile && vProfile.id !== 'balanced') {
                 warnings.push('🛡️ ICM 风险硬屏障：规避淘汰姿态抑制激进高方差剥削，守卫筹码生命');
+            }
+
+            // ── QuintAce & Pokercode ICM 淘汰风控：高压赛段非坚果翻牌 C-Bet 频率防守性收敛 (P1 闭环) ──
+            if (!exploitApplied && street === 'flop' && (stage === 'bubble' || stage === 'final' || (icm313 && icm313.isICMStage)) && villainBet === 0 && primaryAction === 'BET') {
+                const _curBucket = (typeof heroMadeBucket === 'function') ? heroMadeBucket(postState.heroCards, (postState.board || []).filter(Boolean)) : '';
+                const isMonsterNut = _curBucket === '两对+' || equity >= 85;
+                if (!isMonsterNut && frequencies && typeof frequencies.bet === 'number' && frequencies.bet > 35) {
+                    const origBet = frequencies.bet;
+                    const scaledBet = Math.max(30, Math.round(origBet * 0.85));
+                    frequencies.bet = scaledBet;
+                    frequencies.check = 100 - scaledBet;
+                    if (scaledBet < 50 && primaryAction === 'BET') {
+                        primaryAction = 'CHECK';
+                        sizing = '';
+                    }
+                    const _stageText = stage === 'bubble' ? '泡沫期' : (stage === 'final' ? '决赛桌' : '高压ICM期');
+                    reasoning += `；🛡️ QuintAce ICM 淘汰风控：${_stageText}非极强牌 C-Bet 频率收缩 15%（${origBet}%→${scaledBet}%），防范遭遇反击套牢筹码生命`;
+                }
             }
 
             // ════════════════════════════════════════════════════════════
