@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.19 正式版 - 动态 ICM 风险溢价模型与 GTO Wizard 真实解算决策器</title>
+    <title>PokerCode v3.20 正式版 - 推荐引擎官方微尺寸全场景深度对接与非标尺寸自适应</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.19 正式版 高定黑曜石与 Liquid Glass 设计令牌 (动态 ICM 风险溢价模型与 GTO Wizard 真实解算决策器) ══
+            /* ══ PokerCode v3.20 正式版 高定黑曜石与 Liquid Glass 设计令牌 (推荐引擎官方微尺寸全场景深度对接与非标尺寸自适应) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1461,9 +1461,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.19 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.20 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.19</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.20</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1485,7 +1485,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.19 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.20 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -6115,7 +6115,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.19',
+                    v: 'v3.20',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -6134,7 +6134,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -6208,7 +6208,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.19 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.20 正式版';
             renderWindowColorChips(key);
         };
 
@@ -7635,16 +7635,30 @@
             const stack = (pos === globalPosHero ? globalHeroStack : globalVillainStack) || 40;
             let dflt;
             if (st.raises.length === 0) {
-                dflt = openAmt;
+                let sGto = null;
+                if (typeof window.getGtoSizing === 'function') {
+                    const si = window.getGtoSizing(pos, null, stack, 'RFI');
+                    if (si && si.sizing) sGto = si.sizing;
+                }
+                dflt = sGto || openAmt;
             } else if (st.raises.length === 1) {
-                // 3-Bet：面对单次开池，关联系统建议尺度（IP ~3x / OOP ~4x + Caller挤压死钱）
+                // 3-Bet：面对单次开池，关联 GTO 微尺寸或系统建议尺度（IP ~3x / OOP ~4x + Caller挤压死钱）
                 const openerPos = st.raises[0].pos;
-                const isIP = openerPos ? ((POSTFLOP_ORDER[pos] || 0) > (POSTFLOP_ORDER[openerPos] || 0)) : true;
-                const mult = getTbMult(isIP);
-                let suggAmt = st.curBet * mult;
                 const callers = st.seats.filter(s => s !== openerPos && s !== pos && tlActsOf(s).some(a => a.a === 'call'));
-                if (callers.length > 0) suggAmt += callers.length * st.curBet;
-                suggAmt = Math.round(suggAmt * 10) / 10;
+                let sGto = null;
+                if (typeof window.getGtoSizing === 'function') {
+                    const seq = callers.length > 0 ? 'SQUEEZE' : 'vs_RFI';
+                    const si = window.getGtoSizing(pos, openerPos, stack, seq, st.curBet, callers.length);
+                    if (si && si.sizing) sGto = si.sizing;
+                }
+                let suggAmt = sGto;
+                if (!suggAmt) {
+                    const isIP = openerPos ? ((POSTFLOP_ORDER[pos] || 0) > (POSTFLOP_ORDER[openerPos] || 0)) : true;
+                    const mult = getTbMult(isIP);
+                    suggAmt = st.curBet * mult;
+                    if (callers.length > 0) suggAmt += callers.length * st.curBet;
+                    suggAmt = Math.round(suggAmt * 10) / 10;
+                }
                 // 时间线录入层解耦（GPT-6-Astra 裁决）：
                 // 时间线用于客观记录牌桌物理动作，绝不能因策略建议全下而篡夺“常规加注（Raise）”档位！
                 // 只要筹码大于最小加注，默认值就必须是合法的非全下数值（< stack），保证 Raise 与 All-in 双通道独立并存。
@@ -7655,7 +7669,12 @@
                     dflt = stack;
                 }
             } else {
-                const suggAmt = Math.round(st.curBet * 2.2 * 2) / 2;
+                let sGto = null;
+                if (typeof window.getGtoSizing === 'function') {
+                    const si = window.getGtoSizing(pos, st.raises[0].pos, stack, 'vs_3BET', st.curBet);
+                    if (si && si.sizing) sGto = si.sizing;
+                }
+                const suggAmt = sGto || (Math.round(st.curBet * 2.2 * 2) / 2);
                 if (stack > minRaise) {
                     const maxNonAllIn = Math.max(minRaise, Math.floor((stack - 0.5) * 2) / 2);
                     dflt = Math.max(minRaise, Math.min(maxNonAllIn, suggAmt));
@@ -8199,7 +8218,19 @@
             const H = globalPosHero, V = globalPosVillain, C = globalPosCaller;
             const openAmt = tlOpenDefault();
             let acts = [];
-            if (m === 'faceBet')       acts = [{ pos: V, a: 'raise', amt: globalRaiseSize }];
+            if (m === 'faceBet') {
+                acts = [{ pos: V, a: 'raise', amt: globalRaiseSize }];
+                const seats = tlSeatOrder();
+                const iV = seats.indexOf(V);
+                const iH = seats.indexOf(H);
+                if (iV >= 0 && iH >= 0) {
+                    let curr = (iV + 1) % seats.length;
+                    while (curr !== iH && curr !== iV) {
+                        acts.push({ pos: seats[curr], a: 'fold' });
+                        curr = (curr + 1) % seats.length;
+                    }
+                }
+            }
             else if (m === 'squeeze')  acts = [{ pos: V, a: 'raise', amt: globalRaiseSize }, { pos: C, a: 'call', amt: 0 }];
             else if (m === 'face3b')   acts = [{ pos: H, a: 'raise', amt: openAmt }, { pos: V, a: 'raise', amt: globalThreeBetSize }];
             else if (m === 'face4b')   acts = [{ pos: V, a: 'raise', amt: globalRaiseSize },
@@ -8851,7 +8882,199 @@
             return floors;
         }
 
-        window.queryGtoPreflop = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI') {
+        // ==========================================================================
+        // 推荐引擎官方微尺寸全场景深度对接与非标尺寸自适应 (v5.0 / Stage 3 v3.20)
+        // 涵盖: 613 官方节点真解优先、全深度/全位置几何微尺寸推导、非标开池底池赔率几何级数反击与频率补偿
+        // ==========================================================================
+        window.getGtoSizing = function(heroPos, vsPos, effStack, actionSeq = 'vs_RFI', facingBet = null, callersCount = 0, is6Max = false) {
+            if (typeof effStack !== 'number' || isNaN(effStack) || effStack <= 0) return null;
+            let effHeroPos = heroPos || 'CO';
+            let effVsPos = vsPos || 'UTG';
+            if (is6Max) {
+                if (actionSeq === 'RFI') {
+                    if (heroPos === 'UTG') effHeroPos = 'LJ';
+                    else if (heroPos === 'MP') effHeroPos = 'HJ';
+                } else if (actionSeq === 'vs_RFI') {
+                    if (vsPos === 'UTG') effVsPos = 'LJ';
+                    else if (vsPos === 'MP') effVsPos = 'HJ';
+                    if (heroPos === 'UTG') effHeroPos = 'LJ';
+                    else if (heroPos === 'MP') effHeroPos = 'HJ';
+                }
+            }
+
+            let seqKey = actionSeq;
+            if (actionSeq === 'vs_RFI') seqKey = `vs_${effVsPos}_RFI`;
+            else if (actionSeq === 'vs_3BET' || actionSeq === 'vs_3Bet') seqKey = `vs_${effVsPos}_3BET`;
+
+            const depths = [8, 10, 12, 15, 20, 25, 30, 35, 40, 60];
+            let loDepth = 8, hiDepth = 60;
+            for (let i = 0; i < depths.length; i++) {
+                if (depths[i] <= effStack) loDepth = depths[i];
+                if (depths[i] >= effStack) { hiDepth = depths[i]; break; }
+            }
+
+            const matrix = window.PREFLOP_GTO_MATRIX;
+            let baselineSizing = null;
+
+            // 1. 优先查表 matrix.sizings 获取 GTO Wizard 解算真值
+            if (matrix && matrix.sizings) {
+                const candidateKeys = [];
+                if (actionSeq === 'RFI') {
+                    if (is6Max) candidateKeys.push(`${loDepth}_${effHeroPos}_6M_RFI`);
+                    candidateKeys.push(`${loDepth}_${effHeroPos}_RFI`);
+                } else if (actionSeq === 'vs_RFI') {
+                    candidateKeys.push(`${loDepth}_${effHeroPos}_vs_${effVsPos}_RFI`);
+                } else if (actionSeq === 'SQUEEZE' || actionSeq.includes('SQUEEZE')) {
+                    candidateKeys.push(`${loDepth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`);
+                    candidateKeys.push(`${loDepth}_${effHeroPos}_SQUEEZE`);
+                } else if (actionSeq === 'vs_3BET' || actionSeq === 'vs_3Bet') {
+                    candidateKeys.push(`${loDepth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`);
+                    candidateKeys.push(`${loDepth}_${effHeroPos}_vs_${effVsPos}_3BET`);
+                } else if (actionSeq === 'COLD_4BET' || actionSeq === 'COLD_4Bet') {
+                    candidateKeys.push(`${loDepth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}`);
+                } else if (actionSeq === 'vs_4BET' || actionSeq === 'vs_4Bet') {
+                    candidateKeys.push(`${loDepth}_${effHeroPos}_FACING_4BET_vs_${effVsPos}`);
+                    candidateKeys.push(`${loDepth}_${effHeroPos}_vs_${effVsPos}_4BET`);
+                } else if (actionSeq === 'vs_LIMP') {
+                    candidateKeys.push(`${loDepth}_${effHeroPos}_vs_SB_LIMP`);
+                    candidateKeys.push(`${loDepth}_${effHeroPos}_vs_LIMP`);
+                }
+
+                for (const k of candidateKeys) {
+                    if (typeof matrix.sizings[k] === 'number') {
+                        baselineSizing = matrix.sizings[k] === 999 ? effStack : matrix.sizings[k];
+                        break;
+                    }
+                }
+
+                if (baselineSizing === null && loDepth !== hiDepth) {
+                    const hiCandidateKeys = candidateKeys.map(k => k.replace(new RegExp(`^${loDepth}_`), `${hiDepth}_`));
+                    for (const k of hiCandidateKeys) {
+                        if (typeof matrix.sizings[k] === 'number') {
+                            baselineSizing = matrix.sizings[k] === 999 ? effStack : matrix.sizings[k];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 2. 若当前节点未精确收录，启动 GTO Wizard 官方微尺寸几何推导中枢
+            if (typeof baselineSizing !== 'number') {
+                if (actionSeq === 'RFI') {
+                    if (effStack <= 15) {
+                        baselineSizing = 2.0;
+                    } else if (effHeroPos === 'SB') {
+                        baselineSizing = effStack >= 40 ? 3.0 : 2.5;
+                    } else if (effHeroPos === 'BTN') {
+                        baselineSizing = effStack >= 40 ? 2.2 : 2.1;
+                    } else if (effHeroPos === 'CO') {
+                        baselineSizing = 2.2;
+                    } else {
+                        baselineSizing = 2.0;
+                    }
+                } else if (actionSeq === 'vs_RFI') {
+                    const isIP = (effHeroPos === 'BTN' || (effHeroPos === 'CO' && effVsPos !== 'BTN') || (effHeroPos === 'HJ' && ['UTG', 'UTG1', 'LJ'].includes(effVsPos)));
+                    if (effStack <= 15) {
+                        baselineSizing = effStack; // ≤15BB 浅码直接触发全推
+                    } else if (effStack <= 25) {
+                        baselineSizing = isIP ? 5.5 : 7.5;
+                    } else {
+                        baselineSizing = isIP ? 6.5 : (effHeroPos === 'BB' ? 8.92 : 9.0);
+                    }
+                } else if (actionSeq === 'SQUEEZE' || actionSeq.includes('SQUEEZE')) {
+                    const isIP = effHeroPos === 'BTN' || effHeroPos === 'CO';
+                    const base = isIP ? 6.5 : (effHeroPos === 'BB' ? 10.0 : 9.0);
+                    baselineSizing = Number((base + (callersCount || 1) * (facingBet || 2.2)).toFixed(1));
+                } else if (actionSeq.includes('3BET') || actionSeq === 'vs_3BET') {
+                    if (effStack <= 25) {
+                        baselineSizing = effStack;
+                    } else {
+                        baselineSizing = (effHeroPos === 'BTN' || effHeroPos === 'CO') ? 18.0 : 21.0;
+                    }
+                } else if (actionSeq.includes('4BET') || actionSeq === 'COLD_4BET') {
+                    if (effStack <= 25) {
+                        baselineSizing = effStack;
+                    } else {
+                        baselineSizing = 20.0;
+                    }
+                } else {
+                    baselineSizing = 2.2;
+                }
+            }
+
+            // 3. 非标尺寸自适应 (Non-standard Sizing Adaptation & Pot Odds Scaling)
+            let adaptiveSizing = baselineSizing;
+            let isNonStandard = false;
+            let oddsDelta = 0;
+            let defendMult = 1.0;
+            const baseOpen = (actionSeq === 'RFI') ? baselineSizing : 2.2;
+
+            if (actionSeq === 'vs_RFI' && typeof facingBet === 'number' && facingBet > 0 && Math.abs(facingBet - baseOpen) > 0.1) {
+                isNonStandard = true;
+                const isIP = (effHeroPos === 'BTN' || (effHeroPos === 'CO' && effVsPos !== 'BTN') || (effHeroPos === 'HJ' && ['UTG', 'UTG1', 'LJ'].includes(effVsPos)));
+                const mult = isIP ? 3.0 : 4.0;
+                adaptiveSizing = Number((facingBet * mult + (callersCount || 0) * facingBet).toFixed(1));
+
+                // 筹码门槛截断：若加注额达有效筹码 55%，MTT 博弈论直接转化为全推 All-in Jam
+                if (adaptiveSizing >= 0.55 * effStack) {
+                    adaptiveSizing = effStack;
+                }
+
+                // 底池赔率恶化/改善与频率补偿测算
+                const pot0 = baseOpen + 1.5 + 1.0; // 基准底池（含盲注与前注）
+                const call0 = Math.max(0, baseOpen - (effHeroPos === 'BB' ? 1.0 : effHeroPos === 'SB' ? 0.5 : 0));
+                const odds0 = call0 / (pot0 + call0);
+
+                const potAct = facingBet + 1.5 + 1.0 + (callersCount || 0) * facingBet;
+                const callAct = Math.max(0, facingBet - (effHeroPos === 'BB' ? 1.0 : effHeroPos === 'SB' ? 0.5 : 0));
+                const oddsAct = callAct / (potAct + callAct);
+
+                oddsDelta = Number(((oddsAct - odds0) * 100).toFixed(1));
+                // 当赔率变差时 (oddsAct > odds0)，defendMult < 1.0 收紧；反之放宽
+                defendMult = Number(Math.max(0.60, Math.min(1.30, odds0 / oddsAct)).toFixed(2));
+            }
+
+            return {
+                baselineSizing: Number(baselineSizing.toFixed(1)),
+                sizing: Number(adaptiveSizing.toFixed(1)),
+                isNonStandard,
+                facingBet: typeof facingBet === 'number' ? facingBet : baseOpen,
+                baselineOpen: baseOpen,
+                oddsDelta,
+                defendMult
+            };
+        };
+
+        window.applyGtoSizing = function(sizingBB) {
+            if (!sizingBB || isNaN(sizingBB) || sizingBB <= 0) return;
+            const rounded = Number(sizingBB.toFixed(1));
+            const rInp = document.getElementById('raiseSize');
+            const tbInp = document.getElementById('threeBetSize');
+            const fbInp = document.getElementById('fourBetSize');
+            if (currentMode === 'face3b' && tbInp) {
+                tbInp.value = rounded;
+            } else if (currentMode === 'face4b' && fbInp) {
+                fbInp.value = rounded;
+            } else if (rInp) {
+                rInp.value = rounded;
+            }
+
+            const popAmt = document.getElementById('tlPopAmt');
+            if (popAmt) popAmt.value = rounded;
+
+            if (typeof executeEngine === 'function') {
+                executeEngine();
+            }
+
+            const toast = document.getElementById('sizingAppliedToast');
+            if (toast) {
+                toast.style.display = 'inline-block';
+                toast.textContent = `✓ 已应用 ${rounded}BB`;
+                setTimeout(() => { if (toast) toast.style.display = 'none'; }, 2000);
+            }
+        };
+
+        window.queryGtoPreflop = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI', facingBet = null, callersCount = 0) {
             if (typeof effStack !== 'number' || isNaN(effStack) || !Number.isFinite(effStack)) return null;
             if (typeof hand !== 'string' || !VALID_GTO_HAND_REGEX.test(hand.trim())) return null;
             const cleanHand = hand.trim();
@@ -8986,8 +9209,45 @@
                 }
             }
 
-            // Dimension 2: 绑定求解器精准尺寸 (Micro-Sizing)
-            if (resultVec && matrix.sizings) {
+            // Dimension 2: 绑定求解器精准微尺寸与非标尺寸自适应 (v5.0 / Stage 3 v3.20)
+            if (resultVec && typeof window.getGtoSizing === 'function') {
+                const sizingInfo = window.getGtoSizing(effHeroPos, effVsPos, effStack, actionSeq, facingBet, callersCount, is6Max);
+                if (sizingInfo) {
+                    resultVec.sizing = sizingInfo.sizing;
+                    resultVec.sizingInfo = sizingInfo;
+
+                    // 若面对非标尺寸，执行底池赔率频率补偿 (Defending Frequency Scaling)
+                    if (sizingInfo.isNonStandard && sizingInfo.defendMult !== 1.0) {
+                        const mult = sizingInfo.defendMult;
+                        if (mult < 1.0) {
+                            // 赔率恶化：收紧 Call 与边际加注，将减额计入 Fold
+                            if (resultVec[1] > 0) {
+                                const origCall = resultVec[1];
+                                resultVec[1] = Math.max(0, Math.round(origCall * mult));
+                                resultVec[0] += (origCall - resultVec[1]);
+                            }
+                            if (resultVec[2] > 0) {
+                                const origRaise = resultVec[2];
+                                resultVec[2] = Math.max(0, Math.round(origRaise * Math.min(1.0, Math.sqrt(mult))));
+                                resultVec[0] += (origRaise - resultVec[2]);
+                            }
+                        } else if (mult > 1.0) {
+                            // 赔率更优：从 Fold 释放频率到 Call
+                            if (resultVec[0] > 0) {
+                                const origCall = resultVec[1];
+                                const targetCall = Math.min(100, Math.round(origCall * mult));
+                                const addCall = Math.min(resultVec[0], targetCall - origCall);
+                                resultVec[1] += addCall;
+                                resultVec[0] -= addCall;
+                            }
+                        }
+                        const cleanVec = sanitizeGtoVector(resultVec);
+                        if (cleanVec) {
+                            for (let i = 0; i < 4; i++) resultVec[i] = cleanVec[i];
+                        }
+                    }
+                }
+            } else if (resultVec && matrix && matrix.sizings) {
                 const sizingKey = `${loDepth}_${effHeroPos}_${seqKey}`;
                 const matchedSizing = matrix.sizings[sizingKey] ||
                     matrix.sizings[`${loDepth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`] ||
@@ -8999,9 +9259,9 @@
             return resultVec;
         };
 
-        // Dimension 3: 翻前 GTO 期望值 (EV) 与动态 ICM 风险溢价模型 (v5.0 / Stage 2 v3.19)
+        // Dimension 3: 翻前 GTO 期望值 (EV) 与动态 ICM 风险溢价模型 (v5.0 / Stage 3 v3.20)
         // 核心数学公式: EV_ICM = EV_cEV - (RP × RiskPot)
-        window.queryGtoEv = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI', heroStack = null, villainStack = null, avgStack = null, stage = null) {
+        window.queryGtoEv = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI', heroStack = null, villainStack = null, avgStack = null, stage = null, facingBet = null, callersCount = 0) {
             if (typeof effStack !== 'number' || isNaN(effStack) || !Number.isFinite(effStack)) return null;
             if (typeof hand !== 'string' || !VALID_GTO_HAND_REGEX.test(hand.trim())) return null;
             const cleanHand = hand.trim();
@@ -9105,18 +9365,27 @@
             // 3. 风险筹码测算 (RiskPot): 各动作置于险境的筹码量
             // Fold: 0BB (零额外风险)
             const riskPotFold = 0.0;
-            // Call: 跟注所需筹码 (RFI limp 1BB, vs RFI 2.2BB, vs 3bet 6.5BB, vs 4bet 18BB, squeeze 8BB)
+            // Call: 跟注所需筹码 (RFI limp 1BB, vs RFI 2.2BB, vs 3bet 6.5BB, vs 4bet 18BB, squeeze 8BB 或非标面对尺寸)
             let baseCall = 2.2;
-            if (actionSeq === 'RFI') baseCall = 1.0;
-            else if (seqKey.includes('3BET')) baseCall = 6.5;
-            else if (seqKey.includes('4BET')) baseCall = 18.0;
-            else if (seqKey.includes('SQUEEZE')) baseCall = 8.0;
+            if (typeof facingBet === 'number' && facingBet > 0) {
+                baseCall = facingBet;
+            } else if (actionSeq === 'RFI') {
+                baseCall = 1.0;
+            } else if (seqKey.includes('3BET')) {
+                baseCall = 6.5;
+            } else if (seqKey.includes('4BET')) {
+                baseCall = 18.0;
+            } else if (seqKey.includes('SQUEEZE')) {
+                baseCall = 8.0;
+            }
             const riskPotCall = Number(Math.min(effStack, baseCall).toFixed(2));
 
-            // Raise: 加注承诺尺寸
+            // Raise: 加注承诺尺寸 (深度对接 getGtoSizing / Stage 3 v3.20)
             let baseRaise = 2.2;
-            const matrix = window.PREFLOP_GTO_MATRIX;
-            if (matrix && matrix.sizings) {
+            if (typeof window.getGtoSizing === 'function') {
+                const sInfo = window.getGtoSizing(effHeroPos, effVsPos, effStack, actionSeq, facingBet, callersCount, is6Max);
+                if (sInfo && sInfo.sizing) baseRaise = sInfo.sizing;
+            } else if (matrix && matrix.sizings) {
                 const sizingKey = `${loDepth}_${effHeroPos}_${seqKey}`;
                 const matchedSizing = matrix.sizings[sizingKey] ||
                     matrix.sizings[`${loDepth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`] ||
@@ -11853,17 +12122,55 @@
                     const handStr = typeof getHandStr === 'function' ? getHandStr() : '';
                     const d = typeof deriveScenario === 'function' ? deriveScenario() : {};
                     const posH = globalPosHero || d.posH || 'CO';
-                    const posV = d.posV || globalPosVillain || 'UTG';
+                    const posV = (['faceBet', 'squeeze', 'face3b', 'face4b'].includes(currentMode) ? (globalPosVillain || d.posV) : (d.posV || globalPosVillain)) || 'UTG';
                     const eff = (typeof globalHeroStack !== 'undefined' && typeof globalVillainStack !== 'undefined')
                         ? Math.min(globalHeroStack, globalVillainStack) : (typeof globalHeroStack !== 'undefined' ? globalHeroStack : 40);
                     
                     let seq = 'vs_RFI';
-                    if (currentMode === 'open') seq = 'RFI';
-                    else if (currentMode === 'squeeze') seq = 'SQUEEZE';
-                    else if (currentMode === 'face3b') seq = 'vs_3BET';
-                    else if (currentMode === 'coldCall') seq = 'COLD_4BET';
+                    let facingBet = null;
+                    let callersCount = 0;
 
-                    const matrixVec = queryGtoPreflop(posH, posV, eff, handStr, seq);
+                    if (currentMode === 'open') {
+                        seq = 'RFI';
+                    } else if (currentMode === 'squeeze') {
+                        seq = 'SQUEEZE';
+                        if (typeof tlState === 'function') {
+                            const tls = tlState();
+                            callersCount = tls.seats.filter(s => s !== posV && s !== posH && tlActsOf(s).some(a => a.a === 'call')).length;
+                            facingBet = tls.curBet || 2.2;
+                        } else {
+                            const elRaise = document.getElementById('raiseSize');
+                            facingBet = elRaise ? parseFloat(elRaise.value) : 2.2;
+                            callersCount = 1;
+                        }
+                    } else if (currentMode === 'face3b') {
+                        seq = 'vs_3BET';
+                        const el3B = document.getElementById('threeBetSize');
+                        if (typeof tlState === 'function') {
+                            const tls = tlState();
+                            facingBet = tls.curBet || (el3B ? parseFloat(el3B.value) : 9.0);
+                        } else {
+                            facingBet = el3B ? parseFloat(el3B.value) : 9.0;
+                        }
+                    } else if (currentMode === 'coldCall') {
+                        seq = 'COLD_4BET';
+                        const el4B = document.getElementById('fourBetSize');
+                        facingBet = el4B ? parseFloat(el4B.value) : 20.0;
+                    } else {
+                        // vs_RFI
+                        const elRaise = document.getElementById('raiseSize');
+                        const rVal = elRaise ? parseFloat(elRaise.value) : NaN;
+                        if (!isNaN(rVal) && rVal > 0) {
+                            facingBet = rVal;
+                        } else if (typeof tlState === 'function') {
+                            const tls = tlState();
+                            facingBet = tls.curBet || 2.2;
+                        } else {
+                            facingBet = 2.2;
+                        }
+                    }
+
+                    const matrixVec = queryGtoPreflop(posH, posV, eff, handStr, seq, facingBet, callersCount);
                     const vEl = document.getElementById('actionVerdict');
                     const szEl = document.getElementById('sizingContent');
                     const lgEl = document.getElementById('actionLogic');
@@ -11874,7 +12181,7 @@
                     const lgText = lgEl ? lgEl.innerText.trim() : '';
                     const isBlockedOrTerminal = !vText || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vText) || /超出原图覆盖|未按原图校准/.test(lgText);
                     const st = (typeof tlState === 'function') ? tlState() : null;
-                    const isWaitingOpponent = st && !st.closed && st.nextToAct && st.nextToAct !== posH;
+                    const isWaitingOpponent = st && !st.closed && st.nextToAct && st.nextToAct !== posH && !['faceBet', 'squeeze', 'face3b', 'face4b', 'coldCall', 'open', 'vsLimp'].includes(currentMode);
                     const hasBlindMix = rp && !!rp.dataset.bbMix;
                     const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal || hasBlindMix;
 
@@ -11949,15 +12256,20 @@
                                 (fP > 0 ? `<span class="text-gray-400">Fold ${fP}%</span>` : '');
                         }
 
-                        // ── 维度二：推荐引擎与官方微尺寸对接 ──
+                        // ── 维度二：推荐引擎与官方微尺寸对接 (Stage 3 v3.20) ──
                         if (szEl && matrixVec.sizing) {
-                            szEl.innerHTML = `<span style="color:#60a5fa;font-weight:700;">GTO解算推荐尺寸: ${matrixVec.sizing} BB</span>`;
+                            const szVal = matrixVec.sizing;
+                            const isNS = matrixVec.sizingInfo && matrixVec.sizingInfo.isNonStandard;
+                            const nsBadge = isNS
+                                ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 ml-1">⚡ 自适应反击</span>`
+                                : `<span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/40 ml-1">GTO 真解</span>`;
+                            szEl.innerHTML = `<span style="color:#60a5fa;font-weight:700;">GTO解算推荐尺寸: <span style="color:#fde047;font-weight:800;">${szVal} BB</span></span>${nsBadge} <button type="button" class="gto-apply-sizing-btn" onclick="applyGtoSizing(${szVal})" title="一键将 ${szVal}BB 填入加注框与时间线" style="background:rgba(59,130,246,0.2);border:0.5px solid rgba(96,165,250,0.5);color:#93c5fd;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;cursor:pointer;margin-left:6px;transition:all 0.15s ease;">📋 填入尺寸</button><span id="sizingAppliedToast" style="display:none;color:#4ade80;font-size:10px;font-weight:700;margin-left:4px;">✓ 已应用</span>`;
                         }
 
                         // ── 维度三：AI 教练 EV 损失量化与动态 ICM 风险溢价自然语言说理 ──
                         let evData = null;
                         if (typeof window.queryGtoEv === 'function') {
-                            evData = window.queryGtoEv(posH, posV, eff, handStr, seq);
+                            evData = window.queryGtoEv(posH, posV, eff, handStr, seq, null, null, null, null, facingBet, callersCount);
                         }
 
                         if (window._lastShadowComparison) {
@@ -11970,6 +12282,21 @@
                             const lossHtml = (lossVal > 0.001)
                                 ? `<div style="color:#fca5a5;margin-top:4px;"><b>⚠️ 失误惩罚 (EV Loss)</b>: 若偏离最优动作，次优选择单手预期亏损 <span style="color:#ef4444;font-weight:800;">-${lossVal.toFixed(3)} BB</span></div>`
                                 : `<div style="color:#86efac;margin-top:4px;"><b>✅ 最优博弈平衡</b>: 当前处于解算器最高收益分支，无预期失误损失。</div>`;
+
+                            let sizingInsightHtml = '';
+                            if (matrixVec.sizingInfo) {
+                                if (matrixVec.sizingInfo.isNonStandard) {
+                                    sizingInsightHtml = `
+                                    <div style="background:rgba(217,119,6,0.18);border:1px solid rgba(245,158,11,0.4);border-radius:5px;padding:5px 8px;margin-top:5px;font-size:11px;color:#fbbf24;line-height:1.45;">
+                                      ⚡ <b>非标开池自适应 (Size Delta)</b>: 对手开池 ${matrixVec.sizingInfo.facingBet}BB（偏离基准 2.2BB），底池赔率变动 ${matrixVec.sizingInfo.oddsDelta > 0 ? '+' : ''}${matrixVec.sizingInfo.oddsDelta}%，反击加注尺度依据底池几何级数自适应修正至 <b>${matrixVec.sizing}BB</b>，防守频率系数 ×${matrixVec.sizingInfo.defendMult}。
+                                    </div>`;
+                                } else if (matrixVec.sizing) {
+                                    sizingInsightHtml = `
+                                    <div style="color:#94a3b8;font-size:11px;margin-top:4px;">
+                                      🎯 <b>GTO Wizard 官方微尺寸</b>: 推荐加注至 <b>${matrixVec.sizing}BB</b>（基准解算点，完全消除硬编码粗糙尺度）。
+                                    </div>`;
+                                }
+                            }
 
                             let coachBanner = '';
                             if (evData.isICM && evData.rpPercent > 0) {
@@ -11992,6 +12319,7 @@
                                     弃: 0.00BB · 跟: ${evData.cEV[1]} - 罚${evData.penalties[1]} = ${evData.icmEV[1]}BB · 加: ${evData.cEV[2]} - 罚${evData.penalties[2]} = ${evData.icmEV[2]}BB · 推: ${evData.cEV[3]} - 罚${evData.penalties[3]} = ${evData.icmEV[3]}BB
                                   </div>
                                   ${hasFlip ? `<div style="color:#fbbf24;font-size:11px;margin-top:3px;">⚠️ <b>ICM 避险翻转</b>: 原筹码收益 (cEV) 为正的操作因高风险溢价转为负 ICM EV，模型已自动修正推荐避免高危淘汰！</div>` : ''}
+                                  ${sizingInsightHtml}
                                   ${lossHtml}
                                 </div>`;
                             } else {
@@ -12003,6 +12331,7 @@
                                   </div>
                                   <div style="color:#fde047;"><b>最优动作推荐</b>: <span style="font-weight:800;">${evData.bestAction}</span> (预期 EV: ${sign}${evData.bestEv} BB)</div>
                                   <div style="color:#94a3b8;font-size:11px;">四动作期望收益: 弃 0.00BB · 跟 ${evData.ev_c}BB · 加 ${evData.ev_r}BB · 推 ${evData.ev_j}BB</div>
+                                  ${sizingInsightHtml}
                                   ${lossHtml}
                                 </div>`;
                             }
