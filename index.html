@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.20 正式版 - 推荐引擎官方微尺寸全场景深度对接与非标尺寸自适应</title>
+    <title>PokerCode v3.21 正式版 - 9人桌GTO位置映射、移动端防遮挡与全矩阵UTG物理保护</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.20 正式版 高定黑曜石与 Liquid Glass 设计令牌 (推荐引擎官方微尺寸全场景深度对接与非标尺寸自适应) ══
+            /* ══ PokerCode v3.21 正式版 高定黑曜石与 Liquid Glass 设计令牌 (9人桌GTO位置映射、移动端防遮挡与全矩阵UTG物理保护) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -936,6 +936,8 @@
         @media (max-width: 767.98px) {
             .app-container { overflow-x: clip !important; overflow-y: visible !important; }
             .scroll-area > .col-dec { display: block !important; width: 100% !important; position: sticky; top: 0; z-index: 50; }
+            #preDecisionHead { display: none !important; }
+            #resultPanel, #postDecisionSlot { display: none !important; }
             #decisionHUD {
                 position: sticky;
                 top: 0;
@@ -1461,9 +1463,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.20 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.21 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.20</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.21</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼） -->
                 <div id="topMiniStatus" class="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1485,7 +1487,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.20 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.21 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -1979,7 +1981,10 @@
                         <span class="text-gray-400 font-bold text-[11px]">我方:</span>
                         <select id="rmHeroPos" onchange="renderRangeMatrix()" class="text-xs font-bold rounded border border-white/10 bg-black/40 text-amber-300 px-1.5 py-0.5 font-mono" style="width:auto;height:26px;">
                             <option value="UTG">UTG</option>
-                            <option value="MP">MP / HJ</option>
+                            <option value="UTG1">UTG+1</option>
+                            <option value="MP">MP</option>
+                            <option value="LJ">LJ</option>
+                            <option value="HJ">HJ</option>
                             <option value="CO">CO</option>
                             <option value="BTN" selected>BTN</option>
                             <option value="SB">SB</option>
@@ -2004,7 +2009,10 @@
                         <span class="text-gray-400 font-bold text-[11px]">对手:</span>
                         <select id="rmVsPos" onchange="renderRangeMatrix()" class="text-xs font-bold rounded border border-white/10 bg-black/40 text-emerald-400 px-1.5 py-0.5 font-mono" style="width:auto;height:26px;">
                             <option value="UTG" selected>UTG</option>
-                            <option value="MP">MP / HJ</option>
+                            <option value="UTG1">UTG+1</option>
+                            <option value="MP">MP</option>
+                            <option value="LJ">LJ</option>
+                            <option value="HJ">HJ</option>
                             <option value="CO">CO</option>
                             <option value="BTN">BTN</option>
                             <option value="SB">SB</option>
@@ -6115,7 +6123,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.20',
+                    v: 'v3.21',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -6134,7 +6142,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.21' && data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -6208,7 +6216,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.20 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.21 正式版';
             renderWindowColorChips(key);
         };
 
@@ -8854,6 +8862,12 @@
             const keys = Object.keys(matrix.nodes || {});
             const suffix1 = `_${effPos}_${seqKey}`;
             let matched = keys.filter(k => k.endsWith(suffix1));
+            if (matched.length === 0 && seqKey === 'vs_MP_RFI') {
+                matched = keys.filter(k => k.endsWith(`_${effPos}_vs_UTG1_RFI`));
+            }
+            if (matched.length === 0 && (seqKey === 'vs_UTG1_RFI' || seqKey === 'vs_U+1_RFI')) {
+                matched = keys.filter(k => k.endsWith(`_${effPos}_vs_UTG_RFI`));
+            }
             if (matched.length === 0 && (seqKey === 'SQUEEZE' || seqKey.includes('SQUEEZE'))) {
                 matched = keys.filter(k => k.includes(`_${effPos}_SQUEEZE`));
             }
@@ -8924,6 +8938,8 @@
                     candidateKeys.push(`${loDepth}_${effHeroPos}_RFI`);
                 } else if (actionSeq === 'vs_RFI') {
                     candidateKeys.push(`${loDepth}_${effHeroPos}_vs_${effVsPos}_RFI`);
+                    if (effVsPos === 'MP') candidateKeys.push(`${loDepth}_${effHeroPos}_vs_UTG1_RFI`);
+                    if (effVsPos === 'UTG1' || effVsPos === 'U+1') candidateKeys.push(`${loDepth}_${effHeroPos}_vs_UTG_RFI`);
                 } else if (actionSeq === 'SQUEEZE' || actionSeq.includes('SQUEEZE')) {
                     candidateKeys.push(`${loDepth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`);
                     candidateKeys.push(`${loDepth}_${effHeroPos}_SQUEEZE`);
@@ -8973,7 +8989,10 @@
                         baselineSizing = 2.0;
                     }
                 } else if (actionSeq === 'vs_RFI') {
-                    const isIP = (effHeroPos === 'BTN' || (effHeroPos === 'CO' && effVsPos !== 'BTN') || (effHeroPos === 'HJ' && ['UTG', 'UTG1', 'LJ'].includes(effVsPos)));
+                    const isIP = (effHeroPos === 'BTN' ||
+                                  (effHeroPos === 'CO' && effVsPos !== 'BTN') ||
+                                  (effHeroPos === 'HJ' && ['UTG', 'UTG1', 'MP', 'LJ'].includes(effVsPos)) ||
+                                  (effHeroPos === 'LJ' && ['UTG', 'UTG1', 'MP'].includes(effVsPos)));
                     if (effStack <= 15) {
                         baselineSizing = effStack; // ≤15BB 浅码直接触发全推
                     } else if (effStack <= 25) {
@@ -9088,6 +9107,7 @@
             // 桌型相对位置映射（6-max / 8-max / 9-max 自适应）：
             // 若当前为 6-max，UTG 身后剩 5 人对应 8-max 的 LJ，MP 身后剩 4 人对应 8-max 的 HJ
             const is6Max = typeof gameConfig !== 'undefined' && gameConfig.tableSize === '6max';
+            const is9Max = typeof gameConfig !== 'undefined' && gameConfig.tableSize === '9max';
             if (is6Max) {
                 if (actionSeq === 'RFI') {
                     if (heroPos === 'UTG') effHeroPos = 'LJ';
@@ -9098,6 +9118,16 @@
                     else if (vsPos === 'MP') effVsPos = 'HJ';
                     if (heroPos === 'UTG') effHeroPos = 'LJ';
                     else if (heroPos === 'MP') effHeroPos = 'HJ';
+                }
+            } else if (is9Max) {
+                if (actionSeq === 'RFI') {
+                    if (heroPos === 'MP') effHeroPos = 'UTG1';
+                    else if (heroPos === 'UTG1' || heroPos === 'U+1') effHeroPos = 'UTG';
+                }
+                if (actionSeq === 'vs_RFI') {
+                    if (vsPos === 'MP') effVsPos = 'UTG1';
+                    else if (vsPos === 'UTG1' || vsPos === 'U+1') effVsPos = 'UTG';
+                    if (heroPos === 'MP') effHeroPos = 'UTG1';
                 }
             }
 
@@ -9119,6 +9149,12 @@
                 if (!matrix.nodes) return {};
                 let k = `${depth}_${effHeroPos}_${seqKey}`;
                 if (matrix.nodes[k]) return matrix.nodes[k];
+                if (seqKey.startsWith('vs_') && seqKey.endsWith('_RFI')) {
+                    if ((effVsPos === 'MP' || vsPos === 'MP') && matrix.nodes[`${depth}_${effHeroPos}_vs_UTG1_RFI`]) return matrix.nodes[`${depth}_${effHeroPos}_vs_UTG1_RFI`];
+                    if ((effVsPos === 'UTG1' || effVsPos === 'U+1' || vsPos === 'UTG1' || vsPos === 'U+1') && matrix.nodes[`${depth}_${effHeroPos}_vs_UTG_RFI`]) return matrix.nodes[`${depth}_${effHeroPos}_vs_UTG_RFI`];
+                    if (effHeroPos === 'LJ' && matrix.nodes[`${depth}_MP_${seqKey}`]) return matrix.nodes[`${depth}_MP_${seqKey}`];
+                    if (effHeroPos === 'HJ' && matrix.nodes[`${depth}_MP_${seqKey}`]) return matrix.nodes[`${depth}_MP_${seqKey}`];
+                }
                 if (seqKey === 'RFI') {
                     if (matrix.nodes[`${depth}_${effHeroPos}_RFI`]) return matrix.nodes[`${depth}_${effHeroPos}_RFI`];
                     if (effHeroPos === 'HJ' && matrix.nodes[`${depth}_MP_RFI`]) return matrix.nodes[`${depth}_MP_RFI`];
@@ -9271,6 +9307,7 @@
             let effHeroPos = heroPos;
             let effVsPos = vsPos;
             const is6Max = typeof gameConfig !== 'undefined' && gameConfig.tableSize === '6max';
+            const is9Max = typeof gameConfig !== 'undefined' && gameConfig.tableSize === '9max';
             if (is6Max) {
                 if (actionSeq === 'RFI') {
                     if (heroPos === 'UTG') effHeroPos = 'LJ';
@@ -9281,6 +9318,16 @@
                     else if (vsPos === 'MP') effVsPos = 'HJ';
                     if (heroPos === 'UTG') effHeroPos = 'LJ';
                     else if (heroPos === 'MP') effHeroPos = 'HJ';
+                }
+            } else if (is9Max) {
+                if (actionSeq === 'RFI') {
+                    if (heroPos === 'MP') effHeroPos = 'UTG1';
+                    else if (heroPos === 'UTG1' || heroPos === 'U+1') effHeroPos = 'UTG';
+                }
+                if (actionSeq === 'vs_RFI') {
+                    if (vsPos === 'MP') effVsPos = 'UTG1';
+                    else if (vsPos === 'UTG1' || vsPos === 'U+1') effVsPos = 'UTG';
+                    if (heroPos === 'MP') effHeroPos = 'UTG1';
                 }
             }
 
@@ -9301,6 +9348,12 @@
             function getEvNode(depth) {
                 let k = `${depth}_${effHeroPos}_${seqKey}`;
                 if (evMatrix.nodes[k]) return evMatrix.nodes[k];
+                if (seqKey.startsWith('vs_') && seqKey.endsWith('_RFI')) {
+                    if ((effVsPos === 'MP' || vsPos === 'MP') && evMatrix.nodes[`${depth}_${effHeroPos}_vs_UTG1_RFI`]) return evMatrix.nodes[`${depth}_${effHeroPos}_vs_UTG1_RFI`];
+                    if ((effVsPos === 'UTG1' || effVsPos === 'U+1' || vsPos === 'UTG1' || vsPos === 'U+1') && evMatrix.nodes[`${depth}_${effHeroPos}_vs_UTG_RFI`]) return evMatrix.nodes[`${depth}_${effHeroPos}_vs_UTG_RFI`];
+                    if (effHeroPos === 'LJ' && evMatrix.nodes[`${depth}_MP_${seqKey}`]) return evMatrix.nodes[`${depth}_MP_${seqKey}`];
+                    if (effHeroPos === 'HJ' && evMatrix.nodes[`${depth}_MP_${seqKey}`]) return evMatrix.nodes[`${depth}_MP_${seqKey}`];
+                }
                 if (seqKey === 'SQUEEZE' || seqKey.includes('SQUEEZE')) {
                     if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`];
                     if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`];
@@ -9516,6 +9569,11 @@
                     else if (currentMode === 'coldCall') seq = 'COLD_4BET';
                 }
 
+                // UTG 翻前永远先手，不可能面对开池(vs_RFI)，物理保护自动切换至自主开池(RFI)
+                if (posH === 'UTG' && seq === 'vs_RFI') {
+                    seq = 'RFI';
+                }
+
                 const heroSelect = document.getElementById('rmHeroPos');
                 const seqSelect = document.getElementById('rmSeq');
                 const vsSelect = document.getElementById('rmVsPos');
@@ -9523,9 +9581,11 @@
                 const vsPosWrap = document.getElementById('rmVsPosWrap');
 
                 if (heroSelect) {
-                    const normH = (posH === 'HJ' ? 'MP' : (posH === 'LJ' ? 'UTG' : posH));
-                    for (let opt of heroSelect.options) {
-                        if (opt.value === normH || opt.value === posH) { heroSelect.value = opt.value; break; }
+                    heroSelect.value = posH;
+                    if (heroSelect.value !== posH) {
+                        for (let opt of heroSelect.options) {
+                            if (opt.value === posH) { heroSelect.value = opt.value; break; }
+                        }
                     }
                 }
 
@@ -9534,9 +9594,11 @@
                 }
 
                 if (vsSelect) {
-                    const normV = (posV === 'HJ' ? 'MP' : (posV === 'LJ' ? 'UTG' : posV));
-                    for (let opt of vsSelect.options) {
-                        if (opt.value === normV || opt.value === posV) { vsSelect.value = opt.value; break; }
+                    vsSelect.value = posV;
+                    if (vsSelect.value !== posV) {
+                        for (let opt of vsSelect.options) {
+                            if (opt.value === posV) { vsSelect.value = opt.value; break; }
+                        }
                     }
                 }
 
@@ -9569,10 +9631,19 @@
             const grid = document.getElementById('rangeMatrixGrid');
             if (!grid) return;
 
-            const heroPos = document.getElementById('rmHeroPos') ? document.getElementById('rmHeroPos').value : 'BTN';
-            const seq = document.getElementById('rmSeq') ? document.getElementById('rmSeq').value : 'vs_RFI';
-            const vsPos = document.getElementById('rmVsPos') ? document.getElementById('rmVsPos').value : 'UTG';
+            let heroPos = document.getElementById('rmHeroPos') ? document.getElementById('rmHeroPos').value : 'BTN';
+            let seq = document.getElementById('rmSeq') ? document.getElementById('rmSeq').value : 'vs_RFI';
+            let vsPos = document.getElementById('rmVsPos') ? document.getElementById('rmVsPos').value : 'UTG';
             const depth = document.getElementById('rmDepth') ? parseFloat(document.getElementById('rmDepth').value) : 40;
+
+            // 物理防呆：UTG翻前必先手行动，不可能存在面对开池(vs_RFI)的情形，自动纠偏为自主开池(RFI)
+            if (heroPos === 'UTG' && seq === 'vs_RFI') {
+                seq = 'RFI';
+                const seqSelect = document.getElementById('rmSeq');
+                if (seqSelect) seqSelect.value = 'RFI';
+                const vsPosWrap = document.getElementById('rmVsPosWrap');
+                if (vsPosWrap) vsPosWrap.style.display = 'none';
+            }
 
             const currentHeroHand = (typeof getHandStr === 'function') ? getHandStr() : '';
             const activeHand = window._activeRangeHand || currentHeroHand || 'AKs';
@@ -10670,7 +10741,7 @@
                         if (isSmallPair) {
                             if (effStack >= 18) {
                                 // 18-25BB 中深码：低频弃牌率挤压（Squeeze/Bluff Jam），主要靠弃牌率盈利，绝非价值推
-                                const isIP = ['BTN', 'CO', 'HJ'].includes(posH) && POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV];
+                                const isIP = ['BTN', 'CO', 'HJ', 'LJ'].includes(posH) && POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV];
                                 b = 25;
                                 c = isIP ? 75 : 45;
                                 f = 100 - b - c;
@@ -10908,7 +10979,7 @@
                                 c = 100; b = 0; f = 0;
                                 logic = '投机平跟，买同花或顺子。';
                             }
-                        } else if (['BTN','CO','HJ'].includes(posH) && POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV]) {
+                        } else if (['BTN','CO','HJ','LJ'].includes(posH) && POSTFLOP_ORDER[posH] > POSTFLOP_ORDER[posV]) {
                             // ── IP 高质量平跟牌手牌族完整开放（彻底废除 7 张牌白名单）──
                             // 包含所有同花高张 (SuitedBroad: QTs, QJs, JTs, KTs, KJs, KQs, ATs, AJs, AQs)、强同花 A (A2s-A5s) 与优质两张大牌
                             const isIpSuitedBroad = ['SuitedBroad', 'SuitedBroadA'].includes(cat) ||
@@ -12350,9 +12421,11 @@
                             }
                             vVecEl.innerText = txt;
                         }
+                    } else {
+                        window._lastShadowComparison = null;
+                        if (bEl) bEl.classList.add('hidden');
+                        if (vVecEl) vVecEl.innerText = '';
                         try { updateDecisionHUD(); } catch (e) {}
-                    } else if (bEl) {
-                        bEl.classList.add('hidden');
                     }
                 }
             } catch (err) {
