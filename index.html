@@ -2030,6 +2030,8 @@
                             <option value="30">30 BB</option>
                             <option value="40" selected>40 BB</option>
                             <option value="60">60 BB</option>
+                            <option value="80">80 BB</option>
+                            <option value="100">100 BB</option>
                         </select>
                     </div>
                 </div>
@@ -4462,6 +4464,18 @@
         // vsLimp 多选跛入位置（替代手动输入跛入人数）
         let selectedLimperPositions = ['UTG'];
 
+        /** 计算有效筹码：Open 模式下除非对手被显式 touched，否则绑定 Hero；非 Open 模式取 min(Hero, Villain) (P2-1) */
+        function getEffectiveStack(sH = globalHeroStack, sV = globalVillainStack, mode = currentMode) {
+            const elV = (typeof document !== 'undefined') ? document.getElementById('tlStackVillain') : null;
+            const vTouched = elV && elV.dataset && elV.dataset.touched === '1';
+            const hNum = (typeof sH === 'number' && !isNaN(sH) && sH > 0) ? sH : 40;
+            const vNum = (typeof sV === 'number' && !isNaN(sV) && sV > 0) ? sV : 40;
+            if (mode === 'open' && !vTouched) {
+                return hNum;
+            }
+            return Math.min(hNum, vNum);
+        }
+
         /** 将 heroCard1/heroCard2 同步到翻前引擎兼容变量 val1/val2/isSuited (I01 修复) */
         function syncHeroCardCompat() {
             let ps = null;
@@ -5251,7 +5265,7 @@
             sizeEl.textContent = sizing; sizeEl.style.display = sizing ? '' : 'none';
             freqEl.innerHTML = freqHTML; freqEl.style.display = freqHTML ? '' : 'none';
             let coreWhy = '';
-            if (window._lastShadowComparison && window._lastShadowComparison.evData) {
+            if (boardN < 3 && window._lastShadowComparison && window._lastShadowComparison.evData) {
                 const ed = window._lastShadowComparison.evData;
                 const lv = (typeof ed.suboptimalLoss === 'number') ? ed.suboptimalLoss : 0;
                 const devText = lv > 0.001 ? `次优偏差: -${lv.toFixed(3)} BB` : '最优平衡';
@@ -7847,7 +7861,14 @@
         function tlReset() {
             if (typeof _tlTimer !== 'undefined') clearTimeout(_tlTimer);
             tlActs = []; tlEvents = {}; tlHero = null; _tlLegacySig = JSON.stringify({ e: {}, h: null });
-            const v = document.getElementById('tlStackVillain'); if (v) delete v.dataset.touched;
+            window._lastShadowComparison = null;
+            const v = document.getElementById('tlStackVillain');
+            if (v) {
+                delete v.dataset.touched;
+                const defV = (typeof globalHeroStack === 'number' && globalHeroStack > 0) ? globalHeroStack : 40;
+                v.value = defV;
+                globalVillainStack = defV;
+            }
             const a = document.getElementById('tlAvgStack'); if (a) delete a.dataset.touched;
         }
         const tlLbl = p => p === 'UTG1' ? 'U+1' : (POS_LABEL[p] || p);
@@ -9168,10 +9189,10 @@
             let seqKey = actionSeq;
             if (actionSeq === 'vs_RFI') seqKey = `vs_${effVsPos}_RFI`;
             else if (actionSeq === 'vs_3BET' || actionSeq === 'vs_3Bet') seqKey = `vs_${effVsPos}_3BET`;
-            const depths = findAvailableGtoDepths(matrix, effHeroPos, seqKey) || (matrix.depths || [8, 10, 12, 15, 20, 25, 30, 35, 40, 60]);
+            const depths = findAvailableGtoDepths(matrix, effHeroPos, seqKey) || (matrix.depths || [8, 10, 12, 15, 20, 25, 30, 35, 40, 60, 80, 100]);
             if (!depths || !depths.length) return null;
             const minD = depths[0], maxD = depths[depths.length - 1];
-            // 深筹平滑锚定至最深官方解算点（如 80BB/100BB 锚定 60BB 官方真解），短筹平滑锚定 8BB
+            // 深筹平滑锚定至最深解算点（如 >100BB 锚定 100BB），短筹平滑锚定 8BB
             const effLookup = Math.max(minD, Math.min(maxD, effStack));
 
             let loDepth = depths[0], hiDepth = depths[depths.length - 1];
@@ -9370,9 +9391,9 @@
             if (actionSeq === 'vs_RFI') seqKey = `vs_${effVsPos}_RFI`;
             else if (actionSeq === 'vs_3BET' || actionSeq === 'vs_3Bet') seqKey = `vs_${effVsPos}_3BET`;
 
-            const depths = evMatrix.depths || [8, 10, 12, 15, 20, 25, 30, 35, 40, 60];
+            const depths = evMatrix.depths || [8, 10, 12, 15, 20, 25, 30, 35, 40, 60, 80, 100];
             const minD = depths[0], maxD = depths[depths.length - 1];
-            // 深筹平滑锚定至最深官方解算点（如 80BB/100BB 锚定 60BB 官方真解），短筹平滑锚定 8BB
+            // 深筹平滑锚定至最深解算点（如 >100BB 锚定 100BB），短筹平滑锚定 8BB
             const effLookup = Math.max(minD, Math.min(maxD, effStack));
 
             let loDepth = depths[0], hiDepth = depths[depths.length - 1];
@@ -9594,10 +9615,7 @@
                 const d = typeof deriveScenario === 'function' ? deriveScenario() : {};
                 const posH = globalPosHero || d.posH || 'BTN';
                 const posV = d.posV || globalPosVillain || 'UTG';
-                const eff = (currentMode === 'open')
-                    ? (typeof globalHeroStack !== 'undefined' && globalHeroStack > 0 ? globalHeroStack : 40)
-                    : ((typeof globalHeroStack !== 'undefined' && typeof globalVillainStack !== 'undefined')
-                        ? Math.min(globalHeroStack, globalVillainStack) : (typeof globalHeroStack !== 'undefined' ? globalHeroStack : 40));
+                const eff = getEffectiveStack(globalHeroStack, globalVillainStack, currentMode);
 
                 let seq = 'vs_RFI';
                 if (typeof currentMode !== 'undefined') {
@@ -9645,7 +9663,7 @@
                 }
 
                 if (depthSelect) {
-                    const avail = [10, 15, 20, 25, 30, 40, 60];
+                    const avail = [10, 15, 20, 25, 30, 40, 60, 80, 100];
                     let closest = 40;
                     let minDiff = Infinity;
                     for (let x of avail) {
@@ -10049,7 +10067,7 @@
             const avgStack = (elAvg && elAvg.value) ? parseFloat(elAvg.value)
                            : ((typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : sH);
             
-            let effStack = (currentMode === 'open') ? sH : ((sH > 0 && sV > 0) ? Math.min(sH, sV) : sH);
+            let effStack = getEffectiveStack(sH, sV, currentMode);
 
             const posH = elPosH ? elPosH.value : globalPosHero;
             const posV = elPosV ? elPosV.value : globalPosVillain;
@@ -12222,10 +12240,7 @@
                     const [p, reason] = idx !== -1 ? [_mixFb.slice(0, idx), _mixFb.slice(idx + 1)] : ['SB', _mixFb];
                     const n = document.createElement('div');
                     n.className = 'sb-mix-fallback'; n.style.color = '#e0a83a'; n.style.marginTop = '4px';
-                    const eff = (currentMode === 'open')
-                        ? (typeof globalHeroStack !== 'undefined' && globalHeroStack > 0 ? globalHeroStack : 40)
-                        : ((typeof globalHeroStack !== 'undefined' && typeof globalVillainStack !== 'undefined')
-                            ? Math.min(globalHeroStack, globalVillainStack) : (typeof globalHeroStack !== 'undefined' ? globalHeroStack : 40));
+                    const eff = getEffectiveStack(globalHeroStack, globalVillainStack, currentMode);
                     const openDesc = rp.dataset.mixOpen ? `开池约 ${rp.dataset.mixOpen}BB` : (p === 'BB' && typeof globalPosVillain !== 'undefined' && globalPosVillain === 'SB' ? '开池约 3.3–3.5BB' : '开池约 2–2.3BB');
                     const jamNote = eff > 25 ? '；旧模型在 >25BB 无全下段、价值/诈唬标签为近似' : '';
                     if (reason === '面对全下开池') {
@@ -12243,10 +12258,7 @@
                         const d = typeof deriveScenario === 'function' ? deriveScenario() : {};
                         const posH = globalPosHero || d.posH || 'CO';
                         const posV = (['faceBet', 'squeeze', 'face3b', 'face4b'].includes(currentMode) ? (globalPosVillain || d.posV) : (d.posV || globalPosVillain)) || 'UTG';
-                        const eff = (currentMode === 'open')
-                            ? (typeof globalHeroStack !== 'undefined' && globalHeroStack > 0 ? globalHeroStack : 40)
-                            : ((typeof globalHeroStack !== 'undefined' && typeof globalVillainStack !== 'undefined')
-                                ? Math.min(globalHeroStack, globalVillainStack) : (typeof globalHeroStack !== 'undefined' ? globalHeroStack : 40));
+                        const eff = getEffectiveStack(globalHeroStack, globalVillainStack, currentMode);
                         
                         let seq = 'vs_RFI';
                         let facingBet = null;
@@ -12388,7 +12400,7 @@
                                 szEl.innerHTML = `<span style="font-weight:800;color:#fde047;">${szVal} BB</span>${nsBadge} <button type="button" class="gto-apply-sizing-btn" onclick="applyGtoSizing(${szVal})" title="填入加注框" style="background:rgba(59,130,246,0.18);border:0.5px solid rgba(96,165,250,0.4);color:#93c5fd;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;cursor:pointer;margin-left:5px;">📋 填入</button><span id="sizingAppliedToast" style="display:none;color:#4ade80;font-size:10px;font-weight:700;margin-left:4px;">✓ 已应用</span>`;
                             }
 
-                            // ── 维度三：AI 教练 EV 损失量化与动态 ICM 风险溢价自然语言说理 ──
+                            // ── 维度三：动态 ICM 风险溢价模型与 EV 损失量化 ──
                             let evData = null;
                             if (typeof window.queryGtoEv === 'function') {
                                 evData = window.queryGtoEv(posH, posV, eff, handStr, seq, null, null, null, null, facingBet, callersCount);
@@ -12423,7 +12435,7 @@
                                     coachBanner = `
                                     <div style="background:rgba(15,23,42,0.75);border:1px solid rgba(245,158,11,0.35);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:12px;line-height:1.5;">
                                       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                                        <span style="color:#fde047;font-weight:700;">🤖 AI 教练动态 ICM 风险溢价模型 · EV<sub>ICM</sub> = EV<sub>cEV</sub> - (RP × RiskPot)</span>
+                                        <span style="color:#fde047;font-weight:700;">动态 ICM 风险溢价模型 · EV<sub>ICM</sub> = EV<sub>cEV</sub> - (RP × RiskPot)</span>
                                         <span style="font-size:10px;color:#fef08a;background:rgba(217,119,6,0.25);border:1px solid rgba(217,119,6,0.45);border-radius:3px;padding:1px 5px;">🛡️ 溢价 +${evData.rpPercent}% · ${postureName}</span>
                                       </div>
                                       <div style="display:flex;justify-content:space-between;align-items:center;">
