@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.25 正式版 - GTO Wizard v5.0 全量矩阵 (4368节点) & 400手实战全架构大验收</title>
+    <title>PokerCode v3.25.5 正式版 - 核心架构深度治理与全链路解耦 (Systemic Remediation)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.25 正式版 高定黑曜石与 Liquid Glass 设计令牌 (GTO Wizard v5.0 全量矩阵 4368节点 & 400手全架构大验收) ══
+            /* ══ PokerCode v3.25.5 正式版 高定黑曜石与 Liquid Glass 设计令牌 (系统治理与架构解耦) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1463,9 +1463,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.25 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.25.5 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.25</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.25.5</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼，移动端隐藏避免顶栏折行溢出） -->
                 <div id="topMiniStatus" class="hidden sm:flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1487,7 +1487,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.25 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.25.5 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -2123,6 +2123,49 @@
 
     <script>
         // ============================================================
+        // 确定性随机数与测试复现基础设施 (Issue 11 闭环)
+        // ============================================================
+        let _pokerPrngSeed = null;
+        let _pokerPrngState = null;
+
+        function _mulberry32(a) {
+            return function() {
+                let t = a += 0x6D2B79F5;
+                t = Math.imul(t ^ (t >>> 15), t | 1);
+                t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+
+        function pokerRandom() {
+            if (_pokerPrngState !== null) {
+                return _pokerPrngState();
+            }
+            return Math.random();
+        }
+
+        function setPokerPrngSeed(seed) {
+            if (seed === null || seed === undefined) {
+                _pokerPrngSeed = null;
+                _pokerPrngState = null;
+            } else {
+                const numericSeed = typeof seed === 'number' ? seed : (function(s) {
+                    let h = 0;
+                    for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+                    return h >>> 0;
+                })(String(seed));
+                _pokerPrngSeed = numericSeed;
+                _pokerPrngState = _mulberry32(numericSeed);
+            }
+        }
+
+        if (typeof window !== 'undefined') {
+            window._setPokerPrngSeed = setPokerPrngSeed;
+            window._getPokerPrngSeed = () => _pokerPrngSeed;
+            window._pokerRandom = pokerRandom;
+        }
+
+        // ============================================================
         // 主题系统
         // ============================================================
         const themes = {
@@ -2210,9 +2253,9 @@
                 startStackBB: null,   // 起始筹码（BB）
                 levelMin: null,       // 盲注间隔（分钟）
                 tableType: null,      // 牌桌类型文字（"6人桌" → 自动设桌型）
-                avgStackBB: null      // 平均筹码（BB）——**推算值**，非输入
             }
         };
+        window.gameConfig = gameConfig;
 
         const gameTypeOpts = [
             { val: 'normal', label: '常规赛' },
@@ -3899,6 +3942,49 @@
             // 8max 的 SB 对前位：用 9max 同名键（桌型差异小于开池者位置差异）
             ['UTG', 'MP', 'LJ', 'HJ'].forEach(op =>
                 fill('8max', 'SB_vs_' + op, '9max', 'SB_vs_' + op, '8max 无此键，用 9max 同名键'));
+
+            // ④ 数据资产治理与不可变深度冻结 (Issue 09 闭环)
+            const deepFreeze = (obj) => {
+                if (!obj || typeof obj !== 'object') return obj;
+                Object.freeze(obj);
+                for (const k of Object.keys(obj)) {
+                    const val = obj[k];
+                    if (val && typeof val === 'object' && !Object.isFrozen(val)) {
+                        deepFreeze(val);
+                    }
+                }
+                return obj;
+            };
+
+            deepFreeze(GTO_RANGES);
+            deepFreeze(THREBET_RANGES);
+            deepFreeze(BB_DEFENSE_RANGES);
+            deepFreeze(SQUEEZE_RANGES);
+            deepFreeze(REJAM_RANGES);
+
+            if (typeof window !== 'undefined') {
+                window.GTO_RANGES = GTO_RANGES;
+                window.THREBET_RANGES = THREBET_RANGES;
+                window.BB_DEFENSE_RANGES = BB_DEFENSE_RANGES;
+                window.SQUEEZE_RANGES = SQUEEZE_RANGES;
+                window.REJAM_RANGES = REJAM_RANGES;
+                window._rangeNormalizationManifest = {
+                    version: 'v3.25.5',
+                    timestamp: '2026-10-07',
+                    appliedRules: [
+                        'btn_3bet_co_superset',
+                        'cross_tablesize_rfi_align_stage1',
+                        'rc_40bb_rfi_benchmark_adoption',
+                        '9max_utg_15_8pct_prefix_merge',
+                        'pair_family_monotonic_closure',
+                        'nested_positional_monotonic_closure',
+                        'cross_tablesize_rfi_realign_stage2',
+                        'threebet_missing_keys_fill'
+                    ],
+                    isFrozen: true,
+                    tables: ['GTO_RANGES', 'THREBET_RANGES', 'BB_DEFENSE_RANGES', 'SQUEEZE_RANGES', 'REJAM_RANGES']
+                };
+            }
         })();
 
         // ============================================================
@@ -3936,7 +4022,8 @@
         };
 
         function getStageCfg() {
-            return STAGE_CONFIG[gameConfig.gameType][gameConfig.stage];
+            const gt = STAGE_CONFIG[gameConfig?.gameType] || STAGE_CONFIG.normal;
+            return (gt && gt[gameConfig?.stage]) || gt.normal;
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -5716,7 +5803,7 @@
                 const sprEl = document.getElementById('sumSpr');
                 if (sprEl) sprEl.innerText = postState.potTracker.spr.toFixed(1);
                 if (postState.equityResult) {
-                    const decision = postEngine();
+                    const decision = postEngine(takePostStateSnapshot());
                     postState.decisionResult = decision;
                     renderPostEnginePanel(decision);
                     renderBettingPanel();
@@ -5737,7 +5824,7 @@
                 const sprEl = document.getElementById('sumSpr');
                 if (sprEl) sprEl.innerText = postState.potTracker.spr.toFixed(1);
                 if (postState.equityResult) {
-                    const decision = postEngine();
+                    const decision = postEngine(takePostStateSnapshot());
                     postState.decisionResult = decision;
                     renderPostEnginePanel(decision);
                     renderBettingPanel();
@@ -6157,7 +6244,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.25',
+                    v: 'v3.25.5',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -6176,7 +6263,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.25' && data.v !== 'v3.24' && data.v !== 'v3.23' && data.v !== 'v3.22' && data.v !== 'v3.21' && data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.25.5' && data.v !== 'v3.25.4' && data.v !== 'v3.25.3' && data.v !== 'v3.25.2' && data.v !== 'v3.25.1' && data.v !== 'v3.25' && data.v !== 'v3.24' && data.v !== 'v3.23' && data.v !== 'v3.22' && data.v !== 'v3.21' && data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -6250,7 +6337,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.25 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.25.5 正式版';
             renderWindowColorChips(key);
         };
 
@@ -6582,6 +6669,16 @@
             document.getElementById('sizingContent').innerText = ''; // P2-1 统一：清 DOM 残留
             document.getElementById('resultPanel').classList.remove('invisible');
             updateCfgSummary();
+            if (typeof publishPreflopDecision === 'function') {
+                publishPreflopDecision({
+                    primaryAction: 'BLOCKED',
+                    isBlocked: true,
+                    isTerminal: true,
+                    isPush: false,
+                    verdict: '⚠️ 逻辑悖论',
+                    reasoning: msg
+                });
+            }
         }
 
         // ============================================================
@@ -8896,6 +8993,9 @@
                 Math.max(0, vLo[2] * (1 - weight) + vHi[2] * weight),
                 Math.max(0, vLo[3] * (1 - weight) + vHi[3] * weight)
             ];
+            if (typeof normalizeFrequencies === 'function') {
+                return normalizeFrequencies(raw);
+            }
             const sum = raw[0] + raw[1] + raw[2] + raw[3];
             if (sum <= 0) return [100, 0, 0, 0];
             const normalized = raw.map(x => (x / sum) * 100);
@@ -8952,171 +9052,12 @@
         }
 
         // ==========================================================================
-        // 推荐引擎官方微尺寸全场景深度对接与非标尺寸自适应 (v5.0 / Stage 3 v3.20)
-        // 涵盖: 613 官方节点真解优先、全深度/全位置几何微尺寸推导、非标开池底池赔率几何级数反击与频率补偿
+        // 推荐引擎官方微尺寸全场景深度对接与非标尺寸自适应 (Single Source of Truth / Issue 05 & 10)
+        // 权威引擎在 lib/gto_matrix_engine.js 中定义，此处挂载全局防御性引用
         // ==========================================================================
-        window.getGtoSizing = function(heroPos, vsPos, effStack, actionSeq = 'vs_RFI', facingBet = null, callersCount = 0, is6Max = false) {
-            if (typeof effStack !== 'number' || isNaN(effStack) || effStack <= 0) return null;
-            let effHeroPos = heroPos || 'CO';
-            let effVsPos = vsPos || 'UTG';
-            if (is6Max) {
-                if (actionSeq === 'RFI') {
-                    if (heroPos === 'UTG') effHeroPos = 'LJ';
-                    else if (heroPos === 'MP') effHeroPos = 'HJ';
-                } else if (actionSeq === 'vs_RFI') {
-                    if (vsPos === 'UTG') effVsPos = 'LJ';
-                    else if (vsPos === 'MP') effVsPos = 'HJ';
-                    if (heroPos === 'UTG') effHeroPos = 'LJ';
-                    else if (heroPos === 'MP') effHeroPos = 'HJ';
-                }
-            }
-
-            let seqKey = actionSeq;
-            if (actionSeq === 'vs_RFI') seqKey = `vs_${effVsPos}_RFI`;
-            else if (actionSeq === 'vs_3BET' || actionSeq === 'vs_3Bet') seqKey = `vs_${effVsPos}_3BET`;
-
-            const depths = [8, 10, 12, 15, 20, 25, 30, 35, 40, 60];
-            let loDepth = 8, hiDepth = 60;
-            for (let i = 0; i < depths.length; i++) {
-                if (depths[i] <= effStack) loDepth = depths[i];
-                if (depths[i] >= effStack) { hiDepth = depths[i]; break; }
-            }
-
-            const matrix = window.PREFLOP_GTO_MATRIX;
-            let baselineSizing = null;
-
-            // 1. 优先查表 matrix.sizings 获取 GTO Wizard 解算真值
-            if (matrix && matrix.sizings) {
-                const candidateKeys = [];
-                if (actionSeq === 'RFI') {
-                    if (is6Max) candidateKeys.push(`${loDepth}_${effHeroPos}_6M_RFI`);
-                    candidateKeys.push(`${loDepth}_${effHeroPos}_RFI`);
-                } else if (actionSeq === 'vs_RFI') {
-                    candidateKeys.push(`${loDepth}_${effHeroPos}_vs_${effVsPos}_RFI`);
-                    if (effVsPos === 'MP') candidateKeys.push(`${loDepth}_${effHeroPos}_vs_UTG1_RFI`);
-                    if (effVsPos === 'UTG1' || effVsPos === 'U+1') candidateKeys.push(`${loDepth}_${effHeroPos}_vs_UTG_RFI`);
-                } else if (actionSeq === 'SQUEEZE' || actionSeq.includes('SQUEEZE')) {
-                    candidateKeys.push(`${loDepth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`);
-                    candidateKeys.push(`${loDepth}_${effHeroPos}_SQUEEZE`);
-                } else if (actionSeq === 'vs_3BET' || actionSeq === 'vs_3Bet') {
-                    candidateKeys.push(`${loDepth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`);
-                    candidateKeys.push(`${loDepth}_${effHeroPos}_vs_${effVsPos}_3BET`);
-                } else if (actionSeq === 'COLD_4BET' || actionSeq === 'COLD_4Bet') {
-                    candidateKeys.push(`${loDepth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}`);
-                } else if (actionSeq === 'vs_4BET' || actionSeq === 'vs_4Bet') {
-                    candidateKeys.push(`${loDepth}_${effHeroPos}_FACING_4BET_vs_${effVsPos}`);
-                    candidateKeys.push(`${loDepth}_${effHeroPos}_vs_${effVsPos}_4BET`);
-                } else if (actionSeq === 'vs_LIMP') {
-                    candidateKeys.push(`${loDepth}_${effHeroPos}_vs_SB_LIMP`);
-                    candidateKeys.push(`${loDepth}_${effHeroPos}_vs_LIMP`);
-                }
-
-                for (const k of candidateKeys) {
-                    if (typeof matrix.sizings[k] === 'number') {
-                        baselineSizing = matrix.sizings[k] === 999 ? effStack : matrix.sizings[k];
-                        break;
-                    }
-                }
-
-                if (baselineSizing === null && loDepth !== hiDepth) {
-                    const hiCandidateKeys = candidateKeys.map(k => k.replace(new RegExp(`^${loDepth}_`), `${hiDepth}_`));
-                    for (const k of hiCandidateKeys) {
-                        if (typeof matrix.sizings[k] === 'number') {
-                            baselineSizing = matrix.sizings[k] === 999 ? effStack : matrix.sizings[k];
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // 2. 若当前节点未精确收录，启动 GTO Wizard 官方微尺寸几何推导中枢
-            if (typeof baselineSizing !== 'number') {
-                if (actionSeq === 'RFI') {
-                    if (effStack <= 15) {
-                        baselineSizing = 2.0;
-                    } else if (effHeroPos === 'SB') {
-                        baselineSizing = effStack >= 40 ? 3.0 : 2.5;
-                    } else if (effHeroPos === 'BTN') {
-                        baselineSizing = effStack >= 40 ? 2.2 : 2.1;
-                    } else if (effHeroPos === 'CO') {
-                        baselineSizing = 2.2;
-                    } else {
-                        baselineSizing = 2.0;
-                    }
-                } else if (actionSeq === 'vs_RFI') {
-                    const isIP = (effHeroPos === 'BTN' ||
-                                  (effHeroPos === 'CO' && effVsPos !== 'BTN') ||
-                                  (effHeroPos === 'HJ' && ['UTG', 'UTG1', 'MP', 'LJ'].includes(effVsPos)) ||
-                                  (effHeroPos === 'LJ' && ['UTG', 'UTG1', 'MP'].includes(effVsPos)));
-                    if (effStack <= 15) {
-                        baselineSizing = effStack; // ≤15BB 浅码直接触发全推
-                    } else if (effStack <= 25) {
-                        baselineSizing = isIP ? 5.5 : 7.5;
-                    } else {
-                        baselineSizing = isIP ? 6.5 : (effHeroPos === 'BB' ? 8.92 : 9.0);
-                    }
-                } else if (actionSeq === 'SQUEEZE' || actionSeq.includes('SQUEEZE')) {
-                    const isIP = effHeroPos === 'BTN' || effHeroPos === 'CO';
-                    const base = isIP ? 6.5 : (effHeroPos === 'BB' ? 10.0 : 9.0);
-                    baselineSizing = Number((base + (callersCount || 1) * (facingBet || 2.2)).toFixed(1));
-                } else if (actionSeq.includes('3BET') || actionSeq === 'vs_3BET') {
-                    if (effStack <= 25) {
-                        baselineSizing = effStack;
-                    } else {
-                        baselineSizing = (effHeroPos === 'BTN' || effHeroPos === 'CO') ? 18.0 : 21.0;
-                    }
-                } else if (actionSeq.includes('4BET') || actionSeq === 'COLD_4BET') {
-                    if (effStack <= 25) {
-                        baselineSizing = effStack;
-                    } else {
-                        baselineSizing = 20.0;
-                    }
-                } else {
-                    baselineSizing = 2.2;
-                }
-            }
-
-            // 3. 非标尺寸自适应 (Non-standard Sizing Adaptation & Pot Odds Scaling)
-            let adaptiveSizing = baselineSizing;
-            let isNonStandard = false;
-            let oddsDelta = 0;
-            let defendMult = 1.0;
-            const baseOpen = (actionSeq === 'RFI') ? baselineSizing : 2.2;
-
-            if (actionSeq === 'vs_RFI' && typeof facingBet === 'number' && facingBet > 0 && Math.abs(facingBet - baseOpen) > 0.1) {
-                isNonStandard = true;
-                const isIP = (effHeroPos === 'BTN' || (effHeroPos === 'CO' && effVsPos !== 'BTN') || (effHeroPos === 'HJ' && ['UTG', 'UTG1', 'LJ'].includes(effVsPos)));
-                const mult = isIP ? 3.0 : 4.0;
-                adaptiveSizing = Number((facingBet * mult + (callersCount || 0) * facingBet).toFixed(1));
-
-                // 筹码门槛截断：若加注额达有效筹码 55%，MTT 博弈论直接转化为全推 All-in Jam
-                if (adaptiveSizing >= 0.55 * effStack) {
-                    adaptiveSizing = effStack;
-                }
-
-                // 底池赔率恶化/改善与频率补偿测算
-                const pot0 = baseOpen + 1.5 + 1.0; // 基准底池（含盲注与前注）
-                const call0 = Math.max(0, baseOpen - (effHeroPos === 'BB' ? 1.0 : effHeroPos === 'SB' ? 0.5 : 0));
-                const odds0 = call0 / (pot0 + call0);
-
-                const potAct = facingBet + 1.5 + 1.0 + (callersCount || 0) * facingBet;
-                const callAct = Math.max(0, facingBet - (effHeroPos === 'BB' ? 1.0 : effHeroPos === 'SB' ? 0.5 : 0));
-                const oddsAct = callAct / (potAct + callAct);
-
-                oddsDelta = Number(((oddsAct - odds0) * 100).toFixed(1));
-                // 当赔率变差时 (oddsAct > odds0)，defendMult < 1.0 收紧；反之放宽
-                defendMult = Number(Math.max(0.60, Math.min(1.30, odds0 / oddsAct)).toFixed(2));
-            }
-
-            return {
-                baselineSizing: Number(baselineSizing.toFixed(1)),
-                sizing: Number(adaptiveSizing.toFixed(1)),
-                isNonStandard,
-                facingBet: typeof facingBet === 'number' ? facingBet : baseOpen,
-                baselineOpen: baseOpen,
-                oddsDelta,
-                defendMult
-            };
+        window.getGtoSizing = window.getGtoSizing || function(heroPos, vsPos, effStack, actionSeq = 'vs_RFI', facingBet = null, callersCount = 0, is6Max = false) {
+            return (typeof globalThis !== 'undefined' && globalThis.getGtoSizing) ?
+                globalThis.getGtoSizing(heroPos, vsPos, effStack, actionSeq, facingBet, callersCount, is6Max) : null;
         };
 
         window.applyGtoSizing = function(sizingBB) {
@@ -9148,467 +9089,18 @@
             }
         };
 
-        window.queryGtoPreflop = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI', facingBet = null, callersCount = 0) {
-            if (typeof effStack !== 'number' || isNaN(effStack) || !Number.isFinite(effStack)) return null;
-            if (typeof hand !== 'string' || !VALID_GTO_HAND_REGEX.test(hand.trim())) return null;
-            const cleanHand = hand.trim();
-
-            const matrix = window.PREFLOP_GTO_MATRIX;
-            if (!matrix || !matrix.nodes) return null;
-
-            let effHeroPos = heroPos;
-            let effVsPos = vsPos;
-
-            // 桌型相对位置映射（6-max / 8-max / 9-max 自适应）：
-            // 若当前为 6-max，UTG 身后剩 5 人对应 8-max 的 LJ，MP 身后剩 4 人对应 8-max 的 HJ
-            const is6Max = typeof gameConfig !== 'undefined' && gameConfig.tableSize === '6max';
-            const is9Max = typeof gameConfig !== 'undefined' && gameConfig.tableSize === '9max';
-            if (is6Max) {
-                if (actionSeq === 'RFI') {
-                    if (heroPos === 'UTG') effHeroPos = 'LJ';
-                    else if (heroPos === 'MP') effHeroPos = 'HJ';
-                }
-                if (actionSeq === 'vs_RFI') {
-                    if (vsPos === 'UTG') effVsPos = 'LJ';
-                    else if (vsPos === 'MP') effVsPos = 'HJ';
-                    if (heroPos === 'UTG') effHeroPos = 'LJ';
-                    else if (heroPos === 'MP') effHeroPos = 'HJ';
-                }
-            } else if (is9Max) {
-                if (actionSeq === 'RFI') {
-                    if (heroPos === 'MP') effHeroPos = 'UTG1';
-                    else if (heroPos === 'UTG1' || heroPos === 'U+1') effHeroPos = 'UTG';
-                }
-                if (actionSeq === 'vs_RFI') {
-                    if (vsPos === 'MP') effVsPos = 'UTG1';
-                    else if (vsPos === 'UTG1' || vsPos === 'U+1') effVsPos = 'UTG';
-                    if (heroPos === 'MP') effHeroPos = 'UTG1';
-                }
-                if (actionSeq === 'SQUEEZE' || (actionSeq && actionSeq.includes('SQUEEZE'))) {
-                    if (vsPos === 'MP') effVsPos = 'UTG1';
-                    else if (vsPos === 'UTG1' || vsPos === 'U+1') effVsPos = 'UTG1';
-                    else if (vsPos === 'UTG') effVsPos = 'UTG';
-                    if (heroPos === 'MP') effHeroPos = 'UTG1';
-                }
-            }
-
-            let seqKey = actionSeq;
-            if (actionSeq === 'vs_RFI') seqKey = `vs_${effVsPos}_RFI`;
-            else if (actionSeq === 'vs_3BET' || actionSeq === 'vs_3Bet') seqKey = `vs_${effVsPos}_3BET`;
-            const depths = findAvailableGtoDepths(matrix, effHeroPos, seqKey) || (matrix.depths || [8, 10, 12, 15, 20, 25, 30, 35, 40, 60, 80, 100]);
-            if (!depths || !depths.length) return null;
-            const minD = depths[0], maxD = depths[depths.length - 1];
-            // 深筹平滑锚定至最深解算点（如 >100BB 锚定 100BB），短筹平滑锚定 8BB
-            const effLookup = Math.max(minD, Math.min(maxD, effStack));
-
-            let loDepth = depths[0], hiDepth = depths[depths.length - 1];
-            for (let i = 0; i < depths.length; i++) {
-                if (depths[i] <= effLookup) loDepth = depths[i];
-                if (depths[i] >= effLookup) { hiDepth = depths[i]; break; }
-            }
-
-            function getNode(depth) {
-                if (!matrix.nodes) return {};
-                // SQUEEZE 模式优先针对性匹配对手开池位，避免落入宽泛被覆盖键
-                if (seqKey === 'SQUEEZE' || seqKey.includes('SQUEEZE')) {
-                    if (effVsPos && matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`];
-                    if (effVsPos && matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`];
-                    if (effVsPos === 'UTG1' && matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG`];
-                    if (effVsPos === 'UTG' && matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG1`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG1`];
-                    if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`];
-                    if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`];
-                }
-                let k = `${depth}_${effHeroPos}_${seqKey}`;
-                if (matrix.nodes[k]) return matrix.nodes[k];
-                if (seqKey.startsWith('vs_') && seqKey.endsWith('_RFI')) {
-                    if ((effVsPos === 'MP' || vsPos === 'MP') && matrix.nodes[`${depth}_${effHeroPos}_vs_UTG1_RFI`]) return matrix.nodes[`${depth}_${effHeroPos}_vs_UTG1_RFI`];
-                    if ((effVsPos === 'UTG1' || effVsPos === 'U+1' || vsPos === 'UTG1' || vsPos === 'U+1') && matrix.nodes[`${depth}_${effHeroPos}_vs_UTG_RFI`]) return matrix.nodes[`${depth}_${effHeroPos}_vs_UTG_RFI`];
-                    if (effHeroPos === 'LJ' && matrix.nodes[`${depth}_MP_${seqKey}`]) return matrix.nodes[`${depth}_MP_${seqKey}`];
-                    if (effHeroPos === 'HJ' && matrix.nodes[`${depth}_MP_${seqKey}`]) return matrix.nodes[`${depth}_MP_${seqKey}`];
-                }
-                if (seqKey === 'RFI') {
-                    if (matrix.nodes[`${depth}_${effHeroPos}_RFI`]) return matrix.nodes[`${depth}_${effHeroPos}_RFI`];
-                    if (effHeroPos === 'HJ' && matrix.nodes[`${depth}_MP_RFI`]) return matrix.nodes[`${depth}_MP_RFI`];
-                    if (effHeroPos === 'MP' && matrix.nodes[`${depth}_HJ_RFI`]) return matrix.nodes[`${depth}_HJ_RFI`];
-                    if (effHeroPos === 'LJ' && matrix.nodes[`${depth}_UTG_RFI`]) return matrix.nodes[`${depth}_UTG_RFI`];
-                    if (effHeroPos === 'UTG' && matrix.nodes[`${depth}_UTG_6M_RFI`]) return matrix.nodes[`${depth}_UTG_6M_RFI`];
-                }
-                if (seqKey === 'SQUEEZE' || seqKey.includes('SQUEEZE')) {
-                    if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`];
-                    if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`];
-                    if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`];
-                    if (matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`]) return matrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`];
-                }
-                if (seqKey.includes('COLD_4BET')) {
-                    if (matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}1`]) return matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}1`];
-                    if (matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}`]) return matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}`];
-                    if (matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET`]) return matrix.nodes[`${depth}_${effHeroPos}_COLD_4BET`];
-                }
-                if (seqKey.includes('3BET')) {
-                    if (matrix.nodes[`${depth}_${effHeroPos}_${seqKey}`]) return matrix.nodes[`${depth}_${effHeroPos}_${seqKey}`];
-                    if (matrix.nodes[`${depth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`]) return matrix.nodes[`${depth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`];
-                }
-                return {};
-            }
-
-            const nodeLo = getNode(loDepth);
-            const nodeHi = getNode(hiDepth);
-
-            const hasLo = Object.keys(nodeLo).length > 0;
-            const hasHi = Object.keys(nodeHi).length > 0;
-
-            if (!hasLo && !hasHi) {
-                return null; // 节点缺失返回 null，绝不误判为 100% 弃牌
-            }
-
-            const rawLo = nodeLo[cleanHand] || (hasLo ? [100, 0, 0, 0] : null);
-            const rawHi = nodeHi[cleanHand] || (hasHi ? [100, 0, 0, 0] : null);
-
-            const cLo = rawLo ? sanitizeGtoVector(rawLo) : null;
-            const cHi = rawHi ? sanitizeGtoVector(rawHi) : null;
-
-            let resultVec = null;
-            if (loDepth === hiDepth) {
-                resultVec = cLo || cHi;
-            } else if (!cLo || !cHi) {
-                return null;
-            } else {
-                const weight = (effLookup - loDepth) / (hiDepth - loDepth);
-                resultVec = interpolateGtoFrequencies(cLo, cHi, weight);
-            }
-
-            // 动态 ICM 风险溢价调整 (DEF-ICM-GTO / Stage 2 v3.19)
-            if (resultVec && typeof getICM313Context === 'function' && typeof gameConfig !== 'undefined') {
-                const hs = typeof globalHeroStack !== 'undefined' ? globalHeroStack : effStack;
-                const vs = typeof globalVillainStack !== 'undefined' ? globalVillainStack : effStack;
-                const avg = (typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : effStack;
-                const icm = getICM313Context(hs, vs, avg, gameConfig.stage);
-                if (icm && icm.isICMStage && icm.riskPremium > 0) {
-                    const rp = Math.min(0.40, icm.riskPremium / 100);
-                    // 1. 边缘跟注避险收紧 -> 转向弃牌
-                    if (resultVec[1] > 0 && resultVec[0] < 100) {
-                        const shiftCall = Math.round(resultVec[1] * Math.min(1.0, rp * 1.5));
-                        if (shiftCall > 0) {
-                            resultVec[1] = Math.max(0, resultVec[1] - shiftCall);
-                            resultVec[0] = Math.min(100, resultVec[0] + shiftCall);
-                        }
-                    }
-                    // 2. 边缘全推避险收紧 -> 转向弃牌
-                    if (resultVec[3] > 0 && resultVec[0] < 100) {
-                        const shiftJam = Math.round(resultVec[3] * Math.min(0.8, rp * 2.0));
-                        if (shiftJam > 0) {
-                            resultVec[3] = Math.max(0, resultVec[3] - shiftJam);
-                            resultVec[0] = Math.min(100, resultVec[0] + shiftJam);
-                        }
-                    }
-                    // 3. 边缘开池/加注收紧 -> 转向弃牌
-                    if (resultVec[2] > 0 && resultVec[0] < 100) {
-                        const shiftRaise = Math.round(resultVec[2] * Math.min(0.4, rp * 1.0));
-                        if (shiftRaise > 0) {
-                            resultVec[2] = Math.max(0, resultVec[2] - shiftRaise);
-                            resultVec[0] = Math.min(100, resultVec[0] + shiftRaise);
-                        }
-                    }
-                    const cleanVec = sanitizeGtoVector(resultVec);
-                    if (cleanVec) {
-                        for (let i = 0; i < 4; i++) resultVec[i] = cleanVec[i];
-                    }
-                }
-            }
-
-            // Dimension 2: 绑定求解器精准微尺寸与非标尺寸自适应 (v5.0 / Stage 3 v3.20)
-            if (resultVec && typeof window.getGtoSizing === 'function') {
-                const sizingInfo = window.getGtoSizing(effHeroPos, effVsPos, effStack, actionSeq, facingBet, callersCount, is6Max);
-                if (sizingInfo) {
-                    resultVec.sizing = sizingInfo.sizing;
-                    resultVec.sizingInfo = sizingInfo;
-
-                    // 若面对非标尺寸，执行底池赔率频率补偿 (Defending Frequency Scaling)
-                    if (sizingInfo.isNonStandard && sizingInfo.defendMult !== 1.0) {
-                        const mult = sizingInfo.defendMult;
-                        if (mult < 1.0) {
-                            // 赔率恶化：收紧 Call 与边际加注，将减额计入 Fold
-                            if (resultVec[1] > 0) {
-                                const origCall = resultVec[1];
-                                resultVec[1] = Math.max(0, Math.round(origCall * mult));
-                                resultVec[0] += (origCall - resultVec[1]);
-                            }
-                            if (resultVec[2] > 0) {
-                                const origRaise = resultVec[2];
-                                resultVec[2] = Math.max(0, Math.round(origRaise * Math.min(1.0, Math.sqrt(mult))));
-                                resultVec[0] += (origRaise - resultVec[2]);
-                            }
-                        } else if (mult > 1.0) {
-                            // 赔率更优：从 Fold 释放频率到 Call
-                            if (resultVec[0] > 0) {
-                                const origCall = resultVec[1];
-                                const targetCall = Math.min(100, Math.round(origCall * mult));
-                                const addCall = Math.min(resultVec[0], targetCall - origCall);
-                                resultVec[1] += addCall;
-                                resultVec[0] -= addCall;
-                            }
-                        }
-                        const cleanVec = sanitizeGtoVector(resultVec);
-                        if (cleanVec) {
-                            for (let i = 0; i < 4; i++) resultVec[i] = cleanVec[i];
-                        }
-                    }
-                }
-            } else if (resultVec && matrix && matrix.sizings) {
-                const sizingKey = `${loDepth}_${effHeroPos}_${seqKey}`;
-                const matchedSizing = matrix.sizings[sizingKey] ||
-                    matrix.sizings[`${loDepth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`] ||
-                    matrix.sizings[`${loDepth}_${effHeroPos}_RFI`];
-                if (typeof matchedSizing === 'number') {
-                    resultVec.sizing = matchedSizing;
-                }
-            }
-            return resultVec;
+        // ==========================================================================
+        // 翻前极化静态 GTO 策略矩阵与 EV 统一引擎 (Single Source of Truth / Issue 05 & 10)
+        // 权威引擎在 lib/gto_matrix_engine.js 中定义，此处挂载全局防御性引用
+        // ==========================================================================
+        window.queryGtoPreflop = window.queryGtoPreflop || function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI', facingBet = null, callersCount = 0) {
+            return (typeof globalThis !== 'undefined' && globalThis.queryGtoPreflop) ?
+                globalThis.queryGtoPreflop(heroPos, vsPos, effStack, hand, actionSeq, facingBet, callersCount) : null;
         };
 
-        // Dimension 3: 翻前 GTO 期望值 (EV) 与动态 ICM 风险溢价模型 (v5.0 / Stage 3 v3.20)
-        // 核心数学公式: EV_ICM = EV_cEV - (RP × RiskPot)
-        window.queryGtoEv = function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI', heroStack = null, villainStack = null, avgStack = null, stage = null, facingBet = null, callersCount = 0) {
-            if (typeof effStack !== 'number' || isNaN(effStack) || !Number.isFinite(effStack)) return null;
-            if (typeof hand !== 'string' || !VALID_GTO_HAND_REGEX.test(hand.trim())) return null;
-            const cleanHand = hand.trim();
-            const evMatrix = window.PREFLOP_GTO_EV_MATRIX;
-            if (!evMatrix || !evMatrix.nodes) return null;
-
-            let effHeroPos = heroPos;
-            let effVsPos = vsPos;
-            const is6Max = typeof gameConfig !== 'undefined' && gameConfig.tableSize === '6max';
-            const is9Max = typeof gameConfig !== 'undefined' && gameConfig.tableSize === '9max';
-            if (is6Max) {
-                if (actionSeq === 'RFI') {
-                    if (heroPos === 'UTG') effHeroPos = 'LJ';
-                    else if (heroPos === 'MP') effHeroPos = 'HJ';
-                }
-                if (actionSeq === 'vs_RFI') {
-                    if (vsPos === 'UTG') effVsPos = 'LJ';
-                    else if (vsPos === 'MP') effVsPos = 'HJ';
-                    if (heroPos === 'UTG') effHeroPos = 'LJ';
-                    else if (heroPos === 'MP') effHeroPos = 'HJ';
-                }
-            } else if (is9Max) {
-                if (actionSeq === 'RFI') {
-                    if (heroPos === 'MP') effHeroPos = 'UTG1';
-                    else if (heroPos === 'UTG1' || heroPos === 'U+1') effHeroPos = 'UTG';
-                }
-                if (actionSeq === 'vs_RFI') {
-                    if (vsPos === 'MP') effVsPos = 'UTG1';
-                    else if (vsPos === 'UTG1' || vsPos === 'U+1') effVsPos = 'UTG';
-                    if (heroPos === 'MP') effHeroPos = 'UTG1';
-                }
-                if (actionSeq === 'SQUEEZE' || (actionSeq && actionSeq.includes('SQUEEZE'))) {
-                    if (vsPos === 'MP') effVsPos = 'UTG1';
-                    else if (vsPos === 'UTG1' || vsPos === 'U+1') effVsPos = 'UTG1';
-                    else if (vsPos === 'UTG') effVsPos = 'UTG';
-                    if (heroPos === 'MP') effHeroPos = 'UTG1';
-                }
-            }
-
-            let seqKey = actionSeq;
-            if (actionSeq === 'vs_RFI') seqKey = `vs_${effVsPos}_RFI`;
-            else if (actionSeq === 'vs_3BET' || actionSeq === 'vs_3Bet') seqKey = `vs_${effVsPos}_3BET`;
-
-            const depths = evMatrix.depths || [8, 10, 12, 15, 20, 25, 30, 35, 40, 60, 80, 100];
-            const minD = depths[0], maxD = depths[depths.length - 1];
-            // 深筹平滑锚定至最深解算点（如 >100BB 锚定 100BB），短筹平滑锚定 8BB
-            const effLookup = Math.max(minD, Math.min(maxD, effStack));
-
-            let loDepth = depths[0], hiDepth = depths[depths.length - 1];
-            for (let i = 0; i < depths.length; i++) {
-                if (depths[i] <= effLookup) loDepth = depths[i];
-                if (depths[i] >= effLookup) { hiDepth = depths[i]; break; }
-            }
-
-            function getEvNode(depth) {
-                if (!evMatrix.nodes) return {};
-                // SQUEEZE 模式优先针对性匹配对手开池位，避免落入宽泛被覆盖键
-                if (seqKey === 'SQUEEZE' || seqKey.includes('SQUEEZE')) {
-                    if (effVsPos && evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`];
-                    if (effVsPos && evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`];
-                    if (effVsPos === 'UTG1' && evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG`];
-                    if (effVsPos === 'UTG' && evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG1`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG1`];
-                    if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`];
-                    if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`];
-                }
-                let k = `${depth}_${effHeroPos}_${seqKey}`;
-                if (evMatrix.nodes[k]) return evMatrix.nodes[k];
-                if (seqKey.startsWith('vs_') && seqKey.endsWith('_RFI')) {
-                    if ((effVsPos === 'MP' || vsPos === 'MP') && evMatrix.nodes[`${depth}_${effHeroPos}_vs_UTG1_RFI`]) return evMatrix.nodes[`${depth}_${effHeroPos}_vs_UTG1_RFI`];
-                    if ((effVsPos === 'UTG1' || effVsPos === 'U+1' || vsPos === 'UTG1' || vsPos === 'U+1') && evMatrix.nodes[`${depth}_${effHeroPos}_vs_UTG_RFI`]) return evMatrix.nodes[`${depth}_${effHeroPos}_vs_UTG_RFI`];
-                    if (effHeroPos === 'LJ' && evMatrix.nodes[`${depth}_MP_${seqKey}`]) return evMatrix.nodes[`${depth}_MP_${seqKey}`];
-                    if (effHeroPos === 'HJ' && evMatrix.nodes[`${depth}_MP_${seqKey}`]) return evMatrix.nodes[`${depth}_MP_${seqKey}`];
-                }
-                if (seqKey === 'SQUEEZE' || seqKey.includes('SQUEEZE')) {
-                    if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}`];
-                    if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_${effVsPos}1`];
-                    if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE_vs_UTG_BTN`];
-                    if (evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`]) return evMatrix.nodes[`${depth}_${effHeroPos}_SQUEEZE`];
-                }
-                if (seqKey.includes('COLD_4BET')) {
-                    if (evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}1`]) return evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}1`];
-                    if (evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}`]) return evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET_vs_${effVsPos}`];
-                    if (evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET`]) return evMatrix.nodes[`${depth}_${effHeroPos}_COLD_4BET`];
-                }
-                if (seqKey.includes('3BET')) {
-                    if (evMatrix.nodes[`${depth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`]) return evMatrix.nodes[`${depth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`];
-                }
-                if (seqKey === 'RFI') {
-                    if (evMatrix.nodes[`${depth}_${effHeroPos}_RFI`]) return evMatrix.nodes[`${depth}_${effHeroPos}_RFI`];
-                    if (effHeroPos === 'HJ' && evMatrix.nodes[`${depth}_MP_RFI`]) return evMatrix.nodes[`${depth}_MP_RFI`];
-                    if (effHeroPos === 'MP' && evMatrix.nodes[`${depth}_HJ_RFI`]) return evMatrix.nodes[`${depth}_HJ_RFI`];
-                    if (effHeroPos === 'LJ' && evMatrix.nodes[`${depth}_UTG_RFI`]) return evMatrix.nodes[`${depth}_UTG_RFI`];
-                }
-                return null;
-            }
-
-            const nodeLo = getEvNode(loDepth);
-            const nodeHi = getEvNode(hiDepth);
-            if (!nodeLo && !nodeHi) return null;
-
-            const evLo = nodeLo && nodeLo[cleanHand] ? nodeLo[cleanHand] : [0, 0, 0, 0];
-            const evHi = nodeHi && nodeHi[cleanHand] ? nodeHi[cleanHand] : [0, 0, 0, 0];
-
-            let rawEvVec = null;
-            if (loDepth === hiDepth || !nodeLo || !nodeHi) {
-                rawEvVec = (nodeLo ? evLo : evHi).slice();
-            } else {
-                const weight = (effLookup - loDepth) / (hiDepth - loDepth);
-                rawEvVec = [
-                    Number((evLo[0] * (1 - weight) + evHi[0] * weight).toFixed(2)),
-                    Number((evLo[1] * (1 - weight) + evHi[1] * weight).toFixed(2)),
-                    Number((evLo[2] * (1 - weight) + evHi[2] * weight).toFixed(2)),
-                    Number((evLo[3] * (1 - weight) + evHi[3] * weight).toFixed(2))
-                ];
-            }
-
-            // 1. 纯筹码期望值 (ChipEV): Fold 恒为 0.00BB
-            const cEV = [
-                0.00,
-                Number(rawEvVec[1].toFixed(2)),
-                Number(rawEvVec[2].toFixed(2)),
-                Number(rawEvVec[3].toFixed(2))
-            ];
-
-            // 2. 动态 ICM 风险溢价评估 (Pokercode ICM 3-1-3)
-            const hs = (heroStack != null) ? heroStack : (typeof globalHeroStack !== 'undefined' ? globalHeroStack : effStack);
-            const vs = (villainStack != null) ? villainStack : (typeof globalVillainStack !== 'undefined' ? globalVillainStack : effStack);
-            const avg = (avgStack != null && avgStack > 0) ? avgStack : ((typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : (hs || effStack || 40));
-            const stg = stage || ((typeof gameConfig !== 'undefined' && gameConfig.stage) ? gameConfig.stage : 'normal');
-
-            const icm = (typeof getICM313Context === 'function') ? getICM313Context(hs, vs, avg, stg) : null;
-            const isICM = !!(icm && icm.isICMStage && icm.riskPremium > 0);
-            const rp = isICM ? Math.min(0.50, icm.riskPremium / 100) : 0.0;
-
-            // 3. 风险筹码测算 (RiskPot): 各动作置于险境的筹码量
-            // Fold: 0BB (零额外风险)
-            const riskPotFold = 0.0;
-            // Call: 跟注所需筹码 (RFI limp 1BB, vs RFI 2.2BB, vs 3bet 6.5BB, vs 4bet 18BB, squeeze 8BB 或非标面对尺寸)
-            let baseCall = 2.2;
-            if (typeof facingBet === 'number' && facingBet > 0) {
-                baseCall = facingBet;
-            } else if (actionSeq === 'RFI') {
-                baseCall = 1.0;
-            } else if (seqKey.includes('3BET')) {
-                baseCall = 6.5;
-            } else if (seqKey.includes('4BET')) {
-                baseCall = 18.0;
-            } else if (seqKey.includes('SQUEEZE')) {
-                baseCall = 8.0;
-            }
-            const riskPotCall = Number(Math.min(effStack, baseCall).toFixed(2));
-
-            // Raise: 加注承诺尺寸 (深度对接 getGtoSizing / Stage 3 v3.20)
-            let baseRaise = 2.2;
-            if (typeof window.getGtoSizing === 'function') {
-                const sInfo = window.getGtoSizing(effHeroPos, effVsPos, effStack, actionSeq, facingBet, callersCount, is6Max);
-                if (sInfo && sInfo.sizing) baseRaise = sInfo.sizing;
-            } else if (matrix && matrix.sizings) {
-                const sizingKey = `${loDepth}_${effHeroPos}_${seqKey}`;
-                const matchedSizing = matrix.sizings[sizingKey] ||
-                    matrix.sizings[`${loDepth}_${effHeroPos}_FACING_3BET_vs_${effVsPos}`] ||
-                    matrix.sizings[`${loDepth}_${effHeroPos}_RFI`];
-                if (typeof matchedSizing === 'number') baseRaise = matchedSizing;
-            } else if (seqKey.includes('3BET')) {
-                baseRaise = 18.0;
-            } else if (actionSeq === 'vs_RFI') {
-                baseRaise = 6.5;
-            }
-            const riskPotRaise = Number(Math.min(effStack, baseRaise).toFixed(2));
-
-            // Jam: 全部有效筹码置于淘汰险境
-            const riskPotJam = Number(effStack.toFixed(2));
-
-            const riskPots = [riskPotFold, riskPotCall, riskPotRaise, riskPotJam];
-
-            // 4. ICM 惩罚项计算: Penalty = RP × RiskPot
-            const penalties = [
-                0.00,
-                Number((rp * riskPotCall).toFixed(2)),
-                Number((rp * riskPotRaise).toFixed(2)),
-                Number((rp * riskPotJam).toFixed(2))
-            ];
-
-            // 5. ICM 净期望值: EV_ICM = EV_cEV - Penalty
-            const icmEV = [
-                0.00,
-                Number((cEV[1] - penalties[1]).toFixed(2)),
-                Number((cEV[2] - penalties[2]).toFixed(2)),
-                Number((cEV[3] - penalties[3]).toFixed(2))
-            ];
-
-            // 有效决议向量: ICM 激活时采纳 icmEV, 常规期完全等价于 cEV (0 衰减 0 回归)
-            const resultEv = isICM ? icmEV.slice() : cEV.slice();
-
-            const actionNames = ['弃', '跟', '加', '推'];
-            let bestIdx = 0;
-            let maxVal = -Infinity;
-            for (let i = 0; i < 4; i++) {
-                if (resultEv[i] > maxVal) {
-                    maxVal = resultEv[i];
-                    bestIdx = i;
-                }
-            }
-            resultEv.bestAction = actionNames[bestIdx];
-            resultEv.bestEv = maxVal;
-
-            // 6. 反事实损失 (Counterfactual Loss)
-            resultEv.loss = {
-                F: Number((resultEv[0] - maxVal).toFixed(2)),
-                C: Number((resultEv[1] - maxVal).toFixed(2)),
-                R: Number((resultEv[2] - maxVal).toFixed(2)),
-                RAI: Number((resultEv[3] - maxVal).toFixed(2))
-            };
-            const otherEvs = resultEv.filter((_, idx) => idx !== bestIdx);
-            resultEv.suboptimalLoss = otherEvs.length > 0 ? Math.abs(Number((Math.max(...otherEvs) - maxVal).toFixed(2))) : 0;
-
-            // 纯筹码反事实损失
-            const maxCEv = Math.max(...cEV);
-            resultEv.cLoss = {
-                F: Number((cEV[0] - maxCEv).toFixed(2)),
-                C: Number((cEV[1] - maxCEv).toFixed(2)),
-                R: Number((cEV[2] - maxCEv).toFixed(2)),
-                RAI: Number((cEV[3] - maxCEv).toFixed(2))
-            };
-
-            // 7. 挂载完整 ICM 证据链元数据
-            resultEv.cEV = cEV;
-            resultEv.icmEV = icmEV;
-            resultEv.penalties = penalties;
-            resultEv.riskPots = riskPots;
-            resultEv.rp = rp;
-            resultEv.rpPercent = icm ? icm.riskPremium : 0;
-            resultEv.isICM = isICM;
-            resultEv.icmPosture = icm ? icm.posture : 'normal';
-            resultEv.ev_f = resultEv[0];
-            resultEv.ev_c = resultEv[1];
-            resultEv.ev_r = resultEv[2];
-            resultEv.ev_j = resultEv[3];
-
-            return resultEv;
+        window.queryGtoEv = window.queryGtoEv || function(heroPos, vsPos, effStack, hand, actionSeq = 'vs_RFI', heroStack = null, villainStack = null, avgStack = null, stage = null, facingBet = null, callersCount = 0) {
+            return (typeof globalThis !== 'undefined' && globalThis.queryGtoEv) ?
+                globalThis.queryGtoEv(heroPos, vsPos, effStack, hand, actionSeq, heroStack, villainStack, avgStack, stage, facingBet, callersCount) : null;
         };
 
         // ══════════════════════════════════════════════════════════════════════════
@@ -9992,6 +9484,46 @@
             }
         };
 
+        /**
+         * 结构化发布翻前决策快照 (Issue 02/06 解耦 DOM 文本反向解析)
+         */
+        function publishPreflopDecision(opts) {
+            const vEl = (typeof document !== 'undefined') ? document.getElementById('actionVerdict') : null;
+            const lgEl = (typeof document !== 'undefined') ? document.getElementById('actionLogic') : null;
+            const rp = (typeof document !== 'undefined') ? document.getElementById('resultPanel') : null;
+            const mixFb = rp ? (rp.dataset.mixFallback || rp.dataset.sbMixFallback) : null;
+            const vText = (opts && opts.verdict !== undefined) ? opts.verdict : (vEl ? vEl.innerText.trim() : '');
+            const lgText = (opts && opts.reasoning !== undefined) ? opts.reasoning : (lgEl ? lgEl.innerText.trim() : '');
+
+            const isPush = (opts && typeof opts.isPush === 'boolean') ? opts.isPush : /全下|全押|push|jam/i.test(vText);
+            const isBlocked = (opts && typeof opts.isBlocked === 'boolean') ? opts.isBlocked : (!vText || !!mixFb || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vText) || /超出原图覆盖|未按原图校准/.test(lgText));
+            const isTerminal = (opts && typeof opts.isTerminal === 'boolean') ? opts.isTerminal : /已弃牌|已全下|已结束/.test(vText);
+
+            let primaryAction = (opts && opts.primaryAction) || (
+                isPush ? 'ALLIN' :
+                (/弃牌|fold/i.test(vText) ? 'FOLD' :
+                (/跟注|接全下|call/i.test(vText) ? 'CALL' :
+                (/加注|开池|raise|bet/i.test(vText) ? 'RAISE' :
+                (/过牌|check/i.test(vText) ? 'CHECK' : 'UNKNOWN'))))
+            );
+
+            const decision = {
+                primaryAction,
+                isBlocked,
+                isTerminal,
+                isPush,
+                hasMixFallback: !!mixFb,
+                verdict: vText,
+                reasoning: lgText,
+                timestamp: Date.now()
+            };
+            if (typeof window !== 'undefined') {
+                window._lastPreflopDecision = decision;
+            }
+            return decision;
+        }
+        if (typeof window !== 'undefined') window.publishPreflopDecision = publishPreflopDecision;
+
         function executeEngineCore() {
             delete document.getElementById('resultPanel').dataset.bbMix;
             delete document.getElementById('resultPanel').dataset.sbMixFallback;
@@ -10024,6 +9556,14 @@
                 document.getElementById('freqBox').classList.add('hidden');
                 document.getElementById('mathProofPanel').classList.add('hidden');
                 document.getElementById('resultPanel').classList.add('invisible');
+                publishPreflopDecision({
+                    primaryAction: 'BLOCKED',
+                    isBlocked: true,
+                    isTerminal: false,
+                    isPush: false,
+                    verdict: '',
+                    reasoning: '非法输入'
+                });
                 return;
             }
 
@@ -12254,14 +11794,17 @@
                 proofPanel.classList.remove('hidden');
                 document.getElementById('resultPanel').classList.remove('invisible');
                 updateCfgSummary();
+                publishPreflopDecision();
                 return;
             }
+            publishPreflopDecision();
         }
 
         // 常驻决策 HUD(2026-07-21)：统一单次原子发布（Single-Pass Atomic Publication）
         function executeEngine() {
             try {
                 executeEngineCore();
+                publishPreflopDecision();
                 // 原图未覆盖（ICM/无Ante/自定义打法/开池尺度偏离/超界深度）时，旧模型的结论带出处标注
                 const rp = document.getElementById('resultPanel');
                 const _mixFb = rp ? (rp.dataset.mixFallback || rp.dataset.sbMixFallback) : null;
@@ -12280,6 +11823,7 @@
                         n.textContent = `⚠️ 旧模型 · 未按原图校准（${reason}）：MPT ${p} 原图只覆盖常规期、含 Ante、默认打法、${openDesc}${jamNote}。`;
                     }
                     _lg.appendChild(n);
+                    publishPreflopDecision();
                 }
 
                 // ── Phase 4.1: Shadow Mode (暗影对账与全量差分探针) ──
@@ -12344,11 +11888,26 @@
 
                         const vText = vEl ? vEl.innerText.trim() : '';
                         const lgText = lgEl ? lgEl.innerText.trim() : '';
-                        const isBlockedOrTerminal = !vText || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vText) || /超出原图覆盖|未按原图校准/.test(lgText);
+                        const preDec = window._lastPreflopDecision || (typeof publishPreflopDecision === 'function' ? publishPreflopDecision() : null);
+                        const isBlockedOrTerminal = preDec ? (preDec.isBlocked || preDec.isTerminal) : (!vText || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vText) || /超出原图覆盖|未按原图校准/.test(lgText));
                         const st = (typeof tlState === 'function') ? tlState() : null;
                         const isWaitingOpponent = st && !st.closed && st.nextToAct && st.nextToAct !== posH && !['faceBet', 'squeeze', 'face3b', 'face4b', 'coldCall', 'open', 'vsLimp'].includes(currentMode);
                         const hasBlindMix = rp && !!rp.dataset.bbMix;
                         const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal || hasBlindMix || currentMode === 'defend';
+
+                        // 结构化翻前阻断状态发布 (Issue 02/06 解耦 DOM 文字解析)
+                        window._preflopState = {
+                            isBlockedOrTerminal,
+                            isWaitingOpponent,
+                            hasBlindMix,
+                            shouldSuppress,
+                            currentMode,
+                            posH,
+                            posV,
+                            effStack: eff,
+                            handStr,
+                            timestamp: Date.now()
+                        };
 
                         if (shouldSuppress) {
                             window._lastShadowComparison = null;
@@ -12827,9 +12386,10 @@
                 // 用时间线里我的真实开池额（iso-raise 到 5BB 时 pot 应按 5 算，而非默认 2.2）
                 // 盲对盲跛入（2026-09-09）：SB 补齐到 1BB、BB 过牌 → 双方各 1BB，
                 // 不能按开池额算（否则 SB 跛入池被算成 2.2BB 池、SPR 差一倍）
+                const preDec = (typeof window !== 'undefined' && window._lastPreflopDecision) ? window._lastPreflopDecision : null;
                 const _vTxt = document.getElementById('actionVerdict')?.innerText || '';
                 const isShortPush = (typeof globalHeroStack === 'number' && globalHeroStack <= 10) &&
-                                    (/全下|全押|push|jam/i.test(_vTxt) || (typeof lastEngineVerdict === 'string' && /全下|全押|push|jam/i.test(lastEngineVerdict)));
+                                    (preDec ? (preDec.isPush || preDec.primaryAction === 'ALLIN') : (/全下|全押|push|jam/i.test(_vTxt) || (typeof lastEngineVerdict === 'string' && /全下|全押|push|jam/i.test(lastEngineVerdict))));
                 const isJamAct = typeof tlHero !== 'undefined' && tlHero && ['jam', 'push', 'allin'].includes(tlHero.action);
                 each = (typeof tlHero !== 'undefined' && tlHero && tlHero.action === 'limp') ? 1
                      : isJamAct ? (tlHero.amount || globalHeroStack)
@@ -13408,7 +12968,7 @@
                 }
                 // 先更新决策结果，再渲染面板，确保建议按钮与决策面板同步
                 if (postState.equityResult && typeof postEngine === 'function') {
-                    const decision = postEngine();
+                    const decision = postEngine(takePostStateSnapshot());
                     postState.decisionResult = decision;
                     if (typeof renderPostEnginePanel === 'function') renderPostEnginePanel(decision);
                 }
@@ -13465,7 +13025,7 @@
             }
             // 若已有胜率结果，重新运行决策引擎（不重新计算胜率）
             if (postState.equityResult && typeof postEngine === 'function') {
-                const decision = postEngine();
+                const decision = postEngine(takePostStateSnapshot());
                 postState.decisionResult = decision;
                 if (typeof renderPostEnginePanel === 'function') renderPostEnginePanel(decision);
             }
@@ -14393,7 +13953,7 @@
                     const avail = fullDeck.filter(c => !used.has(c));
                     const fill = [];
                     for (let k = 0; k < 5 - board.length; k++) {
-                        const idx = Math.floor(Math.random() * avail.length);
+                        const idx = Math.floor(pokerRandom() * avail.length);
                         fill.push(avail.splice(idx, 1)[0]);
                     }
                     try {
@@ -14426,7 +13986,7 @@
                 };
                 postState.equityResult = merged;
                 renderEquityPanel(merged);
-                const d = postEngine();
+                const d = postEngine(takePostStateSnapshot());
                 postState.decisionResult = d;
                 renderPostEnginePanel(d);
                 renderBettingPanel();
@@ -14588,7 +14148,7 @@
             renderActionSummary();   // 刷新动作摘要
             // 更新决策引擎（动作清空后重跑）
             if (postState.equityResult && typeof postEngine === 'function') {
-                const decision = postEngine();
+                const decision = postEngine(takePostStateSnapshot());
                 postState.decisionResult = decision;
                 if (typeof renderPostEnginePanel === 'function') renderPostEnginePanel(decision);
             }
@@ -14760,7 +14320,7 @@
             // 核心分支，必须立即重跑决策——此前只重渲染下注面板，决策面板残留
             // 按旧位置算出的建议（如 JJ/A72 OOP 应高频过牌却仍显示 IP 的 C-Bet）。
             if (postState.equityResult && typeof postEngine === 'function') {
-                const decision = postEngine();
+                const decision = postEngine(takePostStateSnapshot());
                 postState.decisionResult = decision;
                 if (typeof renderPostEnginePanel === 'function') renderPostEnginePanel(decision);
             }
@@ -15173,7 +14733,7 @@
                 if (typeof renderRangePanel === 'function') renderRangePanel(postState.villainRange);
             }
             if (postState.equityResult && typeof postEngine === 'function') {
-                const decision = postEngine();
+                const decision = postEngine(takePostStateSnapshot());
                 postState.decisionResult = decision;
                 if (typeof renderPostEnginePanel === 'function') renderPostEnginePanel(decision);
             }
@@ -17638,7 +17198,7 @@
                         runMultiwayOverride(currentVersion);
                     }
 
-                    const decision = postEngine();
+                    const decision = postEngine(takePostStateSnapshot());
                     if (currentVersion !== postState.postCalcVersion) return;
                     postState.decisionResult = decision;
                     renderPostEnginePanel(decision);
@@ -17648,7 +17208,7 @@
                     console.log('[决策引擎]', decision);
                 }).catch(() => {
                     if (currentVersion !== postState.postCalcVersion) return;
-                    const fallbackDecision = postEngine();
+                    const fallbackDecision = postEngine(takePostStateSnapshot());
                     postState.decisionResult = fallbackDecision;
                     renderPostEnginePanel(fallbackDecision);
                     renderBettingPanel();
@@ -18108,7 +17668,7 @@
                     const deck = [];
                     for (const r of RK) for (const su of SU) { const c = r + su; if (!deadSet.has(c)) deck.push(c); }
                     const board = [];
-                    for (let i = 0; i < 5; i++) board.push(deck.splice((Math.random() * deck.length) | 0, 1)[0]);
+                    for (let i = 0; i < 5; i++) board.push(deck.splice((pokerRandom() * deck.length) | 0, 1)[0]);
                     const mine = Hand.solve(heroCards.concat(board));
                     const solved = hands.map(h => Hand.solve(h.concat(board)));
                     used++;
@@ -18187,18 +17747,18 @@
             const entry = buildRangeComboIndex(rangeHands, usedCards, boardCards);
             if (!entry || !entry.total) return null;
             // 按累计组合数/权重二分定位牌类
-            const r = Math.random() * entry.total;
+            const r = pokerRandom() * entry.total;
             let lo = 0, hi = entry.cum.length - 1;
             while (lo < hi) { const mid = (lo + hi) >> 1; if (entry.cum[mid] > r) hi = mid; else lo = mid + 1; }
             const combos = entry.items[lo];
             if (entry.hasTextureWeights && entry.itemWeights && entry.itemWeights[lo]) {
                 const iW = entry.itemWeights[lo];
-                const cr = Math.random() * iW.totalWeight;
+                const cr = pokerRandom() * iW.totalWeight;
                 let clo = 0, chi = iW.cumWeights.length - 1;
                 while (clo < chi) { const cmid = (clo + chi) >> 1; if (iW.cumWeights[cmid] > cr) chi = cmid; else clo = cmid + 1; }
                 return combos[clo];
             }
-            return combos[Math.floor(Math.random() * combos.length)];
+            return combos[Math.floor(pokerRandom() * combos.length)];
         }
 
         /**
@@ -18353,7 +17913,7 @@
                 }
             }
             if (valid.length === 0) return null;
-            return valid[Math.floor(Math.random() * valid.length)];
+            return valid[Math.floor(pokerRandom() * valid.length)];
         }
 
         /**
@@ -18364,7 +17924,7 @@
             const copy = [...deck];
             const result = [];
             for (let i = 0; i < n && copy.length > 0; i++) {
-                const idx = Math.floor(Math.random() * copy.length);
+                const idx = Math.floor(pokerRandom() * copy.length);
                 result.push(copy.splice(idx, 1)[0]);
             }
             return result;
@@ -19295,20 +18855,100 @@
             return { freq, size, note, sd, over: ov };
         }
 
-        function postEngine() {
-            const eq = postState.equityResult;
+        /**
+         * 拍摄当前翻后只读状态快照 (Issue 07 状态解耦与纯函数支持)
+         */
+        function takePostStateSnapshot() {
+            const s = (typeof postState !== 'undefined') ? postState : {};
+            const cfg = (typeof window !== 'undefined' && window.gameConfig) || (typeof gameConfig !== 'undefined' ? gameConfig : {});
+            return {
+                postCalcVersion: s.postCalcVersion || 1,
+                handId: s.handId,
+                analysisStatus: s.analysisStatus,
+                decisionResult: s.decisionResult,
+                equityResult: s.equityResult ? { ...s.equityResult } : null,
+                potTracker: s.potTracker ? {
+                    preflopPot: s.potTracker.preflopPot,
+                    currentPot: s.potTracker.currentPot,
+                    effStack: s.potTracker.effStack,
+                    effStackBase: s.potTracker.effStackBase,
+                    effBaseStreet: s.potTracker.effBaseStreet,
+                    spr: s.potTracker.spr,
+                    actions: s.potTracker.actions ? s.potTracker.actions.map(a => ({ ...a })) : []
+                } : { currentPot: 0, effStack: 0, spr: 0, actions: [] },
+                board: s.board ? [...s.board] : [],
+                heroCards: s.heroCards ? [...s.heroCards] : [],
+                heroPosition: s.heroPosition,
+                boardAnalysis: s.boardAnalysis ? { ...s.boardAnalysis } : {},
+                extraVillains: s.extraVillains ? [...s.extraVillains] : [],
+                villainRange: s.villainRange ? { ...s.villainRange } : null,
+                villainProfile: s.villainProfile ? { ...s.villainProfile } : null,
+                gameConfig: { ...cfg },
+                timestamp: Date.now()
+            };
+        }
+        if (typeof window !== 'undefined') window.takePostStateSnapshot = takePostStateSnapshot;
+
+        /**
+         * 拍摄当前翻前只读状态快照 (Issue 07 状态解耦与纯函数支持)
+         */
+        function takePreflopSnapshot() {
+            const cfg = (typeof window !== 'undefined' && window.gameConfig) || (typeof gameConfig !== 'undefined' ? gameConfig : {});
+            const mode = (typeof currentMode !== 'undefined') ? currentMode : 'open';
+            const hPos = (typeof globalPosHero !== 'undefined') ? globalPosHero : 'CO';
+            const vPos = (typeof globalPosVillain !== 'undefined') ? globalPosVillain : 'UTG';
+            const hStack = (typeof globalHeroStack !== 'undefined') ? globalHeroStack : 40;
+            const vStack = (typeof globalVillainStack !== 'undefined') ? globalVillainStack : 40;
+            const eff = (typeof getEffectiveStack === 'function') ? getEffectiveStack(hStack, vStack, mode) : Math.min(hStack, vStack);
+            const hand = (typeof getHandStr === 'function') ? getHandStr() : '';
+            const elRaise = (typeof document !== 'undefined') ? document.getElementById('raiseSize') : null;
+            const el3B = (typeof document !== 'undefined') ? document.getElementById('threeBetSize') : null;
+            const el4B = (typeof document !== 'undefined') ? document.getElementById('fourBetSize') : null;
+            const elLimp = (typeof document !== 'undefined') ? document.getElementById('limpCount') : null;
+            return {
+                currentMode: mode,
+                heroPos: hPos,
+                vsPos: vPos,
+                heroStack: hStack,
+                villainStack: vStack,
+                avgStack: (typeof globalAvgStack !== 'undefined') ? globalAvgStack : 35,
+                effStack: eff,
+                handStr: hand,
+                gameConfig: { ...cfg },
+                tableSize: cfg.tableSize || '8max',
+                stage: cfg.stage || 'normal',
+                raiseSize: elRaise ? parseFloat(elRaise.value) : (typeof globalRaiseSize !== 'undefined' ? globalRaiseSize : 2.2),
+                threeBetSize: el3B ? parseFloat(el3B.value) : (typeof globalThreeBetSize !== 'undefined' ? globalThreeBetSize : 9.0),
+                fourBetSize: el4B ? parseFloat(el4B.value) : (typeof globalFourBetSize !== 'undefined' ? globalFourBetSize : 20.0),
+                limpCount: elLimp ? parseInt(elLimp.value) : 1,
+                timestamp: Date.now()
+            };
+        }
+        if (typeof window !== 'undefined') window.takePreflopSnapshot = takePreflopSnapshot;
+
+        function postEngine(snapshot) {
+            const s = snapshot || takePostStateSnapshot();
+            const cfg = (s && s.gameConfig) || (typeof window !== 'undefined' && window.gameConfig) || gameConfig;
+            const eq = s.equityResult;
             if (!eq) return null;
 
+            // ── 策略决策结构化枚举标签 (Issue 02 解耦基线) ──
+            let calibrationSource = null;
+            let isSolverCalibrated = false;
+            let isUltimateMathShield = false;
+            let isValue = false;
+            let isStrongValue = false;
+
             // ── 基础数据 ──
-            const pot      = postState.potTracker.currentPot;
-            const effStack = postState.potTracker.effStack;
-            const spr      = postState.potTracker.spr;
-            const stage    = gameConfig.stage;
-            const board    = postState.board.filter(c => c !== null);
+            const pot      = (s.potTracker && typeof s.potTracker.currentPot === 'number') ? s.potTracker.currentPot : 0;
+            const effStack = (s.potTracker && typeof s.potTracker.effStack === 'number') ? s.potTracker.effStack : 0;
+            const spr      = (s.potTracker && typeof s.potTracker.spr === 'number') ? s.potTracker.spr : 0;
+            const stage    = cfg.stage;
+            const board    = (s.board || []).filter(c => c !== null);
             const street   = board.length === 3 ? 'flop' : board.length === 4 ? 'turn' : 'river';
             const streetCN = { flop: '翻牌', turn: '转牌', river: '河牌' }[street];
 
-            const actions    = postState.potTracker.actions || [];
+            const actions    = (s.potTracker && s.potTracker.actions) || [];
             const streetActs = actions.filter(a => a.street === street);
             const ss         = getStreetState(streetActs);
             const villainBet = ss.lastBetPlayer === 'villain' ? ss.lastBet : 0;
@@ -19328,9 +18968,9 @@
             let   equity  = eq.equity;   // P1-1：underpair 在 A/K 高牌面需可校正（见下方降级块）
             const relStr  = eq.relStrength;
             const outs    = eq.outs;
-            const heroPos = postState.heroPosition;
+            const heroPos = s.heroPosition;
 
-            const ba       = postState.boardAnalysis || {};
+            const ba       = s.boardAnalysis || {};
             const wetness  = ba.wetness        || 0;
             const rangeAdv = ba.rangeAdvantage  || 'neutral';
             const nutAdv   = ba.nutAdvantage    || 'neutral';
@@ -19364,7 +19004,7 @@
 
             // ── 多人底池与相对位置上下文 (Phase 4 & Phase 9B 多人动力学与共享 MDF 矩阵) ──
             const mwCtx = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
-            const mwTotalCount = mwCtx ? mwCtx.totalCount : ((postState.extraVillains || []).length + 2);
+            const mwTotalCount = mwCtx ? mwCtx.totalCount : ((s.extraVillains || []).length + 2);
             const isMultiway = mwCtx ? mwCtx.isMultiway : (mwTotalCount >= 3);
             const _mwN = Math.max(0, mwTotalCount - 2); // 额外对手数量：单挑=0, 3人=1, 4人=2
             const isSandwich = isMultiway && mwCtx && mwCtx.relativeRole === 'SANDWICH';
@@ -19384,7 +19024,7 @@
                 street: street,
                 equity: equity,
                 outs: outs,
-                handBucket: (typeof heroMadeBucket === 'function') ? heroMadeBucket(postState.heroCards, board) : '无对'
+                handBucket: (typeof heroMadeBucket === 'function') ? heroMadeBucket(s.heroCards, board) : '无对'
             }) : null;
 
             // Phase 9C: 翻后过牌加注 (Check-Raise) 核心求解器联动
@@ -19397,12 +19037,12 @@
                     preBetPot: preBetPotCR,
                     villainBet: villainBet,
                     effStack: effStack,
-                    heroCards: postState.heroCards,
+                    heroCards: s.heroCards,
                     boardCards: board,
                     isMultiway: isMultiway,
                     numContenders: mwTotalCount,
                     multiwayRole: mwDynamics ? mwDynamics.role : (isMultiway ? 'SANDWICH' : 'ABSOLUTE_OOP'),
-                    handBucket: (typeof heroMadeBucket === 'function') ? heroMadeBucket(postState.heroCards, board) : '无对',
+                    handBucket: (typeof heroMadeBucket === 'function') ? heroMadeBucket(s.heroCards, board) : '无对',
                     boardTexture: (ba.wetness > 0.6 ? 'WET_CONNECTED' : (ba.wetness <= 0.3 ? 'DRY_UNCONNECTED' : 'DYNAMIC')),
                     equity: equity
                 }) : null;
@@ -19581,7 +19221,7 @@
             //   ① 抓诈唬门槛 callMargin：挡住他坚果多 → 可以跟得更宽；挡住他空气多 → 收紧
             //   ② 诈唬频率（下方各诈唬分支）：挡住他继续范围越多，诈唬越有效
             // 强度刻意保守（callMargin 至多 ±4、频率至多 ±15），避免单一信号主导决策。
-            const blk = analyzeBlockers(postState.heroCards || [], board, postState.villainRange?.hands || []);
+            const blk = analyzeBlockers(s.heroCards || [], board, s.villainRange?.hands || []);
             const blkMargin = blk ? Math.max(-4, Math.min(4, -blk.edge * 0.25)) : 0;
             const blkBluff = blk ? Math.max(-15, Math.min(15, Math.round(blk.edge * 0.6))) : 0;
             if (blk && Math.abs(blk.edge) >= 4) sc.callMargin = Math.max(2, sc.callMargin + blkMargin);
@@ -19703,7 +19343,7 @@
             //       顶对（非口袋对，如 AK/A72）→ 非口袋对，跳过；
             //       成套/两对（命中公牌或公牌成对）→ 跳过；equity ≤ 50 的弱 underpair → 不动（不抬高）。
             {
-                const hc = (postState.heroCards || []).filter(c => c).map(normalizeCard);
+                const hc = (s.heroCards || []).filter(c => c).map(normalizeCard);
                 const isPocketPair = hc.length === 2 && hc[0][0] === hc[1][0];
                 if (isPocketPair && (highCard === 'A' || highCard === 'K')) {
                     const pairRank     = RANK_ORDER[hc[0][0]];
@@ -19731,7 +19371,7 @@
             // 按实现率折扣裸胜率——OOP 0.60 / IP 0.68（无位置更难兑现）。
             // 只在"面对下注"时折扣：我方主动线本就靠弃牌率盈利，不该按摊牌胜率打折。
             {
-                const hc = (postState.heroCards || []).filter(c => c).map(normalizeCard);
+                const hc = (s.heroCards || []).filter(c => c).map(normalizeCard);
                 if (hc.length === 2 && board.length >= 3) {
                     const hr = hc.map(c => c[0]), br = board.map(c => normalizeCard(c)[0]);
                     const ownPair = hr[0] === hr[1] || hr.some(r => br.includes(r));
@@ -19792,7 +19432,7 @@
                 //  按权重混合后实际输出 10%）。所以这里和下面的转牌分支共用同一个 _tTier。
                 const _tDrv    = (street === 'turn') ? turnDrivers() : null;
                 const _tBucket = (street === 'turn')
-                    ? heroMadeBucket(postState.heroCards, postState.board.slice(0, 4)) : null;
+                    ? heroMadeBucket(s.heroCards, s.board.slice(0, 4)) : null;
                 // 多人底池禁纯诈唬（2026-09-08 既有规则）：要让 N 家全弃，所需弃牌率是单挑的 N 次方。
                 // 空气桶在多人池归零，有成手的三桶不受影响。
                 const _tTier0  = turnBetTier(_tBucket, spr, _tDrv, sc.sizes);
@@ -19807,9 +19447,9 @@
                 // N2 +16.6 —— **承诺区分支在常规区之前返回，新模型根本没机会生效**。
                 // 与环节 4 修空气桶时是同一个道理：两侧必须回答同一个问题。
                 const _cvb = (street === 'flop' && _cVal)
-                    ? heroMadeBucket(postState.heroCards, postState.board.slice(0, 3)) : null;
+                    ? heroMadeBucket(s.heroCards, s.board.slice(0, 3)) : null;
                 const _cvt = _cvb ? flopValueTier(_cvb, spr,
-                    (postState.villainRange && postState.villainRange.rangePct) || 0,
+                    (s.villainRange && s.villainRange.rangePct) || 0,
                     iHaveNutAdv, sc.sizes) : null;
                 // 环节 7：**转牌的承诺区也走同一个 _tTier**。
                 // 这是环节 4（空气桶）与环节 5（价值档）都踩过的同一个坑——
@@ -19872,6 +19512,14 @@
                 if (commitWeight >= 1) {
                     primaryAction = commitStrat.action; sizing = commitStrat.sizing;
                     frequencies = { ...commitStrat.freq };
+                    if (_tTier) {
+                        calibrationSource = 'TexasSolver';
+                        isSolverCalibrated = true;
+                        if (_isNutValueHand) { isValue = true; isStrongValue = true; }
+                    } else if (_cAir || _cvt) {
+                        calibrationSource = 'TexasSolver';
+                        isSolverCalibrated = true;
+                    }
                     reasoning = _tTier
                         ? `SPR=${spr.toFixed(1)}（承诺区）：转牌成手=${_tBucket}、` +
                           `范围强度差 ${_tTier.sd >= 0 ? '+' : ''}${_tTier.sd.toFixed(1)} 点` +
@@ -20060,8 +19708,11 @@
                         }
                     } else if (_tTier) {
                         // ── 转牌按「成手桶 × 驱动量」出频率与尺度（2026-09-11 环节 7）──
+                        calibrationSource = 'TexasSolver';
+                        isSolverCalibrated = true;
                         // 强牌价值保护：若持有两对+强牌且具有价值胜率，主动作锁定 BET，下注频率保底 70%
                         const _isNutValue = _tBucket === '两对+' && equity >= sc.betThresh;
+                        if (_isNutValue) { isValue = true; isStrongValue = true; }
                         const _effFreq = _isNutValue ? Math.max(70, _tTier.freq) : _tTier.freq;
                         primaryAction = (_effFreq >= 50 || _isNutValue) ? 'BET' : 'CHECK';
                         sizing = primaryAction === 'BET' ? (_tTier.size || sc.sizes.medium) : '';
@@ -20078,6 +19729,7 @@
                             reasoning += '；坚果优势深码改超池（该尺度未经 solver 验证，属既有行为）';
                         }
                     } else if (equity >= sc.strongThresh) {
+                        isValue = true; isStrongValue = true;
                         // 强价值：坚果+深码可超池
                         primaryAction = 'BET';
                         sizing = (iHaveNutAdv && sprZone === 'deep') ? sc.sizes.nut : sc.sizes.strong;
@@ -20151,8 +19803,8 @@
                         warnings.push('⚠ IP湿润面中等牌力：C-Bet建大池风险高，控池等待转牌信息');
                     } else if (equity >= sc.strongThresh || equity >= sc.betThresh) {
                         // ── 价值档按「成手桶 × SPR」出频率与尺度（2026-09-10 环节 5）──
-                        const _vb = heroMadeBucket(postState.heroCards, postState.board.slice(0, 3));
-                        const _vp = (postState.villainRange && postState.villainRange.rangePct) || 0;
+                        const _vb = heroMadeBucket(s.heroCards, s.board.slice(0, 3));
+                        const _vp = (s.villainRange && s.villainRange.rangePct) || 0;
                         const _vt = flopValueTier(_vb, spr, _vp, iHaveNutAdv, sc.sizes);
                         const _mwChecks = actions.filter(a => a.street === street && a.action === 'check');
                         const _allOpponentsChecked = _mwChecks.length >= (mwTotalCount - 1);
@@ -20170,12 +19822,16 @@
                         } else if (_vt) {
                             primaryAction = 'BET'; sizing = _vt.size;
                             frequencies = { bet: _vt.freq, check: 100 - _vt.freq };
+                            calibrationSource = 'TexasSolver';
+                            isSolverCalibrated = true;
+                            isValue = true;
                             reasoning = `翻牌胜率${equity.toFixed(0)}%、成手=${_vb}，SPR=${spr.toFixed(1)} → ` +
                                         `${_vt.freq}% 频率 ${_vt.size} C-Bet（TexasSolver 校准：${_vt.note}）`;
                         } else if (equity >= sc.strongThresh) {
                             primaryAction = 'BET'; sizing = sc.sizes.nut;
                             const freq = iHaveNutAdv ? 92 : 82;
                             frequencies = { bet: freq, check: 100 - freq };
+                            isValue = true; isStrongValue = true;
                             reasoning = `翻牌胜率${equity.toFixed(0)}%，${iHaveNutAdv ? '💡 QuintAce 坚果优势极化：顶端绝对牌力密度占优，' : ''}${sc.sizes.nut} C-Bet 榨取`;
                         } else {
                             const isProbeRange = iHaveRangeAdv && !iHaveNutAdv;
@@ -20205,6 +19861,8 @@
                         frequencies = { bet: 70, check: 30 };
                         const _airRef = flopAirBetFreq(spr, _mwN);
                         const _sdRef = _airRef ? _airRef.sd : null;
+                        calibrationSource = 'TexasSolver';
+                        isSolverCalibrated = true;
                         reasoning = `💡 Pokercode 2-1-2 [干燥高牌面]：开池方享有统治级范围优势${_sdRef !== null ? `（范围强度差 ${_sdRef >= 0 ? '+' : ''}${_sdRef.toFixed(1)} 点，TexasSolver 校准）` : ''}，即便未成强牌（胜率${equity.toFixed(0)}%），仍赋予 70% 高频极小尺度（${sizing}）持续施压收割死钱`;
                     } else if (sc.canRangeBet && iHaveRangeAdv && equity >= 35) {
                         // 探测性范围下注（仅翻牌）：胜率≥35%+范围优势
@@ -20234,6 +19892,8 @@
                             primaryAction = _airFreq >= 50 ? 'BET' : 'CHECK';
                             sizing = _airFreq >= 50 ? sc.sizes.probe : '';
                             frequencies = { bet: _airFreq, check: 100 - _airFreq };
+                            calibrationSource = 'TexasSolver';
+                            isSolverCalibrated = true;
                             reasoning = `翻牌胜率${equity.toFixed(0)}%、进张${outs}张（都不足），` +
                                         `但**范围强度差 ${_sd >= 0 ? '+' : ''}${_sd.toFixed(1)} 点**` +
                                         `${_paired ? '、成对面' : ''}、SPR=${spr.toFixed(1)} → ` +
@@ -20284,7 +19944,7 @@
                 //   无对拟合：clamp(0.55 × 现频率 + 16.4 + 14.8 × 河牌超牌 + 17.4 × IP转牌继续开火, 0, 100)
                 //   弱对拟合：现频率 + 0.75 × (无对拟合结果 - 现频率)
                 if (street === 'river' && _mwN === 0 && stage === 'normal' && villainBet === 0 && board.length === 5) {
-                    const _rBucket = heroMadeBucket(postState.heroCards, board);
+                    const _rBucket = heroMadeBucket(s.heroCards, board);
                     if (_rBucket === '弱对' || _rBucket === '无对') {
                         const _oldFreq = (frequencies && typeof frequencies.bet === 'number')
                             ? frequencies.bet
@@ -20308,6 +19968,8 @@
                                 _newFreq = Math.max(0, Math.min(25, _newFreq - 20));
                             }
                             frequencies = { bet: _newFreq, check: 100 - _newFreq };
+                            calibrationSource = 'TexasSolver';
+                            isSolverCalibrated = true;
                             if (_newFreq >= 50) {
                                 primaryAction = 'BET';
                                 sizing = sizing || (heroPos === 'OOP' ? sc.sizes.probe : '33% 底池');
@@ -20340,7 +20002,7 @@
 
                 // ── Pokercode 多人底池翻牌 C-Bet 统一收口封顶 (Phase 4 / Qwen F-3) ──
                 if (isMultiway && street === 'flop') {
-                    const _flopBucket = heroMadeBucket(postState.heroCards, postState.board.slice(0, 3));
+                    const _flopBucket = heroMadeBucket(s.heroCards, s.board.slice(0, 3));
                     const isMonsterNut = _flopBucket === '两对+';
                     const _mwChecks = actions.filter(a => a.street === street && a.action === 'check');
                     const _allOpponentsChecked = _mwChecks.length >= (mwTotalCount - 1);
@@ -20413,7 +20075,7 @@
 
                 let isPolarizedBackdoorCR = false;
                 try {
-                    const _hc = (postState.heroCards || []).filter(c => c).map(normalizeCard);
+                    const _hc = (s.heroCards || []).filter(c => c).map(normalizeCard);
                     const _bd = board.map(normalizeCard);
                     if (isMiniCBet && _hc.length === 2 && _bd.length >= 3) {
                         const _suits = [..._hc, ..._bd].map(c => c[1]);
@@ -20457,11 +20119,11 @@
                 // 不分赛段，泡沫期筹码EV≠奖金EV，跟全下的风险溢价应显著高于常规期
                 // （溢价档位：常规+5 / 决赛桌+8 / 泡沫期+12，方向与 getICMPressure 一致）。
                 else if (isFacingAllin) {
-                    const isBoardRoyalFlush = (street === 'river' && Array.isArray(postState.board) && postState.board.length >= 5 && (() => {
+                    const isBoardRoyalFlush = (street === 'river' && Array.isArray(s.board) && s.board.length >= 5 && (() => {
                         const suits = {};
-                        postState.board.forEach(c => { const s = c[1]; suits[s] = (suits[s] || 0) + 1; });
-                        const fSuit = Object.keys(suits).find(s => suits[s] >= 5);
-                        return fSuit ? ['T', 'J', 'Q', 'K', 'A'].every(r => postState.board.some(c => c[0] === r && c[1] === fSuit)) : false;
+                        s.board.forEach(c => { const st = c[1]; suits[st] = (suits[st] || 0) + 1; });
+                        const fSuit = Object.keys(suits).find(st => suits[st] >= 5);
+                        return fSuit ? ['T', 'J', 'Q', 'K', 'A'].every(r => s.board.some(c => c[0] === r && c[1] === fSuit)) : false;
                     })());
                     const basePremium = stage === 'bubble' ? 12 : stage === 'final' ? 8 : 5;
                     const allinPremium = (icm313 && icm313.villainCoversHero && icm313.isICMStage)
@@ -20474,6 +20136,7 @@
                         if (isBoardRoyalFlush) {
                             reasoning = `面对全下（${villainBet.toFixed(1)}BB），公牌皇家同花顺坚果平分底池（Chop Pot，保底分半池），锁定跟注！`;
                         } else if (isFacingReRaise) {
+                            isUltimateMathShield = true;
                             reasoning = `⚡ [反推全下 · 终极数学兜底]：我方本街曾主动开火，遭遇对手反加推全下（需跟注 ${toCall.toFixed(1)}BB）。当前底池赔率需胜率 ${potOdds.toFixed(0)}%${allinPremium > 0 ? ` + 风险溢价 ${allinPremium}% = ${reqOdds.toFixed(0)}%` : ''}，我方真实胜率 ${equity.toFixed(0)}%（净优势 +${(equity - reqOdds).toFixed(0)}%），呈正期望 (ChipEV > 0)，锁定跟注打光！`;
                         } else {
                             reasoning = `面对全下（${villainBet.toFixed(1)}BB），胜率${equity.toFixed(0)}% > 赔率${potOdds.toFixed(0)}%+溢价${allinPremium}%${stage !== 'normal' ? '（ICM）' : ''}，跟注`;
@@ -20482,6 +20145,7 @@
                         primaryAction = 'FOLD'; sizing = '';
                         frequencies = { fold: 100 };
                         if (isFacingReRaise) {
+                            isUltimateMathShield = true;
                             reasoning = `🛑 [反推全下 · 终极数学兜底]：我方主动开火遭遇对手反加全推，需胜率 ${reqOdds.toFixed(0)}%（底池赔率 ${potOdds.toFixed(0)}%${allinPremium > 0 ? ` + 溢价 ${allinPremium}%` : ''}），当前手牌胜率 ${equity.toFixed(0)}%（缺口 -${Math.abs(equity - reqOdds).toFixed(0)}%）不足防守线，负期望果断弃牌止损！`;
                         } else {
                             const icmPrefix = (icm313 && icm313.posture === 'survival') ? '💡 Pokercode ICM 3-1-3 [规避淘汰] ' : '';
@@ -20591,7 +20255,7 @@
                         let isTopTierHand = false;
                         let isMidTierHand = false;
                         try {
-                            const _hc = (postState.heroCards || []).filter(c => c).map(normalizeCard);
+                            const _hc = (s.heroCards || []).filter(c => c).map(normalizeCard);
                             const _bd = board.map(normalizeCard);
                             if (_hc.length === 2 && _bd.length >= 3 && typeof Hand !== 'undefined') {
                                 const _sh = Hand.solve([..._hc, ..._bd]);
@@ -20934,7 +20598,7 @@
 
             // ── QuintAce & Pokercode ICM 淘汰风控：高压赛段非坚果翻牌 C-Bet 频率防守性收敛 (P1 闭环) ──
             if (!exploitApplied && street === 'flop' && (stage === 'bubble' || stage === 'final' || (icm313 && icm313.isICMStage)) && villainBet === 0 && primaryAction === 'BET') {
-                const _curBucket = (typeof heroMadeBucket === 'function') ? heroMadeBucket(postState.heroCards, (postState.board || []).filter(Boolean)) : '';
+                const _curBucket = (typeof heroMadeBucket === 'function') ? heroMadeBucket(s.heroCards, (s.board || []).filter(Boolean)) : '';
                 const isMonsterNut = _curBucket === '两对+' || equity >= 85;
                 if (!isMonsterNut && frequencies && typeof frequencies.bet === 'number' && frequencies.bet > 35) {
                     const origBet = frequencies.bet;
@@ -20970,7 +20634,7 @@
             const _fnFedor = (typeof window !== 'undefined' && window.calculateFedorRc) || (typeof calculateFedorRc === 'function' ? calculateFedorRc : null);
             const fedorAnalysis = _fnFedor ? _fnFedor(equity, _potBefore, villainBet, isMultiway ? mwTotalCount : 2) : { R: 0, Rc: 0, canDefend: true, edge: 0 };
 
-            const decisionResult = {
+            let decisionResult = {
                 primaryAction, sizing, frequencies, reasoning,
                 warnings, street,
                 geometry,
@@ -20982,6 +20646,12 @@
                 checkRaiseDecision: crDecision,
                 isFacingAllin: !!isFacingAllin,
                 isFacingReRaise: !!isFacingReRaise,
+                isUltimateMathShield: !!isUltimateMathShield,
+                guardrail: isUltimateMathShield ? 'ULTIMATE_MATH_SHIELD' : null,
+                calibrationSource,
+                isSolverCalibrated: !!isSolverCalibrated,
+                isValue: !!isValue,
+                isStrongValue: !!isStrongValue,
                 exploitOffset: {
                     profile: vProfile ? vProfile.id : 'balanced',
                     applied: exploitApplied,
@@ -21015,15 +20685,15 @@
             try {
                 const _fnGto = (typeof window !== 'undefined' && window.evaluatePostflopGto) ||
                                (typeof globalThis !== 'undefined' && globalThis.evaluatePostflopGto);
-                if (typeof _fnGto === 'function' && Array.isArray(postState.heroCards) && postState.heroCards.length === 2 && board.length >= 3) {
+                if (typeof _fnGto === 'function' && Array.isArray(s.heroCards) && s.heroCards.length === 2 && board.length >= 3) {
                     const _targetGlobal = (typeof window !== 'undefined') ? window : globalThis;
                     _targetGlobal._postflopShadowBuffer = _targetGlobal._postflopShadowBuffer || [];
                     const _betRatio = (villainBet > 0) ? (villainBet / Math.max(1, pot - villainBet)) : 0;
                     const _isHeroOOP = (heroPos === 'OOP' || heroPos === 'BB' || heroPos === 'SB' || (typeof heroIsOOP !== 'undefined' ? heroIsOOP : false));
-                    const _isHeroPFR = (postState.potTracker.actions || []).some(a => a.street === 'preflop' && a.player === 'hero' && (a.action === 'raise' || a.action === 'allin'));
+                    const _isHeroPFR = ((s.potTracker && s.potTracker.actions) || []).some(a => a.street === 'preflop' && a.player === 'hero' && (a.action === 'raise' || a.action === 'allin'));
 
                     const shadowRes = _fnGto({
-                        heroCards: postState.heroCards,
+                        heroCards: s.heroCards,
                         boardCards: board,
                         betRatio: _betRatio,
                         spr: spr || 4.0,
@@ -21033,22 +20703,25 @@
 
                     if (shadowRes) {
                         decisionResult.shadowRes = shadowRes;
+                        decisionResult.telemetry = decisionResult.telemetry || {};
+                        decisionResult.telemetry.shadowRes = shadowRes;
                         if (shadowRes.lutResult) {
                             decisionResult.lutResult = shadowRes.lutResult;
                         }
+                        // 修复审计问题 08：影子模式不得覆盖正式策略字段 fedorAnalysis，
+                        // 且 Fedor 分析计算必须与主流程人数绝对一致 (isMultiway ? mwTotalCount : 2)
                         if (typeof calculateFedorRc === 'function') {
                             const potBefore = Math.max(0.1, pot - villainBet);
-                            const fedorRes = calculateFedorRc(equity, potBefore, villainBet, 2);
-                            decisionResult.fedorAnalysis = fedorRes;
-                            if (decisionResult.math) decisionResult.math.fedorRc = fedorRes;
+                            const fedorShadow = calculateFedorRc(equity, potBefore, villainBet, isMultiway ? mwTotalCount : 2);
+                            decisionResult.telemetry.fedorShadow = fedorShadow;
                         }
 
                         const telemetryItem = {
                             timestamp: Date.now(),
-                            handId: postState.handId || ('H_' + (postState.postCalcVersion || 1)),
-                            version: postState.postCalcVersion || 1,
+                            handId: s.handId || ('H_' + (s.postCalcVersion || 1)),
+                            version: s.postCalcVersion || 1,
                             street,
-                            heroCards: [...postState.heroCards],
+                            heroCards: [...s.heroCards],
                             board: [...board],
                             pot,
                             effStack,
@@ -21090,9 +20763,9 @@
                     if (decisionResult.math) decisionResult.math.turnTransition = turnRes;
 
                     if (typeof evaluateTurnSizing === 'function') {
-                        const tBucketForSizing = (typeof _tBucket !== 'undefined' && _tBucket) ? _tBucket : (typeof heroMadeBucket === 'function' ? heroMadeBucket(postState.heroCards, board.slice(0, 4)) : '无对');
+                        const tBucketForSizing = (typeof _tBucket !== 'undefined' && _tBucket) ? _tBucket : (typeof heroMadeBucket === 'function' ? heroMadeBucket(s.heroCards, board.slice(0, 4)) : '无对');
                         const turnSizingCtx = {
-                            heroCards: postState.heroCards,
+                            heroCards: s.heroCards,
                             boardCards: board.slice(0, 4),
                             pot,
                             effStack,
@@ -21119,13 +20792,13 @@
                 }
             }
 
-            if (typeof analyzeRiverTerminal === 'function' && board.length >= 5 && Array.isArray(postState.heroCards) && postState.heroCards.length === 2) {
+            if (typeof analyzeRiverTerminal === 'function' && board.length >= 5 && Array.isArray(s.heroCards) && s.heroCards.length === 2) {
                 try {
-                    const riverRes = analyzeRiverTerminal(postState.heroCards, board, pot, villainBet, effStack, {
+                    const riverRes = analyzeRiverTerminal(s.heroCards, board, pot, villainBet, effStack, {
                         equity,
                         relStrength: relStr,
                         equityResult: eq,
-                        handBucket: (typeof heroMadeBucket === 'function') ? heroMadeBucket(postState.heroCards, board) : '无对',
+                        handBucket: (typeof heroMadeBucket === 'function') ? heroMadeBucket(s.heroCards, board) : '无对',
                         isMultiway: isMultiway,
                         mwTotalCount: mwTotalCount
                     });
@@ -21143,7 +20816,7 @@
                                    (typeof resolveUnifiedDecision === 'function' ? resolveUnifiedDecision : null);
                 if (typeof _fnResolve === 'function') {
                     const _isHeroOOP = (heroPos === 'OOP' || heroPos === 'BB' || heroPos === 'SB' || (typeof heroIsOOP !== 'undefined' ? heroIsOOP : false));
-                    decisionResult = _fnResolve(decisionResult, postState, {
+                    const _resolved = _fnResolve(decisionResult, s, {
                         board,
                         pot,
                         villainBet,
@@ -21151,6 +20824,9 @@
                         heroPos,
                         heroIsOOP: _isHeroOOP
                     });
+                    if (_resolved && typeof _resolved === 'object') {
+                        decisionResult = _resolved;
+                    }
                 }
             } catch (arbErr) {
                 console.warn('resolveUnifiedDecision error:', arbErr);
