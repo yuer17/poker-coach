@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.26.4 正式版 - QuintAce 翻后高精 GTO 矩阵与全链路单一事实源闭环 (D-120 GTO Solver Integration)</title>
+    <title>PokerCode v3.27.0 正式版 - 转牌/河牌高精 GTO 维度扩容与历史数学/ICM 深度融合闭环 (D-128)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.26.4 正式版 高定黑曜石与 Liquid Glass 设计令牌 (翻后高精 GTO 矩阵与全链路闭环) ══
+            /* ══ PokerCode v3.27.0 正式版 高定黑曜石与 Liquid Glass 设计令牌 (转/河高精 GTO 与数学深度融合) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1439,7 +1439,7 @@
     <script src="lib/preflop_gto_matrix.js"></script>
     <script src="lib/preflop_gto_ev_matrix.js"></script>
     <script src="lib/gto_matrix_engine.js"></script>
-    <!-- D-120 翻后 QuintAce 高精 GTO 解算矩阵与统一检索引擎 (v3.26.4) -->
+    <!-- D-128 转牌/河牌高精 GTO 维度扩容与历史数学/ICM 深度融合 (v3.27.0) -->
     <script src="lib/postflop_gto_matrix.js"></script>
     <script src="lib/postflop_gto_engine.js"></script>
     <!-- Phase 3 翻后极化几何规范化组件库 -->
@@ -1466,9 +1466,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.26.4 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.27.0 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.26.4</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.27.0</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼，移动端隐藏避免顶栏折行溢出） -->
                 <div id="topMiniStatus" class="hidden sm:flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1490,7 +1490,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.26.4 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.27.0 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -3972,7 +3972,7 @@
                 window.SQUEEZE_RANGES = SQUEEZE_RANGES;
                 window.REJAM_RANGES = REJAM_RANGES;
                 window._rangeNormalizationManifest = {
-                    version: 'v3.26.4',
+                    version: 'v3.27.0',
                     timestamp: '2026-10-08',
                     appliedRules: [
                         'btn_3bet_co_superset',
@@ -4337,6 +4337,7 @@
                 note: `[Pokercode ICM 3-1-3] Hero:${heroTier}(${hs}BB) vs Opp:${villainTier}(${vs}BB) 姿态:${posture} 溢价:+${riskPremium}%`
             };
         }
+        window.getICM313Context = getICM313Context;
 
         // ============================================================
         // 筹码深度维度（2026-09-09，依据 Modern Poker Theory / Acevedo，第 7 章）
@@ -6251,7 +6252,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.26.4',
+                    v: 'v3.27.0',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -6270,7 +6271,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.26.4' && data.v !== 'v3.26.3' && data.v !== 'v3.26.2' && data.v !== 'v3.26.1' && data.v !== 'v3.26.0' && data.v !== 'v3.25.8' && data.v !== 'v3.25.7' && data.v !== 'v3.25.6' && data.v !== 'v3.25.5' && data.v !== 'v3.25.4' && data.v !== 'v3.25.3' && data.v !== 'v3.25.2' && data.v !== 'v3.25.1' && data.v !== 'v3.25' && data.v !== 'v3.24' && data.v !== 'v3.23' && data.v !== 'v3.22' && data.v !== 'v3.21' && data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.27.0' && data.v !== 'v3.26.4' && data.v !== 'v3.26.3' && data.v !== 'v3.26.2' && data.v !== 'v3.26.1' && data.v !== 'v3.26.0' && data.v !== 'v3.25.8' && data.v !== 'v3.25.7' && data.v !== 'v3.25.6' && data.v !== 'v3.25.5' && data.v !== 'v3.25.4' && data.v !== 'v3.25.3' && data.v !== 'v3.25.2' && data.v !== 'v3.25.1' && data.v !== 'v3.25' && data.v !== 'v3.24' && data.v !== 'v3.23' && data.v !== 'v3.22' && data.v !== 'v3.21' && data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -6344,7 +6345,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.26.4 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.27.0 正式版';
             renderWindowColorChips(key);
         };
 
@@ -19572,7 +19573,7 @@
                 };
             }
 
-            // ── GTO 求解器直接接管 (QuintAce 28MB 真实矩阵 Single Source of Truth, v3.26.4) ──
+            // ── GTO 求解器直接接管 (转/河高精 GTO 矩阵与历史数学/ICM 深度融合 Single Source of Truth, v3.27.0) ──
             const _fnGtoSolver = (typeof window !== 'undefined' && window.queryPostflopGtoSolver) ||
                                  (typeof globalThis !== 'undefined' && globalThis.queryPostflopGtoSolver) ||
                                  (typeof queryPostflopGtoSolver === 'function' ? queryPostflopGtoSolver : null);
