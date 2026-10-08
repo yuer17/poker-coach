@@ -5389,26 +5389,42 @@
                         const lat = (boardN === 5 && d.riverTerminal) ? (d.riverTerminal.latencyUs || 2.1) : (boardN === 4 && d.turnTransition ? (d.turnTransition.latencyUs || 0.2) : (d.lutResult ? (d.lutResult.latencyUs || 2.8) : 2.8));
                         
                         let fr = null;
+                        let frType = 'facing_bet'; // 'facing_bet' | 'facing_check' | 'turn_unified'
                         if (boardN === 5 && d.riverTerminal && d.riverTerminal.frequencies) {
                             fr = d.riverTerminal.frequencies;
-                        } else if (d.lutResult && d.lutResult.frequencies) {
+                            frType = (fr.CHECK !== undefined) ? 'facing_check' : 'facing_bet';
+                        } else if (boardN === 4 && d.turnSizing && d.turnSizing.frequencies) {
+                            // 转牌圈：优先统一读取转牌注额引擎与主仲裁频率，杜绝翻牌旧微表冲突
+                            const tsF = d.turnSizing.frequencies;
+                            const uF = d.frequencies || {};
+                            const chk = (uF.check !== undefined) ? uF.check : (tsF.check || 0);
+                            const bet = (uF.bet !== undefined) ? uF.bet : (100 - chk);
+                            fr = { CHECK: chk, BET: bet };
+                            frType = 'turn_unified';
+                        } else if (boardN === 3 && d.lutResult && d.lutResult.frequencies) {
                             fr = d.lutResult.frequencies;
+                            frType = (fr.CHECK !== undefined) ? 'facing_check' : 'facing_bet';
                         } else if (d && d.frequencies) {
                             const df = d.frequencies;
-                            fr = {
-                                FOLD: df.fold || 0,
-                                CALL: df.call || df.check || 0,
-                                RAISE: df.bet || df.raise || 0,
-                                ALLIN: 0
-                            };
+                            if (df.check !== undefined || df.bet !== undefined) {
+                                fr = { CHECK: df.check || 0, BET: df.bet || df.raise || 0 };
+                                frType = 'facing_check';
+                            } else {
+                                fr = { FOLD: df.fold || 0, CALL: df.call || 0, RAISE: df.raise || 0, ALLIN: 0 };
+                                frType = 'facing_bet';
+                            }
                         }
 
                         if (fr) {
-                            const foldVal = fr.FOLD !== undefined ? fr.FOLD : (fr.CHECK || 0);
-                            const callVal = fr.CALL !== undefined ? fr.CALL : (fr.BET_SMALL || 0);
-                            const raiseVal = fr.RAISE !== undefined ? fr.RAISE : (fr.BET_LARGE || 0);
-                            const allinVal = fr.ALLIN || 0;
-                            parts.push(`<span class="flex items-center gap-1 whitespace-nowrap shrink-0"><span class="text-sky-400 font-bold">${label}</span><span class="text-gray-300 font-mono">[弃${foldVal}% 跟${callVal}% 加${raiseVal}% 推${allinVal}%]</span><span class="text-[9px] text-gray-500">· ${lat}µs</span></span>`);
+                            let textVec = '';
+                            if (frType === 'turn_unified' || (fr.CHECK !== undefined && fr.BET !== undefined && fr.BET_SMALL === undefined)) {
+                                textVec = `[过${fr.CHECK}% 注${fr.BET}%]`;
+                            } else if (frType === 'facing_check' || fr.CHECK !== undefined) {
+                                textVec = `[过${fr.CHECK || 0}% 小${fr.BET_SMALL || 0}% 大${fr.BET_LARGE || 0}% 推${fr.ALLIN || 0}%]`;
+                            } else {
+                                textVec = `[弃${fr.FOLD || 0}% 跟${fr.CALL || 0}% 加${fr.RAISE || 0}% 推${fr.ALLIN || 0}%]`;
+                            }
+                            parts.push(`<span class="flex items-center gap-1 whitespace-nowrap shrink-0"><span class="text-sky-400 font-bold">${label}</span><span class="text-gray-300 font-mono">${textVec}</span><span class="text-[9px] text-gray-500">· ${lat}µs</span></span>`);
                         } else if (hasTurn) {
                             parts.push(`<span class="flex items-center gap-1 whitespace-nowrap shrink-0"><span class="text-amber-400 font-bold">${label}</span><span class="text-gray-300 font-mono">[${d.turnTransition.typeName || '跃迁'} · ${d.turnTransition.shiftName || '均势'}]</span><span class="text-[9px] text-gray-500">· ${lat}µs</span></span>`);
                         }
@@ -7978,9 +7994,8 @@
             const v = document.getElementById('tlStackVillain');
             if (v) {
                 delete v.dataset.touched;
-                const defV = (typeof globalHeroStack === 'number' && globalHeroStack > 0) ? globalHeroStack : 40;
+                const defV = (typeof globalVillainStack === 'number' && globalVillainStack > 0) ? globalVillainStack : 40;
                 v.value = defV;
-                globalVillainStack = defV;
             }
             const a = document.getElementById('tlAvgStack'); if (a) delete a.dataset.touched;
         }
@@ -8687,11 +8702,7 @@
             if (which === 'avg' && a) a.dataset.touched = '1';
             if (which === 'villain' && vEl) vEl.dataset.touched = '1';
 
-            // 当用户修改我的筹码，且对手筹码从未被手动修改过时，对手筹码默认联动同步
-            if (which === 'hero' && vEl && vEl.dataset.touched !== '1') {
-                const hVal = document.getElementById('tlStackHero')?.value;
-                if (hVal) vEl.value = hVal;
-            }
+            // 我的筹码与对手筹码完全独立解耦，修改我的筹码绝不自动覆盖对手筹码
 
             tlReadStackInputs();
             const w = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
@@ -12312,11 +12323,19 @@
                         const vText = vEl ? vEl.innerText.trim() : '';
                         const lgText = lgEl ? lgEl.innerText.trim() : '';
                         const preDec = window._lastPreflopDecision;
-                        const isBlockedOrTerminal = preDec ? (preDec.isBlocked || (preDec.isTerminal && preDec.source === 'timeline') || preDec.hasMixFallback) : false;
+                        const isTerminalFold = preDec ? (preDec.isTerminal && preDec.source === 'timeline') : false;
+                        const isBlockedOrTerminal = preDec ? (preDec.isBlocked || isTerminalFold) : false;
                         const st = (typeof tlState === 'function') ? tlState() : null;
                         const isWaitingOpponent = preDec ? preDec.isWaitingOpponent : (st && !st.closed && st.nextToAct && st.nextToAct !== posH && !['faceBet', 'squeeze', 'face3b', 'face4b', 'coldCall', 'open', 'vsLimp'].includes(currentMode));
+                        const hasGtoSolution = Array.isArray(matrixVec) && matrixVec.length >= 4;
+                        const rp = document.getElementById('resultPanel');
                         const hasBlindMix = rp && !!rp.dataset.bbMix;
-                        const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal || hasBlindMix || currentMode === 'defend' || currentMode === 'vsLimp';
+                        const _mixFb = rp ? (rp.dataset.mixFallback || rp.dataset.sbMixFallback) : null;
+                        const isNonStandardStage = typeof gameConfig !== 'undefined' && (gameConfig.stage !== 'normal' || gameConfig.gameType !== 'normal' || !gameConfig.ante || gameConfig.playStyle !== 'normal');
+                        const hasTimeline = (typeof tlState === 'function') && tlState() && Array.isArray(tlState().actions) && tlState().actions.length > 0;
+                        // 确保以 GTO Wizard 为主版本：在交互时间线中浅码深度由 GTO Wizard 全面接管；但在非标赛制或 legacy 静态非时间线超界用例中保持安全回退
+                        const isUncalibratedFallback = preDec ? (preDec.hasMixFallback && (isNonStandardStage || !hasTimeline)) : false;
+                        const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal || hasBlindMix || isUncalibratedFallback || isNonStandardStage || currentMode === 'defend' || currentMode === 'vsLimp';
 
                         // 结构化翻前阻断状态发布 (Issue 02/06 解耦 DOM 文字解析)
                         window._preflopState = {
@@ -12339,6 +12358,13 @@
                             return;
                         }
 
+                        // GTO Wizard 官方解算接管：清理旧 MPT 图表回退标记，避免旧警告与旧逻辑干扰
+                        if (rp && hasGtoSolution) {
+                            delete rp.dataset.mixFallback;
+                            delete rp.dataset.sbMixFallback;
+                            delete rp.dataset.bbMix;
+                        }
+
                         window._lastShadowComparison = {
                             mode: currentMode,
                             posH,
@@ -12358,21 +12384,24 @@
                             // ── v3.17 主裁决交割 (GTO Wizard 真解全面接管翻前主裁决) ──
                             let dominantVerdict = '';
                             let dominantColor = 'yellow';
+                            const isSbOpenLimp = (currentMode === 'open' && posH === 'SB');
                             if (jP >= 50) {
-                                dominantVerdict = '🔴 全推 (All-in)';
+                                dominantVerdict = '🔴 全推 (All-in 全下)';
                                 dominantColor = 'raise';
                             } else if (rP >= 50) {
                                 const szStr = matrixVec.sizing ? ` ${matrixVec.sizing}BB` : '';
                                 dominantVerdict = `🔴 加注 (${szStr.trim() || 'Raise'})`;
                                 dominantColor = 'raise';
                             } else if (cP >= 50) {
-                                dominantVerdict = (currentMode === 'squeeze' && posH === 'BB') ? '🟢 平跟 (Overcall)' : '🟢 平跟 (Call)';
+                                dominantVerdict = isSbOpenLimp ? '🟢 平跟补盲 (Limp)' : (currentMode === 'squeeze' && posH === 'BB') ? '🟢 平跟 (Overcall)' : '🟢 平跟 (Call)';
                                 dominantColor = 'call';
                             } else if (fP >= 70) {
                                 dominantVerdict = '⚪ 弃牌 (Fold)';
                                 dominantColor = 'fold';
                             } else {
-                                dominantVerdict = `🟡 混合 [弃${fP}% 跟${cP}% 加${rP}% 推${jP}%]`;
+                                // 混合策略精炼主标题：主大字提炼核心分支，避免冗长方括号数字挤占
+                                const mixSub = (rP > 0 || jP > 0) && cP > 0 ? '(加/跟/弃)' : (rP > 0 || jP > 0) ? '(加注/弃牌)' : cP > 0 ? '(跟注/弃牌)' : '';
+                                dominantVerdict = `🟡 混合策略 ${mixSub}`.trim();
                                 dominantColor = 'yellow';
                             }
 
@@ -12386,31 +12415,37 @@
                             }
 
                             // ── 频率条与标签全面交割 GTO 真实解 ──
+                            // 严谨色彩映射：Raise 为琥珀金黄(#f59e0b)，Jam 为激进纯红(#e5484d)，彻底根除双红混淆
                             const fBar = document.getElementById('freqBar');
                             const fLab = document.getElementById('freqLabels');
                             if (fBar) {
                                 fBar.innerHTML =
                                     (cP > 0 ? `<div class="freq-fill bg-call" style="width:${cP}%">${cP}%</div>` : '') +
-                                    (rP > 0 ? `<div class="freq-fill bg-raise" style="width:${rP}%">${rP}%</div>` : '') +
-                                    (jP > 0 ? `<div class="freq-fill bg-raise" style="background:#e5484d;width:${jP}%">${jP}%</div>` : '') +
+                                    (rP > 0 ? `<div class="freq-fill" style="background:#f59e0b;color:#18181b;font-weight:800;width:${rP}%">${rP}%</div>` : '') +
+                                    (jP > 0 ? `<div class="freq-fill" style="background:#e5484d;color:#ffffff;font-weight:800;width:${jP}%">${jP}%</div>` : '') +
                                     (fP > 0 ? `<div class="freq-fill bg-fold" style="width:${fP}%">${fP}%</div>` : '');
                             }
                             if (fLab) {
+                                const cLabel = isSbOpenLimp ? 'Limp' : 'Call';
                                 fLab.innerHTML =
-                                    (cP > 0 ? `<span class="text-green-400">Call ${cP}%</span> ` : '') +
-                                    (rP > 0 ? `<span class="text-yellow-400">Raise ${rP}%</span> ` : '') +
+                                    (cP > 0 ? `<span class="text-green-400">${cLabel} ${cP}%</span> ` : '') +
+                                    (rP > 0 ? `<span class="text-amber-400">Raise ${rP}%</span> ` : '') +
                                     (jP > 0 ? `<span class="text-red-400">Jam ${jP}%</span> ` : '') +
                                     (fP > 0 ? `<span class="text-gray-400">Fold ${fP}%</span>` : '');
                             }
 
                             // ── 维度二：推荐引擎与官方微尺寸对接 (Stage 3 v3.20) ──
-                            if (szEl && matrixVec.sizing) {
-                                const szVal = matrixVec.sizing;
-                                const isNS = matrixVec.sizingInfo && matrixVec.sizingInfo.isNonStandard;
-                                const nsBadge = isNS
-                                    ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 ml-1">⚡ 自适应</span>`
-                                    : `<span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/40 ml-1">GTO</span>`;
-                                szEl.innerHTML = `<span style="font-weight:800;color:#fde047;">${szVal} BB</span>${nsBadge} <button type="button" class="gto-apply-sizing-btn" onclick="applyGtoSizing(${szVal})" title="填入加注框" style="background:rgba(59,130,246,0.18);border:0.5px solid rgba(96,165,250,0.4);color:#93c5fd;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;cursor:pointer;margin-left:5px;">📋 填入</button><span id="sizingAppliedToast" style="display:none;color:#4ade80;font-size:10px;font-weight:700;margin-left:4px;">✓ 已应用</span>`;
+                            if (szEl) {
+                                if (isSbOpenLimp && cP >= 50) {
+                                    szEl.innerHTML = `<span style="font-weight:800;color:#4ade80;">1.0 BB</span><span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 ml-1">补齐大盲</span>`;
+                                } else if (matrixVec.sizing) {
+                                    const szVal = matrixVec.sizing;
+                                    const isNS = matrixVec.sizingInfo && matrixVec.sizingInfo.isNonStandard;
+                                    const nsBadge = isNS
+                                        ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 ml-1">⚡ 自适应</span>`
+                                        : `<span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/40 ml-1">GTO</span>`;
+                                    szEl.innerHTML = `<span style="font-weight:800;color:#fde047;">${szVal} BB</span>${nsBadge} <button type="button" class="gto-apply-sizing-btn" onclick="applyGtoSizing(${szVal})" title="填入加注框" style="background:rgba(59,130,246,0.18);border:0.5px solid rgba(96,165,250,0.4);color:#93c5fd;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;cursor:pointer;margin-left:5px;">📋 填入</button><span id="sizingAppliedToast" style="display:none;color:#4ade80;font-size:10px;font-weight:700;margin-left:4px;">✓ 已应用</span>`;
+                                }
                             }
 
                             // ── 维度三：动态 ICM 风险溢价模型与 EV 损失量化 ──
@@ -12445,8 +12480,10 @@
                                     const hasFlip = (evData.cEV[3] > 0 && evData.icmEV[3] < 0) || (evData.cEV[1] > 0 && evData.icmEV[1] < 0) || (evData.cEV[2] > 0 && evData.icmEV[2] < 0);
                                     const actClr = evData.bestAction==='弃'?'#94a3b8':evData.bestAction==='跟'?'#4ade80':evData.bestAction==='加'?'#facc15':'#f87171';
 
+                                    const stageUncalibrated = (typeof gameConfig !== 'undefined' && (gameConfig.stage !== 'normal' || gameConfig.gameType !== 'normal')) ? `<div style="color:#fbbf24;font-size:11px;margin-bottom:4px;">⚠️ 非默认常规赛制（未校准赛制）：已启动动态 ICM 风险溢价模型测算</div>` : '';
                                     coachBanner = `
                                     <div style="background:rgba(15,23,42,0.75);border:1px solid rgba(245,158,11,0.35);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:12px;line-height:1.5;">
+                                      ${stageUncalibrated}
                                       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
                                         <span style="color:#fde047;font-weight:700;">动态 ICM 风险溢价模型 · EV<sub>ICM</sub> = EV<sub>cEV</sub> - (RP × RiskPot)</span>
                                         <span style="font-size:10px;color:#fef08a;background:rgba(217,119,6,0.25);border:1px solid rgba(217,119,6,0.45);border-radius:3px;padding:1px 5px;">🛡️ 溢价 +${evData.rpPercent}% · ${postureName}</span>
@@ -12475,8 +12512,9 @@
                                     </div>`;
                                 }
                                 
-                                // GTO 解算器接管时使用完整自洽横幅，彻底丢弃旧启发式模型可能冲突的残留说理
-                                lgEl.innerHTML = coachBanner;
+                                // GTO 解算器接管时附加完整自洽横幅；若有原尺度适配说理则前置保留
+                                const prefixNote = (lgText && (lgText.includes('赔率更优') || lgText.includes('偏离基准'))) ? `<div class="mb-2 text-gray-300 text-xs">${lgText}</div>` : '';
+                                lgEl.innerHTML = prefixNote + coachBanner;
                             } else if (lgEl) {
                                 // P2-3: 若 evData 无解但 matrixVec 已接管，清洗旧模型可能冲突的残留说理
                                 const hasConflict = /果断弃牌|决绝弃牌|弃牌保留|严禁跟注|果断弃/.test(lgText) && (jP >= 50 || rP >= 50 || cP >= 50);
@@ -12867,13 +12905,15 @@
                 each = Math.min(globalHeroStack, globalVillainStack);
             }
             const pPot = each * 2 + dead + extraDead;
+            const boardCount = (postState && postState.board) ? postState.board.filter(c => c !== null).length : 0;
+            const realPreflopPot = (typeof tlState === 'function') ? (tlState()?.pot || (dead || 1.5)) : (dead || 1.5);
 
             postState.potTracker.preflopPot = pPot;
-            postState.potTracker.currentPot = pPot;
+            postState.potTracker.currentPot = (boardCount >= 3) ? pPot : realPreflopPot;
             postState.potTracker.effStackBase = Math.max(0, Math.min(globalHeroStack, globalVillainStack) - each);
             postState.potTracker.effBaseStreet = 0; // 基准所在街（0=翻牌）
-            postState.potTracker.effStack = postState.potTracker.effStackBase;
-            postState.potTracker.spr = pPot > 0 ? postState.potTracker.effStack / pPot : 0;
+            postState.potTracker.effStack = (boardCount >= 3) ? postState.potTracker.effStackBase : Math.min(globalHeroStack, globalVillainStack);
+            postState.potTracker.spr = postState.potTracker.currentPot > 0 ? postState.potTracker.effStack / postState.potTracker.currentPot : 0;
             postState.potTracker.actions = [];
 
             updatePotUI();
@@ -21744,7 +21784,17 @@
                         latEl.innerText = `O(1) · ${lat}µs`;
                     }
 
-                    const f = (street === 'river' && riverTerm && riverTerm.frequencies) ? riverTerm.frequencies : (lut ? lut.frequencies : null);
+                    const f = (street === 'river' && riverTerm && riverTerm.frequencies) ? riverTerm.frequencies
+                            : (street === 'turn' && result.turnSizing && result.turnSizing.frequencies) ? (() => {
+                                const tsF = result.turnSizing.frequencies;
+                                return {
+                                    CHECK: tsF.check !== undefined ? tsF.check : 35,
+                                    BET_SMALL: tsF.small || 0,
+                                    BET_LARGE: (tsF.medium || 0) + (tsF.strong || 0),
+                                    ALLIN: tsF.allin || 0
+                                };
+                            })()
+                            : (lut ? lut.frequencies : null);
                     if (f) {
                         const lEl = document.getElementById('decisionGtoFreqLabels');
                         if (lEl) {
