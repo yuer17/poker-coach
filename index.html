@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.25.5 正式版 - 核心架构深度治理与全链路解耦 (Systemic Remediation)</title>
+    <title>PokerCode v3.25.8 正式版 - 翻后深度快照隔离与纯函数管线闭环 (Phase 2 Remediation)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.25.5 正式版 高定黑曜石与 Liquid Glass 设计令牌 (系统治理与架构解耦) ══
+            /* ══ PokerCode v3.25.8 正式版 高定黑曜石与 Liquid Glass 设计令牌 (翻后深隔离与架构治理) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1463,9 +1463,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.25.5 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.25.8 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.25.5</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.25.8</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼，移动端隐藏避免顶栏折行溢出） -->
                 <div id="topMiniStatus" class="hidden sm:flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1487,7 +1487,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.25.5 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.25.8 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -3969,8 +3969,8 @@
                 window.SQUEEZE_RANGES = SQUEEZE_RANGES;
                 window.REJAM_RANGES = REJAM_RANGES;
                 window._rangeNormalizationManifest = {
-                    version: 'v3.25.5',
-                    timestamp: '2026-10-07',
+                    version: 'v3.25.8',
+                    timestamp: '2026-10-08',
                     appliedRules: [
                         'btn_3bet_co_superset',
                         'cross_tablesize_rfi_align_stage1',
@@ -5875,9 +5875,13 @@
             // 位置同步(2026-09-09)：传统位置按钮改「我的位置」后，座位带此前不刷新。
             // 以前只是显示不同步；现在 **SB 的可选动作与其他位置不同**（多一个跛入），
             // 座位带过期就会给出错误的动作循环，必须重渲。
-            // 2026-09-27 修复：tlApply 内部切换位置时，严禁在此隐式重构座位带 DOM（破坏就地改额与正在输入的焦点）
-            if (id === 'posHero') {
-                try { if (typeof renderTimeline === 'function' && (typeof _tlApplying === 'undefined' || !_tlApplying)) renderTimeline(); }
+            if (id === 'posHero' || id === 'posVillain' || id === 'posCaller') {
+                try {
+                    if (typeof _tlApplying === 'undefined' || !_tlApplying) {
+                        if (typeof tlSyncFromMode === 'function') tlSyncFromMode();
+                        else if (typeof renderTimeline === 'function') renderTimeline();
+                    }
+                }
                 catch (e) { /* 时间线尚未初始化（TDZ）时静默跳过 */ }
             }
             // 翻前↔翻后同步(2026-07-14b)：已进翻后时，翻前改对手位置即时刷新
@@ -6244,7 +6248,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.25.5',
+                    v: 'v3.25.8',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -6263,7 +6267,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.25.5' && data.v !== 'v3.25.4' && data.v !== 'v3.25.3' && data.v !== 'v3.25.2' && data.v !== 'v3.25.1' && data.v !== 'v3.25' && data.v !== 'v3.24' && data.v !== 'v3.23' && data.v !== 'v3.22' && data.v !== 'v3.21' && data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.25.8' && data.v !== 'v3.25.7' && data.v !== 'v3.25.6' && data.v !== 'v3.25.5' && data.v !== 'v3.25.4' && data.v !== 'v3.25.3' && data.v !== 'v3.25.2' && data.v !== 'v3.25.1' && data.v !== 'v3.25' && data.v !== 'v3.24' && data.v !== 'v3.23' && data.v !== 'v3.22' && data.v !== 'v3.21' && data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -6337,7 +6341,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.25.5 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.25.8 正式版';
             renderWindowColorChips(key);
         };
 
@@ -8169,6 +8173,7 @@
                     } else {
                         out.label = `我开池 ${out.raiseSize}BB，${st.closed ? '无人跟注' : '等待其他人行动'}`;
                         out.note = st.closed ? '' : `现在轮到 ${tlLbl(st.nextToAct)} —— 在座位带上补录他的行动`;
+                        if (!st.closed) out.blocked = true;
                     }
                     return out;
                 }
@@ -8339,6 +8344,24 @@
             if (runEngine) {
                 if (d.blocked) {
                     const rp = document.getElementById('resultPanel'); if (rp) rp.classList.add('invisible');
+                    const isFolded = d.label === '我已弃牌' || (d.label && d.label.startsWith('我已弃牌')) || (typeof tlState === 'function' && tlState().heroActs.some(a => a.a === 'fold'));
+                    const isWalk = !isFolded && ((d.note && d.note.includes('walk')) || d.label === '前方全部弃牌');
+                    const isWaiting = !isFolded && !isWalk && (d.label && (d.label.includes('等待') || d.label.includes('轮到')));
+                    if (typeof publishPreflopDecision === 'function') {
+                        publishPreflopDecision({
+                            primaryAction: isFolded ? 'FOLD' : (isWalk ? 'WALK' : 'BLOCKED'),
+                            isBlocked: true,
+                            isTerminal: isFolded || isWalk,
+                            isPush: false,
+                            hasMixFallback: false,
+                            isWaitingOpponent: isWaiting,
+                            frequencies: isFolded ? { fold: 100, call: 0, raise: 0, jam: 0, check: 0 } : (isWalk ? { fold: 0, call: 0, raise: 0, jam: 0, check: 100 } : null),
+                            sizing: '',
+                            verdict: d.label || '阻断',
+                            reasoning: d.note || '',
+                            source: 'timeline'
+                        });
+                    }
                     try { updateDecisionHUD(); } catch (e) {}
                 } else if (heroCard1 && heroCard2) {
                     executeEngine();
@@ -9485,38 +9508,46 @@
         };
 
         /**
-         * 结构化发布翻前决策快照 (Issue 02/06 解耦 DOM 文本反向解析)
+         * 结构化发布翻前决策快照 (Issue 02/06 解耦 DOM 文本反向解析 - Phase 1 Remediation)
+         * 绝对铁律：严禁从 DOM (#actionVerdict, #actionLogic) 用正则反向刮取数据推导决策！
+         * 决策数据必须由各分支计算引擎生成后显式传入，深度冻结发布到 window._lastPreflopDecision。
          */
         function publishPreflopDecision(opts) {
-            const vEl = (typeof document !== 'undefined') ? document.getElementById('actionVerdict') : null;
-            const lgEl = (typeof document !== 'undefined') ? document.getElementById('actionLogic') : null;
-            const rp = (typeof document !== 'undefined') ? document.getElementById('resultPanel') : null;
-            const mixFb = rp ? (rp.dataset.mixFallback || rp.dataset.sbMixFallback) : null;
-            const vText = (opts && opts.verdict !== undefined) ? opts.verdict : (vEl ? vEl.innerText.trim() : '');
-            const lgText = (opts && opts.reasoning !== undefined) ? opts.reasoning : (lgEl ? lgEl.innerText.trim() : '');
+            if (!opts) {
+                if (typeof window !== 'undefined' && window._lastPreflopDecision) {
+                    return window._lastPreflopDecision;
+                }
+                return Object.freeze({
+                    primaryAction: 'UNKNOWN',
+                    isBlocked: true,
+                    isTerminal: false,
+                    isPush: false,
+                    hasMixFallback: false,
+                    isWaitingOpponent: false,
+                    frequencies: null,
+                    sizing: '',
+                    verdict: '',
+                    reasoning: '',
+                    source: 'idle',
+                    timestamp: Date.now()
+                });
+            }
 
-            const isPush = (opts && typeof opts.isPush === 'boolean') ? opts.isPush : /全下|全押|push|jam/i.test(vText);
-            const isBlocked = (opts && typeof opts.isBlocked === 'boolean') ? opts.isBlocked : (!vText || !!mixFb || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vText) || /超出原图覆盖|未按原图校准/.test(lgText));
-            const isTerminal = (opts && typeof opts.isTerminal === 'boolean') ? opts.isTerminal : /已弃牌|已全下|已结束/.test(vText);
-
-            let primaryAction = (opts && opts.primaryAction) || (
-                isPush ? 'ALLIN' :
-                (/弃牌|fold/i.test(vText) ? 'FOLD' :
-                (/跟注|接全下|call/i.test(vText) ? 'CALL' :
-                (/加注|开池|raise|bet/i.test(vText) ? 'RAISE' :
-                (/过牌|check/i.test(vText) ? 'CHECK' : 'UNKNOWN'))))
-            );
-
-            const decision = {
-                primaryAction,
-                isBlocked,
-                isTerminal,
-                isPush,
-                hasMixFallback: !!mixFb,
-                verdict: vText,
-                reasoning: lgText,
+            const decision = Object.freeze({
+                primaryAction: opts.primaryAction || 'UNKNOWN',
+                isBlocked: !!opts.isBlocked,
+                isTerminal: !!opts.isTerminal,
+                isPush: !!opts.isPush,
+                hasMixFallback: !!opts.hasMixFallback,
+                isWaitingOpponent: !!opts.isWaitingOpponent,
+                frequencies: (opts.frequencies && typeof opts.frequencies === 'object') ? Object.freeze({ ...opts.frequencies }) : null,
+                sizing: (opts.sizing !== undefined && opts.sizing !== null) ? String(opts.sizing) : '',
+                verdict: (opts.verdict !== undefined && opts.verdict !== null) ? String(opts.verdict) : '',
+                reasoning: (opts.reasoning !== undefined && opts.reasoning !== null) ? String(opts.reasoning) : '',
+                source: opts.source || 'unspecified',
                 timestamp: Date.now()
-            };
+            });
+
             if (typeof window !== 'undefined') {
                 window._lastPreflopDecision = decision;
             }
@@ -9561,15 +9592,58 @@
                     isBlocked: true,
                     isTerminal: false,
                     isPush: false,
+                    hasMixFallback: false,
+                    isWaitingOpponent: false,
+                    frequencies: null,
+                    sizing: '',
                     verdict: '',
-                    reasoning: '非法输入'
+                    reasoning: '非法输入',
+                    source: 'validation'
                 });
                 return;
+            }
+
+            // 翻前时间线终局与阻断状态检查 (Exit 3 & Exit 4: 弃牌/等待对手/Walk)
+            if (typeof deriveScenario === 'function') {
+                const dSc = deriveScenario();
+                if (dSc && dSc.blocked) {
+                    const _av = document.getElementById('actionVerdict');
+                    const _lg = document.getElementById('actionLogic');
+                    const _sc = document.getElementById('sizingContent');
+                    const _fl = document.getElementById('freqLabels');
+                    const _fb = document.getElementById('freqBar');
+                    if (_av) _av.innerText = dSc.label || '⚠️ 阻断';
+                    if (_lg) _lg.innerText = dSc.note || '';
+                    if (_sc) _sc.innerText = '';
+                    if (_fl) _fl.innerHTML = '';
+                    if (_fb) _fb.innerHTML = '';
+                    document.getElementById('sizingBox').classList.add('hidden');
+                    document.getElementById('freqBox').classList.add('hidden');
+                    document.getElementById('mathProofPanel').classList.add('hidden');
+                    document.getElementById('resultPanel').classList.add('invisible');
+                    const isFolded = dSc.label === '我已弃牌' || (dSc.label && dSc.label.includes('弃牌'));
+                    const isWaiting = !isFolded && (dSc.label && (dSc.label.includes('等待') || dSc.label.includes('轮到')));
+                    publishPreflopDecision({
+                        primaryAction: isFolded ? 'FOLD' : 'BLOCKED',
+                        isBlocked: true,
+                        isTerminal: isFolded,
+                        isPush: false,
+                        hasMixFallback: false,
+                        isWaitingOpponent: isWaiting,
+                        frequencies: isFolded ? { fold: 100, call: 0, raise: 0, jam: 0, check: 0 } : null,
+                        sizing: '',
+                        verdict: dSc.label || '阻断',
+                        reasoning: dSc.note || '',
+                        source: 'timeline'
+                    });
+                    return;
+                }
             }
 
             // B6 防御(2026-07)：无论从哪条路径回到翻前，解析时兜底摘掉 resultPanel 的 'hidden'，
             // 确保右栏容器可显示（可见性仍由各分支的 invisible 控制）
             document.getElementById('resultPanel').classList.remove('hidden');
+            window._lastPreflopDecision = null;
 
             // 融合单页(2026-07-14)：翻前解析通过校验后，共享网格自动转向公共牌目标
             //（30秒流程：解析完的下一步就是点公共牌进翻后；点「底牌」分组可随时切回）
@@ -9578,7 +9652,23 @@
                 renderSharedPicker();
             }
 
-            if (val1 === val2 && isSuited) { alert("对子不能同花。"); return; }
+            if (val1 === val2 && isSuited) {
+                alert("对子不能同花。");
+                publishPreflopDecision({
+                    primaryAction: 'BLOCKED',
+                    isBlocked: true,
+                    isTerminal: false,
+                    isPush: false,
+                    hasMixFallback: false,
+                    isWaitingOpponent: false,
+                    frequencies: null,
+                    sizing: '',
+                    verdict: '⚠️ 非法输入',
+                    reasoning: '对子不能同花',
+                    source: 'validation'
+                });
+                return;
+            }
             const rO = {'A':14,'K':13,'Q':12,'J':11,'T':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2};
             const v1 = rO[val1], v2 = rO[val2]; const isPair = (v1 === v2);
             const handStr = getHandStr();
@@ -9733,6 +9823,21 @@
                         document.getElementById('resultPanel').dataset.bbMix = posH;
                         document.getElementById('resultPanel').classList.remove('invisible');
                         updateCfgSummary();
+                        const actionCodeMap = { '跟注': 'CALL', '3-Bet': 'RAISE', '全下': 'ALLIN', '弃牌': 'FOLD' };
+                        const primaryAction = actionCodeMap[main.short] || 'UNKNOWN';
+                        publishPreflopDecision({
+                            primaryAction,
+                            isBlocked: false,
+                            isTerminal: primaryAction === 'FOLD',
+                            isPush: primaryAction === 'ALLIN',
+                            hasMixFallback: false,
+                            isWaitingOpponent: false,
+                            frequencies: { fold: fold || 0, call: call || 0, raise: raise || 0, jam: jam || 0, check: 0 },
+                            sizing: sizes.join(' · '),
+                            verdict: vText.innerText,
+                            reasoning: logicText.innerText,
+                            source: 'mpt_mix'
+                        });
                         return;
                     }
                 }
@@ -9787,6 +9892,20 @@
                 proofPanel.classList.remove('hidden');
                 document.getElementById('resultPanel').classList.remove('invisible');
                 updateCfgSummary();
+                const primaryAction = res.action === 'jam' ? 'ALLIN' : (res.action === 'call' ? 'CALL' : 'FOLD');
+                publishPreflopDecision({
+                    primaryAction,
+                    isBlocked: false,
+                    isTerminal: primaryAction === 'FOLD',
+                    isPush: primaryAction === 'ALLIN',
+                    hasMixFallback: false,
+                    isWaitingOpponent: false,
+                    frequencies: { fold: f, call: c, raise: 0, jam: b, check: 0 },
+                    sizing: postSizing || '',
+                    verdict: vText.innerText,
+                    reasoning: logicText.innerText,
+                    source: 'face4b'
+                });
                 return;
             }
 
@@ -9871,6 +9990,19 @@
                         proofPanel.classList.remove('hidden');
                         document.getElementById('resultPanel').classList.remove('invisible');
                         updateCfgSummary();
+                        publishPreflopDecision({
+                            primaryAction: 'ALLIN',
+                            isBlocked: false,
+                            isTerminal: false,
+                            isPush: true,
+                            hasMixFallback: false,
+                            isWaitingOpponent: false,
+                            frequencies: { fold: 0, call: 0, raise: 0, jam: 100, check: 0 },
+                            sizing: `${sH.toFixed(1)}BB All-in`,
+                            verdict: vText.innerText,
+                            reasoning: logicText.innerText,
+                            source: 'open'
+                        });
                         return;
                     }
                     
@@ -9906,6 +10038,19 @@
                     proofPanel.classList.remove('hidden');
                     document.getElementById('resultPanel').classList.remove('invisible');
                     updateCfgSummary();
+                    publishPreflopDecision({
+                        primaryAction: inRange ? 'ALLIN' : 'FOLD',
+                        isBlocked: false,
+                        isTerminal: !inRange,
+                        isPush: inRange,
+                        hasMixFallback: false,
+                        isWaitingOpponent: false,
+                        frequencies: inRange ? { fold: 0, call: 0, raise: 0, jam: 100, check: 0 } : { fold: 100, call: 0, raise: 0, jam: 0, check: 0 },
+                        sizing: inRange ? `${sH.toFixed(1)}BB All-in` : '',
+                        verdict: vText.innerText,
+                        reasoning: logicText.innerText,
+                        source: 'open'
+                    });
                     return;
                 }
 
@@ -10095,6 +10240,37 @@
                         proofPanel.classList.add('hidden');
                         document.getElementById('resultPanel').classList.remove('invisible');
                         updateCfgSummary();
+                        let primaryAction = 'UNKNOWN';
+                        let frequencies = null;
+                        if (act === 'mix') {
+                            primaryAction = _r.jamIsAgg ? (_r.agg >= 50 ? 'ALLIN' : 'CALL') : (_r.agg >= 50 ? 'RAISE' : 'CALL');
+                            frequencies = { fold: Math.max(0, 100 - _r.agg - _r.limp), call: _r.limp, raise: _r.jamIsAgg ? 0 : _r.agg, jam: _r.jamIsAgg ? _r.agg : 0, check: 0 };
+                        } else if (act === 'jam') {
+                            primaryAction = 'ALLIN';
+                            frequencies = { fold: 0, call: 0, raise: 0, jam: 100, check: 0 };
+                        } else if (act === 'raise') {
+                            primaryAction = 'RAISE';
+                            frequencies = { fold: 0, call: 0, raise: 100, jam: 0, check: 0 };
+                        } else if (act === 'limp') {
+                            primaryAction = 'CALL';
+                            frequencies = { fold: 0, call: 100, raise: 0, jam: 0, check: 0 };
+                        } else {
+                            primaryAction = 'FOLD';
+                            frequencies = { fold: 100, call: 0, raise: 0, jam: 0, check: 0 };
+                        }
+                        publishPreflopDecision({
+                            primaryAction,
+                            isBlocked: false,
+                            isTerminal: primaryAction === 'FOLD',
+                            isPush: primaryAction === 'ALLIN',
+                            hasMixFallback: false,
+                            isWaitingOpponent: false,
+                            frequencies,
+                            sizing: sz || '',
+                            verdict: vText.innerText,
+                            reasoning: logicText.innerText,
+                            source: 'open'
+                        });
                         return;
                     }
                 }
@@ -10120,6 +10296,9 @@
                 if (sH < 25) openSize = `${curOpenBB.toFixed(1)}x (短码)`;
                 if (posH === 'SB') openSize = gameConfig.ante ? "2.5x" : "3.0x";
 
+                const _jbi = (BEHIND_OF[gameConfig.tableSize || '9max'] || BEHIND_OF['9max'])[posH];
+                const _jset = (_jbi != null && sH > 12 && sH < 25) ? getOpenJamSet(_jbi, sH) : new Set();
+
                 if (foldPct === 100) {
                     box.style.borderColor = '#5c667f'; box.style.backgroundColor = 'rgba(92,102,127,0.12)';
                     vText.style.color = '#8b95ab'; vText.innerText = '⚪ 弃牌 (Fold)';
@@ -10133,8 +10312,6 @@
                 } else {
                     // jam 档（2026-09-09）：13-25BB 的开池不是一个动作，而是 {加注, 全下} 两个。
                     // 原来这一段只输出"开池"，于是急速赛后半段最常待的区间缺一整个动作。
-                    const _jbi = (BEHIND_OF[gameConfig.tableSize || '9max'] || BEHIND_OF['9max'])[posH];
-                    const _jset = (_jbi != null && sH > 12 && sH < 25) ? getOpenJamSet(_jbi, sH) : new Set();
                     if (_jset.has(handStr)) {
                         const _jp = openJamPct(_jbi, sH);
                         box.style.borderColor = '#e5484d'; box.style.backgroundColor = 'rgba(214,57,64,0.16)';
@@ -10187,6 +10364,38 @@
                 proofPanel.classList.remove('hidden');
                 document.getElementById('resultPanel').classList.remove('invisible');
                 updateCfgSummary();
+                let primaryAction = 'UNKNOWN';
+                let frequencies = null;
+                let sizing = '';
+                if (foldPct === 100) {
+                    primaryAction = 'FOLD';
+                    frequencies = { fold: 100, call: 0, raise: 0, jam: 0, check: 0 };
+                } else if (isHuSbMixed && openPct < 100) {
+                    primaryAction = openPct >= 50 ? 'RAISE' : 'FOLD';
+                    frequencies = { fold: foldPct, call: 0, raise: openPct, jam: 0, check: 0 };
+                    sizing = openSize;
+                } else if (_jset.has(handStr)) {
+                    primaryAction = 'ALLIN';
+                    frequencies = { fold: 0, call: 0, raise: 0, jam: 100, check: 0 };
+                    sizing = `${sH.toFixed(1)}BB All-in`;
+                } else {
+                    primaryAction = 'RAISE';
+                    frequencies = { fold: 0, call: 0, raise: 100, jam: 0, check: 0 };
+                    sizing = openSize;
+                }
+                publishPreflopDecision({
+                    primaryAction,
+                    isBlocked: false,
+                    isTerminal: primaryAction === 'FOLD',
+                    isPush: primaryAction === 'ALLIN',
+                    hasMixFallback: false,
+                    isWaitingOpponent: false,
+                    frequencies,
+                    sizing: sizing || '',
+                    verdict: vText.innerText,
+                    reasoning: logicText.innerText,
+                    source: 'open'
+                });
                 return;
             }
 
@@ -10341,6 +10550,38 @@
                 proofPanel.classList.remove('hidden');
                 document.getElementById('resultPanel').classList.remove('invisible');
                 updateCfgSummary();
+                let primaryAction = 'UNKNOWN';
+                if (isoPct > 0 && checkPct > 0) {
+                    primaryAction = isoPct >= 50 ? 'RAISE' : 'CHECK';
+                } else if (isoPct > 0) {
+                    primaryAction = isoSize.includes('All-in') ? 'ALLIN' : 'RAISE';
+                } else if (checkPct > 0) {
+                    primaryAction = 'CHECK';
+                } else if (callPct > 0) {
+                    primaryAction = 'CALL';
+                } else {
+                    primaryAction = 'FOLD';
+                }
+                const isPush = primaryAction === 'ALLIN' || (isoPct > 0 && isoSize.includes('All-in'));
+                publishPreflopDecision({
+                    primaryAction,
+                    isBlocked: false,
+                    isTerminal: primaryAction === 'FOLD',
+                    isPush,
+                    hasMixFallback: false,
+                    isWaitingOpponent: false,
+                    frequencies: {
+                        fold: foldPct || 0,
+                        call: callPct || 0,
+                        raise: isPush ? 0 : (isoPct || 0),
+                        jam: isPush ? (isoPct || 0) : 0,
+                        check: checkPct || 0
+                    },
+                    sizing: isoPct > 0 ? (document.getElementById('sizingContent')?.innerText || isoSize || '') : '',
+                    verdict: vText.innerText,
+                    reasoning: logicText.innerText,
+                    source: 'vsLimp'
+                });
                 return;
             }
 
@@ -11031,9 +11272,9 @@
                 logicText.innerHTML = logic;
 
                 // 建议尺度（加筹码上限检查：>=85% hero筹码时改为全押）
+                let suggSize = '';
                 if (b > 0 || Boolean(postSizing)) {
                     sizingBox.classList.remove('hidden');
-                    let suggSize;
                     if (postSizing) {
                         suggSize = postSizing;
                     } else if (currentMode === 'faceBet') {
@@ -11091,6 +11332,39 @@
                     (f>0?`<span class="text-gray-400">Fold ${f}%</span>`:'');
                 document.getElementById('resultPanel').classList.remove('invisible');
                 updateCfgSummary();
+                const curSizing = (b > 0 || Boolean(postSizing)) ? (suggSize || document.getElementById('sizingContent')?.innerText || '') : '';
+                const isPush = (typeof suggSize === 'string' && (suggSize.includes('All-in') || suggSize.includes('全下'))) || /All-in|全下|全推/.test(verdict) || /All-in/.test(curSizing);
+                let primaryAction = 'UNKNOWN';
+                if (b >= 50) {
+                    primaryAction = isPush ? 'ALLIN' : 'RAISE';
+                } else if (c >= 50) {
+                    primaryAction = 'CALL';
+                } else if (f >= 80) {
+                    primaryAction = 'FOLD';
+                } else {
+                    if (b > c && b > 0) primaryAction = isPush ? 'ALLIN' : 'RAISE';
+                    else if (c > 0) primaryAction = 'CALL';
+                    else primaryAction = 'FOLD';
+                }
+                publishPreflopDecision({
+                    primaryAction,
+                    isBlocked: false,
+                    isTerminal: primaryAction === 'FOLD',
+                    isPush,
+                    hasMixFallback: false,
+                    isWaitingOpponent: false,
+                    frequencies: {
+                        fold: f || 0,
+                        call: c || 0,
+                        raise: isPush ? 0 : (b || 0),
+                        jam: isPush ? (b || 0) : 0,
+                        check: 0
+                    },
+                    sizing: curSizing,
+                    verdict: vText.innerText,
+                    reasoning: logicText.innerText,
+                    source: currentMode
+                });
                 return;
             }
 
@@ -11252,14 +11526,16 @@
                 vText.innerText = verdict;
                 logicText.innerHTML = logic;
 
+                let squeezeAmt = 0;
+                let squeezeSize = '';
                 if (sq > 0) {
                     sizingBox.classList.remove('hidden');
                     // E-03: Pokercode / Fedor Holz 翻前 Squeeze 尺度引擎
                     // IP（BTN/CO）基础尺度为 4.0x 开池；OOP（SB/BB）无位置加成 1x 为 5.0x 开池；每额外多一个 caller 追加 1.0x 开池
                     const baseMul = isOOP ? 5.0 : 4.0;
                     const safeRaise = Math.max(1.0, raiseSize || 2.0);
-                    const squeezeAmt = safeRaise * baseMul + safeRaise * Math.max(0, numCallers - 1);
-                    const squeezeSize = (effStack > 0 && (squeezeAmt >= effStack * 0.35 || effStack <= 22))
+                    squeezeAmt = safeRaise * baseMul + safeRaise * Math.max(0, numCallers - 1);
+                    squeezeSize = (effStack > 0 && (squeezeAmt >= effStack * 0.35 || effStack <= 22))
                         ? `${effStack.toFixed(1)}BB All-in`
                         : squeezeAmt.toFixed(1) + "BB";
                     document.getElementById('sizingContent').innerText = squeezeSize;
@@ -11279,6 +11555,39 @@
                     (f>0?`<span class="text-gray-400">Fold ${f}%</span>`:'');
                 document.getElementById('resultPanel').classList.remove('invisible');
                 updateCfgSummary();
+                const curSqSizing = sq > 0 ? ((typeof squeezeSize !== 'undefined' ? squeezeSize : '') || document.getElementById('sizingContent')?.innerText || '') : '';
+                const isSqPush = (effStack <= 22 || (typeof squeezeAmt === 'number' && squeezeAmt >= effStack * 0.35)) || /All-in|全下/.test(verdict) || /All-in/.test(curSqSizing);
+                let sqPrimaryAction = 'UNKNOWN';
+                if (sq >= 50) {
+                    sqPrimaryAction = isSqPush ? 'ALLIN' : 'RAISE';
+                } else if (c >= 50) {
+                    sqPrimaryAction = 'CALL';
+                } else if (f >= 70) {
+                    sqPrimaryAction = 'FOLD';
+                } else {
+                    if (sq > c && sq > 0) sqPrimaryAction = isSqPush ? 'ALLIN' : 'RAISE';
+                    else if (c > 0) sqPrimaryAction = 'CALL';
+                    else sqPrimaryAction = 'FOLD';
+                }
+                publishPreflopDecision({
+                    primaryAction: sqPrimaryAction,
+                    isBlocked: false,
+                    isTerminal: sqPrimaryAction === 'FOLD',
+                    isPush: isSqPush,
+                    hasMixFallback: false,
+                    isWaitingOpponent: false,
+                    frequencies: {
+                        fold: f || 0,
+                        call: c || 0,
+                        raise: isSqPush ? 0 : (sq || 0),
+                        jam: isSqPush ? (sq || 0) : 0,
+                        check: 0
+                    },
+                    sizing: curSqSizing,
+                    verdict: vText.innerText,
+                    reasoning: logicText.innerText,
+                    source: 'squeeze'
+                });
                 return;
             }
 
@@ -11454,15 +11763,17 @@
                 // 尺度与 face3b 同一套（同样是"面对 3-Bet 的 4-Bet"）：按 3-Bet 额定档
                 // IP 2.2x / OOP 2.5x，下限为最小合法加注，≥85% 有效筹码改全押。
                 // IP/OOP 对的是 **3-Bet 者**（posC）——翻后主对手是他，不是开池者。
+                let _amt4 = 0;
+                let _allin4 = false;
                 if (b > 0) {
                     const _open4 = getOpenSizeBB();
                     const _vs4 = posC || posV;
                     const _isIP4c = (POSTFLOP_ORDER[posH] || 0) > (POSTFLOP_ORDER[_vs4] || 0);
                     const _minLegal4c = threeBetSize + Math.max(0, threeBetSize - _open4);
-                    const _amt4 = Math.max(threeBetSize * (_isIP4c ? 2.2 : 2.5), _minLegal4c);
+                    _amt4 = Math.max(threeBetSize * (_isIP4c ? 2.2 : 2.5), _minLegal4c);
                     const _dead4c = 1.5 + getAnteBB() + (_open4 || 2.0);
                     const _spr4c = (effStack > _amt4) ? (effStack - _amt4) / (2 * _amt4 + _dead4c) : 0;
-                    const _allin4 = effStack > 0 && (_amt4 >= effStack * 0.40 || _spr4c < 0.75);
+                    _allin4 = effStack > 0 && (_amt4 >= effStack * 0.40 || _spr4c < 0.75);
                     if (_allin4) {
                         verdict = (b >= 90) ? "🔥 价值 4-Bet (All-in)" : (b >= 50 ? "🔥 4-Bet All-in" : (c > 0 ? "🟡 混合（4-Bet All-in / Call）" : "🟡 4-Bet All-in 或弃牌"));
                         vText.innerText = verdict;
@@ -11484,6 +11795,40 @@
                     (f>0?`<span class="text-gray-400">Fold ${f}%</span>`:'');
                 document.getElementById('resultPanel').classList.remove('invisible');
                 updateCfgSummary();
+                const curCcSizing = b > 0 ? ((typeof _allin4 !== 'undefined' && _allin4) ? `${effStack.toFixed(1)}BB All-in` : (document.getElementById('sizingContent')?.innerText || '')) : '';
+                const isCcPush = (typeof _allin4 !== 'undefined' && _allin4) ? true : (/All-in|全下/.test(verdict) || /All-in/.test(curCcSizing));
+                let ccPrimaryAction = 'UNKNOWN';
+                if (b >= 50) {
+                    ccPrimaryAction = isCcPush ? 'ALLIN' : 'RAISE';
+                } else if (c >= 50) {
+                    ccPrimaryAction = 'CALL';
+                } else if (f >= 70 && b === 0) {
+                    ccPrimaryAction = 'FOLD';
+                } else {
+                    if (b > c && b > 0) ccPrimaryAction = isCcPush ? 'ALLIN' : 'RAISE';
+                    else if (c > 0) ccPrimaryAction = 'CALL';
+                    else ccPrimaryAction = 'FOLD';
+                }
+                publishPreflopDecision({
+                    primaryAction: ccPrimaryAction,
+                    isBlocked: false,
+                    isTerminal: ccPrimaryAction === 'FOLD',
+                    isPush: isCcPush,
+                    hasMixFallback: false,
+                    isWaitingOpponent: false,
+                    frequencies: {
+                        fold: f || 0,
+                        call: c || 0,
+                        raise: isCcPush ? 0 : (b || 0),
+                        jam: isCcPush ? (b || 0) : 0,
+                        check: 0
+                    },
+                    sizing: curCcSizing,
+                    verdict: vText.innerText,
+                    reasoning: logicText.innerText,
+                    source: 'coldCall'
+                });
+                return;
             }
 
             // ============================================================
@@ -11606,6 +11951,19 @@
                                 proofPanel.classList.remove('hidden');
                                 document.getElementById('resultPanel').classList.remove('invisible');
                                 updateCfgSummary();
+                                publishPreflopDecision({
+                                    primaryAction: 'FOLD',
+                                    isBlocked: false,
+                                    isTerminal: true,
+                                    isPush: false,
+                                    hasMixFallback: false,
+                                    isWaitingOpponent: false,
+                                    frequencies: { fold: 100, call: 0, raise: 0, jam: 0, check: 0 },
+                                    sizing: '',
+                                    verdict: vText.innerText,
+                                    reasoning: logicText.innerText,
+                                    source: 'defend'
+                                });
                                 return;
                             }
                         } else if (isMultiAllin && pushEff > 25) {
@@ -11794,17 +12152,60 @@
                 proofPanel.classList.remove('hidden');
                 document.getElementById('resultPanel').classList.remove('invisible');
                 updateCfgSummary();
-                publishPreflopDecision();
+                let defAction = 'FOLD';
+                let defFreqs = { fold: 100, call: 0, raise: 0, jam: 0, check: 0 };
+                let defSizing = '';
+                if (coinFlip) {
+                    defAction = 'CALL';
+                    defFreqs = { fold: 50, call: 50, raise: 0, jam: 0, check: 0 };
+                    defSizing = `${toCallAllin.toFixed(1)}BB Call All-in`;
+                } else if (netEv >= 3) {
+                    defAction = 'CALL';
+                    defFreqs = { fold: 0, call: 100, raise: 0, jam: 0, check: 0 };
+                    defSizing = `${toCallAllin.toFixed(1)}BB Call All-in`;
+                } else if (netEv >= 0) {
+                    defAction = 'CALL';
+                    defFreqs = { fold: 40, call: 60, raise: 0, jam: 0, check: 0 };
+                    defSizing = `${toCallAllin.toFixed(1)}BB Call All-in`;
+                }
+                publishPreflopDecision({
+                    primaryAction: defAction,
+                    isBlocked: false,
+                    isTerminal: defAction === 'FOLD',
+                    isPush: false,
+                    hasMixFallback: false,
+                    isWaitingOpponent: false,
+                    frequencies: defFreqs,
+                    sizing: defSizing,
+                    verdict: vText.innerText,
+                    reasoning: logicText.innerText,
+                    source: 'defend'
+                });
                 return;
             }
-            publishPreflopDecision();
+            if (!window._lastPreflopDecision) {
+                const _vEl = document.getElementById('actionVerdict');
+                const _lEl = document.getElementById('actionLogic');
+                publishPreflopDecision({
+                    primaryAction: 'UNKNOWN',
+                    isBlocked: false,
+                    isTerminal: false,
+                    isPush: false,
+                    hasMixFallback: false,
+                    isWaitingOpponent: false,
+                    frequencies: null,
+                    sizing: '',
+                    verdict: _vEl ? _vEl.innerText : '',
+                    reasoning: _lEl ? _lEl.innerText : '',
+                    source: 'fallback'
+                });
+            }
         }
 
         // 常驻决策 HUD(2026-07-21)：统一单次原子发布（Single-Pass Atomic Publication）
         function executeEngine() {
             try {
                 executeEngineCore();
-                publishPreflopDecision();
                 // 原图未覆盖（ICM/无Ante/自定义打法/开池尺度偏离/超界深度）时，旧模型的结论带出处标注
                 const rp = document.getElementById('resultPanel');
                 const _mixFb = rp ? (rp.dataset.mixFallback || rp.dataset.sbMixFallback) : null;
@@ -11823,7 +12224,20 @@
                         n.textContent = `⚠️ 旧模型 · 未按原图校准（${reason}）：MPT ${p} 原图只覆盖常规期、含 Ante、默认打法、${openDesc}${jamNote}。`;
                     }
                     _lg.appendChild(n);
-                    publishPreflopDecision();
+                    const curDec = window._lastPreflopDecision;
+                    publishPreflopDecision({
+                        primaryAction: curDec ? curDec.primaryAction : 'UNKNOWN',
+                        isBlocked: false,
+                        isTerminal: curDec ? curDec.isTerminal : false,
+                        isPush: curDec ? curDec.isPush : false,
+                        hasMixFallback: true,
+                        isWaitingOpponent: false,
+                        frequencies: curDec ? curDec.frequencies : null,
+                        sizing: curDec ? curDec.sizing : '',
+                        verdict: document.getElementById('actionVerdict')?.innerText || (curDec ? curDec.verdict : ''),
+                        reasoning: _lg.innerText.trim(),
+                        source: 'mix_fallback'
+                    });
                 }
 
                 // ── Phase 4.1: Shadow Mode (暗影对账与全量差分探针) ──
@@ -11888,12 +12302,12 @@
 
                         const vText = vEl ? vEl.innerText.trim() : '';
                         const lgText = lgEl ? lgEl.innerText.trim() : '';
-                        const preDec = window._lastPreflopDecision || (typeof publishPreflopDecision === 'function' ? publishPreflopDecision() : null);
-                        const isBlockedOrTerminal = preDec ? (preDec.isBlocked || preDec.isTerminal) : (!vText || /未校准|等待|已弃牌|已全下|已结束|阻断|超出覆盖|面对全下/.test(vText) || /超出原图覆盖|未按原图校准/.test(lgText));
+                        const preDec = window._lastPreflopDecision;
+                        const isBlockedOrTerminal = preDec ? (preDec.isBlocked || (preDec.isTerminal && preDec.source === 'timeline') || preDec.hasMixFallback) : false;
                         const st = (typeof tlState === 'function') ? tlState() : null;
-                        const isWaitingOpponent = st && !st.closed && st.nextToAct && st.nextToAct !== posH && !['faceBet', 'squeeze', 'face3b', 'face4b', 'coldCall', 'open', 'vsLimp'].includes(currentMode);
+                        const isWaitingOpponent = preDec ? preDec.isWaitingOpponent : (st && !st.closed && st.nextToAct && st.nextToAct !== posH && !['faceBet', 'squeeze', 'face3b', 'face4b', 'coldCall', 'open', 'vsLimp'].includes(currentMode));
                         const hasBlindMix = rp && !!rp.dataset.bbMix;
-                        const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal || hasBlindMix || currentMode === 'defend';
+                        const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal || hasBlindMix || currentMode === 'defend' || currentMode === 'vsLimp';
 
                         // 结构化翻前阻断状态发布 (Issue 02/06 解耦 DOM 文字解析)
                         window._preflopState = {
@@ -12073,6 +12487,21 @@
                                 }
                                 vVecEl.innerText = txt;
                             }
+                            const matrixAction = jP >= 50 ? 'ALLIN' : (rP >= 50 ? 'RAISE' : (cP >= 50 ? 'CALL' : (fP >= 70 ? 'FOLD' : (jP > 0 ? 'ALLIN' : (rP >= cP ? 'RAISE' : 'CALL')))));
+                            const matrixSizing = matrixVec.sizing ? `${matrixVec.sizing} BB` : (szEl ? szEl.innerText.trim() : '');
+                            publishPreflopDecision({
+                                primaryAction: matrixAction,
+                                isBlocked: false,
+                                isTerminal: matrixAction === 'FOLD',
+                                isPush: matrixAction === 'ALLIN' || jP >= 50,
+                                hasMixFallback: false,
+                                isWaitingOpponent: false,
+                                frequencies: { fold: fP, call: cP, raise: rP, jam: jP, check: 0 },
+                                sizing: matrixSizing,
+                                verdict: dominantVerdict,
+                                reasoning: lgEl ? lgEl.innerText.trim() : '',
+                                source: 'matrix'
+                            });
                         } else {
                             window._lastShadowComparison = null;
                             if (bEl) bEl.classList.add('hidden');
@@ -12466,29 +12895,37 @@
         /**
          * 判定指定席位在当前手牌中是否已弃牌 (B1.1 纯函数派生式过滤，保证撤销可逆)
          */
-        function isSeatFolded(pos) {
-            if (!pos || !postState || !postState.potTracker || !Array.isArray(postState.potTracker.actions)) return false;
-            return postState.potTracker.actions.some(a => (a.pos === pos || (!a.pos && a.player === 'villain' && pos === (globalPosVillain || 'BB'))) && a.action === 'fold');
+        function isSeatFolded(pos, customActions, fallbackVillain) {
+            const acts = customActions || (typeof postState !== 'undefined' && postState && postState.potTracker && postState.potTracker.actions);
+            if (!pos || !Array.isArray(acts)) return false;
+            const defV = fallbackVillain || (typeof globalPosVillain !== 'undefined' ? globalPosVillain : 'BB');
+            return acts.some(a => (a.pos === pos || (!a.pos && a.player === 'villain' && pos === defV)) && a.action === 'fold');
         }
 
         /**
-         * 动态获取当前在局争夺底池的活跃对手席位 (B1.1 & B1.2 主对手动态迁移)
+         * 动态获取当前在局争夺底池的活跃对手席位 (B1.1 & B1.2 主对手动态迁移，Issue 07 支持纯快照隔离)
          */
-        function getActiveContenders() {
-            const heroPos = globalPosHero || 'BTN';
-            let curMainV = (currentMode === 'coldCall' && globalPosCaller) ? globalPosCaller : (globalPosVillain || 'BB');
+        function getActiveContenders(snapshot) {
+            const s = snapshot || (typeof postState !== 'undefined' ? postState : null);
+            const heroPos = (s && s.heroSeat) || (typeof globalPosHero !== 'undefined' && globalPosHero) || 'BTN';
+            const cMode = (s && s.currentMode) || (typeof currentMode !== 'undefined' ? currentMode : 'open');
+            const callerPos = (s && s.callerPos) || (typeof globalPosCaller !== 'undefined' ? globalPosCaller : null);
+            const vFallback = (s && s.villainSeat) || (typeof globalPosVillain !== 'undefined' ? globalPosVillain : 'BB');
+            let curMainV = (cMode === 'coldCall' && callerPos) ? callerPos : vFallback;
             if (curMainV === heroPos) {
                 curMainV = (heroPos === 'BB') ? 'BTN' : 'BB';
             }
-            const allExtras = (postState.extraVillains || []).filter(p => p && p !== heroPos && p !== curMainV);
+            const allExtrasRaw = (s && s.extraVillains) || ((typeof postState !== 'undefined' && postState.extraVillains) || []);
+            const allExtras = allExtrasRaw.filter(p => p && p !== heroPos && p !== curMainV);
+            const actions = (s && s.potTracker && s.potTracker.actions) || (typeof postState !== 'undefined' && postState.potTracker && postState.potTracker.actions);
             
             // 筛选所有未弃牌的对手席位
             const activeOpponents = [];
-            if (!isSeatFolded(curMainV)) {
+            if (!isSeatFolded(curMainV, actions, curMainV)) {
                 activeOpponents.push(curMainV);
             }
             allExtras.forEach(p => {
-                if (!isSeatFolded(p) && !activeOpponents.includes(p)) {
+                if (!isSeatFolded(p, actions, curMainV) && !activeOpponents.includes(p)) {
                     activeOpponents.push(p);
                 }
             });
@@ -12496,7 +12933,7 @@
             // 若原主对手已弃牌，而额外对手中有在局者，则将首位活跃额外对手提升为主对手 (B1.2)
             const mainV = activeOpponents.length > 0 ? activeOpponents[0] : curMainV;
             const extras = activeOpponents.length > 1 ? activeOpponents.slice(1) : [];
-            const heroActive = !isSeatFolded(heroPos);
+            const heroActive = !isSeatFolded(heroPos, actions, curMainV);
             
             return {
                 heroPos,
@@ -12508,11 +12945,11 @@
         }
 
         /**
-         * Pokercode 多人底池席位与相对位置上下文 (Phase 4 / B1.1 动态降维改造)
+         * Pokercode 多人底池席位与相对位置上下文 (Phase 4 / B1.1 动态降维改造，Issue 07 支持纯快照隔离)
          * 计算当前在池所有玩家列表、翻后行动顺位、以及 Hero 的相对位置角色 (ABSOLUTE_OOP / SANDWICH / ABSOLUTE_IP)
          */
-        function getMultiwayContext() {
-            const { heroPos, mainV, extras, totalActiveCount } = getActiveContenders();
+        function getMultiwayContext(snapshot) {
+            const { heroPos, mainV, extras, totalActiveCount } = getActiveContenders(snapshot);
             const rawContenders = Array.from(new Set([heroPos, ...(totalActiveCount > 1 ? [mainV, ...extras] : (isSeatFolded(mainV) ? [] : [mainV]))]));
             const sortedPlayers = rawContenders.map(pos => ({
                 pos,
@@ -18856,17 +19293,32 @@
         }
 
         /**
+         * 递归深冻结纯数据快照对象 (Issue 07 状态解耦与只读保证)
+         */
+        function deepFreezeSnapshot(obj) {
+            if (!obj || typeof obj !== 'object') return obj;
+            Object.freeze(obj);
+            for (const key of Object.getOwnPropertyNames(obj)) {
+                const val = obj[key];
+                if (val && typeof val === 'object' && !Object.isFrozen(val)) {
+                    deepFreezeSnapshot(val);
+                }
+            }
+            return obj;
+        }
+
+        /**
          * 拍摄当前翻后只读状态快照 (Issue 07 状态解耦与纯函数支持)
          */
         function takePostStateSnapshot() {
             const s = (typeof postState !== 'undefined') ? postState : {};
             const cfg = (typeof window !== 'undefined' && window.gameConfig) || (typeof gameConfig !== 'undefined' ? gameConfig : {});
-            return {
+            const snap = {
                 postCalcVersion: s.postCalcVersion || 1,
                 handId: s.handId,
                 analysisStatus: s.analysisStatus,
-                decisionResult: s.decisionResult,
-                equityResult: s.equityResult ? { ...s.equityResult } : null,
+                decisionResult: s.decisionResult ? JSON.parse(JSON.stringify(s.decisionResult)) : null,
+                equityResult: s.equityResult ? JSON.parse(JSON.stringify(s.equityResult)) : null,
                 potTracker: s.potTracker ? {
                     preflopPot: s.potTracker.preflopPot,
                     currentPot: s.potTracker.currentPot,
@@ -18879,13 +19331,24 @@
                 board: s.board ? [...s.board] : [],
                 heroCards: s.heroCards ? [...s.heroCards] : [],
                 heroPosition: s.heroPosition,
-                boardAnalysis: s.boardAnalysis ? { ...s.boardAnalysis } : {},
+                heroSeat: s.heroSeat || (typeof globalPosHero !== 'undefined' ? globalPosHero : (s.heroPosition === 'OOP' ? 'BB' : 'BTN')),
+                villainSeat: s.villainSeat || (typeof globalPosVillain !== 'undefined' ? globalPosVillain : (s.heroPosition === 'OOP' ? 'BTN' : 'BB')),
+                heroStack: (typeof s.heroStack === 'number') ? s.heroStack : ((typeof globalHeroStack !== 'undefined' && typeof globalHeroStack === 'number') ? globalHeroStack : ((s.potTracker && s.potTracker.effStack) || 40)),
+                villainStack: (typeof s.villainStack === 'number') ? s.villainStack : ((typeof globalVillainStack !== 'undefined' && typeof globalVillainStack === 'number') ? globalVillainStack : ((s.potTracker && s.potTracker.effStack) || 40)),
+                avgStack: (typeof s.avgStack === 'number') ? s.avgStack : ((typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : 35),
+                currentMode: s.currentMode || (typeof currentMode !== 'undefined' ? currentMode : 'open'),
+                callerPos: s.callerPos || (typeof globalPosCaller !== 'undefined' ? globalPosCaller : null),
+                boardAnalysis: s.boardAnalysis ? JSON.parse(JSON.stringify(s.boardAnalysis)) : {},
                 extraVillains: s.extraVillains ? [...s.extraVillains] : [],
-                villainRange: s.villainRange ? { ...s.villainRange } : null,
-                villainProfile: s.villainProfile ? { ...s.villainProfile } : null,
+                villainRange: s.villainRange ? {
+                    ...s.villainRange,
+                    hands: Array.isArray(s.villainRange.hands) ? [...s.villainRange.hands] : []
+                } : null,
+                villainProfile: s.villainProfile ? JSON.parse(JSON.stringify(s.villainProfile)) : null,
                 gameConfig: { ...cfg },
                 timestamp: Date.now()
             };
+            return deepFreezeSnapshot(snap);
         }
         if (typeof window !== 'undefined') window.takePostStateSnapshot = takePostStateSnapshot;
 
@@ -18905,7 +19368,7 @@
             const el3B = (typeof document !== 'undefined') ? document.getElementById('threeBetSize') : null;
             const el4B = (typeof document !== 'undefined') ? document.getElementById('fourBetSize') : null;
             const elLimp = (typeof document !== 'undefined') ? document.getElementById('limpCount') : null;
-            return {
+            const snap = {
                 currentMode: mode,
                 heroPos: hPos,
                 vsPos: vPos,
@@ -18923,6 +19386,7 @@
                 limpCount: elLimp ? parseInt(elLimp.value) : 1,
                 timestamp: Date.now()
             };
+            return deepFreezeSnapshot(snap);
         }
         if (typeof window !== 'undefined') window.takePreflopSnapshot = takePreflopSnapshot;
 
@@ -18938,6 +19402,8 @@
             let isUltimateMathShield = false;
             let isValue = false;
             let isStrongValue = false;
+            let isDelayedCBetApplied = false;
+            let reasonHasExplicitFrequency = false;
 
             // ── 基础数据 ──
             const pot      = (s.potTracker && typeof s.potTracker.currentPot === 'number') ? s.potTracker.currentPot : 0;
@@ -18993,7 +19459,7 @@
                     if (a.player === 'hero') _heroIn = _villIn; else _villIn = _heroIn;
                 }
             }
-            const hPos = heroPos || (typeof globalPosHero !== 'undefined' ? globalPosHero : 'BTN');
+            const hPos = (s && s.heroSeat) || heroPos || (typeof globalPosHero !== 'undefined' ? globalPosHero : 'BTN');
             const hCommitted = (ss.committed && ss.committed[hPos] !== undefined) ? ss.committed[hPos] : _heroIn;
             const toCall  = villainBet > 0 ? (ss.isHeroNext ? ss.toCall : Math.max(0, villainBet - hCommitted)) : 0;
             const potOdds = toCall > 0 ? toCall / (pot + toCall) * 100 : 0;
@@ -19002,8 +19468,8 @@
             const icmTighten = stage === 'bubble' ? 1.15 : stage === 'final' ? 1.08 : 1.0;
             const sprZone    = spr < 2 ? 'commit' : spr < 5 ? 'flex' : 'deep';
 
-            // ── 多人底池与相对位置上下文 (Phase 4 & Phase 9B 多人动力学与共享 MDF 矩阵) ──
-            const mwCtx = (typeof getMultiwayContext === 'function') ? getMultiwayContext() : null;
+            // ── 多人底池与相对位置上下文 (Phase 4 & Phase 9B 多人动力学与共享 MDF 矩阵，Issue 07 快照驱动) ──
+            const mwCtx = (typeof getMultiwayContext === 'function') ? getMultiwayContext(s) : null;
             const mwTotalCount = mwCtx ? mwCtx.totalCount : ((s.extraVillains || []).length + 2);
             const isMultiway = mwCtx ? mwCtx.isMultiway : (mwTotalCount >= 3);
             const _mwN = Math.max(0, mwTotalCount - 2); // 额外对手数量：单挑=0, 3人=1, 4人=2
@@ -19014,7 +19480,7 @@
                 ? (typeof calculateMultiwayMdf === 'function' ? calculateMultiwayMdf(Math.max(0.1, pot - villainBet), villainBet, mwTotalCount) : (mdf * Math.pow(1 / (mwTotalCount - 1), 0.6)))
                 : (villainBet > 0 ? mdf : 0);
 
-            const heroActualSeat = (typeof globalPosHero !== 'undefined' && globalPosHero) ? globalPosHero : (heroPos === 'OOP' ? 'BB' : 'BTN');
+            const heroActualSeat = (s && s.heroSeat) || ((typeof globalPosHero !== 'undefined' && globalPosHero) ? globalPosHero : (heroPos === 'OOP' ? 'BB' : 'BTN'));
             const mwDynamics = (typeof evaluateMultiwayDynamics === 'function') ? evaluateMultiwayDynamics({
                 heroPos: heroActualSeat,
                 contenders: (mwCtx && mwCtx.players) ? mwCtx.players.map(p => p.pos) : [heroActualSeat, 'BB'],
@@ -19253,11 +19719,13 @@
             //     这是原模型完全没有的方向，我们的 ICM 以前只会单向收紧。
             // 幅度保守：两侧各封顶 ±4，与 blocker 同一量级，避免单一信号主导决策。
             {
-                const _hs = globalHeroStack || 0, _vs = globalVillainStack || 0;
-                const _avg = (typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : _hs;
+                const _hs = (s && typeof s.heroStack === 'number') ? s.heroStack : (globalHeroStack || 0);
+                const _vs = (s && typeof s.villainStack === 'number') ? s.villainStack : (globalVillainStack || 0);
+                const _avg = (s && typeof s.avgStack === 'number' && s.avgStack > 0) ? s.avgStack : ((typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : _hs);
                 const _toCall = toCall;   // 与 potOdds 同一口径（E3：对手下注 − 我方本街已投入）
                 if (_hs > 0 && _toCall > 0) {
-                    const _rp = getRiskPremium(_hs, _vs, _avg, gameConfig.stage, Math.min(1, _toCall / _hs));
+                    const _rpStage = (s && s.gameConfig && s.gameConfig.stage) || cfg.stage || (typeof gameConfig !== 'undefined' ? gameConfig.stage : 'normal');
+                    const _rp = getRiskPremium(_hs, _vs, _avg, _rpStage, Math.min(1, _toCall / _hs));
                     const up = Math.min(4, _rp.premium);
                     const down = Math.min(4, _rp.villainPremium * 0.25);
                     if (up - down !== 0) sc.callMargin = Math.max(2, sc.callMargin + up - down);
@@ -19271,9 +19739,9 @@
             if (blk && Math.abs(blk.edge) >= 4) warnings.push(`🎯 ${blk.note}`);
 
             // ── Pokercode ICM 3-1-3 筹码生态与战术姿态 ──
-            const _hs313 = globalHeroStack || effStack || 0;
-            const _vs313 = globalVillainStack || effStack || 0;
-            const _avg313 = (typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : (_hs313 || 40);
+            const _hs313 = (s && typeof s.heroStack === 'number') ? s.heroStack : (globalHeroStack || effStack || 0);
+            const _vs313 = (s && typeof s.villainStack === 'number') ? s.villainStack : (globalVillainStack || effStack || 0);
+            const _avg313 = (s && typeof s.avgStack === 'number' && s.avgStack > 0) ? s.avgStack : ((typeof globalAvgStack !== 'undefined' && globalAvgStack > 0) ? globalAvgStack : (_hs313 || 40));
             const icm313 = (typeof getICM313Context === 'function')
                 ? getICM313Context(_hs313, _vs313, _avg313, stage)
                 : { posture: 'normal', villainCoversHero: false, heroCoversVillain: false, riskPremium: 0, isICMStage: false };
@@ -19296,16 +19764,18 @@
             }
 
             // ── R-02 对手画像与节点锁定偏转 (Nodelocking & Exploit Engine) ──
-            const hPosActual = heroPos || (typeof globalPosHero !== 'undefined' ? globalPosHero : 'BTN');
-            const defaultOppPos = (typeof globalPosVillain !== 'undefined' && globalPosVillain !== hPosActual)
-                ? globalPosVillain
-                : (hPosActual === 'BB' ? 'BTN' : 'BB');
+            const hPosActual = (s && s.heroSeat) || heroPos || (typeof globalPosHero !== 'undefined' ? globalPosHero : 'BTN');
+            const defaultOppPos = (s && s.villainSeat && s.villainSeat !== hPosActual)
+                ? s.villainSeat
+                : ((typeof globalPosVillain !== 'undefined' && globalPosVillain !== hPosActual)
+                    ? globalPosVillain
+                    : (hPosActual === 'BB' ? 'BTN' : 'BB'));
             const targetOppPos = ss.lastBetPlayer === 'villain'
                 ? (ss.lastAggressorPos || defaultOppPos)
                 : defaultOppPos;
             const villainProfileKey = (typeof getVillainProfile === 'function')
                 ? getVillainProfile(targetOppPos)
-                : (gameConfig.villainProfile || 'balanced');
+                : ((s && s.gameConfig && s.gameConfig.villainProfile) || (typeof gameConfig !== 'undefined' ? gameConfig.villainProfile : 'balanced'));
             const vProfile = (typeof VILLAIN_PROFILES !== 'undefined' && VILLAIN_PROFILES[villainProfileKey])
                 ? VILLAIN_PROFILES[villainProfileKey]
                 : (typeof VILLAIN_PROFILES !== 'undefined' ? VILLAIN_PROFILES.balanced : { id: 'balanced', name: 'GTO 均衡', icon: '⚖️', desc: '标准博弈论均衡', cbetBias: 0, bluffBias: 0, callMarginBias: 0, trapBias: 0 });
@@ -19705,6 +20175,8 @@
                             const isDry = (ba?.pokercodeTopology?.category === 'DRY_HIGH' || ba?.pokercodeTopology?.category === 'PAIRED_BOARD' || (wetness || 0) <= 0.35);
                             sizing = isDry ? (sc.sizes.small || '33% 底池') : (sc.sizes.medium || '67% 底池');
                             reasoning = `💡 Pokercode 2-2-4 [转牌延时 C-Bet]：翻牌双方过牌后对手转牌再次 Check，其范围极度弱化封顶（Capped，已排除两对+等强牌）。我方在 IP 享有进攻权，释放 70% 频率 ${sizing} 延时持续下注扫荡死钱`;
+                            isDelayedCBetApplied = true;
+                            reasonHasExplicitFrequency = true;
                         }
                     } else if (_tTier) {
                         // ── 转牌按「成手桶 × 驱动量」出频率与尺度（2026-09-11 环节 7）──
@@ -19931,7 +20403,7 @@
                     // 同一屏两个口径。把混合结果写出来，不让理由自说自话。
                     // 只在混合**确实压低了**频率时才补这句（环节 4 之后两侧多数情况下已经一致，
                     // 再无脑加一句"压到 61%"而原文就写着 61%，是另一种自说自话）
-                    if (/\d+% 频率/.test(reasoning) && frequencies && typeof frequencies.bet === 'number'
+                    if ((reasonHasExplicitFrequency || /\d+% 频率/.test(reasoning)) && frequencies && typeof frequencies.bet === 'number'
                         && typeof flexFreq.bet === 'number' && frequencies.bet <= flexFreq.bet - 5) {
                         reasoning += `；但承诺区权重 ${(commitWeight * 100).toFixed(0)}% 把它压到实际下注 ${frequencies.bet}%`;
                     }
@@ -19948,7 +20420,7 @@
                     if (_rBucket === '弱对' || _rBucket === '无对') {
                         const _oldFreq = (frequencies && typeof frequencies.bet === 'number')
                             ? frequencies.bet
-                            : (/BET|RAISE/i.test(primaryAction) ? 100 : 0);
+                            : (['BET', 'RAISE', 'ALLIN'].includes(primaryAction) ? 100 : 0);
                         // 放弃线保护：原下注频率为 0 的放弃线严禁经验拟合式无条件注入下注频率 (DEF-PST-04)
                         if (_oldFreq > 0) {
                             const _RKI = '23456789TJQKA';
@@ -20419,7 +20891,7 @@
                     }
                 }
                 // 2. 转牌延时 C-Bet (Delayed C-Bet) 指引 (若未被 E-04 接管且动作为 BET 时兼容补充)
-                if (street === 'turn' && villainBet === 0 && heroIsPFA && heroPos === 'IP' && !reasoning.includes('延时 C-Bet')) {
+                if (street === 'turn' && villainBet === 0 && heroIsPFA && heroPos === 'IP' && !isDelayedCBetApplied) {
                     const flopHadBet = actions.some(a => a.street === 'flop' && (a.action === 'bet' || a.action === 'raise' || a.action === 'allin'));
                     if (!flopHadBet && primaryAction === 'BET') {
                         advTip = `💡 Pokercode 延时 C-Bet：翻牌双方过牌后对手转牌再次过牌，其范围极度封顶（Capped），可启动 70% 延时下注捕获死钱`;
