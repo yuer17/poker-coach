@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.29.5 正式版 - Facing 4-Bet 派发隔离与官方矩阵补齐 (D-135)</title>
+    <title>PokerCode v3.29.6 正式版 - Squeeze 路径消歧与 50BB 官方矩阵激活 (D-136)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.29.5 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Facing 4-Bet 派发隔离与官方矩阵补齐) ══
+            /* ══ PokerCode v3.29.6 正式版 高定黑曜石与 Liquid Glass 设计令牌 (Squeeze 路径消歧与 50BB 官方矩阵激活) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1439,7 +1439,7 @@
     <script src="lib/preflop_gto_matrix.js"></script>
     <script src="lib/preflop_gto_ev_matrix.js"></script>
     <script src="lib/gto_matrix_engine.js"></script>
-    <!-- D-135 Facing 4-Bet 派发隔离与官方矩阵补齐 (v3.29.5) -->
+    <!-- D-136 Squeeze 路径消歧与 50BB 官方矩阵激活 (v3.29.6) -->
     <script src="lib/postflop_gto_matrix.js"></script>
     <script src="lib/postflop_gto_matrix_turn.js" defer></script>
     <script src="lib/postflop_gto_matrix_river.js" defer></script>
@@ -1468,9 +1468,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.29.5 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.29.6 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.29.5</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.29.6</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼，移动端隐藏避免顶栏折行溢出） -->
                 <div id="topMiniStatus" class="hidden sm:flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1492,7 +1492,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.29.5 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.29.6 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -2026,6 +2026,19 @@
                         </select>
                     </div>
 
+                    <!-- 跟注者位置 (callerPos, SQUEEZE 专享) -->
+                    <div id="rmCallerPosWrap" class="flex items-center gap-1" style="display:none;">
+                        <span class="text-gray-400 font-bold text-[11px]">跟注:</span>
+                        <select id="rmCallerPos" onchange="renderRangeMatrix()" class="text-xs font-bold rounded border border-white/10 bg-black/40 text-amber-400 px-1.5 py-0.5 font-mono" style="width:auto;height:26px;">
+                            <option value="AUTO" selected>自动/默认</option>
+                            <option value="BTN">BTN</option>
+                            <option value="CO">CO</option>
+                            <option value="HJ">HJ</option>
+                            <option value="LJ">LJ</option>
+                            <option value="SB">SB</option>
+                        </select>
+                    </div>
+
                     <!-- 筹码深度 -->
                     <div class="flex items-center gap-1">
                         <span class="text-gray-400 font-bold text-[11px]">深度:</span>
@@ -2036,6 +2049,7 @@
                             <option value="25">25 BB</option>
                             <option value="30">30 BB</option>
                             <option value="40" selected>40 BB</option>
+                            <option value="50">50 BB</option>
                             <option value="60">60 BB</option>
                             <option value="80">80 BB</option>
                             <option value="100">100 BB</option>
@@ -3976,7 +3990,7 @@
                 window.SQUEEZE_RANGES = SQUEEZE_RANGES;
                 window.REJAM_RANGES = REJAM_RANGES;
                 window._rangeNormalizationManifest = {
-                    version: 'v3.29.5',
+                    version: 'v3.29.6',
                     timestamp: '2026-10-09',
                     appliedRules: [
                         'btn_3bet_co_superset',
@@ -6272,7 +6286,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.29.5',
+                    v: 'v3.29.6',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -6291,7 +6305,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.29.5' && data.v !== 'v3.29.4' && data.v !== 'v3.29.3' && data.v !== 'v3.29.2' && data.v !== 'v3.29.1' && data.v !== 'v3.29.0' && data.v !== 'v3.28.0' && data.v !== 'v3.27.1' && data.v !== 'v3.27.0' && data.v !== 'v3.26.4' && data.v !== 'v3.26.3' && data.v !== 'v3.26.2' && data.v !== 'v3.26.1' && data.v !== 'v3.26.0' && data.v !== 'v3.25.8' && data.v !== 'v3.25.7' && data.v !== 'v3.25.6' && data.v !== 'v3.25.5' && data.v !== 'v3.25.4' && data.v !== 'v3.25.3' && data.v !== 'v3.25.2' && data.v !== 'v3.25.1' && data.v !== 'v3.25' && data.v !== 'v3.24' && data.v !== 'v3.23' && data.v !== 'v3.22' && data.v !== 'v3.21' && data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.29.6' && data.v !== 'v3.29.5' && data.v !== 'v3.29.4' && data.v !== 'v3.29.3' && data.v !== 'v3.29.2' && data.v !== 'v3.29.1' && data.v !== 'v3.29.0' && data.v !== 'v3.28.0' && data.v !== 'v3.27.1' && data.v !== 'v3.27.0' && data.v !== 'v3.26.4' && data.v !== 'v3.26.3' && data.v !== 'v3.26.2' && data.v !== 'v3.26.1' && data.v !== 'v3.26.0' && data.v !== 'v3.25.8' && data.v !== 'v3.25.7' && data.v !== 'v3.25.6' && data.v !== 'v3.25.5' && data.v !== 'v3.25.4' && data.v !== 'v3.25.3' && data.v !== 'v3.25.2' && data.v !== 'v3.25.1' && data.v !== 'v3.25' && data.v !== 'v3.24' && data.v !== 'v3.23' && data.v !== 'v3.22' && data.v !== 'v3.21' && data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -6365,7 +6379,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.29.5 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.29.6 正式版';
             renderWindowColorChips(key);
         };
 
@@ -9174,9 +9188,13 @@
         window.onRmSeqChange = function() {
             const seqEl = document.getElementById('rmSeq');
             const vsPosWrap = document.getElementById('rmVsPosWrap');
+            const callerPosWrap = document.getElementById('rmCallerPosWrap');
             if (seqEl && vsPosWrap) {
                 const seq = seqEl.value;
                 vsPosWrap.style.display = (seq === 'RFI') ? 'none' : 'flex';
+                if (callerPosWrap) {
+                    callerPosWrap.style.display = (seq === 'SQUEEZE') ? 'flex' : 'none';
+                }
             }
             renderRangeMatrix();
         };
@@ -9217,8 +9235,10 @@
                 const heroSelect = document.getElementById('rmHeroPos');
                 const seqSelect = document.getElementById('rmSeq');
                 const vsSelect = document.getElementById('rmVsPos');
+                const callerSelect = document.getElementById('rmCallerPos');
                 const depthSelect = document.getElementById('rmDepth');
                 const vsPosWrap = document.getElementById('rmVsPosWrap');
+                const callerPosWrap = document.getElementById('rmCallerPosWrap');
 
                 if (heroSelect) {
                     heroSelect.value = posH;
@@ -9242,12 +9262,23 @@
                     }
                 }
 
+                if (callerSelect && seq === 'SQUEEZE') {
+                    const cPos = (typeof globalPosCaller !== 'undefined' && globalPosCaller) ? globalPosCaller : 'AUTO';
+                    callerSelect.value = cPos;
+                    if (callerSelect.value !== cPos) {
+                        callerSelect.value = 'AUTO';
+                    }
+                }
+
                 if (vsPosWrap) {
                     vsPosWrap.style.display = (seq === 'RFI') ? 'none' : 'flex';
                 }
+                if (callerPosWrap) {
+                    callerPosWrap.style.display = (seq === 'SQUEEZE') ? 'flex' : 'none';
+                }
 
                 if (depthSelect) {
-                    const avail = [10, 15, 20, 25, 30, 40, 60, 80, 100];
+                    const avail = [10, 15, 20, 25, 30, 40, 50, 60, 80, 100];
                     let closest = 40;
                     let minDiff = Infinity;
                     for (let x of avail) {
@@ -9274,6 +9305,8 @@
             let heroPos = document.getElementById('rmHeroPos') ? document.getElementById('rmHeroPos').value : 'BTN';
             let seq = document.getElementById('rmSeq') ? document.getElementById('rmSeq').value : 'vs_RFI';
             let vsPos = document.getElementById('rmVsPos') ? document.getElementById('rmVsPos').value : 'UTG';
+            const callerPosEl = document.getElementById('rmCallerPos');
+            const callerPos = (seq === 'SQUEEZE' && callerPosEl && callerPosEl.value !== 'AUTO') ? callerPosEl.value : null;
             const depth = document.getElementById('rmDepth') ? parseFloat(document.getElementById('rmDepth').value) : 40;
 
             // 物理防呆：UTG翻前必先手行动，不可能存在面对开池(vs_RFI)的情形，自动纠偏为自主开池(RFI)
@@ -9330,7 +9363,7 @@
 
                     let vec = null;
                     if (typeof queryGtoPreflop === 'function') {
-                        vec = queryGtoPreflop(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq, curFacingBet);
+                        vec = queryGtoPreflop(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq, curFacingBet, 1, callerPos);
                     }
 
                     let fP = 100, cP = 0, rP = 0, jP = 0;
@@ -9424,6 +9457,8 @@
             const heroPos = document.getElementById('rmHeroPos') ? document.getElementById('rmHeroPos').value : 'BTN';
             const seq = document.getElementById('rmSeq') ? document.getElementById('rmSeq').value : 'vs_RFI';
             const vsPos = document.getElementById('rmVsPos') ? document.getElementById('rmVsPos').value : 'UTG';
+            const callerPosEl = document.getElementById('rmCallerPos');
+            const callerPos = (seq === 'SQUEEZE' && callerPosEl && callerPosEl.value !== 'AUTO') ? callerPosEl.value : null;
             const depth = document.getElementById('rmDepth') ? parseFloat(document.getElementById('rmDepth').value) : 40;
 
             const r1 = hand[0], r2 = hand[1];
@@ -9462,7 +9497,7 @@
 
             let vec = null;
             if (typeof queryGtoPreflop === 'function') {
-                vec = queryGtoPreflop(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq, curFacingBet);
+                vec = queryGtoPreflop(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq, curFacingBet, 1, callerPos);
             }
             let fP = 100, cP = 0, rP = 0, jP = 0;
             if (vec) {
@@ -9479,7 +9514,7 @@
 
             let evVec = null;
             if (typeof queryGtoEv === 'function') {
-                evVec = queryGtoEv(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq, null, null, null, null, curFacingBet);
+                evVec = queryGtoEv(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq, null, null, null, null, curFacingBet, 1, callerPos);
             }
 
             const icmBadgeEl = document.getElementById('rmInspIcmBadge');
@@ -12316,18 +12351,22 @@
                         let facingBet = null;
                         let callersCount = 0;
 
+                        let callerPos = null;
                         if (currentMode === 'open') {
                             seq = 'RFI';
                         } else if (currentMode === 'squeeze') {
                             seq = 'SQUEEZE';
                             if (typeof tlState === 'function') {
                                 const tls = tlState();
-                                callersCount = tls.seats.filter(s => s !== posV && s !== posH && tlActsOf(s).some(a => a.a === 'call')).length;
+                                const callers = tls.seats.filter(s => s !== posV && s !== posH && tlActsOf(s).some(a => a.a === 'call'));
+                                callersCount = callers.length;
+                                callerPos = callers.length > 0 ? callers.join('_') : (globalPosCaller || null);
                                 facingBet = tls.curBet || 2.2;
                             } else {
                                 const elRaise = document.getElementById('raiseSize');
                                 facingBet = elRaise ? parseFloat(elRaise.value) : 2.2;
                                 callersCount = 1;
+                                callerPos = globalPosCaller || 'CO';
                             }
                         } else if (currentMode === 'face3b') {
                             seq = 'vs_3BET';
@@ -12378,7 +12417,7 @@
                             }
                         }
 
-                        const matrixVec = queryGtoPreflop(posH, posV, eff, handStr, seq, facingBet, callersCount);
+                        const matrixVec = queryGtoPreflop(posH, posV, eff, handStr, seq, facingBet, callersCount, callerPos);
                         const vEl = document.getElementById('actionVerdict');
                         const szEl = document.getElementById('sizingContent');
                         const lgEl = document.getElementById('actionLogic');
@@ -12544,7 +12583,7 @@
                             // ── 维度三：动态 ICM 风险溢价模型与 EV 损失量化 ──
                             let evData = null;
                             if (typeof window.queryGtoEv === 'function') {
-                                evData = window.queryGtoEv(posH, posV, eff, handStr, seq, null, null, null, null, facingBet, callersCount);
+                                evData = window.queryGtoEv(posH, posV, eff, handStr, seq, null, null, null, null, facingBet, callersCount, callerPos);
                             }
 
                             if (window._lastShadowComparison) {
@@ -12637,9 +12676,13 @@
                             if (bEl && vVecEl) {
                                 bEl.classList.remove('hidden');
                                 const badgeTitleEl = document.getElementById('gtoSolverBadgeTitle');
-                                const isReference = matrixVec.coverageStatus === 'reference' || (matrixVec.sizingInfo && matrixVec.sizingInfo.isNonStandard);
+                                const isAmbiguous = matrixVec.coverageStatus === 'ambiguous';
+                                const isReference = matrixVec.coverageStatus === 'reference' || (matrixVec.sizingInfo && matrixVec.sizingInfo.isNonStandard) || isAmbiguous;
                                 if (badgeTitleEl) {
-                                    if (isReference) {
+                                    if (isAmbiguous) {
+                                        badgeTitleEl.className = 'text-amber-400 font-bold';
+                                        badgeTitleEl.innerText = '📖 GTO 参考(多路拓扑)';
+                                    } else if (isReference) {
                                         badgeTitleEl.className = 'text-amber-400 font-bold';
                                         badgeTitleEl.innerText = '📖 GTO 参考';
                                     } else {
@@ -12649,7 +12692,8 @@
                                 }
                                 let txt = `[弃:${fP}% 跟:${cP}% 加:${rP}% 推:${jP}%]`;
                                 if (matrixVec.sizing) txt += ` · 尺寸:${matrixVec.sizing}BB`;
-                                if (isReference) txt += ` · (非标参考)`;
+                                if (isAmbiguous) txt += ` · (未知Caller拓扑)`;
+                                else if (isReference) txt += ` · (非标参考)`;
                                 if (evData && typeof evData.bestEv === 'number') {
                                     const sign = evData.bestEv >= 0 ? '+' : '';
                                     txt += ` · 最优:${evData.bestAction}(${sign}${evData.bestEv}BB)`;
@@ -19744,7 +19788,7 @@
                 };
             }
 
-            // ── GTO 求解器直接接管 (转/河高精 GTO 矩阵与 3BP/4BP/多人深度融合 Single Source of Truth, v3.29.5) ──
+            // ── GTO 求解器直接接管 (转/河高精 GTO 矩阵与 3BP/4BP/多人深度融合 Single Source of Truth, v3.29.6) ──
             const _fnGtoSolver = (typeof window !== 'undefined' && window.queryPostflopGtoSolver) ||
                                  (typeof globalThis !== 'undefined' && globalThis.queryPostflopGtoSolver) ||
                                  (typeof queryPostflopGtoSolver === 'function' ? queryPostflopGtoSolver : null);
