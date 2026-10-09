@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PokerCode v3.29.3 正式版 - 翻前时间线GTO接管与169看板多维对齐专项优化 (D-132)</title>
+    <title>PokerCode v3.29.4 正式版 - 非标开池策略纠偏与GTO参考基准仲裁 (D-134)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +20,7 @@
         #equityWinVal, #equityTieVal, #equityLoseVal, #currentHandStr { letter-spacing: -0.02em; }
 
         :root {
-            /* ══ PokerCode v3.29.3 正式版 高定黑曜石与 Liquid Glass 设计令牌 (翻前时间线GTO接管与169看板多维对齐专项优化) ══
+            /* ══ PokerCode v3.29.4 正式版 高定黑曜石与 Liquid Glass 设计令牌 (非标开池策略纠偏与GTO参考基准仲裁) ══
                融合 Apple HIG 与 Linear/Raycast 设计语言：
                深邃黑曜石基底 (#0b0d11) + 0.5px 精细亚像素微光边框 +
                等宽数据字 (JetBrains Mono / Geist Mono) + GG 平台四色块扑克体系 */
@@ -1439,7 +1439,7 @@
     <script src="lib/preflop_gto_matrix.js"></script>
     <script src="lib/preflop_gto_ev_matrix.js"></script>
     <script src="lib/gto_matrix_engine.js"></script>
-    <!-- D-132 翻前时间线GTO接管与169看板多维对齐专项优化 (v3.29.3) -->
+    <!-- D-134 非标开池策略纠偏与GTO参考基准仲裁 (v3.29.4) -->
     <script src="lib/postflop_gto_matrix.js"></script>
     <script src="lib/postflop_gto_matrix_turn.js" defer></script>
     <script src="lib/postflop_gto_matrix_river.js" defer></script>
@@ -1468,9 +1468,9 @@
     <div class="app-container">
         <!-- 纤薄顶栏控制条（打牌常驻，高度 30px，平时收起节省纵向高度，点击展开完整面板） -->
         <div id="topMenuBar" class="flex justify-between items-center bg-black/60 px-3 py-1 border-b border-white/10 shrink-0 text-xs select-none relative" style="min-height:30px;height:30px;z-index:90;">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.29.3 正式版）">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleHeaderDrawer()" title="点击展开/收起顶部功能与配置面板（PokerCode v3.29.4 正式版）">
                 <span id="headerToggleIcon" style="color:var(--text-muted);font-size:11px;transition:transform .2s;display:inline-block;">▾</span>
-                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.29.3</span></span>
+                <span class="font-black tracking-wide" style="color:var(--text-primary);">PokerCode <span id="appVersion" class="text-xs px-1.5 py-0.5 ml-1 rounded font-normal" style="color:#93c5fd;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);">v3.29.4</span></span>
                 <!-- 极简对局胶囊状态摘要（收起时依然可瞥一眼，移动端隐藏避免顶栏折行溢出） -->
                 <div id="topMiniStatus" class="hidden sm:flex items-center gap-1.5 text-[11px] text-gray-400 font-mono ml-2">
                     <span id="topMiniGame" class="text-gray-400">9-Max GTO</span>
@@ -1492,7 +1492,7 @@
         <div id="headerBar" class="flex justify-between items-center bg-black/70 px-3 py-1.5 border-b border-white/10 shrink-0 text-xs select-none relative" style="display:none;min-height:36px;z-index:90;gap:8px;flex-wrap:wrap;">
             <!-- 左组：标题 + 版本 + 窗口身份色 + 赛事状态信息 -->
             <div class="flex items-center gap-2" style="flex-wrap:wrap;">
-                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.29.3 正式版</span></h1>
+                <h1 class="text-sm font-black tracking-wide flex items-center" style="color: var(--text-primary); margin:0;">PokerCode <span class="text-xs px-1.5 py-0.5 ml-1 rounded" style="color:var(--text-muted);border:1px solid var(--glass-border);">v3.29.4 正式版</span></h1>
                 <div id="windowColorChips" style="display:flex;gap:4px;align-items:center;"></div>
                 <div id="topStatusHUD" class="top-status-hud flex items-center">
                     <div class="hud-chip hud-chip-game"><span class="chip-label">赛制</span><span id="topHudGame" class="chip-val">9-Max GTO</span></div>
@@ -1728,7 +1728,7 @@
                         </div>
                         <p id="actionLogic" class="text-xs font-medium px-1 text-gray-300 line-clamp-2 overflow-hidden" style="margin:0;line-height:1.35;"></p>
                         <div id="gtoSolverBadge" class="hidden flex items-center justify-between px-2 py-0.5 mt-1 rounded text-[10px] font-mono bg-white/[0.04] border border-white/10 text-gray-400">
-                            <span class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">⚡ GTO 矩阵</span><span id="gtoSolverVector" class="text-gray-300"></span></span>
+                            <span class="flex items-center gap-1.5"><span id="gtoSolverBadgeTitle" class="text-emerald-400 font-bold">⚡ GTO 矩阵</span><span id="gtoSolverVector" class="text-gray-300"></span></span>
                             <span class="text-[9px] text-gray-500 flex items-center gap-1.5">
                                 <span>O(1) · <span class="text-emerald-400">0.6µs</span> · 铁闸护航</span>
                                 <button onclick="toggleRangeMatrixModal()" class="text-blue-400 hover:text-blue-300 underline cursor-pointer ml-1" style="background:none;border:none;padding:0;font-size:9px;">[📊 169 全景范围]</button>
@@ -3974,7 +3974,7 @@
                 window.SQUEEZE_RANGES = SQUEEZE_RANGES;
                 window.REJAM_RANGES = REJAM_RANGES;
                 window._rangeNormalizationManifest = {
-                    version: 'v3.29.3',
+                    version: 'v3.29.4',
                     timestamp: '2026-10-09',
                     appliedRules: [
                         'btn_3bet_co_superset',
@@ -6270,7 +6270,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 const mirror = {
-                    v: 'v3.29.3',
+                    v: 'v3.29.4',
                     heroCard1, heroCard2,
                     globalPosHero,
                     tlActs: Array.isArray(tlActs) ? tlActs : [],
@@ -6289,7 +6289,7 @@
                 const raw = sessionStorage.getItem('pokercoach_hand_mirror');
                 if (!raw) return false;
                 const data = JSON.parse(raw);
-                if (!data || (data.v !== 'v3.29.3' && data.v !== 'v3.29.2' && data.v !== 'v3.29.1' && data.v !== 'v3.29.0' && data.v !== 'v3.28.0' && data.v !== 'v3.27.1' && data.v !== 'v3.27.0' && data.v !== 'v3.26.4' && data.v !== 'v3.26.3' && data.v !== 'v3.26.2' && data.v !== 'v3.26.1' && data.v !== 'v3.26.0' && data.v !== 'v3.25.8' && data.v !== 'v3.25.7' && data.v !== 'v3.25.6' && data.v !== 'v3.25.5' && data.v !== 'v3.25.4' && data.v !== 'v3.25.3' && data.v !== 'v3.25.2' && data.v !== 'v3.25.1' && data.v !== 'v3.25' && data.v !== 'v3.24' && data.v !== 'v3.23' && data.v !== 'v3.22' && data.v !== 'v3.21' && data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
+                if (!data || (data.v !== 'v3.29.4' && data.v !== 'v3.29.3' && data.v !== 'v3.29.2' && data.v !== 'v3.29.1' && data.v !== 'v3.29.0' && data.v !== 'v3.28.0' && data.v !== 'v3.27.1' && data.v !== 'v3.27.0' && data.v !== 'v3.26.4' && data.v !== 'v3.26.3' && data.v !== 'v3.26.2' && data.v !== 'v3.26.1' && data.v !== 'v3.26.0' && data.v !== 'v3.25.8' && data.v !== 'v3.25.7' && data.v !== 'v3.25.6' && data.v !== 'v3.25.5' && data.v !== 'v3.25.4' && data.v !== 'v3.25.3' && data.v !== 'v3.25.2' && data.v !== 'v3.25.1' && data.v !== 'v3.25' && data.v !== 'v3.24' && data.v !== 'v3.23' && data.v !== 'v3.22' && data.v !== 'v3.21' && data.v !== 'v3.20' && data.v !== 'v3.19' && data.v !== 'v3.18' && data.v !== 'v3.17' && data.v !== 'v3.16' && data.v !== 'v3.15' && data.v !== 'v3.14' && data.v !== 'v3.13' && data.v !== 'v3.12' && data.v !== 'v3.11' && data.v !== 'v3.10' && data.v !== 'v3.09' && data.v !== 'v3.08' && data.v !== 'v3.07' && data.v !== 'v3.06' && data.v !== 'v3.05' && data.v !== 'v3.04' && data.v !== 'v3.03' && data.v !== 'v3.02' && data.v !== 'v3.01' && data.v !== 'v3.00' && data.v !== 'v2.99' && data.v !== 'v2.98' && data.v !== 'v2.97' && data.v !== 'v2.96' && data.v !== 'v2.95' && data.v !== 'v2.94' && data.v !== 'v2.93' && data.v !== 'v2.92' && data.v !== 'v2.90' && data.v !== 'v2.88' && data.v !== 'v2.87' && data.v !== 'v2.86' && data.v !== 'v2.85' && data.v !== 'v2.84' && data.v !== 'v2.83' && data.v !== 'v2.82' && data.v !== 'v2.81' && data.v !== 'v2.8' && data.v !== 'v2.72' && data.v !== 'v2.69' && data.v !== 'v2.68' && data.v !== 'v2.5')) return false;
                 let restored = false;
                 if (data.heroCard1 && data.heroCard2) {
                     heroCard1 = data.heroCard1;
@@ -6363,7 +6363,7 @@
             if (hd) hd.style.background = cfg.c
                 ? `linear-gradient(180deg, ${cfg.c}2e, rgba(0,0,0,0.4))`
                 : '';
-            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.29.3 正式版';
+            document.title = (cfg.e ? cfg.e + ' ' : '') + 'PokerCode v3.29.4 正式版';
             renderWindowColorChips(key);
         };
 
@@ -9270,6 +9270,16 @@
             const currentHeroHand = (typeof getHandStr === 'function') ? getHandStr() : '';
             const activeHand = window._activeRangeHand || currentHeroHand || 'AKs';
 
+            let curFacingBet = null;
+            if (typeof tlState === 'function') {
+                const _st = tlState();
+                if (_st) {
+                    if (typeof _st.curBet === 'number' && _st.curBet > 0) curFacingBet = _st.curBet;
+                    else if (typeof _st.facingBet === 'number') curFacingBet = _st.facingBet;
+                    else if (Array.isArray(_st.raises) && _st.raises.length > 0) curFacingBet = _st.raises[_st.raises.length - 1].amt;
+                }
+            }
+
             const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
             let html = '';
 
@@ -9302,7 +9312,7 @@
 
                     let vec = null;
                     if (typeof queryGtoPreflop === 'function') {
-                        vec = queryGtoPreflop(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq);
+                        vec = queryGtoPreflop(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq, curFacingBet);
                     }
 
                     let fP = 100, cP = 0, rP = 0, jP = 0;
@@ -9420,9 +9430,21 @@
             if (typeEl) typeEl.innerText = typeStr;
             if (combosEl) combosEl.innerText = `${combos} 组合 (${((combos/1326)*100).toFixed(2)}% 全局权重)`;
 
+            let curFacingBet = null;
+            if (typeof tlState === 'function') {
+                const _st = tlState();
+                if (_st) {
+                    if (typeof _st.curBet === 'number' && _st.curBet > 0) curFacingBet = _st.curBet;
+                    else if (typeof _st.facingBet === 'number') curFacingBet = _st.facingBet;
+                    else if (Array.isArray(_st.raises) && _st.raises.length > 0) curFacingBet = _st.raises[_st.raises.length - 1].amt;
+                }
+            } else if (typeof window._lastPreflopDecision !== 'undefined' && window._lastPreflopDecision?.facingBet != null) {
+                curFacingBet = window._lastPreflopDecision.facingBet;
+            }
+
             let vec = null;
             if (typeof queryGtoPreflop === 'function') {
-                vec = queryGtoPreflop(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq);
+                vec = queryGtoPreflop(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq, curFacingBet);
             }
             let fP = 100, cP = 0, rP = 0, jP = 0;
             if (vec) {
@@ -9439,7 +9461,7 @@
 
             let evVec = null;
             if (typeof queryGtoEv === 'function') {
-                evVec = queryGtoEv(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq);
+                evVec = queryGtoEv(heroPos, (seq === 'RFI' ? null : vsPos), depth, hand, seq, null, null, null, null, curFacingBet);
             }
 
             const icmBadgeEl = document.getElementById('rmInspIcmBadge');
@@ -9490,10 +9512,13 @@
                     }
                 });
             } else {
-                if (evFoldEl) evFoldEl.innerText = 'F: 0.00';
-                if (evCallEl) evCallEl.innerText = 'C: --';
-                if (evRaiseEl) evRaiseEl.innerText = 'R: --';
-                if (evJamEl) evJamEl.innerText = 'J: --';
+                if (evFoldEl) { evFoldEl.innerText = 'F: —'; evFoldEl.title = '非标尺寸或无精确 EV 解'; }
+                if (evCallEl) { evCallEl.innerText = 'C: —'; evCallEl.title = '非标尺寸或无精确 EV 解'; }
+                if (evRaiseEl) { evRaiseEl.innerText = 'R: —'; evRaiseEl.title = '非标尺寸或无精确 EV 解'; }
+                if (evJamEl) { evJamEl.innerText = 'J: —'; evJamEl.title = '非标尺寸或无精确 EV 解'; }
+                [evFoldEl, evCallEl, evRaiseEl, evJamEl].forEach(el => {
+                    if (el) { el.style.color = ''; el.style.fontWeight = ''; }
+                });
             }
         };
 
@@ -12336,7 +12361,10 @@
                                             ((typeof tlState === 'function') && tlState() && Array.isArray(tlState().raises) && tlState().raises.length > 0);
                         // 确保以 GTO Wizard 为主版本：在交互时间线中只要 GTO Wizard 具备真解，超界深度由 GTO Wizard 权威接管；但在未校准场景（非标开池尺度/ICM/无Ante/非标赛制/静态用例）中保持安全回退
                         const isUncalibratedFallback = _mixFb ? (_mixFb.includes('未校准') || _mixFb.includes('全下') || isNonStandardStage || !hasTimeline) : false;
-                        const shouldSuppress = isWaitingOpponent || isBlockedOrTerminal || hasBlindMix || isUncalibratedFallback || isNonStandardStage || currentMode === 'defend' || currentMode === 'vsLimp';
+                        const isHardSuppress = isWaitingOpponent || isBlockedOrTerminal || currentMode === 'defend' || currentMode === 'vsLimp';
+                        const isReferenceMode = !!(matrixVec && (matrixVec.isReference || matrixVec.coverageStatus === 'reference'));
+                        const canTakeoverDominant = hasGtoSolution && !isReferenceMode && !hasBlindMix && !isUncalibratedFallback && !isNonStandardStage;
+                        const shouldSuppress = isHardSuppress || (!canTakeoverDominant && !isReferenceMode);
 
                         // 结构化翻前阻断状态发布 (Issue 02/06 解耦 DOM 文字解析)
                         window._preflopState = {
@@ -12359,8 +12387,8 @@
                             return;
                         }
 
-                        // GTO Wizard 官方解算接管：清理旧 MPT 图表回退标记，避免旧警告与旧逻辑干扰
-                        if (rp && hasGtoSolution) {
+                        // GTO Wizard 官方解算权威接管时：清理旧 MPT 图表回退标记，避免旧警告与旧逻辑干扰
+                        if (rp && canTakeoverDominant) {
                             delete rp.dataset.mixFallback;
                             delete rp.dataset.sbMixFallback;
                         }
@@ -12381,7 +12409,7 @@
                         if (matrixVec) {
                             const [fP, cP, rP, jP] = matrixVec;
                             
-                            // ── v3.17 主裁决交割 (GTO Wizard 真解全面接管翻前主裁决) ──
+                            // ── v3.17 主裁决交割 (GTO Wizard 真解全面接管翻前主裁决；非标参考模式保留原有时间线权威裁决) ──
                             let dominantVerdict = '';
                             let dominantColor = 'yellow';
                             const isSbOpenLimp = (currentMode === 'open' && posH === 'SB');
@@ -12414,7 +12442,7 @@
                                 }
                             }
 
-                            // ── 频率条与标签全面交割 GTO 真实解 ──
+                            // ── 频率条与标签全面交割 GTO 真实解与参考解 ──
                             // 严谨色彩映射：Raise 为琥珀金黄(#f59e0b)，Jam 为激进纯红(#e5484d)，彻底根除双红混淆
                             const fBar = document.getElementById('freqBar');
                             const fLab = document.getElementById('freqLabels');
@@ -12444,7 +12472,9 @@
                                     const nsBadge = isNS
                                         ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 ml-1">⚡ 自适应</span>`
                                         : `<span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/40 ml-1">GTO</span>`;
-                                    szEl.innerHTML = `<span style="font-weight:800;color:#fde047;">${szVal} BB</span>${nsBadge} <button type="button" class="gto-apply-sizing-btn" onclick="applyGtoSizing(${szVal})" title="填入加注框" style="background:rgba(59,130,246,0.18);border:0.5px solid rgba(96,165,250,0.4);color:#93c5fd;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;cursor:pointer;margin-left:5px;">📋 填入</button><span id="sizingAppliedToast" style="display:none;color:#4ade80;font-size:10px;font-weight:700;margin-left:4px;">✓ 已应用</span>`;
+                                    const isAllIn = (jP >= 50) || (szVal >= eff);
+                                    const allInTag = isAllIn ? ` 全下` : ``;
+                                    szEl.innerHTML = `<span style="font-weight:800;color:#fde047;">${szVal} BB${allInTag}</span>${nsBadge} <button type="button" class="gto-apply-sizing-btn" onclick="applyGtoSizing(${szVal})" title="填入加注框" style="background:rgba(59,130,246,0.18);border:0.5px solid rgba(96,165,250,0.4);color:#93c5fd;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;cursor:pointer;margin-left:5px;">📋 填入</button><span id="sizingAppliedToast" style="display:none;color:#4ade80;font-size:10px;font-weight:700;margin-left:4px;">✓ 已应用</span>`;
                                 }
                             }
 
@@ -12516,17 +12546,47 @@
                                 const prefixNote = (lgText && (lgText.includes('赔率更优') || lgText.includes('偏离基准'))) ? `<div class="mb-2 text-gray-300 text-xs">${lgText}</div>` : '';
                                 lgEl.innerHTML = prefixNote + coachBanner;
                             } else if (lgEl) {
-                                // P2-3: 若 evData 无解但 matrixVec 已接管，清洗旧模型可能冲突的残留说理
-                                const hasConflict = /果断弃牌|决绝弃牌|弃牌保留|严禁跟注|果断弃/.test(lgText) && (jP >= 50 || rP >= 50 || cP >= 50);
-                                if (hasConflict) {
-                                    lgEl.innerHTML = `<div style="color:#93c5fd;font-weight:600;font-size:11px;">GTO 解算器 (${eff}BB ${posH})</div><div style="color:var(--text-muted);font-size:11px;margin-top:3px;">建议动作：${dominantVerdict}</div>`;
+                                // P2-3: 若 evData 无解但 matrixVec 已接管，清洗旧模型可能冲突的残留说理并展示非标自适应说明
+                                const isReference = matrixVec.coverageStatus === 'reference' || (matrixVec.sizingInfo && matrixVec.sizingInfo.isNonStandard);
+                                if (isReference && matrixVec.sizingInfo) {
+                                    const fbNote = (lgText && lgText.includes('旧模型 · 未按原图校准'))
+                                        ? `<div class="mb-2 text-amber-300 text-xs font-semibold">⚠️ 旧模型 · 未按原图校准（此开池尺度原图未收录）</div>`
+                                        : (_mixFb ? `<div class="mb-2 text-amber-300 text-xs font-semibold">⚠️ 旧模型 · 未按原图校准（${_mixFb}）</div>` : '');
+                                    const prefixNote = (lgText && (lgText.includes('赔率更优') || lgText.includes('偏离基准') || lgText.includes('自适应适配'))) ? `<div class="mb-2 text-gray-300 text-xs">${lgText}</div>` : '';
+                                    lgEl.innerHTML = fbNote + prefixNote + `
+                                    <div style="background:rgba(217,119,6,0.15);border:0.5px solid rgba(245,158,11,0.35);border-radius:6px;padding:7px 10px;margin-bottom:8px;font-size:12px;line-height:1.5;">
+                                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+                                        <span style="color:#fbbf24;font-weight:700;font-size:11px;">📖 GTO 参考基准 · 非标开池自适应适配</span>
+                                        <span style="font-size:10px;color:#cbd5e1;font-family:monospace;">基于 2.2BB 标准解投影</span>
+                                      </div>
+                                      <div style="color:#fbbf24;font-size:11px;line-height:1.4;">
+                                        对手开池 <b>${matrixVec.sizingInfo.facingBet}BB</b>（偏离基准 2.2BB，底池赔率变动 ${matrixVec.sizingInfo.oddsDelta > 0 ? '+' : ''}${matrixVec.sizingInfo.oddsDelta}%）。加注尺度依据底池几何级数自适应修正至 <b>${matrixVec.sizing}BB</b>。因非标尺寸无原生求解，动作频率取自标准解作为参考基准，不显示拼接 EV。
+                                      </div>
+                                    </div>`;
+                                } else {
+                                    const hasConflict = /果断弃牌|决绝弃牌|弃牌保留|严禁跟注|果断弃/.test(lgText) && (jP >= 50 || rP >= 50 || cP >= 50);
+                                    if (hasConflict) {
+                                        lgEl.innerHTML = `<div style="color:#93c5fd;font-weight:600;font-size:11px;">GTO 解算器 (${eff}BB ${posH})</div><div style="color:var(--text-muted);font-size:11px;margin-top:3px;">建议动作：${dominantVerdict}</div>`;
+                                    }
                                 }
                             }
 
                             if (bEl && vVecEl) {
                                 bEl.classList.remove('hidden');
+                                const badgeTitleEl = document.getElementById('gtoSolverBadgeTitle');
+                                const isReference = matrixVec.coverageStatus === 'reference' || (matrixVec.sizingInfo && matrixVec.sizingInfo.isNonStandard);
+                                if (badgeTitleEl) {
+                                    if (isReference) {
+                                        badgeTitleEl.className = 'text-amber-400 font-bold';
+                                        badgeTitleEl.innerText = '📖 GTO 参考';
+                                    } else {
+                                        badgeTitleEl.className = 'text-emerald-400 font-bold';
+                                        badgeTitleEl.innerText = '⚡ GTO 矩阵';
+                                    }
+                                }
                                 let txt = `[弃:${fP}% 跟:${cP}% 加:${rP}% 推:${jP}%]`;
                                 if (matrixVec.sizing) txt += ` · 尺寸:${matrixVec.sizing}BB`;
+                                if (isReference) txt += ` · (非标参考)`;
                                 if (evData && typeof evData.bestEv === 'number') {
                                     const sign = evData.bestEv >= 0 ? '+' : '';
                                     txt += ` · 最优:${evData.bestAction}(${sign}${evData.bestEv}BB)`;
@@ -12534,8 +12594,12 @@
                                 }
                                 vVecEl.innerText = txt;
                             }
-                            const matrixAction = jP >= 50 ? 'ALLIN' : (rP >= 50 ? 'RAISE' : (cP >= 50 ? 'CALL' : (fP >= 70 ? 'FOLD' : (jP > 0 ? 'ALLIN' : (rP >= cP ? 'RAISE' : 'CALL')))));
-                            const matrixSizing = matrixVec.sizing ? `${matrixVec.sizing} BB` : (szEl ? szEl.innerText.trim() : '');
+                            const matrixAction = isReferenceMode 
+                                ? (preDec ? preDec.primaryAction : (rP >= 50 ? 'RAISE' : (cP >= 50 ? 'CALL' : 'FOLD')))
+                                : (jP >= 50 ? 'ALLIN' : (rP >= 50 ? 'RAISE' : (cP >= 50 ? 'CALL' : (fP >= 70 ? 'FOLD' : (jP > 0 ? 'ALLIN' : (rP >= cP ? 'RAISE' : 'CALL'))))));
+                            const matrixSizing = isReferenceMode 
+                                ? (szEl ? szEl.innerText.trim() : (matrixVec.sizing ? `${matrixVec.sizing} BB` : ''))
+                                : (matrixVec.sizing ? `${matrixVec.sizing} BB` : (szEl ? szEl.innerText.trim() : ''));
                             publishPreflopDecision({
                                 primaryAction: matrixAction,
                                 isBlocked: false,
@@ -12545,9 +12609,11 @@
                                 isWaitingOpponent: false,
                                 frequencies: { fold: fP, call: cP, raise: rP, jam: jP, check: 0 },
                                 sizing: matrixSizing,
-                                verdict: dominantVerdict,
+                                verdict: isReferenceMode ? (vEl ? vEl.innerText.trim() : dominantVerdict) : dominantVerdict,
                                 reasoning: lgEl ? lgEl.innerText.trim() : '',
-                                source: 'matrix'
+                                source: isReferenceMode ? 'reference' : 'matrix',
+                                coverageStatus: matrixVec.coverageStatus,
+                                isReference: isReferenceMode
                             });
                         } else {
                             window._lastShadowComparison = null;
@@ -19615,7 +19681,7 @@
                 };
             }
 
-            // ── GTO 求解器直接接管 (转/河高精 GTO 矩阵与 3BP/4BP/多人深度融合 Single Source of Truth, v3.29.3) ──
+            // ── GTO 求解器直接接管 (转/河高精 GTO 矩阵与 3BP/4BP/多人深度融合 Single Source of Truth, v3.29.4) ──
             const _fnGtoSolver = (typeof window !== 'undefined' && window.queryPostflopGtoSolver) ||
                                  (typeof globalThis !== 'undefined' && globalThis.queryPostflopGtoSolver) ||
                                  (typeof queryPostflopGtoSolver === 'function' ? queryPostflopGtoSolver : null);
