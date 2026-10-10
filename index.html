@@ -7951,14 +7951,20 @@
             const stack = (pos === globalPosHero ? globalHeroStack : globalVillainStack) || 40;
             let dflt;
             if (st.raises.length === 0) {
-                let sGto = null;
-                if (typeof window.getGtoSizing === 'function') {
-                    try {
-                        const si = window.getGtoSizing(pos, null, stack, 'RFI');
-                        if (si && si.sizing) sGto = si.sizing;
-                    } catch (e) {}
+                // 开池尺度：优先尊重当前系统建议与配置的开池尺度（openAmt 即 getOpenSizeBB()）
+                // 杜绝底层硬编码的 2.0 截胡覆盖实战建议的 2.5BB / 2.2BB
+                if (openAmt && openAmt >= minRaise) {
+                    dflt = openAmt;
+                } else {
+                    let sGto = null;
+                    if (typeof window.getGtoSizing === 'function') {
+                        try {
+                            const si = window.getGtoSizing(pos, null, stack, 'RFI');
+                            if (si && si.sizing) sGto = si.sizing;
+                        } catch (e) {}
+                    }
+                    dflt = sGto || openAmt || 2.2;
                 }
-                dflt = sGto || openAmt;
             } else if (st.raises.length === 1) {
                 // 3-Bet：面对单次开池，关联 GTO 微尺寸或系统建议尺度（IP ~3x / OOP ~4x + Caller挤压死钱）
                 const openerPos = st.raises[0].pos;
@@ -9341,13 +9347,30 @@
                 const posV = d.posV || globalPosVillain || 'UTG';
                 const eff = getEffectiveStack(globalHeroStack, globalVillainStack, currentMode);
 
+                // 优先从时间线实际推演场景 d 获取当前模式，未推演时回退到 currentMode
+                const activeMode = (typeof tlActs !== 'undefined' && Array.isArray(tlActs) && tlActs.length > 0 && d && d.mode)
+                    ? d.mode
+                    : (typeof currentMode !== 'undefined' ? currentMode : 'open');
+
                 let seq = 'vs_RFI';
-                if (typeof currentMode !== 'undefined') {
-                    if (currentMode === 'open') seq = 'RFI';
-                    else if (currentMode === 'squeeze') seq = 'SQUEEZE';
-                    else if (currentMode === 'face3b') seq = 'vs_3BET';
-                    else if (currentMode === 'coldCall') seq = 'COLD_4BET';
-                    else if (currentMode === 'face4b') {
+                if (typeof activeMode !== 'undefined') {
+                    if (activeMode === 'open') seq = 'RFI';
+                    else if (activeMode === 'squeeze') seq = 'SQUEEZE';
+                    else if (activeMode === 'face3b') seq = 'vs_3BET';
+                    else if (activeMode === 'coldCall') seq = 'COLD_4BET';
+                    else if (activeMode === 'defend') {
+                        // 面对对手全推（接注）：若我方此前有加注，则为面对 3-Bet 全推（或面对 4-Bet 全推）
+                        const st = typeof tlState === 'function' ? tlState() : null;
+                        const heroActs = (st && Array.isArray(st.heroActs)) ? st.heroActs : [];
+                        const heroHadRaised = heroActs.some(a => a.a === 'raise' || a.a === 'allin');
+                        const nRaises = (st && Array.isArray(st.raises)) ? st.raises.length : 1;
+                        if (heroHadRaised) {
+                            seq = (nRaises >= 3) ? 'FACING_4BET_JAM' : 'vs_3BET';
+                        } else {
+                            seq = (nRaises >= 2) ? 'COLD_4BET' : 'vs_RFI';
+                        }
+                    }
+                    else if (activeMode === 'face4b') {
                         let isJam = false;
                         if (typeof tlState === 'function') {
                             const tls = tlState();
@@ -9362,9 +9385,22 @@
                     }
                 }
 
-                // UTG 翻前永远先手，不可能面对开池(vs_RFI)，物理保护自动切换至自主开池(RFI)
-                if (posH === 'UTG' && seq === 'vs_RFI') {
-                    seq = 'RFI';
+                // 物理规律防呆铁闸：前位永远先手行动，不可能面对后位开池（如 UTG/MP/LJ/HJ/CO 不可能面对后位 vs_RFI）
+                if (seq === 'vs_RFI') {
+                    const st = typeof tlState === 'function' ? tlState() : null;
+                    const heroActs = (st && Array.isArray(st.heroActs)) ? st.heroActs : [];
+                    const heroHadRaised = heroActs.some(a => a.a === 'raise' || a.a === 'allin');
+                    if (heroHadRaised) {
+                        seq = 'vs_3BET';
+                    } else if (posH === 'UTG') {
+                        seq = 'RFI';
+                    } else if (typeof POS_ORDER !== 'undefined') {
+                        const orderH = POS_ORDER[posH] || 0;
+                        const orderV = POS_ORDER[posV] || 0;
+                        if (orderH <= orderV) {
+                            seq = 'RFI';
+                        }
+                    }
                 }
 
                 const heroSelect = document.getElementById('rmHeroPos');
@@ -9444,13 +9480,19 @@
             const callerPos = (seq === 'SQUEEZE' && callerPosEl && callerPosEl.value !== 'AUTO') ? callerPosEl.value : null;
             const depth = document.getElementById('rmDepth') ? parseFloat(document.getElementById('rmDepth').value) : 40;
 
-            // 物理防呆：UTG翻前必先手行动，不可能存在面对开池(vs_RFI)的情形，自动纠偏为自主开池(RFI)
-            if (heroPos === 'UTG' && seq === 'vs_RFI') {
-                seq = 'RFI';
-                const seqSelect = document.getElementById('rmSeq');
-                if (seqSelect) seqSelect.value = 'RFI';
-                const vsPosWrap = document.getElementById('rmVsPosWrap');
-                if (vsPosWrap) vsPosWrap.style.display = 'none';
+            // 物理防呆：前位不可能面对后位开池(vs_RFI)，自动物理纠偏
+            if (seq === 'vs_RFI' && typeof POS_ORDER !== 'undefined') {
+                const orderH = POS_ORDER[heroPos] || 0;
+                const orderV = POS_ORDER[vsPos] || 0;
+                if (heroPos === 'UTG' || orderH <= orderV) {
+                    const st = typeof tlState === 'function' ? tlState() : null;
+                    const heroActs = (st && Array.isArray(st.heroActs)) ? st.heroActs : [];
+                    seq = heroActs.some(a => a.a === 'raise' || a.a === 'allin') ? 'vs_3BET' : 'RFI';
+                    const seqSelect = document.getElementById('rmSeq');
+                    if (seqSelect) seqSelect.value = seq;
+                    const vsPosWrap = document.getElementById('rmVsPosWrap');
+                    if (vsPosWrap) vsPosWrap.style.display = (seq === 'RFI') ? 'none' : 'flex';
+                }
             }
 
             const currentHeroHand = (typeof getHandStr === 'function') ? getHandStr() : '';
