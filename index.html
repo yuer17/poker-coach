@@ -1532,18 +1532,22 @@
                                 </div>
                                 <div id="tyName" class="text-xs text-gray-400 truncate mb-1" style="display:none;"></div>
                                 <div class="grid grid-cols-3 gap-1">
-                                    <label class="text-xs text-gray-400">总参赛
-                                        <input id="tyEntrants" class="bl-input" oninput="tyOnInput()" placeholder="277"></label>
-                                    <label class="text-xs text-gray-400">奖金%
-                                        <input id="tyPayoutPct" class="bl-input" oninput="tyOnInput()" placeholder="15"></label>
-                                    <label class="text-xs text-gray-400">起始码
-                                        <input id="tyStartStack" class="bl-input" oninput="tyOnInput()" placeholder="6000"></label>
+                                    <label class="text-[11px] text-gray-400">总参赛
+                                        <input id="tyEntrants" class="bl-input" oninput="tyOnInput()" placeholder="1552"></label>
+                                    <label class="text-[11px] text-yellow-400/90 font-medium" title="前N名钱圈（优先采用此项；若留空则由总参赛×奖金%自动推算）">进钱名额
+                                        <input id="tyPaidPlaces" class="bl-input" oninput="tyOnInput()" placeholder="前180名" style="border-color:rgba(234,179,8,0.4);color:#fef08a;"></label>
+                                    <label class="text-[11px] text-gray-400">剩余玩家
+                                        <input id="tyRemaining" class="bl-input" oninput="tyOnInput()" placeholder="726"></label>
                                 </div>
-                                <div class="grid grid-cols-2 gap-1 mt-1">
-                                    <label class="text-xs text-gray-400">剩余玩家
-                                        <input id="tyRemaining" class="bl-input" oninput="tyOnInput()" placeholder="235"></label>
-                                    <label class="text-xs text-gray-400">涨盲(分)
-                                        <input id="tyLevelMin" class="bl-input" oninput="tyOnInput()" placeholder="3"></label>
+                                <div class="grid grid-cols-4 gap-1 mt-1">
+                                    <label class="text-[11px] text-blue-400/90" title="您当前的比赛排名（选填，用于精确计算个人距离进钱圈差距）">我的排名
+                                        <input id="tyHeroRank" class="bl-input" oninput="tyOnInput()" placeholder="379" style="border-color:rgba(59,130,246,0.35);color:#93c5fd;"></label>
+                                    <label class="text-[11px] text-gray-400">奖金%
+                                        <input id="tyPayoutPct" class="bl-input" oninput="tyOnInput()" placeholder="12"></label>
+                                    <label class="text-[11px] text-gray-400">起始码
+                                        <input id="tyStartStack" class="bl-input" oninput="tyOnInput()" placeholder="20000"></label>
+                                    <label class="text-[11px] text-gray-400">涨盲(分)
+                                        <input id="tyLevelMin" class="bl-input" oninput="tyOnInput()" placeholder="8"></label>
                                 </div>
                                 <div id="tyDerived" class="text-xs mt-1 leading-relaxed" style="color:var(--accent);"></div>
                             </div>
@@ -2278,10 +2282,12 @@
             tourney: {
                 name: null,
                 payoutPct: null,      // 奖金分配 %（GG 大厅"奖金分配 15%"）
-                paidPlaces: null,     // 进钱名额（有则直接用，否则由 entrants×payoutPct 推算）
+                paidPlaces: null,     // 进钱名额（优先直接输入/识别，如 180；若空则由 entrants×payoutPct 推算）
                 entrants: null,       // 总参赛（"剩余玩家 235 / 277" 的分母）
                 remaining: null,      // 剩余玩家
-                toBubble: null,       // 距离钱圈还有几人被淘汰（推算值）
+                heroRank: null,       // 我的排名（如 379，选填）
+                toBubble: null,       // 全场距离钱圈还需淘汰几人（推算值）
+                heroToBubble: null,   // Hero 个人距离钱圈差距（heroRank - paidPlaces）
                 startStack: null,     // 起始筹码
                 startStackBB: null,   // 起始筹码（BB）
                 levelMin: null,       // 盲注间隔（分钟）
@@ -2648,17 +2654,32 @@
         // 赛事信息(2026-09-08)：录入 → 推算进钱名额/距离钱圈 → 建议比赛阶段
         // ============================================================
         // 字段瘦身(2026-09-08)：avgStackBB 从输入项改为**推算项**（见 tyRecalc），不再需要截图/手填
-        const tyFields = [['tyEntrants','entrants'], ['tyRemaining','remaining'], ['tyPayoutPct','payoutPct'],
-                          ['tyStartStack','startStack'], ['tyLevelMin','levelMin']];
+        const tyFields = [
+            ['tyEntrants','entrants'],
+            ['tyPaidPlaces','paidPlaces'],
+            ['tyRemaining','remaining'],
+            ['tyHeroRank','heroRank'],
+            ['tyPayoutPct','payoutPct'],
+            ['tyStartStack','startStack'],
+            ['tyLevelMin','levelMin']
+        ];
         function tyNum(v) { const n = parseFloat(String(v == null ? '' : v).replace(/[,\s]/g, '')); return isFinite(n) ? n : null; }
 
-        /** 由已知字段推算 paidPlaces / toBubble，并给出建议阶段（不自动切换，只建议） */
+        /** 由已知字段推算 paidPlaces / toBubble / heroToBubble，并给出建议阶段（不自动切换，只建议） */
         function tyRecalc() {
             const t = gameConfig.tourney;
-            if (t.paidPlaces == null && t.entrants > 0 && t.payoutPct > 0) {
+            // 进钱名额推算：若未显式指定 paidPlaces，且有总参赛与奖金%，则公式推算
+            if ((t.paidPlaces == null || !(t.paidPlaces > 0)) && t.entrants > 0 && t.payoutPct > 0) {
                 t.paidPlaces = Math.max(1, Math.round(t.entrants * t.payoutPct / 100));
             }
+            // 全场距钱圈还需淘汰人数
             t.toBubble = (t.remaining > 0 && t.paidPlaces > 0) ? Math.max(0, t.remaining - t.paidPlaces) : null;
+            // 个人距钱圈还差人数（我的排名 - 进钱名额）
+            if (t.heroRank > 0 && t.paidPlaces > 0) {
+                t.heroToBubble = Math.max(0, t.heroRank - t.paidPlaces);
+            } else {
+                t.heroToBubble = null;
+            }
             const bb = gameConfig.blinds.bb;
             if (t.startStack > 0 && bb > 0) t.startStackBB = +(t.startStack / bb).toFixed(1);
             // 平均筹码**推算**(2026-09-08)：场上总筹码恒定 = 总参赛 × 起始筹码（重入已计入总参赛），
@@ -2704,10 +2725,11 @@
                 // 之后回到常规期（再往后由上面的决赛桌分支接管）。
                 return (t.paidPlaces > 0 && t.remaining > t.paidPlaces * 0.5) ? 'postbubble' : 'normal';
             }
-            if (t.toBubble <= 9) return 'bubble';             // 约一桌内 → 真泡沫
-            // 临近泡沫：绝对距离（约 3 桌内）或占剩余人数 20% 以内 —— 只用比例会在
-            // 中等规模赛事漏判（剩 60 人、距钱圈 18 人显然已经在收紧了，却算不到 25%）
-            if (t.toBubble <= 30 || (t.remaining > 0 && t.toBubble <= t.remaining * 0.2)) return 'prebubble';
+            // 若已知 Hero 个人差距，以个人差距优先作为紧迫度指标
+            const effBubble = (t.heroToBubble != null) ? t.heroToBubble : t.toBubble;
+            if (effBubble <= 9) return 'bubble';             // 约一桌内 → 真泡沫
+            // 临近泡沫：绝对距离（约 3 桌内）或占剩余人数 20% 以内
+            if (effBubble <= 30 || (t.remaining > 0 && t.toBubble <= t.remaining * 0.2)) return 'prebubble';
             return 'normal';
         }
 
@@ -2716,15 +2738,21 @@
             const t = gameConfig.tourney;
             const g = s => `<span style="color:#45d68a">✅ ${s}</span>`;
             const y = s => `<span style="color:#e0a83a">🔔 ${s}</span>`;
-            if (!(t.entrants > 0) || !(t.payoutPct > 0)) {
-                return y('先截一张大厅「比赛信息」页（Ctrl+V）——总参赛/奖金分配%/起始筹码/盲注间隔一次全填。' +
-                         '<b>延迟报名结束后再截一次</b>，那时"总参赛"才是最终数，进钱名额才算得准。');
+            if (!(t.entrants > 0) && !(t.paidPlaces > 0)) {
+                return y('截一张大厅「比赛信息」页，或在上方直接填入「进钱名额」（如前 180 名）与「总参赛/奖金%」。' +
+                         '<b>延迟报名结束</b>后再截一次，人数和进钱线才会最终定格。');
             }
             if (t.toBubble == null) return y('还差「剩余玩家」——填一个数，或截一张赛事时钟页。');
-            if (t.toBubble === 0) return g('已进钱圈。之后只在人数明显减少（约每 2-3 次休息）时更新一次即可。');
-            if (t.toBubble > 50) return g(`距钱圈 ${t.toBubble} 人，还远 —— 现在什么都不用管，专心打。等距钱圈进到 30 人以内再来更新。`);
-            if (t.toBubble > 15) return y(`距钱圈 ${t.toBubble} 人，快进入临近泡沫 —— 建议约每 15 分钟更新一次「剩余玩家」。`);
-            return y(`距钱圈只剩 ${t.toBubble} 人，正是决策最贵的时候 —— 建议每几手就更新一次「剩余玩家」（改一个数即可）。`);
+            if (t.toBubble === 0) return g('全场已进钱圈。之后只在人数明显减少时更新一次即可，不用频繁盯它（让大脑休息）。');
+            if (t.heroToBubble === 0) return g(`您当前排第 ${t.heroRank} 名，已稳稳进入前 ${t.paidPlaces} 名钱圈！不用频繁盯它（让大脑休息）。`);
+
+            const targetGap = (t.heroToBubble != null) ? t.heroToBubble : t.toBubble;
+            const desc = (t.heroToBubble != null)
+                ? `您排第 ${t.heroRank} 名，前方还差 <b>${t.heroToBubble}</b> 人进钱（全场还需淘汰 ${t.toBubble} 人）`
+                : `全场距钱圈还需淘汰 <b>${t.toBubble}</b> 人`;
+            if (targetGap > 50) return g(`${desc}，还远 —— 现在什么都不用管，专心打。等差 30 人以内再来更新。`);
+            if (targetGap > 15) return y(`${desc}，快进入临近泡沫 —— 建议约每 15 分钟更新一次「剩余玩家」。`);
+            return y(`🔔 ${desc}，正是决策最贵的时候 —— 建议每几手就更新一次「剩余玩家」。`);
         }
         function tyRender() {
             const t = tyRecalc();
@@ -2739,9 +2767,16 @@
                 const parts = [];
                 if (t.paidPlaces) parts.push(`进钱 ${t.paidPlaces} 名`);
                 if (t.toBubble != null) parts.push(t.toBubble === 0 ? '<b>已进钱圈</b>' : `距钱圈还需淘汰 <b>${t.toBubble}</b> 人`);
+                if (t.heroRank > 0 && t.paidPlaces > 0) {
+                    if (t.heroToBubble === 0) {
+                        parts.push(`<span style="color:#45d68a">您排 <b>${t.heroRank}</b> 名（已进钱）</span>`);
+                    } else if (t.heroToBubble != null) {
+                        parts.push(`<span style="color:#93c5fd">您排 <b>${t.heroRank}</b> 名（差 <b>${t.heroToBubble}</b> 人进钱）</span>`);
+                    }
+                }
                 if (t.avgStackBB && !t.staleBlinds) parts.push(`平均码 <b>${t.avgStackBB}BB</b>（推算）`);
                 const sug = tySuggestStage();
-                let html = parts.length ? parts.join(' · ') : '<span class="text-gray-500">填入总参赛/剩余/奖金分配% 即可算出距离钱圈</span>';
+                let html = parts.length ? parts.join(' · ') : '<span class="text-gray-500">填入总参赛/剩余/进钱名额即可算出距离钱圈</span>';
                 if (t.staleBlinds) {
                     html += `<br><span style="color:#e0a83a">⚠️ 平均码推算出 ${t.avgStackBB}BB，明显偏高 —— 说明「当前大盲 ${blFmt(gameConfig.blinds.bb)}」还停在早期级别。` +
                             `粘贴一张牌桌截图即可自动更新；在此之前不套用推算的平均码（宁可不用，也不拿错的比率去调范围）。</span>`;
@@ -2753,7 +2788,6 @@
                 if (t.levelMin && t.levelMin <= 5 && gameConfig.gameType !== 'turbo') {
                     html += `<br><button onclick="tyApplyTurbo()" class="cfg-btn bl-btn" style="margin-top:3px;">每级仅 ${t.levelMin} 分钟 → 按「极速赛」计算</button>`;
                 }
-                // 直接回答"我什么时候该再动它"(2026-09-08)：更新频率完全由距钱圈决定
                 html += '<br>' + tyUpdateHint();
                 d.innerHTML = html;
             }
@@ -2768,8 +2802,17 @@
             if (bubbleBox && bubbleEl) {
                 if (t && t.toBubble != null) {
                     bubbleBox.style.display = 'inline-flex';
-                    bubbleEl.textContent = t.toBubble === 0 ? '已进钱' : `距钱圈 ${t.toBubble}人`;
-                    bubbleBox.classList.toggle('urgent', t.toBubble <= 9);
+                    if (t.toBubble === 0) {
+                        bubbleEl.textContent = '已进钱';
+                        bubbleBox.title = '全场已进入钱圈。点击就地修改。';
+                    } else if (t.heroRank > 0 && t.heroToBubble != null) {
+                        bubbleEl.textContent = `距钱圈 ${t.toBubble}人(差${t.heroToBubble}人)`;
+                        bubbleBox.title = `全场还需淘汰 ${t.toBubble} 人进钱圈；您当前排第 ${t.heroRank} 名，前方还差 ${t.heroToBubble} 人进钱圈。点击就地修改。`;
+                    } else {
+                        bubbleEl.textContent = `距钱圈 ${t.toBubble}人`;
+                        bubbleBox.title = `全场还需淘汰 ${t.toBubble} 人进钱圈。点击就地修改。`;
+                    }
+                    bubbleBox.classList.toggle('urgent', (t.heroToBubble != null ? t.heroToBubble : t.toBubble) <= 9);
                 } else {
                     bubbleBox.style.display = 'none';
                 }
@@ -2778,8 +2821,8 @@
             if (w) {
                 w.style.display = 'none';
                 if (t && t.toBubble != null) {
-                    w.classList.toggle('urgent', t.toBubble <= 9);
-                    w.innerText = t.toBubble === 0 ? `💰 已进钱 · 剩 ${t.remaining}` : `距钱圈 ${t.toBubble} 人`;
+                    w.classList.toggle('urgent', (t.heroToBubble != null ? t.heroToBubble : t.toBubble) <= 9);
+                    w.innerText = t.toBubble === 0 ? `💰 已进钱 · 剩 ${t.remaining}` : (t.heroRank > 0 && t.heroToBubble != null ? `距钱圈 ${t.toBubble} 人 (差 ${t.heroToBubble} 人)` : `距钱圈 ${t.toBubble} 人`);
                 } else {
                     w.innerText = '';
                 }
@@ -2790,6 +2833,7 @@
             if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
             if (gameConfig.tourney) {
                 gameConfig.tourney.toBubble = null;
+                gameConfig.tourney.heroToBubble = null;
                 gameConfig.tourney.remaining = null;
             }
             if (typeof onStageQuickChange === 'function') onStageQuickChange('normal');
@@ -2802,7 +2846,7 @@
         function promptEditBubble(e) {
             if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
             const current = (gameConfig.tourney && gameConfig.tourney.toBubble != null) ? gameConfig.tourney.toBubble : '';
-            const input = prompt('修改距钱圈人数（输入数字；输入 0 为已进钱；留空或输入 c 清空重置）：', current);
+            const input = prompt('修改全场距钱圈还需淘汰人数（输入数字；输入 0 为已进钱；留空或输入 c 清空重置）：', current);
             if (input === null) return;
             const trimmed = String(input).trim().toLowerCase();
             if (trimmed === '' || trimmed === 'c' || trimmed === 'clear') {
@@ -2820,7 +2864,7 @@
                 if (typeof onStageQuickChange === 'function') onStageQuickChange(stg);
                 renderMoneyWidget();
                 if (typeof updateTopHUD === 'function') updateTopHUD();
-                if (typeof showToast === 'function') showToast(`距钱圈已更新为 ${val} 人 (${stg})`, 'ok');
+                if (typeof showToast === 'function') showToast(`全场距钱圈已更新为 ${val} 人 (${stg})`, 'ok');
                 try { if (typeof recalcAdvice === 'function') recalcAdvice(); } catch (err) {}
                 try { if (typeof executeEngine === 'function') executeEngine(); } catch (err) {}
             }
@@ -2832,7 +2876,11 @@
                 el.dataset.dirty = '1';   // 手填优先，tyRender 不再回写覆盖
                 gameConfig.tourney[key] = tyNum(el.value);
             });
-            gameConfig.tourney.paidPlaces = null; // 由 entrants×payoutPct 重算
+            // 只有当用户没有显式输入 tyPaidPlaces 时，才置 null 允许通过 entrants×payoutPct 重算
+            const elPaid = document.getElementById('tyPaidPlaces');
+            if (!elPaid || !elPaid.value.trim()) {
+                gameConfig.tourney.paidPlaces = null;
+            }
             tyRender();                            // dirty 字段本就跳过回写，无需保存/还原
             try { updateCfgSummary(); } catch (e) {}
         }
@@ -2943,7 +2991,16 @@
             const vmLabel = gameConfig.villainModel === 'gto' ? ' · GTO对手' : ''; // M5
             const cuLabel = gameConfig.chipUnit === 'chips' ? ' · 筹码数' : ''; // 2026-07-21
             const t = gameConfig.tourney || {};
-            const tbLabel = (t.toBubble != null) ? (t.toBubble === 0 ? ' · 已进钱' : ` · 距钱圈 ${t.toBubble}人`) : '';
+            let tbLabel = '';
+            if (t.toBubble != null) {
+                if (t.toBubble === 0) tbLabel = ' · 已进钱';
+                else {
+                    tbLabel = ` · 距钱圈 ${t.toBubble}人`;
+                    if (t.heroToBubble != null) {
+                        tbLabel += t.heroToBubble <= 0 ? '(已进钱)' : `(差${t.heroToBubble}人)`;
+                    }
+                }
+            }
             const el = document.getElementById('cfgSummary');
             if (el) el.innerText = `${gt} · ${ts} · ${st}${ante}${psLabel}${vmLabel}${cuLabel}${tbLabel}`;
             try { renderStageAdvice(); } catch (e) {} // 阶段×码量建议随配置/筹码变化刷新
@@ -2979,7 +3036,16 @@
             if (bubbleBox && bubbleEl) {
                 if (t.toBubble != null) {
                     bubbleBox.style.display = '';
-                    bubbleEl.textContent = t.toBubble === 0 ? '已进钱' : `距钱圈 ${t.toBubble}人`;
+                    if (t.toBubble === 0) {
+                        bubbleEl.textContent = '已进钱';
+                    } else if (t.heroToBubble != null) {
+                        bubbleEl.textContent = t.heroToBubble <= 0 ? `距钱圈 ${t.toBubble}人(已进钱)` : `距钱圈 ${t.toBubble}人(差${t.heroToBubble}人)`;
+                    } else {
+                        bubbleEl.textContent = `距钱圈 ${t.toBubble}人`;
+                    }
+                    bubbleBox.title = t.heroRank != null
+                        ? `全场距钱圈还需淘汰 ${t.toBubble} 人 · 您当前排第 ${t.heroRank} 名${t.heroToBubble > 0 ? `(前方差 ${t.heroToBubble} 人进钱)` : '(已在钱圈内)'}`
+                        : `全场距钱圈还需淘汰 ${t.toBubble} 人`;
                 } else {
                     bubbleBox.style.display = 'none';
                 }
@@ -22550,13 +22616,16 @@ Rules:
 - blinds: current level in CHIPS (not BB). MOST OFTEN it is in the WINDOW TITLE BAR at the very top, written as "盲注 400 | 800" (pipe separator, sb then bb) or "Blinds 400 | 800"; it may also appear as "500/1,000/1,000". COPY THOSE EXACT DIGITS — do not compute, scale, or guess. Stacks/pot shown as "X BB" are NOT blinds. If you cannot literally read the blind digits, return null for the whole blinds object.
 - image_kind: "table" = live table screenshot · "clock" = the tournament CLOCK/INFO overlay (big countdown, 级别/Level N, 盲注/Blinds, 剩余玩家/Players left) · "lobby" = the tournament LOBBY / 比赛信息 page (起始筹码/Starting stack, 盲注间隔/Blind interval, 牌桌类型/Table type, 奖金分配/Payout %, 剩余玩家/Players left).
 - tourney: ONLY on a "lobby" or "clock" image. Read literally, do not compute:
-  {"name":s (赛事名, e.g. "$2 每日急速赛"),
-   "payout_pct":n (奖金分配 "15%" → 15), "entrants":n (the DENOMINATOR of 剩余玩家 "235 / 277" → 277),
-   "remaining":n (the NUMERATOR → 235), "paid_places":n (进钱名额 if explicitly shown, else null),
+  {"name":s (赛事名, e.g. "$5.40 快速猎人赛"),
+   "payout_pct":n (奖金分配 "15%" → 15; null if not shown),
+   "entrants":n (TOTAL entrants / DENOMINATOR of 争夺人数/剩余玩家 e.g. "726 / 1,552" → 1552. NEVER confuse blinds like "400 / 800" or blind levels with entrants!),
+   "remaining":n (remaining players / NUMERATOR e.g. "726 / 1,552" → 726),
+   "paid_places":n (进钱名额 explicitly shown like "前180名钱圈" or "前 180 名" → 180; null if not explicitly displayed),
+   "hero_rank":n (Hero current rank if visible in rankings list e.g. "379 / 726" or "379 | Hero" → 379; null if not shown),
    "start_stack":n (起始筹码 "6,000 (37.5 BB)" → 6000), "level_min":n (盲注间隔 "3 分钟" → 3),
    "table_type":s ("6人桌")}
   null when the image is a live table.
-- players_left: on a clock or lobby image, 剩余玩家/Players left count (the first number of "235 / 277"); null otherwise.
+- players_left: on a clock or lobby image, 剩余玩家/Players left count (the first number of "726 / 1,552" → 726); null otherwise.
 NOTE on clock images: blinds there are written "80 / 160 (20)" = sb / bb (ante).
 
 {"hero_cards":[{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]},{"rank":s,"suit":s,"color":s,"bbox":[n,n,n,n]}],
@@ -22564,7 +22633,7 @@ NOTE on clock images: blinds there are written "80 / 160 (20)" = sb / bb (ante).
 "pot":n,"hero_stack":n,"villain_bet":n,"hero_position":s,"villain_position":s,"street":s,"community_cards_present":b,
 "players":[{"stack":n,"bet":n,"is_allin":b,"has_cards":b}],
 "table_size":n,"blinds":{"sb":n,"bb":n,"ante":n},"image_kind":s,"players_left":n,
-"tourney":{"name":s,"payout_pct":n,"entrants":n,"remaining":n,"paid_places":n,"start_stack":n,"level_min":n,"table_type":s}}`;
+"tourney":{"name":s,"payout_pct":n,"entrants":n,"remaining":n,"paid_places":n,"hero_rank":n,"start_stack":n,"level_min":n,"table_type":s}}`;
 
     const controller = new AbortController();
     let timeoutId = null;
@@ -22933,7 +23002,7 @@ function autoFill(payload, _id) {
         const map = { name: 'name', table_type: 'tableType' };
         Object.entries(map).forEach(([k, key]) => { if (src[k]) t[key] = String(src[k]); });
         [['payout_pct','payoutPct'], ['entrants','entrants'], ['remaining','remaining'], ['paid_places','paidPlaces'],
-         ['start_stack','startStack'], ['level_min','levelMin']]
+         ['hero_rank','heroRank'], ['start_stack','startStack'], ['level_min','levelMin']]
             .forEach(([k, key]) => { const v = num(src[k]); if (v != null && v > 0) t[key] = v; });
         // 牌桌类型 → 桌型（"6人桌" → 6max），受 manualFields 保护
         const tt = String(src.table_type || '');
@@ -22944,7 +23013,8 @@ function autoFill(payload, _id) {
         }
         if (typeof tyRender === 'function') tyRender();
         const t2 = gameConfig.tourney;
-        showToast(`已载入赛事信息${t2.toBubble != null ? ` · 距钱圈 ${t2.toBubble} 人` : ''}`, 'ok');
+        const extraToast = (t2.toBubble != null ? ` · 距钱圈 ${t2.toBubble} 人` : '') + (t2.heroToBubble != null ? ` (差 ${t2.heroToBubble} 人)` : '');
+        showToast(`已载入赛事信息${extraToast}`, 'ok');
         try { renderVisionReviewCard(payload); } catch (e) {}
         return;
     }
@@ -22960,12 +23030,24 @@ function autoFill(payload, _id) {
             if (payload.blinds.ante >= 0) bl.ante = payload.blinds.ante;
         }
         if (payload.playersLeft > 0) gameConfig.tourney.remaining = payload.playersLeft;
+        if (payload.tourney) {
+            const num = v => { const n = parseFloat(String(v == null ? '' : v).replace(/[,%\s]/g, '')); return isFinite(n) ? n : null; };
+            if (payload.tourney.paid_places) {
+                const pp = num(payload.tourney.paid_places);
+                if (pp != null && pp > 0) gameConfig.tourney.paidPlaces = pp;
+            }
+            if (payload.tourney.hero_rank) {
+                const hr = num(payload.tourney.hero_rank);
+                if (hr != null && hr > 0) gameConfig.tourney.heroRank = hr;
+            }
+        }
         try { blSave(); blRecomputeChipStacks(); blRender(); tyRender(); renderTimeline(); } catch (e) {}
         const t = gameConfig.tourney;
         if (typeof showToast === 'function') {
+            const hGap = (t.heroToBubble != null && t.heroToBubble > 0) ? `(差${t.heroToBubble}人)` : '';
             showToast((bl.bb > 0 ? `盲注 ${blFmt(bl.sb)}/${blFmt(bl.bb)}${bl.ante ? '/' + blFmt(bl.ante) : ''}` : '赛事时钟')
                 + (payload.playersLeft > 0 ? ` · 剩余 ${payload.playersLeft} 人` : '')
-                + (t.toBubble != null ? ` · 距钱圈 ${t.toBubble} 人` : '')
+                + (t.toBubble != null ? ` · 距钱圈 ${t.toBubble} 人${hGap}` : '')
                 + (t.avgStackBB ? ` · 平均码 ${t.avgStackBB}BB` : ''), 'info');
         }
         return;
