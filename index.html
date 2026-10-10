@@ -16239,11 +16239,12 @@
         function boardAnalyzer(boardCards) {
             const ranks = [];
             const suitsCount = { 's':0, 'h':0, 'c':0, 'd':0 };
+            const validCards = (boardCards || []).filter(c => c && typeof c === 'string' && c.length >= 2);
             
-            boardCards.forEach(c => {
+            validCards.forEach(c => {
                 const r = c[0];
                 const s = c[1];
-                suitsCount[s]++;
+                suitsCount[s] = (suitsCount[s] || 0) + 1;
                 let val = 0;
                 if (r === 'A') val = 14;
                 else if (r === 'K') val = 13;
@@ -16260,8 +16261,8 @@
             
             // Street
             let street = 'flop';
-            if (boardCards.length === 4) street = 'turn';
-            else if (boardCards.length === 5) street = 'river';
+            if (validCards.length === 4) street = 'turn';
+            else if (validCards.length === 5) street = 'river';
             
             // Paired / Trips
             const rankCounts = {};
@@ -19728,14 +19729,20 @@
             const effStack = (s.potTracker && typeof s.potTracker.effStack === 'number') ? s.potTracker.effStack : 0;
             const spr      = (s.potTracker && typeof s.potTracker.spr === 'number') ? s.potTracker.spr : 0;
             const stage    = cfg.stage;
-            const board    = (s.board || []).filter(c => c !== null);
+            const board    = (s.board || []).filter(c => c && typeof c === 'string' && c.length >= 2);
             const street   = board.length === 3 ? 'flop' : board.length === 4 ? 'turn' : 'river';
             const streetCN = { flop: '翻牌', turn: '转牌', river: '河牌' }[street];
 
             const actions    = (s.potTracker && s.potTracker.actions) || [];
             const streetActs = actions.filter(a => a.street === street);
             const ss         = getStreetState(streetActs);
-            const villainBet = ss.lastBetPlayer === 'villain' ? ss.lastBet : 0;
+            let   villainBet = ss.lastBetPlayer === 'villain' ? ss.lastBet : 0;
+            if (!villainBet && streetActs.length > 0) {
+                const _lastV = [...streetActs].reverse().find(a => (a.player === 'villain' || a.isHero === false) && ['bet','raise','allin'].includes(a.action));
+                if (_lastV && typeof _lastV.amount === 'number' && _lastV.amount > 0) {
+                    villainBet = _lastV.amount;
+                }
+            }
             const lastAgg    = [...actions].reverse().find(a =>
                 a.street === street && a.player === 'villain' && ['bet','raise','allin'].includes(a.action));
             const isFacingAllin = effStack > 0 &&
@@ -19892,6 +19899,19 @@
                     gtoSolverResult = _fnGtoSolver(s);
                 } catch (gtoErr) {
                     console.warn('[PostEngine] GTO solver query exception:', gtoErr);
+                }
+            }
+
+            if (gtoSolverResult && gtoSolverResult.matched) {
+                // 动作合法性防御性核验 (Astra & Qwen P1 核心防线):
+                // 若当前面对下注 (villainBet > 0)，合法动作只能为 FOLD, CALL, RAISE, ALLIN；严禁接管为 CHECK！
+                // 若当前未面对下注 (villainBet === 0)，合法动作只能为 CHECK, BET, ALLIN；严禁接管为 CALL 或 FOLD！
+                const _primaryAct = (gtoSolverResult.primaryAction || '').toUpperCase();
+                const _isIllegalFacingBet = villainBet > 0 && (_primaryAct === 'CHECK' || !['FOLD', 'CALL', 'RAISE', 'ALLIN'].includes(_primaryAct));
+                const _isIllegalUnopened = villainBet === 0 && (_primaryAct === 'CALL' || _primaryAct === 'FOLD');
+                if (_isIllegalFacingBet || _isIllegalUnopened) {
+                    console.warn('[PostEngine] GTO 求解器动作与当前战局状态冲突，拦截非法接管回退启发式:', { _primaryAct, villainBet, spot: gtoSolverResult.spot });
+                    gtoSolverResult = null;
                 }
             }
 
@@ -20282,14 +20302,14 @@
             // 按实现率折扣裸胜率——OOP 0.60 / IP 0.68（无位置更难兑现）。
             // 只在"面对下注"时折扣：我方主动线本就靠弃牌率盈利，不该按摊牌胜率打折。
             {
-                const hc = (s.heroCards || []).filter(c => c).map(normalizeCard);
+                const hc = (s.heroCards || []).filter(c => c).map(normalizeCard).filter(Boolean);
                 if (hc.length === 2 && board.length >= 3) {
-                    const hr = hc.map(c => c[0]), br = board.map(c => normalizeCard(c)[0]);
+                    const hr = hc.map(c => c[0]), br = board.map(c => normalizeCard(c)).filter(Boolean).map(c => c[0]);
                     const ownPair = hr[0] === hr[1] || hr.some(r => br.includes(r));
                     let madeStrong = false;
                     try { // 顺子/同花及以上算成手，不折扣（不成对也可能是同花/顺子）
                         madeStrong = typeof Hand !== 'undefined' &&
-                            Hand.solve([...hc, ...board.map(normalizeCard)]).rank >= 5;
+                            Hand.solve([...hc, ...board.map(normalizeCard).filter(Boolean)]).rank >= 5;
                     } catch (e) {}
                     const noShowdownValue = !ownPair && !madeStrong;
                     const noRealDraw = outs < (SC[street].semiBluffOuts);
@@ -20298,7 +20318,7 @@
                         //（后门顺子）→ 0.70/0.75；纯空气（连后门都没有）→ 0.55/0.62。
                         // 区间取自公开的 equity-realization 经验值：坚果>1、中等成手≈0.9-1、
                         // 听牌≈1、无摊牌价值的空气≈0.5-0.7，无位置再打约 9 折。
-                        const suits = [...hc, ...board.map(normalizeCard)].map(c => c[1]);
+                        const suits = [...hc, ...board.map(normalizeCard).filter(Boolean)].map(c => c[1]);
                         const bdFlush = ['s', 'h', 'd', 'c'].some(s =>
                             suits.filter(x => x === s).length === 3 && hc.some(c => c[1] === s));
                         const RK = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'T':10,'J':11,'Q':12,'K':13,'A':14 };
